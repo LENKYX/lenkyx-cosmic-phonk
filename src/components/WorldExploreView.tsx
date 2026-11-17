@@ -32,6 +32,7 @@ import { getSmartDiscoveryQueries, recordPlayTaste, recordSearchTaste } from '..
 
 interface Props {
   initialQuery?: string;
+  searchNonce?: number;
   currentTrack: Track | null;
   isPlaying: boolean;
   playlists: UserPlaylist[];
@@ -61,6 +62,7 @@ function fmtDur(sec?: number): string {
 
 export const WorldExploreView: React.FC<Props> = ({
   initialQuery = '',
+  searchNonce = 0,
   currentTrack,
   isPlaying,
   playlists,
@@ -119,7 +121,7 @@ export const WorldExploreView: React.FC<Props> = ({
       void runSearch('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialQuery]);
+  }, [initialQuery, searchNonce]);
 
   const handlePlayRow = (track: Track) => {
     recordPlayTaste(track.artist, track.genre, track.title);

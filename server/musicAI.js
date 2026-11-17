@@ -148,39 +148,135 @@ function buildAiInsight(rawQuery, expandedQuery, artistProfile, trackCount, isCo
   };
 }
 
+const SPELL_ALIASES = new Map([
+  ['metalica', 'Metallica'],
+  ['metallika', 'Metallica'],
+  ['mettalica', 'Metallica'],
+  ['acdc', 'AC/DC'],
+  ['ac dc', 'AC/DC'],
+  ['guns', "Guns N' Roses"],
+  ['gunz', "Guns N' Roses"],
+  ['guns n roses', "Guns N' Roses"],
+  ['guns and roses', "Guns N' Roses"],
+  ['michael jakson', 'Michael Jackson'],
+  ['maicon jackson', 'Michael Jackson'],
+  ['maicol jackson', 'Michael Jackson'],
+  ['nirvanna', 'Nirvana'],
+  ['link park', 'Linkin Park'],
+  ['linkin', 'Linkin Park'],
+  ['sistem of a down', 'System Of A Down'],
+  ['system of down', 'System Of A Down'],
+  ['airon maiden', 'Iron Maiden'],
+  ['iron maidem', 'Iron Maiden'],
+  ['slipnot', 'Slipknot'],
+  ['pink floid', 'Pink Floyd'],
+  ['led zepelin', 'Led Zeppelin'],
+  ['cold play', 'Coldplay'],
+  ['bitols', 'The Beatles'],
+  ['beatles', 'The Beatles'],
+  ['marilia mendonsa', 'Marília Mendonça'],
+  ['gustavo lima', 'Gusttavo Lima'],
+  ['henrique juliano', 'Henrique & Juliano'],
+  ['jorge mateus', 'Jorge & Mateus'],
+  ['ze neto', 'Zé Neto & Cristiano'],
+  ['legiao', 'Legião Urbana'],
+  ['racionais', "Racionais MC's"],
+  ['red hot', 'Red Hot Chili Peppers'],
+  ['foo figthers', 'Foo Fighters'],
+  ['evanescense', 'Evanescence'],
+  ['weeknd', 'The Weeknd'],
+  ['the weekend', 'The Weeknd'],
+  ['bille eilish', 'Billie Eilish'],
+  ['billy eilish', 'Billie Eilish'],
+  ['eminen', 'Eminem'],
+  ['rihana', 'Rihanna'],
+  ['travis scot', 'Travis Scott'],
+]);
+
+function stripAccents(str = '') {
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function levenshtein(a, b) {
+  const m = a.length;
+  const n = b.length;
+  if (Math.abs(m - n) > 3) return 99;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[m][n];
+}
+
 function interpretQueryWithAI(rawQuery) {
   const q = String(rawQuery || '').trim();
-  const low = q.toLowerCase();
+  const clean = stripAccents(q).replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // 1) Spell-correction / alias resolution (handles typos like "metalica" -> "Metallica")
+  let corrected = q;
+  if (SPELL_ALIASES.has(clean)) {
+    corrected = SPELL_ALIASES.get(clean);
+  } else {
+    // Check fuzzy match against famous artists directory (only for single/short artist queries)
+    const words = clean.split(' ');
+    if (clean.length >= 4 && words.length <= 3) {
+      let best = null;
+      let bestDist = 3;
+      for (const a of FAMOUS_ARTISTS_DIRECTORY) {
+        const an = stripAccents(a.name).replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        const dist = levenshtein(clean, an);
+        if (dist <= 2 && dist < bestDist) {
+          bestDist = dist;
+          best = a.name;
+        }
+      }
+      if (best) corrected = best;
+    }
+  }
+
+  const low = stripAccents(corrected);
   const isCosmic =
-    /(et|e\.t|alien|alienigena|alienígena|espaco|espaço|galaxia|galáxia|universo|nasa|voyager|ovini|ufo|orbita|órbita|planeta|cosmic|saturno|jupiter)/.test(
+    /(\b(et|e\.t\.?|ufo|ovini|orbita|planeta|saturno|jupiter|espaco|galaxia|universo|nasa|voyager|cosmic)\b|alienigena|\balien\b)/.test(
       low
     );
 
   // Check if matches any directory famous artist
-  const matchedArtist = FAMOUS_ARTISTS_DIRECTORY.find(
-    (a) =>
-      low.includes(a.name.toLowerCase()) ||
-      low.includes(a.name.toLowerCase().replace(/&/g, 'e').replace(/'/g, '')) ||
+  const matchedArtist = FAMOUS_ARTISTS_DIRECTORY.find((a) => {
+    const an = stripAccents(a.name);
+    const anClean = an.replace(/&/g, 'e').replace(/'/g, '');
+    return (
+      low.includes(an) ||
+      low.includes(anClean) ||
       (a.name === 'Henrique & Juliano' && low.includes('henrique') && low.includes('juliano')) ||
       (a.name === 'Jorge & Mateus' && low.includes('jorge') && low.includes('mateus')) ||
       (a.name === 'Zé Neto & Cristiano' && low.includes('ze neto')) ||
       (a.name === 'Marília Mendonça' && low.includes('marilia'))
-  );
+    );
+  });
 
-  let expanded = q;
+  let expanded = corrected;
   if (isCosmic) {
-    expanded = `${q} NASA Voyager space sounds cosmic ambient alien music`;
+    expanded = `${corrected} NASA Voyager space sounds cosmic ambient alien music`;
   } else if (/(clipe|clipes|clip|clips|dvd|video|ao vivo)/.test(low)) {
-    expanded = `${q} clipe oficial official music video`;
+    expanded = `${corrected} clipe oficial official music video`;
   } else if (/(anos 60|anos 70|anos 80|anos 90|flashback|antigas)/.test(low)) {
-    expanded = `${q} maiores sucessos classicos musica completa`;
-  } else if (/(sertanejo|sofrência|sofrencia|modão|modao)/.test(low) && !matchedArtist) {
-    expanded = `${q} Henrique e Juliano Marilia Mendonca Gusttavo Lima musica`;
+    expanded = `${corrected} maiores sucessos classicos musica completa`;
+  } else if (/(sertanejo|sofrencia|modao)/.test(low) && !matchedArtist) {
+    expanded = `${corrected} Henrique e Juliano Marilia Mendonca Gusttavo Lima musica`;
   } else if (matchedArtist) {
-    expanded = `${matchedArtist.name} musica oficial`;
+    expanded = `${matchedArtist.name} official audio music`;
   }
 
-  return { raw: q, expanded, isCosmic, matchedArtist };
+  return { raw: q, corrected, expanded, isCosmic, matchedArtist };
 }
 
 export async function fetchArtistPhotoAndBio(artistName, lang = 'pt', explicitWikiSlug = '') {
@@ -431,18 +527,19 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
   }
 
   const ai = interpretQueryWithAI(q);
-  const queryForYt = q ? ai.expanded : 'Henrique e Juliano Marilia Mendonca The Weeknd Queen Alok official audio';
+  const effectiveQuery = ai.corrected || q;
+  const queryForYt = effectiveQuery ? ai.expanded : 'Henrique e Juliano Marilia Mendonca The Weeknd Queen Alok official audio';
 
   const promises = [
-    searchYouTubeMusic(queryForYt, 16),
-    searchAudiusFull(q || 'phonk cosmic', 6),
+    searchYouTubeMusic(queryForYt, 18),
+    searchAudiusFull(effectiveQuery || 'phonk cosmic', 6),
     ai.isCosmic || options.includeArchiveSpace
       ? searchArchiveSpaceAudio('nasa voyager space electromagnetic alien', 6)
       : Promise.resolve([]),
   ];
 
-  if (q.length >= 2) {
-    const artistTarget = ai.matchedArtist ? ai.matchedArtist.name : q;
+  if (effectiveQuery.length >= 2) {
+    const artistTarget = ai.matchedArtist ? ai.matchedArtist.name : effectiveQuery;
     promises.push(
       fetchArtistPhotoAndBio(
         artistTarget,

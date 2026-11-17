@@ -69,6 +69,14 @@ export const MOVIE_CATEGORIES = [
     mediaType: 'movie',
     query: 'documentario universo nasa completo dublado 4k hd',
   },
+  {
+    id: 'cat-archive-cinema',
+    title: 'Acervo Cinema & Séries Clássicas (Fonte Direta Archive.org)',
+    emoji: '🏛️',
+    mediaType: 'movie',
+    isArchiveOnly: true,
+    query: 'feature_films OR sci_fi_and_horror',
+  },
 ];
 
 const movieCache = new Map();
@@ -160,19 +168,159 @@ function inferMediaType(explicitType, title, isTrailerCategory) {
   return explicitType || 'movie';
 }
 
+function extractPlaylistLockups(node, out = []) {
+  if (!node || typeof node !== 'object') return out;
+  if (Array.isArray(node)) {
+    for (const item of node) extractPlaylistLockups(item, out);
+    return out;
+  }
+  if (node.playlistRenderer && node.playlistRenderer.playlistId) {
+    out.push({ type: 'pr', data: node.playlistRenderer });
+  } else if (node.lockupViewModel && node.lockupViewModel.contentId && node.lockupViewModel.contentType === 'LOCKUP_CONTENT_TYPE_PLAYLIST') {
+    out.push({ type: 'lockup', data: node.lockupViewModel });
+  }
+  for (const k of Object.keys(node)) {
+    if (k !== 'playlistRenderer' && k !== 'lockupViewModel') extractPlaylistLockups(node[k], out);
+  }
+  return out;
+}
+
+async function fetchArchiveCinema(cleanQ, category, limit = 14) {
+  const out = [];
+  const seen = new Set();
+  try {
+    const qExpr =
+      cleanQ.includes('feature_films')
+        ? '(collection:feature_films OR collection:sci_fi_and_horror) AND mediatype:movies'
+        : `(${cleanQ.split(' ').slice(0, 3).join(' ')}) AND mediatype:movies`;
+    const arcUrl =
+      'https://archive.org/advancedsearch.php?q=' +
+      encodeURIComponent(qExpr) +
+      `&fl[]=identifier,title,creator,year&sort[]=downloads+desc&rows=${limit}&output=json`;
+    const ar = await fetch(arcUrl, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000) });
+    if (ar.ok) {
+      const aj = await ar.json();
+      const docs = aj?.response?.docs || [];
+      for (const d of docs) {
+        if (!d.identifier || seen.has(d.identifier)) continue;
+        seen.add(d.identifier);
+        out.push({
+          id: `arcmov-${d.identifier}`,
+          title: d.title || d.identifier,
+          subtitle: Array.isArray(d.creator) ? d.creator[0] : d.creator || 'Acervo Cinema Livre',
+          category,
+          year: d.year ? String(d.year) : undefined,
+          durationLabel: d.year ? `${d.year} · Completo` : 'Filme Completo',
+          posterUrl: `https://archive.org/services/img/${d.identifier}`,
+          externalUrl: `https://archive.org/details/${d.identifier}`,
+          videoStreamUrl: `https://archive.org/embed/${d.identifier}`,
+          isTrailer: false,
+          sourceLabel: 'Acervo Direto',
+          qualityLabel: 'HD Archive',
+          isDubbed: false,
+          mediaType: 'movie',
+        });
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return out;
+}
+
 export async function searchMovies(
   query,
   category = 'Filmes Completos',
   isTrailerCategory = false,
-  mediaType = 'movie'
+  mediaType = 'movie',
+  isArchiveOnly = false
 ) {
   const cleanQ = (query || 'filme internacional completo dublado full hd').trim();
-  const key = `${cleanQ.toLowerCase()}|${isTrailerCategory}|${mediaType}`;
+  const key = `${cleanQ.toLowerCase()}|${isTrailerCategory}|${mediaType}|${isArchiveOnly}`;
   const cached = movieCache.get(key);
   if (cached && Date.now() - cached.ts < 1000 * 60 * 12) return cached.data;
 
+  if (isArchiveOnly) {
+    const arcItems = await fetchArchiveCinema(cleanQ, category, 16);
+    movieCache.set(key, { ts: Date.now(), data: arcItems });
+    return arcItems;
+  }
+
   const scoredItems = [];
   const seen = new Set();
+
+  // For series/anime, also fetch full season playlists (&sp=EgIQAw%253D%253D) so users can binge all episodes in order!
+  if (!isTrailerCategory && (mediaType === 'series' || mediaType === 'anime')) {
+    try {
+      const plUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(
+        cleanQ + ' temporada completa'
+      )}&sp=EgIQAw%253D%253D`;
+      const res = await fetch(plUrl, {
+        headers: { 'User-Agent': UA, 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8' },
+        signal: AbortSignal.timeout(6500),
+      });
+      if (res.ok) {
+        const html = await res.text();
+        const marker = 'var ytInitialData = ';
+        const idx = html.indexOf(marker);
+        if (idx !== -1) {
+          const sub = html.slice(idx + marker.length);
+          const end = sub.indexOf(';</script>');
+          if (end !== -1) {
+            const data = JSON.parse(sub.slice(0, end));
+            const pls = extractPlaylistLockups(data);
+            for (const p of pls.slice(0, 8)) {
+              let pid = '';
+              let title = '';
+              let channel = mediaType === 'anime' ? 'Anime Completo' : 'Série Completa';
+              let posterUrl = '';
+              let epLabel = 'Temporada Completa';
+
+              if (p.type === 'pr') {
+                pid = p.data.playlistId;
+                title = (p.data.title?.runs || []).map((r) => r.text).join('') || p.data.title?.simpleText || '';
+                channel = (p.data.shortBylineText?.runs || []).map((r) => r.text).join('') || channel;
+                const thumbs = p.data.thumbnails?.[0]?.thumbnails || [];
+                posterUrl = thumbs[thumbs.length - 1]?.url || '';
+                if (p.data.videoCount) epLabel = `${p.data.videoCount} Episódios`;
+              } else {
+                pid = p.data.contentId;
+                const meta = p.data.metadata?.lockupMetadataViewModel;
+                title = meta?.title?.content || '';
+                const sources =
+                  p.data.contentImage?.collectionThumbnailViewModel?.primaryThumbnail?.thumbnailViewModel?.image?.sources || [];
+                posterUrl = sources[sources.length - 1]?.url || '';
+              }
+
+              if (!pid || !title || seen.has(`pl-${pid}`)) continue;
+              seen.add(`pl-${pid}`);
+              const { qualityLabel, isDubbed, score } = detectQualityAndDub(title, ['HD'], cleanQ);
+              scoredItems.push({
+                score: score + 35, // boost complete seasons!
+                item: {
+                  id: `ytpl-${pid}`,
+                  title,
+                  subtitle: `${channel} · Todos os Episódios`,
+                  category,
+                  durationLabel: epLabel,
+                  posterUrl: posterUrl || 'https://i.ytimg.com/vi/default.jpg',
+                  youtubePlaylistId: pid,
+                  externalUrl: `https://www.youtube.com/playlist?list=${pid}`,
+                  isTrailer: false,
+                  sourceLabel: mediaType === 'anime' ? 'Temporada Anime' : 'Temporada Série',
+                  qualityLabel,
+                  isDubbed,
+                  mediaType,
+                },
+              });
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore playlist error and continue
+    }
+  }
 
   // &sp=EgIgAQ%253D%253D enforces YouTube HD quality filter!
   const searchUrls = [
@@ -305,7 +453,13 @@ export async function getMoviesDirectory() {
   const settled = await Promise.all(
     MOVIE_CATEGORIES.map(async (cat) => ({
       ...cat,
-      movies: await searchMovies(cat.query, cat.title, Boolean(cat.isTrailerCategory), cat.mediaType || 'movie'),
+      movies: await searchMovies(
+        cat.query,
+        cat.title,
+        Boolean(cat.isTrailerCategory),
+        cat.mediaType || 'movie',
+        Boolean(cat.isArchiveOnly)
+      ),
     }))
   );
   return { categories: settled };

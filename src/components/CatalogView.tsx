@@ -50,6 +50,7 @@ interface Props {
   onAddTrack: () => void;
   lyricsTrack: Track | null;
   onSetLyricsTrack: (track: Track | null) => void;
+  onSearchWorld?: (query: string) => void;
   onToast: (msg: string) => void;
 }
 
@@ -82,6 +83,7 @@ export const CatalogView: React.FC<Props> = ({
   onAddTrack,
   lyricsTrack,
   onSetLyricsTrack,
+  onSearchWorld,
   onToast,
 }) => {
   const [selectedAlbum, setSelectedAlbum] = useState<string>('ALL');
@@ -278,13 +280,29 @@ export const CatalogView: React.FC<Props> = ({
           <div className="text-sm font-bold text-white">
             {selectedAlbum === 'OFFLINE'
               ? 'Nenhuma música salva offline ainda'
-              : 'Nenhuma faixa encontrada'}
+              : searchQuery.trim()
+                ? `Nenhuma faixa LENKYX para "${searchQuery.trim()}"`
+                : 'Nenhuma faixa encontrada'}
           </div>
-          <p className="text-xs text-purple-200/75 max-w-md mx-auto">
-            {selectedAlbum === 'OFFLINE'
-              ? 'Toque no ícone de download em qualquer faixa para ouvir mesmo sem internet.'
-              : 'Tente limpar a busca ou escolher outro filtro.'}
-          </p>
+          {searchQuery.trim() && onSearchWorld ? (
+            <div className="space-y-2.5 pt-1">
+              <p className="text-xs text-purple-200/75 max-w-md mx-auto">
+                Quer ouvir esse artista ou música no catálogo mundial completo? Clique abaixo:
+              </p>
+              <button
+                onClick={() => onSearchWorld(searchQuery.trim())}
+                className="px-5 py-2.5 rounded-full bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 text-white text-xs font-black shadow-lg hover:brightness-110 transition"
+              >
+                🌍 Buscar "{searchQuery.trim()}" em Artistas & Mundo
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-purple-200/75 max-w-md mx-auto">
+              {selectedAlbum === 'OFFLINE'
+                ? 'Toque no ícone de download em qualquer faixa para ouvir mesmo sem internet.'
+                : 'Tente limpar a busca ou escolher outro filtro.'}
+            </p>
+          )}
         </div>
       ) : viewLayout === 'list' ? (
         /* FLOATING 3D TRACK ROWS (Zero V2 clutter) */

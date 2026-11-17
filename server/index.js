@@ -26,6 +26,7 @@ import {
   CURATED_PLAYLISTS,
 } from './musicAI.js';
 import { getMoviesDirectory, searchMovies } from './moviesAI.js';
+import { getLiveTvDirectory, searchLiveTv } from './tvAI.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -596,6 +597,97 @@ app.get('/api/movies-search', async (req, res) => {
   }
 });
 
+// === GLOBAL FREE-TO-AIR LIVE TV CHANNELS (Brazil + World Top 7,200+ Streams) ===
+app.use('/api/tv-', (_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+});
+
+app.get('/api/tv-directory', async (_req, res) => {
+  try {
+    const payload = await getLiveTvDirectory();
+    res.json(payload);
+  } catch {
+    res.json({ totalAvailable: 0, categories: [] });
+  }
+});
+
+app.get('/api/tv-search', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const country = String(req.query.country || '').trim();
+  try {
+    const payload = await searchLiveTv(q, country);
+    res.json(payload);
+  } catch {
+    res.json({ totalAvailable: 0, channels: [] });
+  }
+});
+
+app.get('/api/tv-proxy', async (req, res) => {
+  const rawUrl = String(req.query.url || '').trim();
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return res.status(400).send('Invalid URL');
+  }
+  const host = parsed.hostname.toLowerCase();
+  if (
+    parsed.protocol !== 'https:' ||
+    host === 'localhost' ||
+    host.startsWith('127.') ||
+    host.startsWith('10.') ||
+    host.startsWith('192.168.') ||
+    host.startsWith('169.254.') ||
+    host.includes('::1')
+  ) {
+    return res.status(403).send('Blocked host');
+  }
+  try {
+    const upstream = await fetch(rawUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!upstream.ok) return res.status(upstream.status).send('Stream unavailable');
+    const ct = upstream.headers.get('content-type') || '';
+    const finalUrl = upstream.url || rawUrl;
+    if (ct.includes('mpegurl') || finalUrl.toLowerCase().includes('.m3u8')) {
+      const txt = await upstream.text();
+      const rewritten = txt
+        .split(/\r?\n/)
+        .map((line) => {
+          const trimmed = line.trim();
+          if (!trimmed) return line;
+          if (trimmed.startsWith('#')) {
+            return line.replace(/URI="([^"]+)"/g, (_m, uri) => {
+              try {
+                const abs = new URL(uri, finalUrl).toString();
+                return `URI="/api/tv-proxy?url=${encodeURIComponent(abs)}"`;
+              } catch {
+                return `URI="${uri}"`;
+              }
+            });
+          }
+          try {
+            const abs = new URL(trimmed, finalUrl).toString();
+            return `/api/tv-proxy?url=${encodeURIComponent(abs)}`;
+          } catch {
+            return line;
+          }
+        })
+        .join('\n');
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      return res.send(rewritten);
+    }
+    if (ct) res.setHeader('Content-Type', ct);
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    return res.send(buf);
+  } catch {
+    return res.status(502).send('Stream proxy failed');
+  }
+});
+
 // Safe CORS Audio/Media Proxy for Offline Device Downloads (Suno, Audius & Archive.org CDNs only)
 app.get('/api/audio-proxy', async (req, res) => {
   const rawUrl = String(req.query.url || '').trim();
@@ -731,8 +823,8 @@ app.get('/api/app-update', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const db = readDb();
   const fallback = {
-    latestVersionCode: 14,
-    latestVersionName: '2.1.0',
+    latestVersionCode: 16,
+    latestVersionName: '2.1.2',
     apkUrl:
       (db.settings?.apkDownloadUrl || '').trim() ||
       'https://drive.google.com/uc?id=1CqwpvAgNKH_ULB5msJzVXwYz-voJ-Hjk&export=download',

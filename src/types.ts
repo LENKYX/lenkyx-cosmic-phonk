@@ -101,6 +101,7 @@ export interface MovieItem {
   durationLabel: string;
   posterUrl: string;
   youtubeVideoId?: string;
+  youtubePlaylistId?: string;
   videoStreamUrl?: string;
   externalUrl?: string;
   isTrailer?: boolean;
@@ -108,6 +109,25 @@ export interface MovieItem {
   qualityLabel?: string;
   isDubbed?: boolean;
   mediaType?: 'movie' | 'series' | 'anime' | 'trailer';
+}
+
+export interface LiveTvChannel {
+  id: string;
+  name: string;
+  country: string;
+  network?: string;
+  categories: string[];
+  quality: string;
+  logo: string;
+  streamUrl: string;
+  youtubeLiveId?: string;
+}
+
+export interface LiveTvCategory {
+  id: string;
+  title: string;
+  emoji: string;
+  channels: LiveTvChannel[];
 }
 
 export interface WorldArtistDirectoryItem {

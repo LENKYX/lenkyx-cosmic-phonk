@@ -21,6 +21,10 @@ import {
   Minimize2,
   Clapperboard,
   Speaker,
+  Volume2,
+  VolumeX,
+  Zap,
+  Waves,
 } from 'lucide-react';
 import {
   AppMode,
@@ -42,7 +46,14 @@ const MoviesView = React.lazy(() => import('./components/MoviesView').then((m) =
 const VideoStudioView = React.lazy(() => import('./components/VideoStudioView').then((m) => ({ default: m.VideoStudioView })));
 const StudioCreateView = React.lazy(() => import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView })));
 import { MiniPlayer } from './components/MiniPlayer';
+import { CosmicScreensaver3D, ExperienceMode } from './components/CosmicScreensaver3D';
+import { SoundBoostModal } from './components/SoundBoostModal';
 import { PixModal } from './components/PixModal';
+import {
+  AudioSoundProfile,
+  lenkyxAudioEngine,
+  loadSoundProfile,
+} from './utils/audioBoostEngine';
 import { ShareModal } from './components/ShareModal';
 import { SpaceDownloadModal } from './components/SpaceDownloadModal';
 import { UploadTrackModal } from './components/UploadTrackModal';
@@ -99,6 +110,7 @@ export function App() {
   // Global search bar state (Spotify / YouTube Music top bar)
   const [globalSearch, setGlobalSearch] = useState('');
   const [worldTriggerQuery, setWorldTriggerQuery] = useState('');
+  const [worldSearchNonce, setWorldSearchNonce] = useState(0);
 
   // Creator auth state (default = Fan mode)
   const [mode, setMode] = useState<AppMode>('fan');
@@ -132,6 +144,17 @@ export function App() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.88);
+  const [muted, setMuted] = useState(false);
+  const [soundProfile, setSoundProfile] = useState<AudioSoundProfile>(() => loadSoundProfile());
+  const [soundBoostOpen, setSoundBoostOpen] = useState(false);
+  const [screensaverOpen, setScreensaverOpen] = useState(false);
+  const [autoScreensaverOnPlay, setAutoScreensaverOnPlay] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('lenkyx_auto_screensaver_v1') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [playQueue, setPlayQueue] = useState<Track[]>([]);
   const playQueueRef = useRef<Track[]>([]);
   const currentTrackRef = useRef<Track | null>(null);
@@ -512,6 +535,10 @@ export function App() {
       currentTrackRef.current = track;
       setActiveVersion(finalVersion);
 
+      if (autoScreensaverOnPlay && !watchingMovie && !clipTheaterOpen) {
+        setScreensaverOpen(true);
+      }
+
       // Play full-length YouTube audio track when track is backed by youtubeVideoId
       if (track.youtubeVideoId && !track.audioUrl) {
         audio.pause();
@@ -520,7 +547,7 @@ export function App() {
         setCurrentTime(0);
         setDuration(track.durationSec || 0);
         if (ytPlayerRef.current?.loadVideoById) {
-          ytPlayerRef.current.setVolume?.(Math.round(volume * 100));
+          ytPlayerRef.current.setVolume?.(muted ? 0 : Math.round(volume * 100));
           ytPlayerRef.current.loadVideoById(track.youtubeVideoId);
           setIsPlaying(true);
         } else {
@@ -536,7 +563,12 @@ export function App() {
       const resolved = await resolvePlayableAudioUrl(track, finalVersion);
       setIsPlayingFromOffline(resolved.fromOffline);
       audio.src = resolved.url;
+      audio.volume = muted ? 0 : volume;
+      audio.muted = muted;
       audio.load();
+      lenkyxAudioEngine.attachAudioElement(audio);
+      lenkyxAudioEngine.resume();
+      lenkyxAudioEngine.applyProfile(soundProfile);
       try {
         await audio.play();
         if (!track.source || track.source === 'lenkyx') {
@@ -557,7 +589,17 @@ export function App() {
         );
       }
     },
-    [currentTrack?.id, activeVersion, volume, showToast]
+    [
+      currentTrack?.id,
+      activeVersion,
+      volume,
+      muted,
+      autoScreensaverOnPlay,
+      watchingMovie,
+      clipTheaterOpen,
+      soundProfile,
+      showToast,
+    ]
   );
 
   useEffect(() => {
@@ -765,9 +807,64 @@ export function App() {
   };
 
   const handleVolume = (v: number) => {
-    setVolume(v);
-    if (audioRef.current) audioRef.current.volume = v;
-    ytPlayerRef.current?.setVolume?.(Math.round(v * 100));
+    const clamped = Math.max(0, Math.min(1, v));
+    setVolume(clamped);
+    const shouldMute = clamped === 0;
+    setMuted(shouldMute);
+    if (audioRef.current) {
+      audioRef.current.volume = clamped;
+      audioRef.current.muted = shouldMute;
+    }
+    ytPlayerRef.current?.setVolume?.(Math.round(clamped * 100));
+  };
+
+  const handleToggleMute = () => {
+    setMuted((prev) => {
+      const next = !prev;
+      const eff = next ? 0 : volume;
+      if (audioRef.current) {
+        audioRef.current.muted = next;
+        audioRef.current.volume = eff;
+      }
+      ytPlayerRef.current?.setVolume?.(Math.round(eff * 100));
+      return next;
+    });
+  };
+
+  const handleChangeSoundProfile = (next: AudioSoundProfile) => {
+    setSoundProfile(next);
+    lenkyxAudioEngine.attachAudioElement(audioRef.current);
+    lenkyxAudioEngine.applyProfile(next);
+  };
+
+  const handleToggleAutoScreensaver = () => {
+    setAutoScreensaverOnPlay((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('lenkyx_auto_screensaver_v1', next ? '1' : '0');
+      } catch {
+        // ignore
+      }
+      showToast(
+        next
+          ? '🌌 Protetor 3D Automático ligado! Ao tocar música os menus dão lugar ao efeito 3D.'
+          : 'Protetor 3D Automático desligado.'
+      );
+      return next;
+    });
+  };
+
+  const handleExperienceMode = (exp: ExperienceMode) => {
+    if (exp === 'audio') {
+      setScreensaverOpen(false);
+      setClipTheaterOpen(false);
+    } else if (exp === 'screensaver') {
+      setClipTheaterOpen(false);
+      setScreensaverOpen(true);
+    } else if (exp === 'video') {
+      setScreensaverOpen(false);
+      if (currentTrack?.youtubeVideoId) setClipTheaterOpen(true);
+    }
   };
 
   // Playlist mutations
@@ -973,22 +1070,33 @@ export function App() {
 
   const handleGlobalSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (globalSearch.trim()) {
-      setWorldTriggerQuery(globalSearch.trim());
+    const q = globalSearch.trim();
+    if (q) {
+      setWorldTriggerQuery(q);
+      setWorldSearchNonce((n) => n + 1);
       setActiveTab('explore');
     }
+  };
+
+  const triggerWorldSearchDirect = (q: string) => {
+    const clean = q.trim();
+    if (!clean) return;
+    setGlobalSearch(clean);
+    setWorldTriggerQuery(clean);
+    setWorldSearchNonce((n) => n + 1);
+    setActiveTab('explore');
   };
 
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'catalog', label: 'Início · LENKYX', icon: <Music className="w-4 h-4" /> },
     { id: 'explore', label: 'Artistas & Mundo', icon: <Globe2 className="w-4 h-4" /> },
-    { id: 'movies', label: 'Filmes, Séries & Animes', icon: <Clapperboard className="w-4 h-4" /> },
+    { id: 'movies', label: 'Cinema, Séries & TV', icon: <Clapperboard className="w-4 h-4" /> },
     { id: 'video', label: 'Criar Vídeos', icon: <Video className="w-4 h-4" /> },
     { id: 'playlists', label: 'Minhas Playlists', icon: <ListMusic className="w-4 h-4" /> },
   ];
 
   const isWatchingVideoOrMovie =
-    clipTheaterOpen || watchingMovie || Boolean(currentTrack?.youtubeVideoId && !currentTrack?.audioUrl);
+    clipTheaterOpen || watchingMovie;
 
   return (
     <div className="min-h-screen bg-[#04010c] text-white flex relative">
@@ -1003,8 +1111,12 @@ export function App() {
         theme={jblTheme}
       />
 
-      {/* === DESKTOP FLOATING GLASS LEFT SIDEBAR === */}
-      <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
+      {/* === DESKTOP FLOATING GLASS LEFT SIDEBAR (Spatial transition out during 3D Screensaver) === */}
+      <aside
+        className={`hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden transition-all duration-700 ease-out ${
+          screensaverOpen ? '-translate-x-10 scale-90 opacity-0 blur-sm pointer-events-none' : 'translate-x-0 scale-100 opacity-100'
+        }`}
+      >
         {/* Brand Logo (tap 5x secretly for Creator access) */}
         <div
           onClick={handleBrandTap}
@@ -1128,10 +1240,14 @@ export function App() {
         </div>
       </aside>
 
-      {/* === MAIN CONTENT SHELL === */}
-      <div className="relative z-10 flex-1 md:pl-60 lg:pl-64 min-w-0 flex flex-col min-h-screen">
+      {/* === MAIN CONTENT SHELL (Spatial transition out during 3D Screensaver) === */}
+      <div
+        className={`relative z-10 flex-1 md:pl-60 lg:pl-64 min-w-0 flex flex-col min-h-screen transition-all duration-700 ease-out ${
+          screensaverOpen ? 'scale-90 opacity-0 blur-sm pointer-events-none' : 'scale-100 opacity-100'
+        }`}
+      >
         {/* SLIM FLOATING GLASS TOP HEADER */}
-        <header className="sticky top-2 z-30 mx-3 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-3 sm:px-4 flex items-center justify-between gap-2.5">
+        <header className="sticky top-2 z-30 mx-3 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-3 sm:px-4 flex items-center justify-between gap-2">
           {/* Mobile Brand Mini (tap 5x secretly for Creator access) */}
           <div
             onClick={handleBrandTap}
@@ -1148,7 +1264,7 @@ export function App() {
               type="text"
               value={globalSearch}
               onChange={(e) => setGlobalSearch(e.target.value)}
-              placeholder="Buscar artista, sertanejo, rock, geração ou som do espaço..."
+              placeholder="Buscar artista (ex: Metallica), sertanejo, rock ou espaço..."
               className="w-full pl-9 pr-20 sm:pr-24 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/[0.1] focus:bg-white/[0.12] border border-white/10 focus:border-cyan-400/50 text-xs sm:text-sm text-white placeholder-purple-300/60 focus:outline-none transition"
             />
             <button
@@ -1160,8 +1276,55 @@ export function App() {
             </button>
           </form>
 
-          {/* Right User / Fan Auth & Quick Actions */}
+          {/* Right User / Master Volume + Max Boost + 3D Screensaver + JBL Lights */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Master Volume Control Visible in ALL Menus */}
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.07] border border-white/10">
+              <button
+                onClick={handleToggleMute}
+                className="text-cyan-300 hover:text-white transition"
+                title={muted ? 'Ativar Som' : 'Silenciar'}
+              >
+                {muted || volume === 0 ? (
+                  <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                ) : (
+                  <Volume2 className="w-3.5 h-3.5" />
+                )}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.02}
+                value={muted ? 0 : volume}
+                onChange={(e) => handleVolume(Number(e.target.value))}
+                className="hidden sm:block w-14 lg:w-20 accent-cyan-400 cursor-pointer"
+                title={`Volume: ${Math.round((muted ? 0 : volume) * 100)}%`}
+              />
+              <button
+                onClick={() => setSoundBoostOpen(true)}
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-0.5 transition ${
+                  soundProfile.turboEnabled
+                    ? 'bg-gradient-to-r from-amber-400 to-pink-500 text-black shadow'
+                    : 'bg-white/10 hover:bg-white/20 text-amber-200'
+                }`}
+                title="Volume Máximo Limpo & Equalizador (Opcional)"
+              >
+                <Zap className="w-3 h-3" />
+                <span className="hidden lg:inline">{soundProfile.turboEnabled ? 'Máx ON' : 'EQ/Máx'}</span>
+              </button>
+            </div>
+
+            {/* 3D Cosmic Screensaver Button */}
+            <button
+              onClick={() => setScreensaverOpen(true)}
+              className="px-2.5 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/25 to-pink-500/25 hover:from-cyan-500/45 hover:to-pink-500/45 border border-cyan-400/50 text-cyan-100 text-[11px] font-black flex items-center gap-1 transition"
+              title="Abrir Protetor de Tela 3D (Efeito Visual + Imagens + Batidas)"
+            >
+              <Waves className="w-3.5 h-3.5 text-cyan-300" />
+              <span className="hidden xl:inline">Efeito 3D</span>
+            </button>
+
             <button
               onClick={() => {
                 if (!jblLightsEnabled) {
@@ -1327,6 +1490,7 @@ export function App() {
                   }}
                   lyricsTrack={lyricsTrack}
                   onSetLyricsTrack={setLyricsTrack}
+                  onSearchWorld={triggerWorldSearchDirect}
                   onToast={showToast}
                 />
               )}
@@ -1334,6 +1498,7 @@ export function App() {
               {activeTab === 'explore' && (
                 <WorldExploreView
                   initialQuery={worldTriggerQuery || globalSearch}
+                  searchNonce={worldSearchNonce}
                   currentTrack={currentTrack}
                   isPlaying={isPlaying}
                   playlists={playlists}
@@ -1377,6 +1542,10 @@ export function App() {
                   <MoviesView
                     onPauseMusic={pauseCatalogPlayer}
                     onMovieModalChange={setWatchingMovie}
+                    volume={volume}
+                    muted={muted}
+                    onVolume={handleVolume}
+                    onToggleMute={handleToggleMute}
                   />
                 )}
 
@@ -1406,48 +1575,54 @@ export function App() {
         </main>
       </div>
 
-      {/* ALWAYS-VISIBLE YOUTUBE MUSIC STYLE BOTTOM PLAYER BAR */}
-      <MiniPlayer
-        track={currentTrack}
-        activeVersion={activeVersion}
-        isPlaying={isPlaying}
-        isPlayingFromOffline={isPlayingFromOffline}
-        isCurrentTrackOffline={currentTrack ? offlineTrackIds.has(currentTrack.id) : false}
-        isDownloadingOffline={currentTrack ? downloadingIds.has(currentTrack.id) : false}
-        currentTime={currentTime}
-        duration={duration}
-        volume={volume}
-        jblLightsEnabled={jblLightsEnabled}
-        onToggleJblLights={() => setJblLightsEnabled((v) => !v)}
-        onTogglePlay={() => void handleTogglePlay()}
-        onSelectVersion={handleSelectVersion}
-        onPrev={() => handlePrevNext(-1)}
-        onNext={() => handlePrevNext(1)}
-        onSeek={handleSeek}
-        onVolume={handleVolume}
-        onShare={(t) => {
-          setShareTrack(t);
-          setShareOpen(true);
-        }}
-        onSendToVideo={handleSendToVideo}
-        onOpenLyrics={(t) => {
-          setActiveTab('catalog');
-          setLyricsTrack(t);
-        }}
-        onLike={(t) => void handleLikeTrack(t)}
-        onToggleOffline={(t) => void handleToggleOffline(t)}
-        onWatchClip={() => {
-          if (currentTrack?.youtubeVideoId) setClipTheaterOpen(true);
-        }}
-      />
+      {/* ALWAYS-VISIBLE YOUTUBE MUSIC STYLE BOTTOM PLAYER BAR (hidden during fullscreen Cinema/TV & 3D Screensaver) */}
+      {!watchingMovie && !screensaverOpen && (
+        <MiniPlayer
+          track={currentTrack}
+          activeVersion={activeVersion}
+          isPlaying={isPlaying}
+          isPlayingFromOffline={isPlayingFromOffline}
+          isCurrentTrackOffline={currentTrack ? offlineTrackIds.has(currentTrack.id) : false}
+          isDownloadingOffline={currentTrack ? downloadingIds.has(currentTrack.id) : false}
+          currentTime={currentTime}
+          duration={duration}
+          volume={volume}
+          muted={muted}
+          jblLightsEnabled={jblLightsEnabled}
+          onToggleJblLights={() => setJblLightsEnabled((v) => !v)}
+          onTogglePlay={() => void handleTogglePlay()}
+          onSelectVersion={handleSelectVersion}
+          onPrev={() => handlePrevNext(-1)}
+          onNext={() => handlePrevNext(1)}
+          onSeek={handleSeek}
+          onVolume={handleVolume}
+          onToggleMute={handleToggleMute}
+          onOpenScreensaver={() => setScreensaverOpen(true)}
+          onShare={(t) => {
+            setShareTrack(t);
+            setShareOpen(true);
+          }}
+          onSendToVideo={handleSendToVideo}
+          onOpenLyrics={(t) => {
+            setActiveTab('catalog');
+            setLyricsTrack(t);
+          }}
+          onLike={(t) => void handleLikeTrack(t)}
+          onToggleOffline={(t) => void handleToggleOffline(t)}
+          onWatchClip={() => {
+            if (currentTrack?.youtubeVideoId) setClipTheaterOpen(true);
+          }}
+        />
+      )}
 
       {/* MOBILE BOTTOM NAVIGATION BAR (YouTube Music / Netflix style) */}
+      {!watchingMovie && !screensaverOpen && (
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-5 items-center px-1">
         {(
           [
             { id: 'catalog' as TabId, label: 'Início', icon: <Music className="w-4 h-4" /> },
             { id: 'explore' as TabId, label: 'Artistas', icon: <Globe2 className="w-4 h-4" /> },
-            { id: 'movies' as TabId, label: 'Filmes', icon: <Clapperboard className="w-4 h-4" /> },
+            { id: 'movies' as TabId, label: 'Cinema/TV', icon: <Clapperboard className="w-4 h-4" /> },
             { id: 'video' as TabId, label: 'Vídeos', icon: <Video className="w-4 h-4" /> },
             { id: 'playlists' as TabId, label: 'Playlists', icon: <ListMusic className="w-4 h-4" /> },
           ] as { id: TabId; label: string; icon: React.ReactNode; isPix?: boolean }[]
@@ -1474,6 +1649,7 @@ export function App() {
           );
         })}
       </nav>
+      )}
 
       {/* MODALS */}
       <PixModal
@@ -1505,31 +1681,58 @@ export function App() {
         }}
         onToast={showToast}
       />
-      {/* Persistent Cinema Clip Theater (never unmounts #lenkyx-yt-audio-host — zero audio hiccups!) */}
+      {/* FULLSCREEN 3D SOUNDWAVE SCREENSAVER + CUSTOM IMAGE SLIDESHOW */}
+      <CosmicScreensaver3D
+        open={screensaverOpen}
+        track={currentTrack}
+        isPlaying={isPlaying}
+        currentTime={currentTime}
+        duration={duration}
+        volume={volume}
+        muted={muted}
+        autoOnPlay={autoScreensaverOnPlay}
+        turboEnabled={soundProfile.turboEnabled}
+        audioElement={audioRef.current}
+        hasVideo={Boolean(currentTrack?.youtubeVideoId)}
+        onToggleAutoOnPlay={handleToggleAutoScreensaver}
+        onOpenSoundBoost={() => setSoundBoostOpen(true)}
+        onTogglePlay={() => void handleTogglePlay()}
+        onPrev={() => handlePrevNext(-1)}
+        onNext={() => handlePrevNext(1)}
+        onSeek={handleSeek}
+        onVolume={handleVolume}
+        onToggleMute={handleToggleMute}
+        onSelectMode={handleExperienceMode}
+        onClose={() => setScreensaverOpen(false)}
+      />
+
+      {/* OPTIONAL MAX VOLUME + STUDIO LIMITER + 3-BAND EQ MODAL */}
+      <SoundBoostModal
+        open={soundBoostOpen}
+        onClose={() => setSoundBoostOpen(false)}
+        volume={volume}
+        muted={muted}
+        profile={soundProfile}
+        isYoutubeStream={Boolean(currentTrack?.youtubeVideoId && !currentTrack?.audioUrl)}
+        onVolume={handleVolume}
+        onToggleMute={handleToggleMute}
+        onChangeProfile={handleChangeSoundProfile}
+      />
+
+      {/* Persistent Cinema Clip Theater (hidden offscreen unless user chooses Vídeo — zero unwanted mini-box!) */}
       {clipTheaterOpen && currentTrack?.youtubeVideoId && (
         <div
           onClick={() => setClipTheaterOpen(false)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-lg"
+          className="fixed inset-0 z-[9990] bg-black/85 backdrop-blur-lg"
         />
       )}
       <div
         className={
           clipTheaterOpen && currentTrack?.youtubeVideoId
-            ? 'fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-3xl rounded-3xl overflow-hidden border border-cyan-400/40 bg-[#090418] shadow-[0_0_70px_rgba(236,72,153,0.35)]'
-            : currentTrack?.youtubeVideoId
-            ? 'fixed z-40 bottom-32 md:bottom-20 right-3 w-36 h-20 rounded-2xl overflow-hidden border border-cyan-400/50 bg-black shadow-[0_0_25px_rgba(34,211,238,0.4)]'
+            ? 'fixed z-[9995] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl rounded-3xl overflow-hidden border border-cyan-400/40 bg-[#090418] shadow-[0_0_70px_rgba(236,72,153,0.35)]'
             : 'fixed -left-[9999px] -top-[9999px] w-[320px] h-[180px] opacity-0 pointer-events-none'
         }
       >
-        {!clipTheaterOpen && currentTrack?.youtubeVideoId && (
-          <button
-            onClick={() => setClipTheaterOpen(true)}
-            className="absolute top-1 right-1 z-20 px-1.5 py-0.5 rounded-md bg-black/80 border border-pink-400/60 text-[9px] font-black text-white flex items-center gap-1 shadow"
-            title="Expandir Clipe"
-          >
-            <Film className="w-2.5 h-2.5 text-pink-400" /> Ampliar
-          </button>
-        )}
         {clipTheaterOpen && currentTrack?.youtubeVideoId && (
           <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e]">
             <div className="flex items-center gap-2.5 min-w-0">
