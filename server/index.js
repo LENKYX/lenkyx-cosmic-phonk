@@ -638,15 +638,71 @@ app.get('/download/apk', (_req, res) => {
   const db = readDb();
   const redirectUrl =
     (db.settings?.apkDownloadUrl || '').trim() ||
-    'https://drive.google.com/uc?id=1-edJqM_2o6SHPusYKYJ4AvWn6DlVMttI&export=download';
+    'https://drive.google.com/uc?id=1wmBstYY4_L0tgJIiYM23mO6uGAkd9D2d&export=download';
   return res.redirect(302, redirectUrl);
 });
 
-// Serve built frontend
+// Live App Auto-Update Manifest (reads Supabase public manifest or local fallback)
+app.get('/api/app-update', async (_req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-store');
+  const db = readDb();
+  const fallback = {
+    latestVersionCode: 11,
+    latestVersionName: '2.0.7',
+    apkUrl:
+      (db.settings?.apkDownloadUrl || '').trim() ||
+      'https://drive.google.com/uc?id=1wmBstYY4_L0tgJIiYM23mO6uGAkd9D2d&export=download',
+    releaseNotes: 'App 100% otimizado, busca IA, clipes HD, modo offline e auto-atualização.',
+    updateAvailable: false,
+  };
+  try {
+    const supaUrl = (process.env.SUPABASE_URL || 'https://uzififnhdzfobynsbcgk.supabase.co').replace(/\/$/, '');
+    const anonKey =
+      process.env.SUPABASE_ANON_KEY ||
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6aWZpZm5oZHpmb2J5bnNiY2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ4ODI1OTUsImV4cCI6MjExMDQ1ODU5NX0.oIl5j0RwZ0yuKBbCToUsuypAihT9y3jBY4gN2EMNylA';
+    const r = await fetch(`${supaUrl}/rest/v1/lenkyx_app_manifest?id=eq.android&select=*`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (r.ok) {
+      const rows = await r.json();
+      if (Array.isArray(rows) && rows[0]) {
+        return res.json({
+          latestVersionCode: Number(rows[0].version_code) || 11,
+          latestVersionName: rows[0].version_name || '2.0.7',
+          apkUrl: rows[0].apk_url || fallback.apkUrl,
+          releaseNotes: rows[0].release_notes || fallback.releaseNotes,
+          updateAvailable: false,
+        });
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return res.json(fallback);
+});
+
+// Serve built frontend with optimized mobile/desktop HTTP caching
 if (fs.existsSync(DIST_DIR)) {
-  app.use(express.static(DIST_DIR));
+  app.use(
+    '/assets',
+    express.static(path.join(DIST_DIR, 'assets'), { maxAge: '365d', immutable: true })
+  );
+  app.use(
+    express.static(DIST_DIR, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html') || filePath.endsWith('sw.js')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+        }
+      },
+    })
+  );
   app.get('*', (req, res) => {
     if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(DIST_DIR, 'index.html'));
   });
 }

@@ -109,7 +109,7 @@ export const SpaceDownloadModal: React.FC<Props> = ({
               </div>
               <div>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-[10px] font-black uppercase tracking-widest mb-1">
-                  <Sparkles className="w-3 h-3" /> Portal Espacial Oficial · v2.0.6
+                  <Sparkles className="w-3 h-3" /> Portal Espacial Oficial · v2.0.7
                 </div>
                 <h2 className="font-display text-lg sm:text-xl font-black text-white leading-tight">
                   LENKYX <span className="neon-text">COSMIC PHONK</span> APP

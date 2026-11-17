@@ -19,7 +19,7 @@ const SEED_DATA = {
     "sunoProfileUrl": "https://suno.com/@lenkyx",
     "dailyGoal": 10,
     "totalGoal": 1000,
-    "apkDownloadUrl": "https://drive.google.com/uc?id=1-edJqM_2o6SHPusYKYJ4AvWn6DlVMttI&export=download"
+    "apkDownloadUrl": "https://drive.google.com/uc?id=1wmBstYY4_L0tgJIiYM23mO6uGAkd9D2d&export=download"
   },
   "tracks": [
     {

@@ -256,6 +256,8 @@ export const WorldExploreView: React.FC<Props> = ({
                   <img
                     src={art.photoUrl || '/covers/album-official.jpg'}
                     alt={art.name}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover rounded-full bg-black"
                   />
                 </div>
@@ -363,6 +365,8 @@ export const WorldExploreView: React.FC<Props> = ({
                 <img
                   src={t.coverUrl || '/covers/album-official.jpg'}
                   alt={t.title}
+                  loading="lazy"
+                  decoding="async"
                   onClick={() => onPlayTrack(t, results, activeLabel)}
                   className="w-11 h-11 rounded-lg object-cover shrink-0 cursor-pointer border border-white/10"
                 />

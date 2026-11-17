@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Music,
   Disc3,
@@ -34,9 +34,9 @@ import { isAndroidApk } from './utils/androidBridge';
 import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
 import { PlaylistsView } from './components/PlaylistsView';
-import { DJMixerView } from './components/DJMixerView';
-import { VideoStudioView } from './components/VideoStudioView';
-import { StudioCreateView } from './components/StudioCreateView';
+const DJMixerView = React.lazy(() => import('./components/DJMixerView').then((m) => ({ default: m.DJMixerView })));
+const VideoStudioView = React.lazy(() => import('./components/VideoStudioView').then((m) => ({ default: m.VideoStudioView })));
+const StudioCreateView = React.lazy(() => import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView })));
 import { MiniPlayer } from './components/MiniPlayer';
 import { PixModal } from './components/PixModal';
 import { ShareModal } from './components/ShareModal';
@@ -72,7 +72,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pixCity: 'CAMPO GRANDE',
   pixMessage: 'Apoio LENKYX Cosmic Phonk',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
-  apkDownloadUrl: 'https://drive.google.com/uc?id=1-edJqM_2o6SHPusYKYJ4AvWn6DlVMttI&export=download',
+  apkDownloadUrl: 'https://drive.google.com/uc?id=1wmBstYY4_L0tgJIiYM23mO6uGAkd9D2d&export=download',
   youtubeUrl: '',
   sunoHandle: '@lenkyx',
   sunoProfileUrl: 'https://suno.com/@lenkyx',
@@ -163,6 +163,11 @@ export function App() {
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
   const [spaceDownloadOpen, setSpaceDownloadOpen] = useState(false);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
+  const [appUpdateInfo, setAppUpdateInfo] = useState<{
+    latestVersionName: string;
+    apkUrl: string;
+    releaseNotes: string;
+  } | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [lyricsTrack, setLyricsTrack] = useState<Track | null>(null);
@@ -210,6 +215,23 @@ export function App() {
   // Load persisted User Uploaded Tracks from IndexedDB
   useEffect(() => {
     void loadUserTracks().then((loaded: Track[]) => setUserTracks(loaded));
+  }, []);
+
+  // Silent Auto-Update check (Android APK checks Supabase manifest via LocalAssetServer)
+  useEffect(() => {
+    if (!isAndroidApk()) return;
+    fetch('/api/app-update')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.updateAvailable && d?.apkUrl) {
+          setAppUpdateInfo({
+            latestVersionName: String(d.latestVersionName || 'Nova Versão'),
+            apkUrl: String(d.apkUrl),
+            releaseNotes: String(d.releaseNotes || ''),
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Silent Cloud Sync for Fan Profile + Playlists (Supabase when online!)
@@ -1202,6 +1224,40 @@ export function App() {
 
         {/* ACTIVE VIEW CONTAINER (clean Spotify proportions) */}
         <main className="flex-1 w-full max-w-[1380px] mx-auto px-3 sm:px-5 pt-4">
+          {appUpdateInfo && (
+            <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
+              <div className="min-w-0">
+                <div className="text-xs font-black text-white flex items-center gap-1.5">
+                  <Rocket className="w-4 h-4 text-cyan-300" />
+                  Nova atualização v{appUpdateInfo.latestVersionName} disponível automaticamente!
+                </div>
+                {appUpdateInfo.releaseNotes && (
+                  <p className="text-[11px] text-cyan-100/80 truncate">{appUpdateInfo.releaseNotes}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    if (window.AndroidBridge?.openExternalUrl) {
+                      window.AndroidBridge.openExternalUrl(appUpdateInfo.apkUrl);
+                    } else {
+                      window.open(appUpdateInfo.apkUrl, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-xs font-black hover:brightness-110 transition"
+                >
+                  Atualizar Agora 🚀
+                </button>
+                <button
+                  onClick={() => setAppUpdateInfo(null)}
+                  className="p-1 rounded-lg bg-white/10 text-purple-200 hover:text-white"
+                  title="Fechar aviso"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="py-24 text-center space-y-3">
               <div className="w-12 h-12 mx-auto rounded-full border-4 border-pink-500 border-t-cyan-400 animate-spin" />
@@ -1289,38 +1345,46 @@ export function App() {
                 />
               )}
 
-              {activeTab === 'dj' && (
-                <DJMixerView
-                  tracks={allTracksPool}
-                  isCreator={mode === 'creator'}
-                  initialDeckA={djDeckA}
-                  initialDeckB={djDeckB}
-                  onPauseCatalogPlayer={pauseCatalogPlayer}
-                  onMixSaved={handleTrackSaved}
-                  onToast={showToast}
-                />
-              )}
+              <Suspense
+                fallback={
+                  <div className="py-16 text-center text-xs text-purple-300 font-semibold">
+                    Carregando módulo...
+                  </div>
+                }
+              >
+                {activeTab === 'dj' && (
+                  <DJMixerView
+                    tracks={allTracksPool}
+                    isCreator={mode === 'creator'}
+                    initialDeckA={djDeckA}
+                    initialDeckB={djDeckB}
+                    onPauseCatalogPlayer={pauseCatalogPlayer}
+                    onMixSaved={handleTrackSaved}
+                    onToast={showToast}
+                  />
+                )}
 
-              {activeTab === 'video' && mode === 'creator' && (
-                <VideoStudioView
-                  tracks={tracks}
-                  initialTrack={videoTrack || currentTrack}
-                  onPauseCatalogPlayer={pauseCatalogPlayer}
-                  onToast={showToast}
-                />
-              )}
+                {activeTab === 'video' && mode === 'creator' && (
+                  <VideoStudioView
+                    tracks={tracks}
+                    initialTrack={videoTrack || currentTrack}
+                    onPauseCatalogPlayer={pauseCatalogPlayer}
+                    onToast={showToast}
+                  />
+                )}
 
-              {activeTab === 'studio' && mode === 'creator' && (
-                <StudioCreateView
-                  tracks={tracks}
-                  settings={settings}
-                  onTrackCreated={handleTrackSaved}
-                  onToggleTrackStatus={handleToggleStatus}
-                  onPauseCatalogPlayer={pauseCatalogPlayer}
-                  onSyncSuno={handleSyncSuno}
-                  onToast={showToast}
-                />
-              )}
+                {activeTab === 'studio' && mode === 'creator' && (
+                  <StudioCreateView
+                    tracks={tracks}
+                    settings={settings}
+                    onTrackCreated={handleTrackSaved}
+                    onToggleTrackStatus={handleToggleStatus}
+                    onPauseCatalogPlayer={pauseCatalogPlayer}
+                    onSyncSuno={handleSyncSuno}
+                    onToast={showToast}
+                  />
+                )}
+              </Suspense>
             </>
           )}
         </main>
