@@ -1,9 +1,8 @@
-const CACHE_NAME = 'lenkyx-cosmic-phonk-v3';
+const CACHE_NAME = 'lenkyx-cosmic-phonk-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/seed-data.json',
   '/covers/icon-192.png',
   '/covers/avatar.jpg',
   '/covers/banner.jpg',
@@ -41,7 +40,6 @@ self.addEventListener('fetch', (event) => {
     (url.pathname.startsWith('/assets/') ||
       url.pathname.startsWith('/covers/') ||
       url.pathname.startsWith('/audio/') ||
-      url.pathname === '/seed-data.json' ||
       url.pathname === '/manifest.json')
   ) {
     event.respondWith(

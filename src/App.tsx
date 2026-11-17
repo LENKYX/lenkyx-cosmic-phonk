@@ -72,7 +72,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pixCity: 'CAMPO GRANDE',
   pixMessage: 'Apoio LENKYX Cosmic Phonk',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
-  apkDownloadUrl: 'https://drive.google.com/uc?id=16CbgrhZ_3GvCcnV0VeTFDn_Wb5hSUXmJ&export=download',
+  apkDownloadUrl: 'https://drive.google.com/uc?id=1-edJqM_2o6SHPusYKYJ4AvWn6DlVMttI&export=download',
   youtubeUrl: '',
   sunoHandle: '@lenkyx',
   sunoProfileUrl: 'https://suno.com/@lenkyx',
@@ -346,18 +346,23 @@ export function App() {
       if (ytPlayerRef.current || !win.YT?.Player) return;
       const hostEl = document.getElementById('lenkyx-yt-audio-host');
       if (!hostEl) return;
+      const isLocalLoopback =
+        window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+      const playerVars: Record<string, unknown> = {
+        autoplay: 1,
+        controls: 1,
+        playsinline: 1,
+        rel: 0,
+        modestbranding: 1,
+        fs: 1,
+      };
+      if (!isLocalLoopback) {
+        playerVars.origin = window.location.origin;
+      }
       ytPlayerRef.current = new win.YT.Player('lenkyx-yt-audio-host', {
         height: '100%',
         width: '100%',
-        playerVars: {
-          autoplay: 0,
-          controls: 1,
-          playsinline: 1,
-          rel: 0,
-          modestbranding: 1,
-          fs: 1,
-          origin: window.location.origin,
-        },
+        playerVars,
         events: {
           onReady: () => {
             ytPlayerRef.current?.setVolume?.(Math.round(volume * 100));
@@ -365,6 +370,19 @@ export function App() {
               const vid = ytPendingVideoRef.current;
               ytPendingVideoRef.current = null;
               ytPlayerRef.current?.loadVideoById?.(vid);
+            }
+          },
+          onError: () => {
+            if (!currentTrackRef.current?.youtubeVideoId) return;
+            showToast('Este clipe bloqueou player embutido — pulando para o próximo da lista...');
+            const list = playQueueRef.current.length ? playQueueRef.current : tracks;
+            const cur = currentTrackRef.current;
+            if (cur && list.length > 1) {
+              const idx = list.findIndex((t) => t.id === cur.id);
+              const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
+              if (next && next.id !== cur.id && handlePlayTrackRef.current) {
+                window.setTimeout(() => void handlePlayTrackRef.current?.(next, 'v1', list), 900);
+              }
             }
           },
           onStateChange: (ev: { data: number }) => {
@@ -1420,9 +1438,20 @@ export function App() {
         className={
           clipTheaterOpen && currentTrack?.youtubeVideoId
             ? 'fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-3xl rounded-3xl overflow-hidden border border-cyan-400/40 bg-[#090418] shadow-[0_0_70px_rgba(236,72,153,0.35)]'
+            : currentTrack?.youtubeVideoId
+            ? 'fixed z-40 bottom-32 md:bottom-20 right-3 w-36 h-20 rounded-2xl overflow-hidden border border-cyan-400/50 bg-black shadow-[0_0_25px_rgba(34,211,238,0.4)]'
             : 'fixed -left-[9999px] -top-[9999px] w-[320px] h-[180px] opacity-0 pointer-events-none'
         }
       >
+        {!clipTheaterOpen && currentTrack?.youtubeVideoId && (
+          <button
+            onClick={() => setClipTheaterOpen(true)}
+            className="absolute top-1 right-1 z-20 px-1.5 py-0.5 rounded-md bg-black/80 border border-pink-400/60 text-[9px] font-black text-white flex items-center gap-1 shadow"
+            title="Expandir Clipe"
+          >
+            <Film className="w-2.5 h-2.5 text-pink-400" /> Ampliar
+          </button>
+        )}
         {clipTheaterOpen && currentTrack?.youtubeVideoId && (
           <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e]">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -1458,7 +1487,7 @@ export function App() {
           </div>
         )}
 
-        <div className="w-full aspect-video bg-black">
+        <div className={clipTheaterOpen ? 'w-full aspect-video bg-black' : 'w-full h-full bg-black'}>
           <div id="lenkyx-yt-audio-host" className="w-full h-full" />
         </div>
 
@@ -1466,8 +1495,18 @@ export function App() {
           <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between gap-3 bg-[#090418]">
             <div className="min-w-0">
               <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
-              <div className="text-[10px] text-cyan-300/80">
-                Próxima segue automaticamente na sequência da lista
+              <div className="text-[10px] text-cyan-300/80 flex items-center gap-2">
+                <span>Próxima segue na sequência da lista</span>
+                {currentTrack.externalUrl && (
+                  <a
+                    href={currentTrack.externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-pink-300 font-bold"
+                  >
+                    Abrir no YouTube
+                  </a>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1529,6 +1568,7 @@ export function App() {
       />
       <UserAuthModal
         open={userAuthOpen}
+        requireGate={!loading && !userProfile && mode !== 'creator'}
         onClose={() => setUserAuthOpen(false)}
         user={userProfile}
         onSaveUser={(u) => {
@@ -1545,6 +1585,7 @@ export function App() {
           setShareTrack(null);
           setShareOpen(true);
         }}
+        onBrandTap={handleBrandTap}
         onToast={showToast}
       />
 

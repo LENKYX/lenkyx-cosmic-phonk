@@ -124,13 +124,14 @@ async function fetchAudiusDirect(term: string): Promise<Track[]> {
 }
 
 async function fetchWorldEndpoint<T>(path: string): Promise<T | null> {
+  // Always try local server first (works both on Express Web AND inside Android APK via LocalAssetServer!)
   const urls = isAndroidApk()
-    ? [`${CLOUD_API_BASE}${path}`]
+    ? [path, `${CLOUD_API_BASE}${path}`]
     : [path, `${CLOUD_API_BASE}${path}`];
 
   for (const url of urls) {
     try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(8500) });
+      const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
       if (r.ok) {
         return (await r.json()) as T;
       }

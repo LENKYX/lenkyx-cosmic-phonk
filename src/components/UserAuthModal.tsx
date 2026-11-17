@@ -4,11 +4,13 @@ import { UserProfile } from '../types';
 
 interface Props {
   open: boolean;
+  requireGate?: boolean;
   onClose: () => void;
   user: UserProfile | null;
   onSaveUser: (user: UserProfile) => void;
   onLogoutUser: () => void;
   onOpenShare: () => void;
+  onBrandTap?: () => void;
   onToast: (msg: string) => void;
 }
 
@@ -22,11 +24,13 @@ const AVATAR_COLORS = [
 
 export const UserAuthModal: React.FC<Props> = ({
   open,
+  requireGate = false,
   onClose,
   user,
   onSaveUser,
   onLogoutUser,
   onOpenShare,
+  onBrandTap,
   onToast,
 }) => {
   const [name, setName] = useState(user?.name || '');
@@ -37,7 +41,8 @@ export const UserAuthModal: React.FC<Props> = ({
   const [termsError, setTermsError] = useState(false);
   const [justRegistered, setJustRegistered] = useState(false);
 
-  if (!open) return null;
+  const visible = open || requireGate;
+  if (!visible) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,15 +63,55 @@ export const UserAuthModal: React.FC<Props> = ({
       createdAt: user?.createdAt || new Date().toISOString(),
     };
     onSaveUser(profile);
-    setJustRegistered(true);
-    onToast(`🚀 Bem-vindo(a), ${profile.name}! Suas playlists e modo offline estão liberados!`);
+    onToast(`🚀 Bem-vindo(a), ${profile.name}! App LENKYX liberado!`);
+    if (requireGate) {
+      setJustRegistered(false);
+      onClose();
+    } else {
+      setJustRegistered(true);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 overflow-y-auto">
-      <div className="relative w-full max-w-md rounded-2xl glass-panel neon-border overflow-hidden my-auto">
-        <div className="h-1 w-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400" />
+    <div
+      className={`fixed inset-0 z-40 flex items-center justify-center p-3 overflow-y-auto ${
+        requireGate
+          ? 'bg-[#05020e] backdrop-blur-xl'
+          : 'bg-black/80 backdrop-blur-md z-50'
+      }`}
+    >
+      {requireGate && (
+        <div
+          className="absolute inset-0 pointer-events-none opacity-65"
+          style={{
+            background:
+              'radial-gradient(circle at 20% 15%, rgba(236,72,153,0.28), transparent 45%), radial-gradient(circle at 80% 80%, rgba(34,211,238,0.25), transparent 48%)',
+          }}
+        />
+      )}
+      <div className="relative z-10 w-full max-w-md rounded-3xl glass-panel neon-border overflow-hidden my-auto shadow-[0_0_70px_rgba(236,72,153,0.25)]">
+        <div className="h-1.5 w-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400" />
         <div className="p-5 space-y-4">
+          {requireGate && (
+            <div
+              onClick={onBrandTap}
+              className="flex flex-col items-center text-center gap-2 pb-2 border-b border-white/10 cursor-pointer select-none"
+            >
+              <img
+                src="/covers/album-official.jpg"
+                alt="LENKYX Cosmic Phonk"
+                className="w-20 h-20 rounded-2xl object-cover border-2 border-pink-500/70 shadow-[0_0_25px_rgba(236,72,153,0.45)]"
+              />
+              <div>
+                <div className="font-display text-lg font-black tracking-wider text-white">
+                  LENKYX <span className="neon-text">COSMIC PHONK</span>
+                </div>
+                <p className="text-[11px] text-cyan-200/85 font-semibold">
+                  Cadastre-se grátis em 10 segundos para entrar no app e ouvir tudo completo!
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5">
               <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center font-extrabold text-white shadow`}>
@@ -78,22 +123,26 @@ export const UserAuthModal: React.FC<Props> = ({
                     ? 'CONTA CRIADA COM SUCESSO!'
                     : user
                     ? `PERFIL: ${user.name}`
+                    : requireGate
+                    ? 'FAÇA SEU CADASTRO PARA ENTRAR'
                     : 'CRIAR CONTA GRÁTIS'}
                 </h2>
                 <p className="text-[11px] text-purple-200/75">
-                  Playlists na nuvem, download offline e Mesa de DJ Pro
+                  Músicas completas, clipes oficiais HD, modo offline e playlists grátis
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setJustRegistered(false);
-                onClose();
-              }}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-purple-200"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            {!requireGate && (
+              <button
+                onClick={() => {
+                  setJustRegistered(false);
+                  onClose();
+                }}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-purple-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {justRegistered ? (
@@ -254,7 +303,12 @@ export const UserAuthModal: React.FC<Props> = ({
                       : 'bg-white/15 text-purple-300/70 hover:bg-white/20'
                   }`}
                 >
-                  <Music className="w-4 h-4" /> {user ? 'Salvar Perfil' : 'Aceitar Termos & Criar Conta'}
+                  <Music className="w-4 h-4" />{' '}
+                  {user
+                    ? 'Salvar Perfil'
+                    : requireGate
+                    ? 'Aceitar Termos, Cadastrar & Entrar no App 🚀'
+                    : 'Aceitar Termos & Criar Conta'}
                 </button>
               </form>
 

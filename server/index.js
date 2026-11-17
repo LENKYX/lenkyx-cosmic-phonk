@@ -638,7 +638,7 @@ app.get('/download/apk', (_req, res) => {
   const db = readDb();
   const redirectUrl =
     (db.settings?.apkDownloadUrl || '').trim() ||
-    'https://drive.google.com/uc?id=16CbgrhZ_3GvCcnV0VeTFDn_Wb5hSUXmJ&export=download';
+    'https://drive.google.com/uc?id=1-edJqM_2o6SHPusYKYJ4AvWn6DlVMttI&export=download';
   return res.redirect(302, redirectUrl);
 });
 
