@@ -1,0 +1,22 @@
+{
+  "name": "LENKYX — Cosmic Phonk",
+  "short_name": "LENKYX",
+  "description": "App oficial de música, DJ Mixer e Estúdio Cosmic Phonk por LENKYX.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060310",
+  "theme_color": "#060310",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/covers/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/covers/avatar.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

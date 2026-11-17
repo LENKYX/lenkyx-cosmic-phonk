@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: lenkyx-cosmic-phonk
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_PASSWORD
+        value: lenkyx2026
+      - key: AUTH_SECRET
+        generateValue: true
