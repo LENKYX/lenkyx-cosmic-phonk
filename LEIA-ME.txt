@@ -1,0 +1,40 @@
+============================================================
+  LENKYX — COSMIC PHONK APP, MESA DE DJ & ESTÚDIO
+============================================================
+
+O QUE VEM NESTE PACOTE:
+- Aplicativo completo (Player, Mesa de DJ 2 Decks, Estúdio de Vídeo
+  YouTube 16:9 e Shorts 9:16, Beatmaker Phonk, Fábrica de Letras Suno,
+  PIX QR Code Oficial e Compartilhamento no WhatsApp)
+- Todas as 20 capas do álbum Cosmic Phonk Vol. 1 + 5 capas bônus +
+  Avatar, Banner e Card de Playlist (em public/covers/)
+- Pack completo de letras e prompts do Suno (PACK_FAIXAS_11_A_20_SUNO.md)
+- Kit completo para publicar Online 24h (Dockerfile, render.yaml,
+  railway.json e GUIA_PUBLICACAO_ONLINE.md)
+
+------------------------------------------------------------
+1) COMO RODAR NO SEU COMPUTADOR (WINDOWS / MAC / LINUX)
+------------------------------------------------------------
+Passo 1: Instale o Node.js (versão LTS gratuita) em https://nodejs.org
+Passo 2: Extraia este arquivo .zip em uma pasta (ex: C:\LENKYX)
+Passo 3:
+  - No Windows: dê dois cliques em RODAR_NO_WINDOWS.bat
+  - No Mac/Linux: abra o terminal na pasta e rode: ./RODAR_NO_MAC_LINUX.sh
+Passo 4: O app abre em http://localhost:3000
+
+SENHA INICIAL DA ÁREA CRIADOR: lenkyx2026
+(Entre em "Área Criador" no topo e troque para a sua senha pessoal
+e configure sua chave PIX real!)
+
+------------------------------------------------------------
+2) COMO COLOCAR ONLINE 24H (PRA COMPARTILHAR NO WHATSAPP)
+------------------------------------------------------------
+Abra o arquivo GUIA_PUBLICACAO_ONLINE.md dentro desta pasta.
+Ele explica passo a passo como colocar no ar no Render.com ou Railway.app
+com disco persistente para guardar até 1.000 músicas MP3!
+
+Depois de publicado, qualquer pessoa que abrir o link no celular pode
+instalar o app direto na tela inicial (PWA) — e se quiser gerar um
+arquivo .APK para Android, basta colar seu link online em:
+https://www.pwabuilder.com
+============================================================

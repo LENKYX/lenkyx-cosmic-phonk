@@ -203,14 +203,6 @@ export const CreatorModal: React.FC<Props> = ({
 
           {!isAuthenticated ? (
             <form onSubmit={handleLogin} className="space-y-4">
-              {!hasCustomPassword && (
-                <div className="rounded-2xl bg-cyan-500/12 border border-cyan-400/35 p-3.5 text-xs text-cyan-100 leading-relaxed">
-                  <strong>Primeiro acesso:</strong> sua senha inicial de fábrica é{' '}
-                  <code className="px-1.5 py-0.5 rounded bg-black/60 text-pink-300 font-bold">lenkyx2026</code>. Assim que
-                  entrar, clique em <strong>Trocar Senha</strong> para criar a sua senha pessoal!
-                </div>
-              )}
-
               <div>
                 <label className="block text-xs font-bold text-purple-200 mb-1.5">Senha do Criador LENKYX</label>
                 <div className="relative">
@@ -221,7 +213,7 @@ export const CreatorModal: React.FC<Props> = ({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Digite sua senha..."
+                    placeholder="Digite sua senha pessoal..."
                     className="w-full pl-10 pr-4 py-3 rounded-2xl bg-black/55 border border-purple-500/40 text-sm text-white focus:outline-none focus:border-pink-500"
                   />
                 </div>
@@ -330,7 +322,7 @@ export const CreatorModal: React.FC<Props> = ({
                       required
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder={hasCustomPassword ? 'Senha atual' : 'Senha atual (lenkyx2026)'}
+                      placeholder="Senha atual"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-purple-500/30 text-sm text-white focus:outline-none focus:border-pink-500"
                     />
                     <div className="grid grid-cols-2 gap-2.5">

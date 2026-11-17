@@ -517,41 +517,44 @@ app.get('/api/export-backup', auth.requireCreator, (req, res) => {
   res.json(db);
 });
 
-// === GLOBAL WORLD MUSIC SEARCH & TRENDING (Audius Full-Length + Deezer + iTunes) ===
+// === GLOBAL WORLD MUSIC SEARCH & TRENDING (Audius Full-Length ONLY — Zero 30s Previews!) ===
 app.get('/api/world-trending', async (_req, res) => {
   try {
-    const r = await fetch('https://api.audius.co/v1/tracks/trending?app_name=LENKYX&limit=24', {
+    const r = await fetch('https://api.audius.co/v1/tracks/trending?app_name=LENKYX&limit=30', {
       headers: { 'User-Agent': 'Mozilla/5.0' },
     });
     const d = await r.json();
-    const tracks = (d?.data || []).map((item, idx) => {
-      const artwork = item.artwork || {};
-      return {
-        id: `world-audius-${item.id}`,
-        number: idx + 1,
-        title: String(item.title || 'Faixa Global').trim(),
-        emoji: '🌍',
-        artist: String(item.user?.name || item.user?.handle || 'Artista Global').trim(),
-        album: String(item.genre || 'Em Alta no Mundo'),
-        bpm: 128,
-        key: 'Fm',
-        coverUrl: artwork['480x480'] || artwork['150x150'] || '/covers/void-horizon.jpg',
-        audioUrl: `https://api.audius.co/v1/tracks/${encodeURIComponent(item.id)}/stream?app_name=LENKYX`,
-        durationSec: Math.round(Number(item.duration) || 0),
-        source: 'world_full',
-        externalUrl: `https://audius.co${item.permalink || ''}`,
-        isDemoAudio: false,
-        hasCustomCover: true,
-        plays: Number(item.play_count) || 0,
-        likes: Number(item.favorite_count) || 0,
-        favorite: false,
-        releaseBatch: 0,
-        status: { suno: false, cover: true, app: true, youtube: false, distrokid: false },
-        sunoPrompt: '',
-        lyrics: '',
-        createdAt: item.release_date || new Date().toISOString(),
-      };
-    });
+    const tracks = (d?.data || [])
+      .filter((item) => item?.id && Number(item.duration) >= 45)
+      .slice(0, 24)
+      .map((item, idx) => {
+        const artwork = item.artwork || {};
+        return {
+          id: `world-audius-${item.id}`,
+          number: idx + 1,
+          title: String(item.title || 'Faixa Global').trim(),
+          emoji: '🌍',
+          artist: String(item.user?.name || item.user?.handle || 'Artista Global').trim(),
+          album: String(item.genre || 'Em Alta no Mundo'),
+          bpm: 128,
+          key: 'Fm',
+          coverUrl: artwork['480x480'] || artwork['150x150'] || '/covers/void-horizon.jpg',
+          audioUrl: `https://api.audius.co/v1/tracks/${encodeURIComponent(item.id)}/stream?app_name=LENKYX`,
+          durationSec: Math.round(Number(item.duration) || 0),
+          source: 'world_full',
+          externalUrl: `https://audius.co${item.permalink || ''}`,
+          isDemoAudio: false,
+          hasCustomCover: true,
+          plays: Number(item.play_count) || 0,
+          likes: Number(item.favorite_count) || 0,
+          favorite: false,
+          releaseBatch: 0,
+          status: { suno: false, cover: true, app: true, youtube: false, distrokid: false },
+          sunoPrompt: '',
+          lyrics: '',
+          createdAt: item.release_date || new Date().toISOString(),
+        };
+      });
     res.json({ tracks });
   } catch {
     res.json({ tracks: [] });
@@ -563,128 +566,113 @@ app.get('/api/world-search', async (req, res) => {
   if (!q) return res.json({ tracks: [] });
   const enc = encodeURIComponent(q);
 
-  const [audiusRes, deezerRes, itunesRes] = await Promise.allSettled([
-    fetch(`https://api.audius.co/v1/tracks/search?query=${enc}&app_name=LENKYX`, {
+  try {
+    const r = await fetch(`https://api.audius.co/v1/tracks/search?query=${enc}&app_name=LENKYX`, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
-    }).then((r) => r.json()),
-    fetch(`https://api.deezer.com/search?q=${enc}&limit=14`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    }).then((r) => r.json()),
-    fetch(`https://itunes.apple.com/search?term=${enc}&media=music&limit=12`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    }).then((r) => r.json()),
-  ]);
-
-  const tracks = [];
-  const seenKeys = new Set();
-
-  if (audiusRes.status === 'fulfilled' && Array.isArray(audiusRes.value?.data)) {
-    for (const item of audiusRes.value.data.slice(0, 12)) {
-      if (!item?.id) continue;
-      const artwork = item.artwork || {};
-      const key = `${String(item.title || '').toLowerCase()}|${String(item.user?.name || '').toLowerCase()}`;
-      seenKeys.add(key);
-      tracks.push({
-        id: `world-audius-${item.id}`,
-        number: tracks.length + 1,
-        title: String(item.title || 'Faixa Global').trim(),
-        emoji: '🌍',
-        artist: String(item.user?.name || item.user?.handle || 'Artista Global').trim(),
-        album: String(item.genre || 'Audius Global'),
-        bpm: 128,
-        key: 'Fm',
-        coverUrl: artwork['480x480'] || artwork['150x150'] || '/covers/void-horizon.jpg',
-        audioUrl: `https://api.audius.co/v1/tracks/${encodeURIComponent(item.id)}/stream?app_name=LENKYX`,
-        durationSec: Math.round(Number(item.duration) || 0),
-        source: 'world_full',
-        externalUrl: `https://audius.co${item.permalink || ''}`,
-        isDemoAudio: false,
-        hasCustomCover: true,
-        plays: Number(item.play_count) || 0,
-        likes: Number(item.favorite_count) || 0,
-        favorite: false,
-        releaseBatch: 0,
-        status: { suno: false, cover: true, app: true, youtube: false, distrokid: false },
-        sunoPrompt: '',
-        lyrics: '',
-        createdAt: item.release_date || new Date().toISOString(),
-      });
+    });
+    const audius = await r.json();
+    const tracks = [];
+    if (Array.isArray(audius?.data)) {
+      for (const item of audius.data) {
+        if (!item?.id || Number(item.duration) < 45) continue;
+        const artwork = item.artwork || {};
+        tracks.push({
+          id: `world-audius-${item.id}`,
+          number: tracks.length + 1,
+          title: String(item.title || 'Faixa Global').trim(),
+          emoji: '🌍',
+          artist: String(item.user?.name || item.user?.handle || 'Artista Global').trim(),
+          album: String(item.genre || 'Audius Global'),
+          bpm: 128,
+          key: 'Fm',
+          coverUrl: artwork['480x480'] || artwork['150x150'] || '/covers/void-horizon.jpg',
+          audioUrl: `https://api.audius.co/v1/tracks/${encodeURIComponent(item.id)}/stream?app_name=LENKYX`,
+          durationSec: Math.round(Number(item.duration) || 0),
+          source: 'world_full',
+          externalUrl: `https://audius.co${item.permalink || ''}`,
+          isDemoAudio: false,
+          hasCustomCover: true,
+          plays: Number(item.play_count) || 0,
+          likes: Number(item.favorite_count) || 0,
+          favorite: false,
+          releaseBatch: 0,
+          status: { suno: false, cover: true, app: true, youtube: false, distrokid: false },
+          sunoPrompt: '',
+          lyrics: '',
+          createdAt: item.release_date || new Date().toISOString(),
+        });
+        if (tracks.length >= 24) break;
+      }
     }
+    res.json({ tracks });
+  } catch {
+    res.json({ tracks: [] });
   }
+});
 
-  if (deezerRes.status === 'fulfilled' && Array.isArray(deezerRes.value?.data)) {
-    for (const item of deezerRes.value.data) {
-      if (!item?.preview) continue;
-      const title = String(item.title || '').trim();
-      const artist = String(item.artist?.name || '').trim();
-      const key = `${title.toLowerCase()}|${artist.toLowerCase()}`;
-      if (seenKeys.has(key)) continue;
-      seenKeys.add(key);
-      tracks.push({
-        id: `world-deezer-${item.id}`,
-        number: tracks.length + 1,
-        title,
-        emoji: '🎧',
-        artist,
-        album: String(item.album?.title || 'Global'),
-        bpm: 126,
-        key: 'Cm',
-        coverUrl: item.album?.cover_big || item.album?.cover_medium || '/covers/void-horizon.jpg',
-        audioUrl: item.preview,
-        durationSec: Math.round(Number(item.duration) || 30),
-        source: 'world_preview',
-        externalUrl: item.link || '',
-        isDemoAudio: false,
-        hasCustomCover: true,
-        plays: Number(item.rank) || 0,
-        likes: 0,
-        favorite: false,
-        releaseBatch: 0,
-        status: { suno: false, cover: true, app: true, youtube: false, distrokid: false },
-        sunoPrompt: '',
-        lyrics: '',
-        createdAt: new Date().toISOString(),
-      });
+// Safe CORS Audio/Media Proxy for Offline Device Downloads (Suno & Audius CDNs only)
+app.get('/api/audio-proxy', async (req, res) => {
+  const rawUrl = String(req.query.url || '').trim();
+  if (!rawUrl) return res.status(400).json({ error: 'Missing url' });
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return res.status(400).json({ error: 'Invalid url' });
+  }
+  const host = parsed.hostname.toLowerCase();
+  const allowed =
+    parsed.protocol === 'https:' &&
+    (host.endsWith('.suno.ai') ||
+      host.endsWith('.suno.com') ||
+      host === 'api.audius.co' ||
+      host.endsWith('.audius.co') ||
+      host.includes('audius'));
+  if (!allowed) {
+    return res.status(403).json({ error: 'Host not permitted for offline caching' });
+  }
+  try {
+    const upstream = await fetch(rawUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 LENKYX-OfflineCache/1.0' },
+      redirect: 'follow',
+    });
+    if (!upstream.ok || !upstream.body) {
+      return res.status(502).json({ error: 'Upstream media unavailable' });
     }
+    const ct = upstream.headers.get('content-type') || 'audio/mpeg';
+    const cl = upstream.headers.get('content-length');
+    res.setHeader('Content-Type', ct);
+    if (cl) res.setHeader('Content-Length', cl);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    return res.send(buf);
+  } catch {
+    return res.status(502).json({ error: 'Proxy download failed' });
   }
+});
 
-  if (itunesRes.status === 'fulfilled' && Array.isArray(itunesRes.value?.results)) {
-    for (const item of itunesRes.value.results) {
-      if (!item?.previewUrl) continue;
-      const title = String(item.trackName || '').trim();
-      const artist = String(item.artistName || '').trim();
-      const key = `${title.toLowerCase()}|${artist.toLowerCase()}`;
-      if (seenKeys.has(key)) continue;
-      seenKeys.add(key);
-      tracks.push({
-        id: `world-itunes-${item.trackId}`,
-        number: tracks.length + 1,
-        title,
-        emoji: '🎧',
-        artist,
-        album: String(item.collectionName || item.primaryGenreName || 'Global'),
-        bpm: 126,
-        key: 'Gm',
-        coverUrl: String(item.artworkUrl100 || '').replace('100x100bb', '600x600bb') || '/covers/void-horizon.jpg',
-        audioUrl: item.previewUrl,
-        durationSec: Math.round((Number(item.trackTimeMillis) || 30000) / 1000),
-        source: 'world_preview',
-        externalUrl: item.trackViewUrl || '',
-        isDemoAudio: false,
-        hasCustomCover: true,
-        plays: 0,
-        likes: 0,
-        favorite: false,
-        releaseBatch: 0,
-        status: { suno: false, cover: true, app: true, youtube: false, distrokid: false },
-        sunoPrompt: '',
-        lyrics: '',
-        createdAt: item.releaseDate || new Date().toISOString(),
-      });
-    }
-  }
+// SEO Auto-Discovery for Google / Bing / Social Crawlers
+app.get('/robots.txt', (req, res) => {
+  const base = `${req.protocol}://${req.get('host')}`;
+  res.type('text/plain').send(`User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`);
+});
 
-  res.json({ tracks });
+app.get('/sitemap.xml', (req, res) => {
+  const db = readDb();
+  const base = (db.settings?.publicUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  const now = new Date().toISOString().slice(0, 10);
+  const urls = [
+    `<url><loc>${base}/</loc><lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+    ...db.tracks.map(
+      (t) =>
+        `<url><loc>${base}/?track=${encodeURIComponent(t.id)}</loc><lastmod>${now}</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>`
+    ),
+  ];
+  res
+    .type('application/xml')
+    .send(
+      `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`
+    );
 });
 
 // Direct Android APK download endpoint — streams local APK or redirects to official public Google Drive APK link
@@ -701,7 +689,7 @@ app.get('/download/apk', (_req, res) => {
   const db = readDb();
   const redirectUrl =
     (db.settings?.apkDownloadUrl || '').trim() ||
-    'https://drive.google.com/uc?id=1mPrKj1ojdqDL-Eh2e1ra6TvUUtnGYv0-&export=download';
+    'https://drive.google.com/uc?id=109-i00UMsMlBY_RcrVvng-oHiW0cXwFZ&export=download';
   return res.redirect(302, redirectUrl);
 });
 

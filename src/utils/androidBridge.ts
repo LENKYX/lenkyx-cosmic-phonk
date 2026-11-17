@@ -4,11 +4,13 @@ export interface AndroidBridgeInterface {
   openExternalUrl?: (url: string) => void;
   showToast?: (msg: string) => void;
   isAndroidApk?: () => boolean;
+  updateMediaState?: (title: string, artist: string, album: string, isPlaying: boolean) => void;
 }
 
 declare global {
   interface Window {
     AndroidBridge?: AndroidBridgeInterface;
+    __lenkyxMediaAction?: (action: 'play' | 'pause' | 'prev' | 'next' | 'toggle') => void;
   }
 }
 

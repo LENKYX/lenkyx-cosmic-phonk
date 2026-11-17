@@ -152,11 +152,8 @@ export const WorldExploreView: React.FC<Props> = ({
           {!loading && <span className="text-purple-300/70 font-normal">({results.length} faixas)</span>}
         </div>
         <div className="hidden sm:flex items-center gap-3 text-[11px]">
-          <span className="inline-flex items-center gap-1 text-emerald-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" /> Completa (Audius)
-          </span>
-          <span className="inline-flex items-center gap-1 text-cyan-300">
-            <span className="w-2 h-2 rounded-full bg-cyan-400" /> Catálogo Global (Prévia)
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" /> 100% Músicas Completas (Sem amostras de 30s)
           </span>
         </div>
       </div>
@@ -213,12 +210,8 @@ export const WorldExploreView: React.FC<Props> = ({
                     <span className={`text-xs sm:text-sm font-bold truncate ${active ? 'text-pink-400' : 'text-white'}`}>
                       {t.title}
                     </span>
-                    <span
-                      className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold shrink-0 ${
-                        isFull ? 'bg-emerald-500/20 text-emerald-300' : 'bg-cyan-500/20 text-cyan-300'
-                      }`}
-                    >
-                      {isFull ? 'COMPLETA' : '30s'}
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold shrink-0 bg-emerald-500/20 text-emerald-300">
+                      {isFull ? 'COMPLETA' : 'FULL'}
                     </span>
                   </div>
                   <div className="text-[11px] text-purple-300/75 truncate">

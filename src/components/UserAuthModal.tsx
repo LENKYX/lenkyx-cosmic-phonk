@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Sparkles, MessageCircle, Lock, LogOut, Music, CheckCircle2 } from 'lucide-react';
+import { X, User, Sparkles, MessageCircle, LogOut, Music, CheckCircle2, FileCheck2, ChevronDown, ChevronUp } from 'lucide-react';
 import { UserProfile } from '../types';
 
 interface Props {
@@ -8,7 +8,6 @@ interface Props {
   user: UserProfile | null;
   onSaveUser: (user: UserProfile) => void;
   onLogoutUser: () => void;
-  onOpenCreatorLogin: () => void;
   onOpenShare: () => void;
   onToast: (msg: string) => void;
 }
@@ -27,13 +26,15 @@ export const UserAuthModal: React.FC<Props> = ({
   user,
   onSaveUser,
   onLogoutUser,
-  onOpenCreatorLogin,
   onOpenShare,
   onToast,
 }) => {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [color, setColor] = useState(user?.avatarColor || AVATAR_COLORS[0]);
+  const [acceptedTerms, setAcceptedTerms] = useState(Boolean(user?.acceptedTermsAt));
+  const [showTermsText, setShowTermsText] = useState(false);
+  const [termsError, setTermsError] = useState(false);
   const [justRegistered, setJustRegistered] = useState(false);
 
   if (!open) return null;
@@ -41,16 +42,24 @@ export const UserAuthModal: React.FC<Props> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (!acceptedTerms) {
+      setTermsError(true);
+      setShowTermsText(true);
+      onToast('Marque a caixa aceitando os Termos de Uso antes de continuar.');
+      return;
+    }
+    setTermsError(false);
     const profile: UserProfile = {
       id: user?.id || 'fan-' + Date.now().toString(36),
       name: name.trim(),
       email: email.trim() || undefined,
       avatarColor: color,
+      acceptedTermsAt: user?.acceptedTermsAt || new Date().toISOString(),
       createdAt: user?.createdAt || new Date().toISOString(),
     };
     onSaveUser(profile);
     setJustRegistered(true);
-    onToast(`🚀 Bem-vindo(a), ${profile.name}! Suas playlists e músicas pessoais estão liberadas!`);
+    onToast(`🚀 Bem-vindo(a), ${profile.name}! Suas playlists e modo offline estão liberados!`);
   };
 
   return (
@@ -69,10 +78,10 @@ export const UserAuthModal: React.FC<Props> = ({
                     ? 'CONTA CRIADA COM SUCESSO!'
                     : user
                     ? `PERFIL: ${user.name}`
-                    : 'ENTRAR / CRIAR CONTA GRÁTIS'}
+                    : 'CRIAR CONTA GRÁTIS'}
                 </h2>
                 <p className="text-[11px] text-purple-200/75">
-                  Crie suas playlists, suba suas músicas e curta o universo LENKYX
+                  Playlists na nuvem, download offline e Mesa de DJ Pro
                 </p>
               </div>
             </div>
@@ -95,8 +104,8 @@ export const UserAuthModal: React.FC<Props> = ({
               <div className="space-y-1">
                 <h3 className="font-bold text-white text-base">Bem-vindo(a) à família LENKYX, {name}! 🚀</h3>
                 <p className="text-xs text-purple-200/85 leading-relaxed">
-                  Agora você já pode montar suas <strong>Playlists</strong>, subir suas próprias músicas MP3/WAV, ouvir sons
-                  do mundo todo e mixar na <strong>Mesa de DJ Pro</strong>!
+                  Agora você já pode baixar músicas para ouvir <strong>offline</strong>, montar suas{' '}
+                  <strong>Playlists</strong>, subir seus arquivos MP3/WAV e mixar na <strong>Mesa de DJ Pro</strong>!
                 </p>
               </div>
 
@@ -104,9 +113,6 @@ export const UserAuthModal: React.FC<Props> = ({
                 <div className="text-xs font-extrabold text-emerald-300">
                   💜 Ajude a espalhar esse som — compartilhe com seus amigos!
                 </div>
-                <p className="text-[11px] text-emerald-100/85">
-                  Convide sua galera no WhatsApp pra ouvir LENKYX Cosmic Phonk e montar a playlist deles também!
-                </p>
                 <button
                   onClick={() => {
                     setJustRegistered(false);
@@ -144,7 +150,7 @@ export const UserAuthModal: React.FC<Props> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-purple-200 mb-1">E-mail (opcional)</label>
+                  <label className="block text-xs font-semibold text-purple-200 mb-1">E-mail (opcional — para recuperar playlists)</label>
                   <input
                     type="email"
                     value={email}
@@ -169,19 +175,86 @@ export const UserAuthModal: React.FC<Props> = ({
                   </div>
                 </div>
 
-                {/* Convite pra compartilhar já visível no cadastro! */}
-                <div className="rounded-xl bg-purple-950/60 border border-pink-500/30 p-3 text-[11px] text-purple-100/90 flex items-start gap-2">
+                {/* Termos de Uso Obrigatórios antes do cadastro */}
+                <div
+                  className={`rounded-xl border p-3 space-y-2 transition ${
+                    termsError
+                      ? 'bg-red-500/15 border-red-400/60'
+                      : 'bg-black/45 border-purple-500/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-cyan-300 flex items-center gap-1.5">
+                      <FileCheck2 className="w-3.5 h-3.5" /> Termos de Uso do App LENKYX
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsText((v) => !v)}
+                      className="text-[10px] font-bold text-purple-200 hover:text-white inline-flex items-center gap-0.5"
+                    >
+                      {showTermsText ? 'Ocultar' : 'Ler Termos'}
+                      {showTermsText ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
+                  </div>
+
+                  {showTermsText && (
+                    <div className="max-h-32 overflow-y-auto rounded-lg bg-black/60 p-2.5 text-[10px] text-purple-100/85 leading-relaxed space-y-1.5 border border-white/10">
+                      <p>
+                        <strong>1. Uso Gratuito e Pessoal:</strong> A plataforma LENKYX Cosmic Phonk oferece streaming
+                        gratuito de músicas originais da LENKYX, faixas completas de artistas parceiros, download offline
+                        no próprio dispositivo, criação de playlists e Mesa de DJ para uso pessoal e não comercial.
+                      </p>
+                      <p>
+                        <strong>2. Direitos Autorais e Conteúdo Enviado:</strong> Todas as composições originais LENKYX são
+                        de titularidade do criador LENKYX. Ao subir arquivos pessoais (MP3/WAV) para sua biblioteca
+                        privada no dispositivo, você declara possuir autorização para utilizá-los.
+                      </p>
+                      <p>
+                        <strong>3. Privacidade & Armazenamento:</strong> Seu nome, e-mail opcional e playlists são salvos
+                        apenas para manter sua conta e sincronizar suas seleções. Áudios baixados offline ficam
+                        armazenados localmente no seu aparelho e podem ser apagados a qualquer momento.
+                      </p>
+                      <p>
+                        <strong>4. Apoio Voluntário:</strong> Contribuições via PIX dentro do app são 100% opcionais e
+                        voluntárias.
+                      </p>
+                    </div>
+                  )}
+
+                  <label className="flex items-start gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => {
+                        setAcceptedTerms(e.target.checked);
+                        if (e.target.checked) setTermsError(false);
+                      }}
+                      className="mt-0.5 w-4 h-4 accent-pink-500 rounded shrink-0"
+                    />
+                    <span className="text-[11px] text-purple-100 leading-snug">
+                      Li e aceito os <strong>Termos de Uso e Política de Privacidade</strong> do aplicativo LENKYX
+                      Cosmic Phonk.
+                    </span>
+                  </label>
+                </div>
+
+                <div className="rounded-xl bg-purple-950/60 border border-pink-500/30 p-2.5 text-[11px] text-purple-100/90 flex items-start gap-2">
                   <Sparkles className="w-4 h-4 text-pink-400 shrink-0 mt-0.5" />
                   <span>
-                    <strong>Conta 100% Grátis:</strong> monte suas playlists, suba suas músicas e <strong>compartilhe o app com seus amigos no WhatsApp</strong> pra curtirem juntos!
+                    <strong>100% Grátis:</strong> ouça faixas completas, baixe para ouvir <strong>offline</strong> e
+                    curta com seus amigos!
                   </span>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-500 via-purple-600 to-cyan-500 hover:brightness-110 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow"
+                  className={`w-full py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 shadow transition ${
+                    acceptedTerms
+                      ? 'bg-gradient-to-r from-pink-500 via-purple-600 to-cyan-500 hover:brightness-110 text-white'
+                      : 'bg-white/15 text-purple-300/70 hover:bg-white/20'
+                  }`}
                 >
-                  <Music className="w-4 h-4" /> {user ? 'Salvar Perfil' : 'Criar Conta & Entrar Agora'}
+                  <Music className="w-4 h-4" /> {user ? 'Salvar Perfil' : 'Aceitar Termos & Criar Conta'}
                 </button>
               </form>
 
@@ -208,18 +281,6 @@ export const UserAuthModal: React.FC<Props> = ({
                   </button>
                 </div>
               )}
-
-              <div className="pt-2.5 border-t border-white/10">
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenCreatorLogin();
-                  }}
-                  className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-purple-200 flex items-center justify-center gap-1.5 transition"
-                >
-                  <Lock className="w-3.5 h-3.5 text-pink-400" /> Sou o Criador LENKYX (Entrar com Senha Admin)
-                </button>
-              </div>
             </>
           )}
         </div>

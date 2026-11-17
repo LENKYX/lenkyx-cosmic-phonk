@@ -4,12 +4,29 @@ const DB_LS_KEY = 'lenkyx_offline_db_v1';
 const AUTH_LS_KEY = 'lenkyx_offline_auth_v1';
 const IDB_NAME = 'lenkyx_media_vault_v1';
 const IDB_STORE = 'blobs';
-const TARGET_CATALOG_VERSION = 3;
+const TARGET_CATALOG_VERSION = 4;
+
+const DEFAULT_PASSWORD_SHA256 = '321a63151fae18ed6677a4dbd331d1ac914dbd3291ca346589b7bde02afd9f7b';
 
 interface OfflineAuth {
-  password: string;
+  passwordHash?: string;
+  password?: string;
   hasCustomPassword: boolean;
   token: string;
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  const bytes = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function verifyOfflinePassword(auth: OfflineAuth, candidate: string): Promise<boolean> {
+  if (auth.password && candidate === auth.password) return true;
+  const targetHash = auth.passwordHash || DEFAULT_PASSWORD_SHA256;
+  return (await sha256Hex(candidate)) === targetHash;
 }
 
 interface OfflineDb {
@@ -79,7 +96,7 @@ function getAuth(): OfflineAuth {
     // ignore
   }
   const init: OfflineAuth = {
-    password: 'lenkyx2026',
+    passwordHash: DEFAULT_PASSWORD_SHA256,
     hasCustomPassword: false,
     token: 'lenkyx-local-token-' + Math.random().toString(36).slice(2),
   };
@@ -195,7 +212,7 @@ export async function handleStandaloneApi(input: RequestInfo | URL, init: Reques
   if (pathname === '/api/auth/login' && method === 'POST') {
     const body = JSON.parse(String(init.body || '{}'));
     const auth = getAuth();
-    if (String(body.password || '') !== auth.password) {
+    if (!(await verifyOfflinePassword(auth, String(body.password || '')))) {
       return jsonResponse({ error: 'Senha incorreta. Tente novamente.' }, 401);
     }
     return jsonResponse({
@@ -210,14 +227,15 @@ export async function handleStandaloneApi(input: RequestInfo | URL, init: Reques
     if (!isCreatorAuthorized(headers)) return jsonResponse({ error: 'Não autorizado' }, 401);
     const body = JSON.parse(String(init.body || '{}'));
     const auth = getAuth();
-    if (String(body.currentPassword || '') !== auth.password) {
+    if (!(await verifyOfflinePassword(auth, String(body.currentPassword || '')))) {
       return jsonResponse({ error: 'Senha atual incorreta.' }, 401);
     }
     const nextPass = String(body.newPassword || '').trim();
     if (nextPass.length < 6) {
       return jsonResponse({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' }, 400);
     }
-    auth.password = nextPass;
+    delete auth.password;
+    auth.passwordHash = await sha256Hex(nextPass);
     auth.hasCustomPassword = true;
     auth.token = 'lenkyx-local-token-' + Math.random().toString(36).slice(2);
     saveAuth(auth);

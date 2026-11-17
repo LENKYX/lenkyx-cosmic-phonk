@@ -47,6 +47,7 @@ export interface UserProfile {
   name: string;
   email?: string;
   avatarColor: string;
+  acceptedTermsAt?: string;
   createdAt: string;
 }
 

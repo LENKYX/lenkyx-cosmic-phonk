@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { X, Share2, Copy, Check, MessageCircle, Globe, Sparkles, Smartphone, AlertTriangle } from 'lucide-react';
+import QRCode from 'qrcode';
+import {
+  X,
+  Share2,
+  Copy,
+  Check,
+  MessageCircle,
+  Globe,
+  Sparkles,
+  Smartphone,
+  Send,
+  QrCode,
+  Megaphone,
+} from 'lucide-react';
 import { AppSettings, Track, AppMode } from '../types';
 import { copyTextReliable, isAndroidApk } from '../utils/androidBridge';
 
@@ -21,6 +34,9 @@ function isLocalHostUrl(url: string): boolean {
 export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mode, onSaveSettings, onToast }) => {
   const [includePixText, setIncludePixText] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [copiedBio, setCopiedBio] = useState(false);
+  const [showQr, setShowQr] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState('');
   const [customUrl, setCustomUrl] = useState(settings.publicUrl || '');
   const [apkUrl, setApkUrl] = useState(settings.apkDownloadUrl || '');
 
@@ -31,56 +47,78 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
     }
   }, [open, settings.publicUrl, settings.apkDownloadUrl]);
 
-  if (!open) return null;
-
   const configuredSite = (customUrl || settings.publicUrl || '').trim().replace(/\/$/, '');
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-  const hasRealPublicSite = Boolean(configuredSite && !isLocalHostUrl(configuredSite)) || (!isAndroidApk() && !isLocalHostUrl(currentOrigin));
-
   const effectiveSiteBase =
     configuredSite && !isLocalHostUrl(configuredSite)
       ? configuredSite
       : !isAndroidApk() && !isLocalHostUrl(currentOrigin)
       ? currentOrigin.replace(/\/$/, '')
-      : '';
+      : 'https://lenkyx-cosmic-phonk.onrender.com';
 
-  const fallbackSunoLink = track?.sunoUrl || track?.externalUrl || settings.sunoProfileUrl || 'https://suno.com/@lenkyx';
-  const mainClickableLink = effectiveSiteBase
-    ? track
-      ? `${effectiveSiteBase}/?mode=fan&track=${encodeURIComponent(track.id)}`
-      : `${effectiveSiteBase}/?mode=fan`
-    : fallbackSunoLink;
+  const mainClickableLink = track
+    ? `${effectiveSiteBase}/?track=${encodeURIComponent(track.id)}`
+    : effectiveSiteBase;
 
-  const effectiveApkLink = (apkUrl || settings.apkDownloadUrl || '').trim() || (effectiveSiteBase ? `${effectiveSiteBase}/download/apk` : '');
+  useEffect(() => {
+    if (!open || !showQr) return;
+    QRCode.toDataURL(mainClickableLink, {
+      width: 240,
+      margin: 2,
+      color: { dark: '#090515', light: '#ffffff' },
+    })
+      .then(setQrDataUrl)
+      .catch(() => setQrDataUrl(''));
+  }, [open, showQr, mainClickableLink]);
 
-  // MENSAGEM UNIFICADA (texto + link clicável juntos no mesmo bloco, já pedindo pra compartilhar com amigos!)
+  if (!open) return null;
+
+  const effectiveApkLink =
+    (apkUrl || settings.apkDownloadUrl || '').trim() || `${effectiveSiteBase}/download/apk`;
+
   const lines: string[] = [];
   if (track) {
-    lines.push(`🚀🔥 Ouça *${track.emoji} ${track.title}* — *${track.artist}* (${settings.brandSubtitle})!`);
-    lines.push(`🎧 Acesse e ouça agora: ${mainClickableLink}`);
+    lines.push(`🚀🔥 Ouça *${track.emoji} ${track.title}* — *${track.artist}* (${settings.brandSubtitle}) completo!`);
+    lines.push(`🎧 Ouça agora (online ou offline no celular): ${mainClickableLink}`);
   } else {
-    lines.push(`🌌🚀 Conheça a plataforma *${settings.artistName} — ${settings.brandSubtitle}*! Ouça minhas músicas originais, explore sons do mundo todo, monte sua playlist e mixe na Mesa de DJ!`);
+    lines.push(
+      `🌌🚀 Conheça o App Oficial *${settings.artistName} — ${settings.brandSubtitle}*! 20 faixas completas, modo offline no celular, playlists e Mesa de DJ!`
+    );
     lines.push(`🎧 Acesse e ouça agora: ${mainClickableLink}`);
   }
   if (effectiveApkLink && !isLocalHostUrl(effectiveApkLink)) {
-    lines.push(`📲 Baixar o App Android (APK): ${effectiveApkLink}`);
+    lines.push(`📲 Baixar App Android (APK): ${effectiveApkLink}`);
   }
   if (includePixText) {
-    lines.push(`💜 Curtiu o som? Apoie o projeto rumo às ${settings.totalGoal} músicas pelo PIX dentro do app!`);
+    lines.push(`💜 Curtiu o som? Apoie o projeto rumo às ${settings.totalGoal} músicas dentro do app!`);
   }
-  lines.push(`🤝 Gostou? *Compartilhe esta mensagem com seus amigos também!*`);
+  lines.push(`🤝 Gostou? *Compartilhe com seus amigos também!* #LENKYX #CosmicPhonk #Phonk`);
 
   const message = lines.join('\n');
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mainClickableLink)}&text=${encodeURIComponent(message)}`;
+  const xTwitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+    track ? `🚀 Ouça "${track.title}" de LENKYX — Cosmic Phonk completo!` : `🌌 Ouça o álbum oficial LENKYX — Cosmic Phonk (20 faixas completas)!`
+  )}&url=${encodeURIComponent(mainClickableLink)}&hashtags=LENKYX,CosmicPhonk,Phonk`;
+  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(mainClickableLink)}`;
 
   const handleCopyMessage = async () => {
     const ok = await copyTextReliable(message);
     if (ok) {
       setCopied(true);
-      onToast('Mensagem completa + link clicável copiados!');
+      onToast('Mensagem de divulgação + link + hashtags copiados!');
       setTimeout(() => setCopied(false), 2200);
     } else {
       onToast('Copie o texto acima.');
+    }
+  };
+
+  const handleCopyLinkOnly = async () => {
+    const ok = await copyTextReliable(mainClickableLink);
+    if (ok) {
+      setCopiedBio(true);
+      onToast('Link oficial copiado para Instagram Bio / TikTok / YouTube!');
+      setTimeout(() => setCopiedBio(false), 2200);
     }
   };
 
@@ -90,6 +128,7 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
         await navigator.share({
           title: track ? `${track.title} — ${settings.artistName}` : `${settings.artistName} — Cosmic Phonk`,
           text: message,
+          url: mainClickableLink,
         });
       } catch {
         // canceled
@@ -114,14 +153,16 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
         <div className="p-4 sm:p-5 space-y-3.5">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow">
-                <MessageCircle className="w-5 h-5 text-white" />
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shadow">
+                <Megaphone className="w-5 h-5 text-black" />
               </div>
               <div>
                 <h2 className="font-display text-sm sm:text-base font-extrabold text-white">
-                  {track ? `DIVULGAR: ${track.title}` : 'COMPARTILHAR NO WHATSAPP'}
+                  {track ? `DIVULGAR: ${track.title}` : 'DIVULGAÇÃO & REDES SOCIAIS'}
                 </h2>
-                <p className="text-[11px] text-purple-200/75">Mensagem e link unificados num único bloco clicável</p>
+                <p className="text-[11px] text-purple-200/75">
+                  Compartilhe com 1 clique no WhatsApp, Instagram, TikTok, Telegram e Google
+                </p>
               </div>
             </div>
             <button onClick={onClose} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-purple-200">
@@ -129,21 +170,48 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
             </button>
           </div>
 
-          {!hasRealPublicSite && (
-            <div className="rounded-xl bg-emerald-500/12 border border-emerald-400/35 p-2.5 text-[11px] text-emerald-100 leading-relaxed flex gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-300 shrink-0 mt-0.5" />
-              <div>
-                <strong>Links públicos reais ativos!</strong> Sua mensagem já sai com o link público oficial das suas
-                músicas (<strong>Suno @lenkyx</strong>) + o <strong>link público de download do App Android (APK)</strong>{' '}
-                para qualquer amigo abrir e baixar no celular! Quando subir o site no Render, basta colar a URL abaixo.
-              </div>
+          {/* Link Direto (Bio Instagram / TikTok / YouTube) + QR Code */}
+          <div className="rounded-xl bg-white/[0.04] border border-white/10 p-2.5 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-300">
+                Link Oficial (Bio Instagram · TikTok · YouTube)
+              </span>
+              <button
+                onClick={() => setShowQr((v) => !v)}
+                className="px-2 py-0.5 rounded-md bg-pink-500/20 hover:bg-pink-500/35 text-pink-200 text-[10px] font-bold flex items-center gap-1"
+              >
+                <QrCode className="w-3 h-3" /> {showQr ? 'Ocultar QR' : 'QR Code'}
+              </button>
             </div>
-          )}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                readOnly
+                value={mainClickableLink}
+                className="flex-1 px-2.5 py-1.5 rounded-lg bg-black/50 border border-white/10 text-[11px] text-cyan-200 font-mono truncate"
+              />
+              <button
+                onClick={handleCopyLinkOnly}
+                className="px-2.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-[11px] font-extrabold shrink-0 flex items-center gap-1"
+              >
+                {copiedBio ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedBio ? 'Copiado' : 'Link'}
+              </button>
+            </div>
+            {showQr && qrDataUrl && (
+              <div className="pt-2 flex flex-col items-center gap-1.5">
+                <img src={qrDataUrl} alt="QR Code LENKYX" className="w-40 h-40 rounded-xl bg-white p-1.5 shadow-lg" />
+                <span className="text-[10px] text-purple-200/75">
+                  Aponte a câmera do celular para abrir e tocar na hora!
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Unified Message Preview */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-semibold text-purple-200">Prévia exata da mensagem no WhatsApp</span>
+              <span className="text-[11px] font-semibold text-purple-200">Texto pronto com hashtags & link clicável</span>
               <label className="flex items-center gap-1.5 text-[11px] text-cyan-300 cursor-pointer">
                 <input
                   type="checkbox"
@@ -154,7 +222,7 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
                 Incluir PIX
               </label>
             </div>
-            <div className="p-3 rounded-xl bg-[#0b1f17] border border-emerald-500/30 text-xs text-emerald-100 whitespace-pre-wrap leading-relaxed break-words">
+            <div className="p-3 rounded-xl bg-[#0b1f17] border border-emerald-500/30 text-xs text-emerald-100 whitespace-pre-wrap leading-relaxed break-words max-h-36 overflow-y-auto">
               {message}
             </div>
           </div>
@@ -167,7 +235,7 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
               rel="noopener noreferrer"
               className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 hover:brightness-110 text-black font-extrabold text-xs flex items-center justify-center gap-1.5 shadow transition"
             >
-              <MessageCircle className="w-4 h-4" /> Abrir no WhatsApp
+              <MessageCircle className="w-4 h-4" /> WhatsApp
             </a>
             <button
               onClick={handleCopyMessage}
@@ -178,12 +246,40 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
             </button>
           </div>
 
+          {/* Multi-Platform Auto-Share Bar */}
+          <div className="grid grid-cols-3 gap-1.5">
+            <a
+              href={telegramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="py-2 px-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/35 text-sky-200 text-[11px] font-bold flex items-center justify-center gap-1"
+            >
+              <Send className="w-3.5 h-3.5" /> Telegram
+            </a>
+            <a
+              href={xTwitterUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="py-2 px-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-[11px] font-bold flex items-center justify-center gap-1"
+            >
+              𝕏 Postar
+            </a>
+            <a
+              href={facebookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="py-2 px-2 rounded-xl bg-blue-600/25 hover:bg-blue-600/40 border border-blue-400/35 text-blue-200 text-[11px] font-bold flex items-center justify-center gap-1"
+            >
+              Facebook
+            </a>
+          </div>
+
           {typeof navigator !== 'undefined' && 'share' in navigator && (
             <button
               onClick={handleNativeShare}
-              className="w-full py-2 rounded-xl bg-purple-600/25 hover:bg-purple-600/40 border border-purple-400/30 text-purple-100 text-[11px] font-bold flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-500/30 to-purple-600/30 hover:brightness-110 border border-pink-400/40 text-white text-xs font-bold flex items-center justify-center gap-1.5"
             >
-              <Share2 className="w-3.5 h-3.5" /> Enviar por outros apps (Instagram, Telegram, SMS)
+              <Share2 className="w-3.5 h-3.5" /> Enviar no Instagram Stories / TikTok / Status
             </button>
           )}
 
@@ -196,7 +292,7 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
                 type="url"
                 value={customUrl}
                 onChange={(e) => setCustomUrl(e.target.value)}
-                placeholder="Link do Site Online (ex: https://lenkyx.onrender.com)"
+                placeholder="Link do Site Online (ex: https://lenkyx-cosmic-phonk.onrender.com)"
                 className="w-full px-3 py-2 rounded-lg bg-black/50 border border-purple-500/30 text-xs text-white focus:outline-none focus:border-cyan-400"
               />
               <div className="flex gap-2">
@@ -206,7 +302,7 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
                     type="url"
                     value={apkUrl}
                     onChange={(e) => setApkUrl(e.target.value)}
-                    placeholder="Link pra baixar APK (ex: link público do Google Drive)"
+                    placeholder="Link pra baixar APK (ex: Google Drive)"
                     className="w-full pl-8 pr-3 py-2 rounded-lg bg-black/50 border border-purple-500/30 text-xs text-white focus:outline-none focus:border-pink-400"
                   />
                 </div>

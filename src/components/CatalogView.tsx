@@ -20,6 +20,10 @@ import {
   List,
   Clock,
   Smartphone,
+  DownloadCloud,
+  CheckCircle2,
+  Loader2,
+  WifiOff,
 } from 'lucide-react';
 import { AppMode, AppSettings, AudioVersion, Track, UserPlaylist } from '../types';
 import { copyTextReliable, isAndroidApk } from '../utils/androidBridge';
@@ -33,6 +37,9 @@ interface Props {
   currentTrack: Track | null;
   activeVersion: AudioVersion;
   isPlaying: boolean;
+  offlineTrackIds: Set<string>;
+  downloadingIds: Set<string>;
+  downloadingAll: boolean;
   onPlayTrack: (track: Track, version?: AudioVersion) => void;
   onLikeTrack: (track: Track) => void;
   onShareTrack: (track: Track | null) => void;
@@ -40,6 +47,8 @@ interface Props {
   onSendToDJ: (track: Track, deck: 'A' | 'B') => void;
   onSendToVideo: (track: Track) => void;
   onAddToPlaylist: (playlistId: string, track: Track) => void;
+  onToggleOffline: (track: Track) => void;
+  onDownloadAllOffline: () => void;
   onEditTrack: (track: Track) => void;
   onAddTrack: () => void;
   lyricsTrack: Track | null;
@@ -63,6 +72,9 @@ export const CatalogView: React.FC<Props> = ({
   currentTrack,
   activeVersion,
   isPlaying,
+  offlineTrackIds,
+  downloadingIds,
+  downloadingAll,
   onPlayTrack,
   onLikeTrack,
   onShareTrack,
@@ -70,6 +82,8 @@ export const CatalogView: React.FC<Props> = ({
   onSendToDJ,
   onSendToVideo,
   onAddToPlaylist,
+  onToggleOffline,
+  onDownloadAllOffline,
   onEditTrack,
   onAddTrack,
   lyricsTrack,
@@ -84,14 +98,17 @@ export const CatalogView: React.FC<Props> = ({
   const albums = useMemo(() => {
     const set = new Set<string>();
     tracks.forEach((t) => set.add(t.album));
-    return ['ALL', 'FAV', ...Array.from(set)];
+    return ['ALL', 'OFFLINE', 'FAV', ...Array.from(set)];
   }, [tracks]);
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return tracks.filter((t) => {
+      if (selectedAlbum === 'OFFLINE' && !offlineTrackIds.has(t.id)) return false;
       if (selectedAlbum === 'FAV' && !t.favorite) return false;
-      if (selectedAlbum !== 'ALL' && selectedAlbum !== 'FAV' && t.album !== selectedAlbum) return false;
+      if (selectedAlbum !== 'ALL' && selectedAlbum !== 'FAV' && selectedAlbum !== 'OFFLINE' && t.album !== selectedAlbum) {
+        return false;
+      }
       if (!q) return true;
       return (
         t.title.toLowerCase().includes(q) ||
@@ -101,10 +118,11 @@ export const CatalogView: React.FC<Props> = ({
         t.lyrics.toLowerCase().includes(q)
       );
     });
-  }, [tracks, searchQuery, selectedAlbum]);
+  }, [tracks, searchQuery, selectedAlbum, offlineTrackIds]);
 
   const totalPlays = useMemo(() => tracks.reduce((acc, t) => acc + (t.plays || 0), 0), [tracks]);
   const pctGoal = Math.min(100, (tracks.length / Math.max(1, settings.totalGoal)) * 100);
+  const offlineCount = tracks.filter((t) => offlineTrackIds.has(t.id)).length;
 
   const handleCopyPrompt = async (txt: string) => {
     const ok = await copyTextReliable(txt);
@@ -119,94 +137,126 @@ export const CatalogView: React.FC<Props> = ({
 
   return (
     <div className="space-y-4 pb-28 md:pb-24">
-      {/* COMPACT SPOTIFY / YOUTUBE MUSIC HERO HEADER */}
-      <section className="relative rounded-2xl overflow-hidden border border-purple-500/25">
-        <div className="relative h-40 sm:h-48 w-full">
+      {/* MODERN SOPHISTICATED SPOTIFY / APPLE MUSIC HERO HEADER */}
+      <section className="relative rounded-3xl overflow-hidden border border-purple-500/30 shadow-[0_18px_50px_rgba(0,0,0,0.65)]">
+        <div className="relative min-h-[190px] sm:min-h-[215px] w-full flex flex-col justify-end">
           <img
             src="/covers/banner.jpg"
             alt="LENKYX Cosmic Phonk"
-            className="w-full h-full object-cover object-center opacity-70"
+            className="absolute inset-0 w-full h-full object-cover object-center opacity-60 scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#070412] via-[#070412]/70 to-black/20" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#070412]/90 via-[#070412]/45 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#070412] via-[#070412]/75 to-purple-950/30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#070412]/95 via-[#070412]/55 to-transparent" />
 
-          <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-end">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-              <div className="flex items-center gap-3.5">
-                <img
-                  src="/covers/avatar.jpg"
-                  alt="LENKYX"
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-pink-500 shadow-[0_0_18px_rgba(236,72,153,0.6)] shrink-0 object-cover"
-                />
-                <div className="min-w-0">
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-500/20 border border-pink-400/35 text-[10px] font-bold text-pink-200 mb-1">
-                    <Sparkles className="w-2.5 h-2.5" /> ARTISTA VERIFICADO · {tracks.length} FAIXAS (V1 & V2)
-                  </div>
-                  <h1 className="font-display text-xl sm:text-2xl font-black tracking-wide text-white truncate">
-                    {settings.artistName} <span className="neon-text">{settings.brandSubtitle}</span>
-                  </h1>
-                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-purple-200/80 mt-0.5">
-                    <span className="inline-flex items-center gap-1">
-                      <Headphones className="w-3.5 h-3.5 text-cyan-400" />
-                      {totalPlays.toLocaleString('pt-BR')} plays
-                    </span>
-                    <span>·</span>
-                    <span>
-                      Meta {tracks.length}/{settings.totalGoal} ({pctGoal.toFixed(1)}%)
-                    </span>
-                  </div>
+          <div className="relative z-10 p-4 sm:p-6 flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <img
+                src="/covers/album-official.jpg"
+                alt="LENKYX Cosmic Phonk Capa Oficial"
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border border-white/20 shadow-[0_0_30px_rgba(236,72,153,0.5)] shrink-0 object-cover"
+              />
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-pink-500/20 border border-pink-400/35 text-[10px] font-extrabold text-pink-200 mb-1.5">
+                  <Sparkles className="w-2.5 h-2.5" /> ÁLBUM OFICIAL · {tracks.length} FAIXAS COMPLETAS (V1 & V2)
+                </div>
+                <h1 className="font-display text-2xl sm:text-3xl font-black tracking-wide text-white truncate">
+                  {settings.artistName} <span className="neon-text">{settings.brandSubtitle}</span>
+                </h1>
+                <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-purple-200/85 mt-1">
+                  <span className="inline-flex items-center gap-1">
+                    <Headphones className="w-3.5 h-3.5 text-cyan-400" />
+                    {totalPlays.toLocaleString('pt-BR')} plays
+                  </span>
+                  <span>·</span>
+                  <span>
+                    Meta {tracks.length}/{settings.totalGoal} ({pctGoal.toFixed(1)}%)
+                  </span>
+                  {offlineCount > 0 && (
+                    <>
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1 text-emerald-300 font-bold">
+                        <WifiOff className="w-3 h-3" /> {offlineCount} offline no aparelho
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
+            </div>
 
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  onClick={() => tracks[0] && onPlayTrack(tracks[0], 'v1')}
-                  className="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-cyan-500 hover:brightness-110 text-white font-extrabold text-xs flex items-center gap-1.5 shadow transition active:scale-95"
-                >
-                  <Play className="w-3.5 h-3.5 fill-white" /> Tocar
-                </button>
-                {!isAndroidApk() && (
-                  <a
-                    href={settings.apkDownloadUrl || '/download/apk'}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-3.5 py-2 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_16px_rgba(52,211,153,0.4)] transition active:scale-95"
-                    title="Baixar e instalar o Aplicativo Oficial LENKYX no Android"
-                  >
-                    <Smartphone className="w-3.5 h-3.5" /> Baixar App Android
-                  </a>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => tracks[0] && onPlayTrack(tracks[0], 'v1')}
+                className="px-5 py-2.5 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 hover:brightness-110 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_24px_rgba(236,72,153,0.45)] transition active:scale-95"
+              >
+                <Play className="w-3.5 h-3.5 fill-white" /> Tocar Álbum
+              </button>
+              <button
+                onClick={onDownloadAllOffline}
+                disabled={downloadingAll}
+                className="px-3.5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs flex items-center gap-1.5 transition active:scale-95"
+                title="Baixar todas as músicas no aparelho para tocar sem internet"
+              >
+                {downloadingAll ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
+                ) : offlineCount >= tracks.length && tracks.length > 0 ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <DownloadCloud className="w-3.5 h-3.5 text-cyan-300" />
                 )}
-                <button
-                  onClick={() => onShareTrack(null)}
-                  className="px-3 py-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 font-bold text-xs flex items-center gap-1.5 transition"
+                {downloadingAll
+                  ? 'Baixando Offline...'
+                  : offlineCount >= tracks.length && tracks.length > 0
+                  ? 'Todas Offline ✓'
+                  : 'Baixar Offline'}
+              </button>
+              {!isAndroidApk() && (
+                <a
+                  href={settings.apkDownloadUrl || '/download/apk'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3.5 py-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_16px_rgba(52,211,153,0.35)] transition active:scale-95"
+                  title="Baixar e instalar o Aplicativo Oficial LENKYX no Android"
                 >
-                  <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
-                </button>
+                  <Smartphone className="w-3.5 h-3.5" /> App Android
+                </a>
+              )}
+              <button
+                onClick={() => onShareTrack(null)}
+                className="px-3.5 py-2.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 font-bold text-xs flex items-center gap-1.5 transition"
+              >
+                <MessageCircle className="w-3.5 h-3.5" /> Divulgar
+              </button>
+              <button
+                onClick={onOpenPix}
+                className="px-3 py-2.5 rounded-full bg-purple-600/30 hover:bg-purple-600/45 border border-pink-400/40 text-pink-200 font-bold text-xs flex items-center gap-1.5 transition"
+              >
+                <QrCode className="w-3.5 h-3.5" /> PIX
+              </button>
+              {mode === 'creator' && (
                 <button
-                  onClick={onOpenPix}
-                  className="px-3 py-2 rounded-full bg-purple-600/30 hover:bg-purple-600/45 border border-pink-400/40 text-pink-200 font-bold text-xs flex items-center gap-1.5 transition"
+                  onClick={onAddTrack}
+                  className="px-3.5 py-2.5 rounded-full bg-white text-black hover:bg-purple-100 font-extrabold text-xs flex items-center gap-1 transition"
                 >
-                  <QrCode className="w-3.5 h-3.5" /> PIX
+                  <Plus className="w-3.5 h-3.5" /> Nova Faixa
                 </button>
-                {mode === 'creator' && (
-                  <button
-                    onClick={onAddTrack}
-                    className="px-3 py-2 rounded-full bg-white text-black hover:bg-purple-100 font-extrabold text-xs flex items-center gap-1 transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Nova Faixa
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-      {/* FILTER PILLS + VIEW TOGGLE (LIST SPOTIFY vs COMPACT GRID) */}
+      {/* FILTER PILLS + VIEW TOGGLE */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
           {albums.map((alb) => {
-            const label = alb === 'ALL' ? `Todas (${tracks.length})` : alb === 'FAV' ? '❤️ Curtidas' : alb;
+            const label =
+              alb === 'ALL'
+                ? `Todas (${tracks.length})`
+                : alb === 'OFFLINE'
+                ? `📱 Offline (${offlineCount})`
+                : alb === 'FAV'
+                ? '❤️ Curtidas'
+                : alb;
             const active = selectedAlbum === alb;
             return (
               <button
@@ -214,7 +264,7 @@ export const CatalogView: React.FC<Props> = ({
                 onClick={() => setSelectedAlbum(alb)}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
                   active
-                    ? 'bg-white text-black'
+                    ? 'bg-white text-black shadow'
                     : 'bg-white/[0.06] hover:bg-white/[0.12] text-purple-100 border border-white/10'
                 }`}
               >
@@ -224,33 +274,47 @@ export const CatalogView: React.FC<Props> = ({
           })}
         </div>
 
-        <div className="inline-flex items-center rounded-lg bg-white/[0.06] border border-white/10 p-0.5">
+        <div className="inline-flex items-center rounded-xl bg-white/[0.06] border border-white/10 p-0.5">
           <button
             onClick={() => setViewLayout('list')}
-            className={`px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
               viewLayout === 'list' ? 'bg-pink-500 text-white' : 'text-purple-200 hover:text-white'
             }`}
-            title="Visualização Lista (Spotify / YouTube Music)"
+            title="Visualização Lista"
           >
             <List className="w-3.5 h-3.5" /> Lista
           </button>
           <button
             onClick={() => setViewLayout('grid')}
-            className={`px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
               viewLayout === 'grid' ? 'bg-pink-500 text-white' : 'text-purple-200 hover:text-white'
             }`}
-            title="Visualização Capas Compactas"
+            title="Visualização Capas"
           >
             <LayoutGrid className="w-3.5 h-3.5" /> Capas
           </button>
         </div>
       </div>
 
-      {/* SPOTIFY / YOUTUBE MUSIC COMPACT TRACKLIST VIEW */}
-      {viewLayout === 'list' ? (
-        <div className="rounded-2xl bg-white/[0.03] border border-white/10 overflow-visible">
-          {/* Table header */}
-          <div className="hidden md:grid grid-cols-12 gap-2 px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-purple-300/65">
+      {/* EMPTY OFFLINE STATE */}
+      {filtered.length === 0 ? (
+        <div className="py-12 px-4 text-center rounded-2xl glass-modern space-y-2.5">
+          <WifiOff className="w-8 h-8 mx-auto text-purple-300/70" />
+          <div className="text-sm font-bold text-white">
+            {selectedAlbum === 'OFFLINE'
+              ? 'Nenhuma música baixada para modo offline ainda'
+              : 'Nenhuma faixa encontrada'}
+          </div>
+          <p className="text-xs text-purple-200/75 max-w-md mx-auto">
+            {selectedAlbum === 'OFFLINE'
+              ? 'Clique em "Baixar Offline" no topo ou no ícone de nuvem ao lado de qualquer música para ouvir mesmo sem internet!'
+              : 'Tente limpar a busca ou trocar de filtro.'}
+          </p>
+        </div>
+      ) : viewLayout === 'list' ? (
+        /* MODERN TRACKLIST VIEW */
+        <div className="rounded-2xl glass-modern overflow-visible">
+          <div className="hidden md:grid grid-cols-12 gap-2 px-3 py-2.5 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-purple-300/65">
             <div className="col-span-4 pl-2"># · Título</div>
             <div className="col-span-2">Versões (V1 / V2)</div>
             <div className="col-span-2">Álbum</div>
@@ -263,21 +327,31 @@ export const CatalogView: React.FC<Props> = ({
           <div className="divide-y divide-white/[0.05]">
             {filtered.map((track) => {
               const active = currentTrack?.id === track.id;
+              const isOff = offlineTrackIds.has(track.id);
+              const isDl = downloadingIds.has(track.id);
               return (
                 <div
                   key={track.id}
-                  className={`group grid grid-cols-12 gap-2 items-center px-3 py-2 hover:bg-white/[0.06] transition ${
-                    active ? 'bg-pink-500/12' : ''
+                  className={`group grid grid-cols-12 gap-2 items-center px-3 py-2.5 hover:bg-white/[0.06] transition ${
+                    active ? 'bg-gradient-to-r from-pink-500/15 via-purple-500/10 to-transparent' : ''
                   }`}
                 >
                   {/* # + Cover + Title */}
-                  <div className="col-span-8 sm:col-span-5 md:col-span-4 flex items-center gap-2.5 min-w-0">
-                    <span className="w-5 text-right text-[11px] font-mono text-purple-300/60 shrink-0 hidden sm:inline">
-                      {String(track.number).padStart(2, '0')}
+                  <div className="col-span-7 sm:col-span-5 md:col-span-4 flex items-center gap-2.5 min-w-0">
+                    <span className="w-5 text-right text-[11px] font-mono text-purple-300/60 shrink-0 hidden sm:flex items-center justify-end">
+                      {active && isPlaying ? (
+                        <span className="inline-flex items-end gap-0.5 h-3.5">
+                          <span className="w-0.5 h-full bg-pink-400 eq-bar-1" />
+                          <span className="w-0.5 h-full bg-cyan-400 eq-bar-2" />
+                          <span className="w-0.5 h-full bg-purple-400 eq-bar-3" />
+                        </span>
+                      ) : (
+                        String(track.number).padStart(2, '0')
+                      )}
                     </span>
                     <button
                       onClick={() => onPlayTrack(track)}
-                      className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-black border border-white/10"
+                      className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-black border border-white/10"
                     >
                       <img src={track.coverUrl} alt={track.title} loading="lazy" className="w-full h-full object-cover" />
                       <div
@@ -299,14 +373,18 @@ export const CatalogView: React.FC<Props> = ({
                       <div className="text-[11px] text-purple-300/75 truncate flex items-center gap-1.5">
                         <span>{track.artist}</span>
                         <span className="font-mono text-[10px] text-cyan-300/80">{track.bpm} BPM</span>
-                        {track.sunoPrivate && track.isDemoAudio && (
+                        {isOff && (
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold">
+                            OFFLINE
+                          </span>
+                        )}
+                        {mode === 'creator' && track.sunoPrivate && track.isDemoAudio && (
                           <a
                             href={track.sunoUrl || 'https://suno.com/@lenkyx'}
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             className="px-1.5 py-0.2 rounded bg-amber-500/25 hover:bg-amber-500/40 text-amber-200 text-[9px] font-bold"
-                            title="Esta música ainda está privada no Suno — clique para abrir no Suno e deixar Pública (ou suba o WAV no botão Upload)"
                           >
                             PRIVADA NO SUNO ↗
                           </a>
@@ -316,7 +394,7 @@ export const CatalogView: React.FC<Props> = ({
                   </div>
 
                   {/* V1 / V2 Quick Pills */}
-                  <div className="col-span-4 sm:col-span-3 md:col-span-2 flex items-center gap-1">
+                  <div className="col-span-3 sm:col-span-3 md:col-span-2 flex items-center gap-1">
                     <button
                       onClick={() => onPlayTrack(track, 'v1')}
                       className={`px-2 py-1 rounded-md text-[10px] font-extrabold border transition ${
@@ -342,6 +420,31 @@ export const CatalogView: React.FC<Props> = ({
                     )}
                   </div>
 
+                  {/* Mobile Quick Offline Download Button */}
+                  <div className="col-span-2 flex sm:hidden items-center justify-end gap-0.5">
+                    <button
+                      onClick={() => onToggleOffline(track)}
+                      disabled={isDl}
+                      className={`p-1.5 rounded-lg ${isOff ? 'text-emerald-400' : 'text-cyan-300'}`}
+                      title={isOff ? 'Salva Offline' : 'Baixar Offline'}
+                    >
+                      {isDl ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isOff ? (
+                        <CheckCircle2 className="w-4 h-4" />
+                      ) : (
+                        <DownloadCloud className="w-4 h-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => onShareTrack(track)}
+                      className="p-1.5 rounded-lg text-emerald-300"
+                      title="Divulgar"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                  </div>
+
                   {/* Album */}
                   <div className="hidden md:block md:col-span-2 text-xs text-purple-300/75 truncate">
                     {track.album}
@@ -354,6 +457,22 @@ export const CatalogView: React.FC<Props> = ({
 
                   {/* Compact Action Icons */}
                   <div className="hidden sm:flex sm:col-span-4 md:col-span-3 items-center justify-end gap-0.5 relative">
+                    <button
+                      onClick={() => onToggleOffline(track)}
+                      disabled={isDl}
+                      className={`p-1.5 rounded-lg hover:bg-white/10 transition ${
+                        isOff ? 'text-emerald-400' : 'text-purple-300 hover:text-cyan-300'
+                      }`}
+                      title={isOff ? 'Salva Offline (clique para remover)' : 'Baixar para ouvir Offline'}
+                    >
+                      {isDl ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : isOff ? (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      ) : (
+                        <DownloadCloud className="w-3.5 h-3.5" />
+                      )}
+                    </button>
                     <button
                       onClick={() => onLikeTrack(track)}
                       className="p-1.5 rounded-lg hover:bg-white/10 transition"
@@ -380,14 +499,14 @@ export const CatalogView: React.FC<Props> = ({
                     <button
                       onClick={() => onSetLyricsTrack(track)}
                       className="p-1.5 rounded-lg hover:bg-white/10 text-purple-200 transition"
-                      title="Letra & Prompt Suno"
+                      title="Letra"
                     >
                       <FileText className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => onShareTrack(track)}
                       className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-emerald-300 transition"
-                      title="WhatsApp"
+                      title="Divulgar / QR Code"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                     </button>
@@ -435,18 +554,20 @@ export const CatalogView: React.FC<Props> = ({
           </div>
         </div>
       ) : (
-        /* COMPACT SPOTIFY ALBUM-PROPORTION GRID VIEW */
+        /* MODERN GRID VIEW */
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {filtered.map((track) => {
             const active = currentTrack?.id === track.id;
+            const isOff = offlineTrackIds.has(track.id);
+            const isDl = downloadingIds.has(track.id);
             return (
               <div
                 key={track.id}
-                className={`group rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border transition p-2.5 space-y-2 ${
-                  active ? 'border-pink-500/70 bg-pink-500/10' : 'border-white/10'
+                className={`group rounded-2xl glass-modern hover:border-pink-400/45 transition p-2.5 space-y-2 ${
+                  active ? 'border-pink-500/70 shadow-[0_0_20px_rgba(236,72,153,0.25)]' : ''
                 }`}
               >
-                <div className="relative aspect-square rounded-lg overflow-hidden bg-black">
+                <div className="relative aspect-square rounded-xl overflow-hidden bg-black">
                   <img
                     src={track.coverUrl}
                     alt={track.title}
@@ -456,6 +577,11 @@ export const CatalogView: React.FC<Props> = ({
                   <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/75 text-[9px] font-mono font-bold text-cyan-300">
                     #{String(track.number).padStart(2, '0')}
                   </span>
+                  {isOff && (
+                    <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-emerald-500/85 text-[8px] font-extrabold text-black">
+                      OFFLINE
+                    </span>
+                  )}
                   <button
                     onClick={() => onPlayTrack(track)}
                     className={`absolute bottom-2 right-2 w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition ${
@@ -504,6 +630,22 @@ export const CatalogView: React.FC<Props> = ({
                       </button>
                     )}
                     <button
+                      onClick={() => onToggleOffline(track)}
+                      disabled={isDl}
+                      className={`p-1 rounded bg-white/5 hover:bg-emerald-500/25 ${
+                        isOff ? 'text-emerald-400' : 'text-cyan-300'
+                      }`}
+                      title={isOff ? 'Salva Offline' : 'Baixar Offline'}
+                    >
+                      {isDl ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : isOff ? (
+                        <CheckCircle2 className="w-3 h-3" />
+                      ) : (
+                        <DownloadCloud className="w-3 h-3" />
+                      )}
+                    </button>
+                    <button
                       onClick={() => onSendToDJ(track, 'A')}
                       className="p-1 rounded bg-white/5 hover:bg-cyan-500/25 text-cyan-300"
                       title="DJ"
@@ -527,7 +669,7 @@ export const CatalogView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* LYRICS & SUNO PROMPT MODAL */}
+      {/* LYRICS MODAL (Prompt hidden unless creator) */}
       {lyricsTrack && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3">
           <div className="w-full max-w-xl rounded-2xl glass-panel neon-border overflow-hidden max-h-[85vh] flex flex-col">

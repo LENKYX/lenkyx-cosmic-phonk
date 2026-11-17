@@ -5,8 +5,6 @@ import {
   Video,
   Wand2,
   QrCode,
-  Lock,
-  ShieldCheck,
   MessageCircle,
   Globe2,
   ListMusic,
@@ -49,6 +47,12 @@ import {
   saveUserPlaylists,
   saveUserProfile,
 } from './utils/userVault';
+import {
+  downloadTrackOffline,
+  getOfflineTrackIds,
+  removeTrackOffline,
+  resolvePlayableAudioUrl,
+} from './utils/offlineCache';
 
 const DEFAULT_SETTINGS: AppSettings = {
   artistName: 'LENKYX',
@@ -60,7 +64,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pixCity: 'CAMPO GRANDE',
   pixMessage: 'Apoio LENKYX Cosmic Phonk',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
-  apkDownloadUrl: 'https://lenkyx-cosmic-phonk.onrender.com/download/apk',
+  apkDownloadUrl: 'https://drive.google.com/uc?id=109-i00UMsMlBY_RcrVvng-oHiW0cXwFZ&export=download',
   youtubeUrl: '',
   sunoHandle: '@lenkyx',
   sunoProfileUrl: 'https://suno.com/@lenkyx',
@@ -112,6 +116,15 @@ export function App() {
   const [djDeckB, setDjDeckB] = useState<Track | null>(null);
   const [videoTrack, setVideoTrack] = useState<Track | null>(null);
 
+  // Offline Downloads state
+  const [offlineTrackIds, setOfflineTrackIds] = useState<Set<string>>(() => getOfflineTrackIds());
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [isPlayingFromOffline, setIsPlayingFromOffline] = useState(false);
+
+  // Secret Creator trigger (5 rapid taps on LENKYX logo OR #criador / ?studio=1)
+  const brandTapRef = useRef<{ count: number; last: number }>({ count: 0, last: 0 });
+
   // Modals & notifications
   const [pixOpen, setPixOpen] = useState(false);
   const [pixInitialTab, setPixInitialTab] = useState<'donate' | 'config'>('donate');
@@ -127,6 +140,20 @@ export function App() {
     setToast(msg);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  const handleBrandTap = useCallback(() => {
+    setActiveTab('catalog');
+    const now = Date.now();
+    if (now - brandTapRef.current.last > 2000) {
+      brandTapRef.current = { count: 1, last: now };
+    } else {
+      brandTapRef.current = { count: brandTapRef.current.count + 1, last: now };
+    }
+    if (brandTapRef.current.count >= 5) {
+      brandTapRef.current = { count: 0, last: 0 };
+      setCreatorModalOpen(true);
+    }
   }, []);
 
   // Combined tracks pool for DJ Mixer & Playlists lookup (LENKYX + User Uploads + Discovered World tracks)
@@ -164,6 +191,7 @@ export function App() {
           name: userProfile.name,
           email: userProfile.email || '',
           avatarColor: userProfile.avatarColor,
+          acceptedTermsAt: userProfile.acceptedTermsAt || '',
           playlists,
         }),
       }).catch(() => {});
@@ -171,33 +199,59 @@ export function App() {
     return () => window.clearTimeout(t);
   }, [userProfile, playlists]);
 
-  // Fetch initial catalog + check creator session
+  // Secret URL trigger (#criador or ?studio=1) + hashchange listener
+  useEffect(() => {
+    const checkSecretTrigger = () => {
+      const p = new URLSearchParams(window.location.search);
+      if (window.location.hash === '#criador' || p.get('studio') === '1') {
+        setCreatorModalOpen(true);
+      }
+    };
+    checkSecretTrigger();
+    window.addEventListener('hashchange', checkSecretTrigger);
+    return () => window.removeEventListener('hashchange', checkSecretTrigger);
+  }, []);
+
+  // Fetch initial catalog + check creator session (with seamless offline seed-data fallback)
   useEffect(() => {
     (async () => {
       try {
-        const [stateRes, authRes] = await Promise.all([
-          authFetch('/api/state'),
-          authFetch('/api/auth/status'),
-        ]);
-        const data: { tracks?: Track[]; settings?: Partial<AppSettings> } = await stateRes.json();
-        const loadedTracks: Track[] = data.tracks || [];
+        let data: { tracks?: Track[]; settings?: Partial<AppSettings> } | null = null;
+        try {
+          const [stateRes, authRes] = await Promise.all([
+            authFetch('/api/state'),
+            authFetch('/api/auth/status'),
+          ]);
+          if (stateRes.ok) {
+            data = await stateRes.json();
+          }
+          if (authRes.ok) {
+            const authData = await authRes.json();
+            setMode(authData.authenticated ? 'creator' : 'fan');
+            setHasCustomPassword(Boolean(authData.hasCustomPassword));
+          }
+        } catch {
+          // offline: try cached seed-data.json below
+        }
+
+        if (!data || !Array.isArray(data.tracks) || data.tracks.length === 0) {
+          const seedRes = await fetch('/seed-data.json');
+          if (seedRes.ok) {
+            data = await seedRes.json();
+          }
+        }
+
+        const loadedTracks: Track[] = data?.tracks || [];
         setTracks(loadedTracks);
         setPlayQueue(loadedTracks);
-        if (data.settings) {
+        if (data?.settings) {
           setSettings((prev) => ({
             ...prev,
-            ...data.settings,
-            apkDownloadUrl: (data.settings?.apkDownloadUrl || '').trim() || prev.apkDownloadUrl,
+            ...data!.settings,
+            apkDownloadUrl: (data!.settings?.apkDownloadUrl || '').trim() || prev.apkDownloadUrl,
           }));
         }
 
-        if (authRes.ok) {
-          const authData = await authRes.json();
-          setMode(authData.authenticated ? 'creator' : 'fan');
-          setHasCustomPassword(Boolean(authData.hasCustomPassword));
-        }
-
-        // Deep-link ?track=xxx support (WhatsApp links!)
         const params = new URLSearchParams(window.location.search);
         const deepId = params.get('track');
         if (deepId && loadedTracks.length) {
@@ -210,7 +264,7 @@ export function App() {
           setCurrentTrack(loadedTracks[0]);
         }
       } catch {
-        showToast('Erro ao carregar o catálogo do servidor.');
+        showToast('Modo offline ativo — toque nas faixas baixadas para ouvir.');
       } finally {
         setLoading(false);
       }
@@ -279,8 +333,9 @@ export function App() {
       setCurrentTrack(track);
       setActiveVersion(finalVersion);
 
-      const srcUrl = finalVersion === 'v2' && track.audioUrlV2 ? track.audioUrlV2 : track.audioUrl;
-      audio.src = srcUrl;
+      const resolved = await resolvePlayableAudioUrl(track, finalVersion);
+      setIsPlayingFromOffline(resolved.fromOffline);
+      audio.src = resolved.url;
       audio.load();
       try {
         await audio.play();
@@ -295,11 +350,71 @@ export function App() {
             .catch(() => {});
         }
       } catch {
-        showToast('Toque em Play novamente para iniciar o áudio.');
+        showToast(
+          !navigator.onLine && !resolved.fromOffline
+            ? 'Sem internet — baixe a música Offline antes para ouvir sem conexão.'
+            : 'Toque em Play novamente para iniciar o áudio.'
+        );
       }
     },
     [currentTrack?.id, activeVersion, showToast]
   );
+
+  // Offline download toggle (single track) & Download All
+  const handleToggleOffline = useCallback(
+    async (track: Track) => {
+      if (offlineTrackIds.has(track.id)) {
+        await removeTrackOffline(track.id);
+        setOfflineTrackIds(getOfflineTrackIds());
+        showToast(`🗑️ "${track.title}" removida do modo offline.`);
+        return;
+      }
+      setDownloadingIds((prev) => new Set(prev).add(track.id));
+      try {
+        const entry = await downloadTrackOffline(track);
+        setOfflineTrackIds(getOfflineTrackIds());
+        const mb = (entry.bytes / (1024 * 1024)).toFixed(1);
+        showToast(`📱 "${track.title}" salva no aparelho (${mb} MB) — toca offline!`);
+      } catch {
+        showToast(`Não foi possível baixar "${track.title}" offline agora.`);
+      } finally {
+        setDownloadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(track.id);
+          return next;
+        });
+      }
+    },
+    [offlineTrackIds, showToast]
+  );
+
+  const handleDownloadAllOffline = useCallback(async () => {
+    const missing = tracks.filter((t) => !offlineTrackIds.has(t.id));
+    if (missing.length === 0) {
+      showToast('✅ Todas as músicas já estão salvas offline no aparelho!');
+      return;
+    }
+    setDownloadingAll(true);
+    let okCount = 0;
+    for (const track of missing) {
+      setDownloadingIds((prev) => new Set(prev).add(track.id));
+      try {
+        await downloadTrackOffline(track);
+        okCount++;
+        setOfflineTrackIds(getOfflineTrackIds());
+      } catch {
+        // continue remaining tracks
+      } finally {
+        setDownloadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(track.id);
+          return next;
+        });
+      }
+    }
+    setDownloadingAll(false);
+    showToast(`📱 ${okCount} músicas baixadas no aparelho! Agora tocam mesmo sem internet.`);
+  }, [tracks, offlineTrackIds, showToast]);
 
   // Auto-next when song ends
   useEffect(() => {
@@ -338,13 +453,83 @@ export function App() {
     }
   };
 
-  const handlePrevNext = (dir: -1 | 1) => {
-    const list = playQueue.length ? playQueue : tracks;
-    if (!list.length) return;
-    const idx = currentTrack ? list.findIndex((t) => t.id === currentTrack.id) : 0;
-    const nextIdx = (idx + dir + list.length) % list.length;
-    void handlePlayTrack(list[nextIdx], 'v1', list);
-  };
+  const handlePrevNext = useCallback(
+    (dir: -1 | 1) => {
+      const list = playQueue.length ? playQueue : tracks;
+      if (!list.length) return;
+      const idx = currentTrack ? list.findIndex((t) => t.id === currentTrack.id) : 0;
+      const nextIdx = (idx + dir + list.length) % list.length;
+      void handlePlayTrack(list[nextIdx], 'v1', list);
+    },
+    [playQueue, tracks, currentTrack, handlePlayTrack]
+  );
+
+  // Lock-Screen MediaSession (Chrome/Safari/PWA) + Native Android Lock-Screen Foreground Service Bridge
+  useEffect(() => {
+    if (!currentTrack) return;
+
+    // 1. Native Android APK Media Notification + WakeLock
+    try {
+      window.AndroidBridge?.updateMediaState?.(
+        `${currentTrack.emoji ? currentTrack.emoji + ' ' : ''}${currentTrack.title}`,
+        currentTrack.artist || 'LENKYX',
+        currentTrack.album || 'Cosmic Phonk',
+        isPlaying
+      );
+    } catch {
+      // ignore
+    }
+
+    // 2. Web MediaSession API (Lock Screen cover + controls on Chrome/iOS/Android)
+    if ('mediaSession' in navigator) {
+      try {
+        const absCover = new URL(currentTrack.coverUrl || '/covers/album-official.jpg', window.location.origin).href;
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentTrack.title,
+          artist: currentTrack.artist || 'LENKYX',
+          album: currentTrack.album || 'Cosmic Phonk',
+          artwork: [
+            { src: absCover, sizes: '512x512', type: 'image/jpeg' },
+            { src: absCover, sizes: '1024x1024', type: 'image/jpeg' },
+          ],
+        });
+        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+        navigator.mediaSession.setActionHandler('play', () => void handleTogglePlay());
+        navigator.mediaSession.setActionHandler('pause', () => void handleTogglePlay());
+        navigator.mediaSession.setActionHandler('previoustrack', () => handlePrevNext(-1));
+        navigator.mediaSession.setActionHandler('nexttrack', () => handlePrevNext(1));
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (typeof details.seekTime === 'number' && audioRef.current) {
+            audioRef.current.currentTime = details.seekTime;
+            setCurrentTime(details.seekTime);
+          }
+        });
+      } catch {
+        // ignore MediaSession unsupported fields
+      }
+    }
+  }, [currentTrack, isPlaying, handlePrevNext]);
+
+  // Android Lock-Screen Notification Action Callback
+  useEffect(() => {
+    window.__lenkyxMediaAction = (action) => {
+      const audio = audioRef.current;
+      if (action === 'prev') {
+        handlePrevNext(-1);
+      } else if (action === 'next') {
+        handlePrevNext(1);
+      } else if (action === 'play') {
+        if (audio && audio.paused) void audio.play().catch(() => {});
+      } else if (action === 'pause') {
+        if (audio && !audio.paused) audio.pause();
+      } else if (action === 'toggle') {
+        void handleTogglePlay();
+      }
+    };
+    return () => {
+      delete window.__lenkyxMediaAction;
+    };
+  }, [handlePrevNext]);
 
   const handleSeek = (t: number) => {
     if (audioRef.current) audioRef.current.currentTime = t;
@@ -577,10 +762,10 @@ export function App() {
     <div className="min-h-screen bg-[#070412] text-white flex">
       {/* === DESKTOP SPOTIFY / YOUTUBE MUSIC LEFT SIDEBAR === */}
       <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-0 left-0 z-30 bg-[#090515] border-r border-white/10">
-        {/* Brand Logo */}
+        {/* Brand Logo (tap 5x secretly for Creator access) */}
         <div
-          onClick={() => setActiveTab('catalog')}
-          className="h-14 px-4 flex items-center gap-2.5 border-b border-white/10 cursor-pointer hover:bg-white/[0.03]"
+          onClick={handleBrandTap}
+          className="h-14 px-4 flex items-center gap-2.5 border-b border-white/10 cursor-pointer hover:bg-white/[0.03] select-none"
         >
           <img
             src="/covers/avatar.jpg"
@@ -693,29 +878,23 @@ export function App() {
           >
             <MessageCircle className="w-3.5 h-3.5" /> Indicar no WhatsApp
           </button>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => {
-                setPixInitialTab('donate');
-                setPixOpen(true);
-              }}
-              className="py-1.5 px-2 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/35 text-pink-200 text-[11px] font-bold flex items-center justify-center gap-1"
-            >
-              <QrCode className="w-3.5 h-3.5" /> PIX
-            </button>
+          <button
+            onClick={() => {
+              setPixInitialTab('donate');
+              setPixOpen(true);
+            }}
+            className="w-full py-2 px-3 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/35 text-pink-200 text-xs font-bold flex items-center justify-center gap-1.5"
+          >
+            <QrCode className="w-3.5 h-3.5" /> Apoiar via PIX
+          </button>
+          {mode === 'creator' && (
             <button
               onClick={() => setCreatorModalOpen(true)}
-              className={`py-1.5 px-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 ${
-                mode === 'creator'
-                  ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-purple-300'
-              }`}
-              title={mode === 'creator' ? 'Painel Criador LENKYX' : 'Acesso Criador'}
+              className="w-full py-1.5 px-2 rounded-xl border bg-emerald-500/20 border-emerald-400/40 text-emerald-200 text-[11px] font-bold flex items-center justify-center gap-1"
             >
-              {mode === 'creator' ? <ShieldCheck className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-              {mode === 'creator' ? 'Criador' : 'Admin'}
+              <Sparkles className="w-3.5 h-3.5" /> Painel Criador
             </button>
-          </div>
+          )}
         </div>
       </aside>
 
@@ -723,10 +902,10 @@ export function App() {
       <div className="flex-1 md:pl-56 lg:pl-60 min-w-0 flex flex-col min-h-screen">
         {/* SLIM TOP HEADER WITH GLOBAL WORLD SEARCH BAR (YouTube Music / Spotify Style) */}
         <header className="sticky top-0 z-30 h-14 bg-[#070412]/90 backdrop-blur-xl border-b border-white/10 px-3 sm:px-5 flex items-center justify-between gap-2.5">
-          {/* Mobile Brand Mini */}
+          {/* Mobile Brand Mini (tap 5x secretly for Creator access) */}
           <div
-            onClick={() => setActiveTab('catalog')}
-            className="flex md:hidden items-center gap-1.5 shrink-0 cursor-pointer"
+            onClick={handleBrandTap}
+            className="flex md:hidden items-center gap-1.5 shrink-0 cursor-pointer select-none"
           >
             <img src="/covers/avatar.jpg" alt="LENKYX" className="w-7 h-7 rounded-full border border-pink-500" />
             <span className="font-display text-xs font-black">LENKYX</span>
@@ -800,25 +979,13 @@ export function App() {
               </button>
             )}
 
-            <button
-              onClick={() => setCreatorModalOpen(true)}
-              className={`md:hidden p-2 rounded-full border ${
-                mode === 'creator'
-                  ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
-                  : 'bg-white/5 border-white/10 text-purple-300'
-              }`}
-              title="Criador LENKYX"
-            >
-              {mode === 'creator' ? <ShieldCheck className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-            </button>
-
             {mode === 'creator' && (
               <button
                 onClick={() => void handleCreatorLogout()}
-                className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-[10px] font-bold text-emerald-200 hover:bg-emerald-500/25"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-[10px] font-bold text-emerald-200 hover:bg-emerald-500/25"
                 title="Voltar ao Modo Fã"
               >
-                <Sparkles className="w-3 h-3" /> CRIADOR
+                <Sparkles className="w-3 h-3" /> <span className="hidden sm:inline">CRIADOR</span>
                 <LogOut className="w-3 h-3 ml-0.5 opacity-75" />
               </button>
             )}
@@ -844,6 +1011,9 @@ export function App() {
                   currentTrack={currentTrack}
                   activeVersion={activeVersion}
                   isPlaying={isPlaying}
+                  offlineTrackIds={offlineTrackIds}
+                  downloadingIds={downloadingIds}
+                  downloadingAll={downloadingAll}
                   onPlayTrack={(t, ver) => void handlePlayTrack(t, ver, tracks)}
                   onLikeTrack={(t) => void handleLikeTrack(t)}
                   onShareTrack={(t) => {
@@ -860,6 +1030,8 @@ export function App() {
                     setActiveTab('video');
                   }}
                   onAddToPlaylist={addTrackToPlaylist}
+                  onToggleOffline={(t) => void handleToggleOffline(t)}
+                  onDownloadAllOffline={() => void handleDownloadAllOffline()}
                   onEditTrack={(t) => {
                     setEditingTrack(t);
                     setUploadModalOpen(true);
@@ -948,6 +1120,9 @@ export function App() {
           track={currentTrack}
           activeVersion={activeVersion}
           isPlaying={isPlaying}
+          isPlayingFromOffline={isPlayingFromOffline}
+          isCurrentTrackOffline={currentTrack ? offlineTrackIds.has(currentTrack.id) : false}
+          isDownloadingOffline={currentTrack ? downloadingIds.has(currentTrack.id) : false}
           currentTime={currentTime}
           duration={duration}
           volume={volume}
@@ -967,6 +1142,7 @@ export function App() {
             setLyricsTrack(t);
           }}
           onLike={(t) => void handleLikeTrack(t)}
+          onToggleOffline={(t) => void handleToggleOffline(t)}
         />
       )}
 
@@ -1069,10 +1245,6 @@ export function App() {
           setUserProfile(null);
           saveUserProfile(null);
           showToast('Você saiu do perfil de ouvinte.');
-        }}
-        onOpenCreatorLogin={() => {
-          setUserAuthOpen(false);
-          setCreatorModalOpen(true);
         }}
         onOpenShare={() => {
           setUserAuthOpen(false);

@@ -82,6 +82,20 @@ input[type='range'].dj-crossfader::-webkit-slider-thumb {
   animation: spinSlow 6s linear infinite;
 }
 
+@keyframes eqBar {
+  0%, 100% { transform: scaleY(0.28); }
+  50% { transform: scaleY(1); }
+}
+.eq-bar-1 { animation: eqBar 0.75s ease-in-out infinite; transform-origin: bottom; }
+.eq-bar-2 { animation: eqBar 0.55s ease-in-out infinite 0.15s; transform-origin: bottom; }
+.eq-bar-3 { animation: eqBar 0.85s ease-in-out infinite 0.3s; transform-origin: bottom; }
+
+.glass-modern {
+  background: linear-gradient(145deg, rgba(24, 13, 48, 0.76), rgba(9, 5, 22, 0.92));
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 7px;
