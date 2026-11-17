@@ -247,10 +247,10 @@ export const WorldExploreView: React.FC<Props> = ({
           </div>
           <div className="flex items-stretch gap-2.5 overflow-x-auto pb-2">
             {famousArtists.map((art) => (
-              <button
+                <button
                 key={art.name}
                 onClick={() => void runSearch(art.name, `🎤 ${art.name}`)}
-                className="group w-28 sm:w-32 shrink-0 rounded-2xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 hover:border-pink-400/50 p-2.5 flex flex-col items-center text-center gap-2 transition"
+                className="group w-28 sm:w-32 shrink-0 rounded-2xl cosmic-card-3d p-2.5 flex flex-col items-center text-center gap-2"
               >
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full p-[2px] bg-gradient-to-tr from-pink-500 via-purple-500 to-cyan-400 group-hover:scale-105 transition">
                   <img
@@ -287,7 +287,7 @@ export const WorldExploreView: React.FC<Props> = ({
               onClick={() =>
                 void runSearch(pl.searchQuery, `${pl.emoji} ${pl.title}`, Boolean(pl.includeArchiveSpace))
               }
-              className={`text-left rounded-2xl p-3.5 bg-gradient-to-br ${pl.gradient} border border-white/15 hover:border-cyan-400/60 hover:brightness-110 transition flex items-start gap-3`}
+              className={`text-left rounded-2xl p-3.5 bg-gradient-to-br ${pl.gradient} cosmic-card-3d flex items-start gap-3`}
             >
               <div className="w-11 h-11 rounded-xl bg-black/45 border border-white/15 flex items-center justify-center text-2xl shrink-0">
                 {pl.emoji}
@@ -334,7 +334,7 @@ export const WorldExploreView: React.FC<Props> = ({
           <div>Nenhuma faixa encontrada agora. Escolha um artista famoso ou playlist acima!</div>
         </div>
       ) : (
-        <div className="rounded-2xl bg-white/[0.03] border border-white/10 divide-y divide-white/[0.06] overflow-visible">
+        <div className="rounded-3xl cosmic-card-3d divide-y divide-white/[0.06] overflow-visible">
           {results.map((t, idx) => {
             const active = currentTrack?.id === t.id;
             const hasDirectAudio = Boolean(t.audioUrl && !t.youtubeVideoId);

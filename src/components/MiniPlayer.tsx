@@ -52,7 +52,6 @@ function fmt(sec: number): string {
 
 export const MiniPlayer: React.FC<Props> = ({
   track,
-  activeVersion,
   isPlaying,
   isPlayingFromOffline,
   isCurrentTrackOffline,
@@ -61,7 +60,6 @@ export const MiniPlayer: React.FC<Props> = ({
   duration,
   volume,
   onTogglePlay,
-  onSelectVersion,
   onPrev,
   onNext,
   onSeek,
@@ -120,9 +118,9 @@ export const MiniPlayer: React.FC<Props> = ({
 
   return (
     <>
-      {/* FULL-SCREEN SOPHISTICATED NOW-PLAYING MODAL (Lock-Screen Style) */}
+      {/* FULL-SCREEN 3D FLOATING NOW-PLAYING MODAL */}
       {expanded && (
-        <div className="fixed inset-0 z-50 bg-[#060310]/98 backdrop-blur-2xl flex flex-col justify-between p-5 sm:p-8 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-[#04010c]/95 backdrop-blur-2xl flex flex-col justify-between p-5 sm:p-8 overflow-y-auto">
           <div
             className="absolute inset-0 opacity-25 pointer-events-none blur-3xl scale-110"
             style={{
@@ -142,29 +140,35 @@ export const MiniPlayer: React.FC<Props> = ({
                 <ChevronDown className="w-5 h-5" />
               </button>
               <div className="text-center">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-cyan-300">
-                  TOCANDO AGORA
+                <div className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-cyan-300">
+                  TOCANDO NO ESPAÇO
                 </div>
                 <div className="text-xs font-bold text-purple-200/80 truncate max-w-[200px]">{track.album}</div>
               </div>
               <button
                 onClick={() => onShare(track)}
                 className="p-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300"
-                title="Divulgar"
+                title="Compartilhar"
               >
                 <MessageCircle className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Cover + Equalizer */}
+            {/* Floating 3D Cover + Equalizer */}
             <div className="flex flex-col items-center gap-4 my-auto">
-              <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-3xl overflow-hidden border border-white/15 shadow-[0_20px_60px_rgba(236,72,153,0.35)]">
-                <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
-                {isPlayingFromOffline && (
-                  <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/75 border border-emerald-400/50 text-[10px] font-extrabold text-emerald-300 flex items-center gap-1">
-                    <WifiOff className="w-3 h-3" /> TOCANDO OFFLINE
-                  </span>
-                )}
+              <div className="relative w-64 h-64 sm:w-72 sm:h-72 cosmic-float-slow">
+                <div
+                  className="absolute -inset-4 rounded-full border border-cyan-400/25 pointer-events-none"
+                  style={{ transform: 'rotateX(70deg) rotateY(-12deg)' }}
+                />
+                <div className="w-full h-full rounded-3xl overflow-hidden border border-white/20 shadow-[0_24px_70px_rgba(236,72,153,0.42)]">
+                  <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
+                  {isPlayingFromOffline && (
+                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/75 border border-emerald-400/50 text-[10px] font-extrabold text-emerald-300 flex items-center gap-1">
+                      <WifiOff className="w-3 h-3" /> OFFLINE
+                    </span>
+                  )}
+                </div>
               </div>
 
               <canvas ref={bigCanvasRef} width={300} height={34} className="w-full max-w-[300px] opacity-90" />
@@ -187,31 +191,6 @@ export const MiniPlayer: React.FC<Props> = ({
                   />
                 </button>
               </div>
-
-              {track.audioUrlV2 && (
-                <div className="w-full grid grid-cols-2 gap-2 p-1 rounded-xl bg-white/[0.06] border border-white/10">
-                  <button
-                    onClick={() => onSelectVersion('v1')}
-                    className={`py-1.5 rounded-lg text-xs font-extrabold transition ${
-                      activeVersion === 'v1'
-                        ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow'
-                        : 'text-purple-200'
-                    }`}
-                  >
-                    Versão 1 (Principal)
-                  </button>
-                  <button
-                    onClick={() => onSelectVersion('v2')}
-                    className={`py-1.5 rounded-lg text-xs font-extrabold transition ${
-                      activeVersion === 'v2'
-                        ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-black shadow'
-                        : 'text-cyan-200'
-                    }`}
-                  >
-                    Versão 2 {track.v2Label ? `· ${track.v2Label}` : ''}
-                  </button>
-                </div>
-              )}
 
               {/* Scrubber */}
               <div className="w-full space-y-1">
@@ -237,7 +216,7 @@ export const MiniPlayer: React.FC<Props> = ({
                 </button>
                 <button
                   onClick={onTogglePlay}
-                  className="w-16 h-16 rounded-full bg-gradient-to-br from-white to-purple-100 text-black flex items-center justify-center shadow-[0_0_30px_rgba(236,72,153,0.6)] hover:scale-105 active:scale-95 transition"
+                  className="w-16 h-16 rounded-full bg-gradient-to-br from-white to-purple-100 text-black flex items-center justify-center shadow-[0_0_32px_rgba(236,72,153,0.65)] hover:scale-105 active:scale-95 transition"
                 >
                   {isPlaying ? <Pause className="w-7 h-7 fill-black" /> : <Play className="w-7 h-7 fill-black ml-1" />}
                 </button>
@@ -301,76 +280,51 @@ export const MiniPlayer: React.FC<Props> = ({
         </div>
       )}
 
-      {/* COMPACT PERSISTENT MINI PLAYER BAR */}
-      <div className="fixed bottom-14 md:bottom-0 left-0 right-0 z-40 bg-[#0b0618]/96 backdrop-blur-xl border-t border-white/10 px-3 sm:px-4 py-2 shadow-[0_-10px_30px_rgba(0,0,0,0.85)]">
-        <div className="flex items-center justify-between gap-2.5 h-14">
-          {/* Left: Track Info (tap to expand full screen!) */}
+      {/* FLOATING 3D SPACE GLASS MINI PLAYER DOCK */}
+      <div className="fixed bottom-16 md:bottom-3 left-2 right-2 md:left-60 lg:left-64 md:right-4 z-40 rounded-2xl cosmic-card-3d px-3 sm:px-4 py-2 shadow-[0_14px_40px_rgba(0,0,0,0.8)]">
+        <div className="flex items-center justify-between gap-2.5 h-13">
+          {/* Left: Track Info */}
           <div
             onClick={() => setExpanded(true)}
-            className="flex items-center gap-2.5 min-w-0 flex-1 md:flex-none md:w-72 cursor-pointer group"
-            title="Toque para abrir Player em Tela Cheia"
+            className="flex items-center gap-2.5 min-w-0 flex-1 md:flex-none md:w-64 cursor-pointer group"
+            title="Abrir Player Espacial em Tela Cheia"
           >
             <div className="relative shrink-0">
               <img
                 src={track.coverUrl}
                 alt={track.title}
-                className={`w-11 h-11 rounded-lg object-cover border border-white/15 ${
-                  isPlaying ? 'shadow-[0_0_12px_rgba(236,72,153,0.55)]' : ''
+                className={`w-10 h-10 rounded-xl object-cover border border-white/20 ${
+                  isPlaying ? 'shadow-[0_0_16px_rgba(236,72,153,0.6)]' : ''
                 }`}
               />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/80 border border-white/20 flex items-center justify-center opacity-80 group-hover:opacity-100">
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/80 border border-white/20 flex items-center justify-center opacity-85 group-hover:opacity-100">
                 <ChevronUp className="w-3 h-3 text-cyan-300" />
               </span>
             </div>
             <div className="min-w-0">
-              <div className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1">
+              <div className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1.5">
                 <span className="truncate">
                   {track.emoji} {track.title}
                 </span>
                 {isPlayingFromOffline && (
-                  <span className="px-1 py-0.2 rounded bg-emerald-500/25 text-emerald-300 text-[9px] font-extrabold shrink-0">
+                  <span className="px-1.5 py-0.2 rounded bg-emerald-500/25 text-emerald-300 text-[9px] font-extrabold shrink-0">
                     OFFLINE
                   </span>
                 )}
               </div>
-              <div className="text-[11px] text-purple-300/80 truncate flex items-center gap-1.5">
-                <span className="truncate">{track.artist}</span>
-                {track.audioUrlV2 && (
-                  <span
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center rounded overflow-hidden border border-pink-400/40 bg-black/60 shrink-0"
-                  >
-                    <button
-                      onClick={() => onSelectVersion('v1')}
-                      className={`px-1.5 py-0.2 text-[9px] font-extrabold ${
-                        activeVersion === 'v1' ? 'bg-pink-500 text-white' : 'text-purple-200'
-                      }`}
-                    >
-                      V1
-                    </button>
-                    <button
-                      onClick={() => onSelectVersion('v2')}
-                      className={`px-1.5 py-0.2 text-[9px] font-extrabold ${
-                        activeVersion === 'v2' ? 'bg-cyan-400 text-black' : 'text-purple-200'
-                      }`}
-                    >
-                      V2
-                    </button>
-                  </span>
-                )}
-              </div>
+              <div className="text-[11px] text-purple-200/75 truncate">{track.artist}</div>
             </div>
           </div>
 
-          {/* Center: Controls + Slim Progress Bar */}
-          <div className="flex flex-col items-center gap-1 flex-none sm:flex-1 max-w-lg">
+          {/* Center: Controls + Progress Bar */}
+          <div className="flex flex-col items-center gap-1 flex-none sm:flex-1 max-w-md">
             <div className="flex items-center gap-2 sm:gap-3">
               <button onClick={onPrev} className="p-1 text-purple-200 hover:text-white transition" title="Anterior">
                 <SkipBack className="w-4 h-4" />
               </button>
               <button
                 onClick={onTogglePlay}
-                className="w-8 h-8 rounded-full bg-white hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow transition"
+                className="w-8 h-8 rounded-full bg-white hover:scale-105 active:scale-95 text-black flex items-center justify-center shadow-[0_0_18px_rgba(255,255,255,0.45)] transition"
               >
                 {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black ml-0.5" />}
               </button>
@@ -393,12 +347,12 @@ export const MiniPlayer: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Right: Clip / Expand / Offline + Desktop Quick Icons + Volume */}
-          <div className="flex items-center gap-1 justify-end md:w-80">
+          {/* Right: Quick Actions + Volume */}
+          <div className="flex items-center gap-1 justify-end md:w-72">
             {track.youtubeVideoId && onWatchClip && (
               <button
                 onClick={onWatchClip}
-                className="px-2 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 text-[10px] font-extrabold flex items-center gap-1 shrink-0 transition"
+                className="px-2.5 py-1 rounded-xl bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 text-[10px] font-extrabold flex items-center gap-1 shrink-0 transition"
                 title="Assistir Clipe Oficial Completo"
               >
                 <Film className="w-3.5 h-3.5" />
@@ -409,9 +363,9 @@ export const MiniPlayer: React.FC<Props> = ({
               onClick={() => onToggleOffline(track)}
               disabled={isDownloadingOffline}
               className={`p-1.5 rounded-lg transition ${
-                isCurrentTrackOffline ? 'text-emerald-400' : 'text-purple-300 hover:text-cyan-300'
+                isCurrentTrackOffline ? 'text-emerald-400' : 'text-purple-200/80 hover:text-cyan-300'
               }`}
-              title={isCurrentTrackOffline ? 'Salva Offline (toque para remover)' : 'Baixar para ouvir Offline'}
+              title={isCurrentTrackOffline ? 'Salva Offline' : 'Baixar Offline'}
             >
               {isDownloadingOffline ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -422,11 +376,11 @@ export const MiniPlayer: React.FC<Props> = ({
               )}
             </button>
             <div className="hidden md:flex items-center gap-1">
-              <canvas ref={canvasRef} width={50} height={22} className="rounded opacity-85 mr-0.5" />
+              <canvas ref={canvasRef} width={44} height={20} className="rounded opacity-85 mr-0.5" />
               <button
                 onClick={() => onLike(track)}
                 className={`p-1.5 rounded-lg transition ${
-                  track.favorite ? 'text-pink-400' : 'text-purple-300 hover:text-pink-400'
+                  track.favorite ? 'text-pink-400' : 'text-purple-200/80 hover:text-pink-400'
                 }`}
                 title="Curtir"
               >
@@ -434,27 +388,20 @@ export const MiniPlayer: React.FC<Props> = ({
               </button>
               <button
                 onClick={() => onOpenLyrics(track)}
-                className="p-1.5 rounded-lg text-purple-300 hover:text-white transition"
+                className="p-1.5 rounded-lg text-purple-200/80 hover:text-white transition"
                 title="Letra"
               >
                 <FileText className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onSendToDJ(track)}
-                className="p-1.5 rounded-lg text-cyan-300 hover:bg-cyan-500/15 transition"
-                title="Carregar na Mesa de DJ"
+                className="p-1.5 rounded-lg text-cyan-300 hover:bg-cyan-500/20 transition"
+                title="Mixar na Mesa DJ"
               >
                 <Disc3 className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => onShare(track)}
-                className="p-1.5 rounded-lg text-emerald-300 hover:bg-emerald-500/15 transition"
-                title="Divulgar / QR Code"
-              >
-                <MessageCircle className="w-4 h-4" />
-              </button>
-              <div className="flex items-center gap-1.5 w-20 ml-1">
-                <Volume2 className="w-3.5 h-3.5 text-purple-300 shrink-0" />
+              <div className="flex items-center gap-1.5 pl-1 w-20">
+                <Volume2 className="w-3.5 h-3.5 text-purple-200/75 shrink-0" />
                 <input
                   type="range"
                   min={0}

@@ -638,7 +638,7 @@ app.get('/download/apk', (_req, res) => {
   const db = readDb();
   const redirectUrl =
     (db.settings?.apkDownloadUrl || '').trim() ||
-    'https://drive.google.com/uc?id=1wmBstYY4_L0tgJIiYM23mO6uGAkd9D2d&export=download';
+    'https://drive.google.com/uc?id=1pbXXlgAoLMygiIni7ivc3xIfRfCWmwzo&export=download';
   return res.redirect(302, redirectUrl);
 });
 
@@ -648,11 +648,11 @@ app.get('/api/app-update', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const db = readDb();
   const fallback = {
-    latestVersionCode: 11,
-    latestVersionName: '2.0.7',
+    latestVersionCode: 12,
+    latestVersionName: '2.0.8',
     apkUrl:
       (db.settings?.apkDownloadUrl || '').trim() ||
-      'https://drive.google.com/uc?id=1wmBstYY4_L0tgJIiYM23mO6uGAkd9D2d&export=download',
+      'https://drive.google.com/uc?id=1pbXXlgAoLMygiIni7ivc3xIfRfCWmwzo&export=download',
     releaseNotes: 'App 100% otimizado, busca IA, clipes HD, modo offline e auto-atualização.',
     updateAvailable: false,
   };

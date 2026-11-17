@@ -124,7 +124,7 @@ export const PlaylistsView: React.FC<Props> = ({
   return (
     <div className="space-y-4 pb-28 md:pb-24">
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-r from-[#180a36] to-[#0f162e] border border-purple-500/25 p-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="rounded-3xl cosmic-card-3d p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
             <ListMusic className="w-5 h-5 text-white" />

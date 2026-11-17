@@ -34,6 +34,7 @@ import { isAndroidApk } from './utils/androidBridge';
 import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
 import { PlaylistsView } from './components/PlaylistsView';
+import { CosmicSpaceBackdrop } from './components/CosmicSpaceBackdrop';
 const DJMixerView = React.lazy(() => import('./components/DJMixerView').then((m) => ({ default: m.DJMixerView })));
 const VideoStudioView = React.lazy(() => import('./components/VideoStudioView').then((m) => ({ default: m.VideoStudioView })));
 const StudioCreateView = React.lazy(() => import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView })));
@@ -72,7 +73,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pixCity: 'CAMPO GRANDE',
   pixMessage: 'Apoio LENKYX Cosmic Phonk',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
-  apkDownloadUrl: 'https://drive.google.com/uc?id=1wmBstYY4_L0tgJIiYM23mO6uGAkd9D2d&export=download',
+  apkDownloadUrl: 'https://drive.google.com/uc?id=1pbXXlgAoLMygiIni7ivc3xIfRfCWmwzo&export=download',
   youtubeUrl: '',
   sunoHandle: '@lenkyx',
   sunoProfileUrl: 'https://suno.com/@lenkyx',
@@ -994,9 +995,12 @@ export function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#070412] text-white flex">
-      {/* === DESKTOP SPOTIFY / YOUTUBE MUSIC LEFT SIDEBAR === */}
-      <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-0 left-0 z-30 bg-[#090515] border-r border-white/10">
+    <div className="min-h-screen bg-[#04010c] text-white flex relative cosmic-scene">
+      {/* === 3D DEEP SPACE PARALLAX STARFIELD & FLOATING PLANETS === */}
+      <CosmicSpaceBackdrop />
+
+      {/* === DESKTOP FLOATING GLASS LEFT SIDEBAR === */}
+      <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
         {/* Brand Logo (tap 5x secretly for Creator access) */}
         <div
           onClick={handleBrandTap}
@@ -1093,7 +1097,7 @@ export function App() {
         </div>
 
         {/* Sidebar Footer: Space Download + Share + PIX + Creator */}
-        <div className="p-2.5 pb-20 border-t border-white/10 space-y-1.5">
+        <div className="p-3 pb-4 border-t border-white/10 space-y-1.5">
           {!isAndroidApk() && (
             <button
               onClick={() => setSpaceDownloadOpen(true)}
@@ -1132,9 +1136,9 @@ export function App() {
       </aside>
 
       {/* === MAIN CONTENT SHELL === */}
-      <div className="flex-1 md:pl-56 lg:pl-60 min-w-0 flex flex-col min-h-screen">
-        {/* SLIM TOP HEADER WITH GLOBAL WORLD SEARCH BAR (YouTube Music / Spotify Style) */}
-        <header className="sticky top-0 z-30 h-14 bg-[#070412]/90 backdrop-blur-xl border-b border-white/10 px-3 sm:px-5 flex items-center justify-between gap-2.5">
+      <div className="relative z-10 flex-1 md:pl-60 lg:pl-64 min-w-0 flex flex-col min-h-screen">
+        {/* SLIM FLOATING GLASS TOP HEADER */}
+        <header className="sticky top-2 z-30 mx-3 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-3 sm:px-4 flex items-center justify-between gap-2.5">
           {/* Mobile Brand Mini (tap 5x secretly for Creator access) */}
           <div
             onClick={handleBrandTap}
