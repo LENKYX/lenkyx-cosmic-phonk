@@ -12,7 +12,7 @@ import {
   UserCircle2,
   Sparkles,
   LogOut,
-  Smartphone,
+  Rocket,
 } from 'lucide-react';
 import {
   AppMode,
@@ -33,6 +33,7 @@ import { StudioCreateView } from './components/StudioCreateView';
 import { MiniPlayer } from './components/MiniPlayer';
 import { PixModal } from './components/PixModal';
 import { ShareModal } from './components/ShareModal';
+import { SpaceDownloadModal } from './components/SpaceDownloadModal';
 import { UploadTrackModal } from './components/UploadTrackModal';
 import { CreatorModal } from './components/CreatorModal';
 import { UserAuthModal } from './components/UserAuthModal';
@@ -64,7 +65,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pixCity: 'CAMPO GRANDE',
   pixMessage: 'Apoio LENKYX Cosmic Phonk',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
-  apkDownloadUrl: 'https://drive.google.com/uc?id=109-i00UMsMlBY_RcrVvng-oHiW0cXwFZ&export=download',
+  apkDownloadUrl: 'https://drive.google.com/uc?id=1JDjLjRpzs5gAoGnpAmRmZbsCo_KQiEda&export=download',
   youtubeUrl: '',
   sunoHandle: '@lenkyx',
   sunoProfileUrl: 'https://suno.com/@lenkyx',
@@ -101,8 +102,20 @@ export function App() {
   const [userTracks, setUserTracks] = useState<Track[]>([]);
   const [worldCacheTracks, setWorldCacheTracks] = useState<Track[]>([]);
 
-  // Global Player state
+  // Global Player state (HTML5 <audio> + YouTube Full-Track Audio Engine)
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const ytPlayerRef = useRef<{
+    loadVideoById?: (id: string) => void;
+    playVideo?: () => void;
+    pauseVideo?: () => void;
+    stopVideo?: () => void;
+    seekTo?: (sec: number, allowSeekAhead?: boolean) => void;
+    setVolume?: (vol: number) => void;
+    getCurrentTime?: () => number;
+    getDuration?: () => number;
+    getPlayerState?: () => number;
+  } | null>(null);
+  const ytPendingVideoRef = useRef<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [activeVersion, setActiveVersion] = useState<AudioVersion>('v1');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -110,6 +123,17 @@ export function App() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.88);
   const [playQueue, setPlayQueue] = useState<Track[]>([]);
+  const playQueueRef = useRef<Track[]>([]);
+  const currentTrackRef = useRef<Track | null>(null);
+  const handlePlayTrackRef = useRef<
+    ((track: Track, requestedVersion?: AudioVersion, customQueue?: Track[]) => Promise<void>) | null
+  >(null);
+  useEffect(() => {
+    playQueueRef.current = playQueue;
+  }, [playQueue]);
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
 
   // Cross-tab context
   const [djDeckA, setDjDeckA] = useState<Track | null>(null);
@@ -130,6 +154,7 @@ export function App() {
   const [pixInitialTab, setPixInitialTab] = useState<'donate' | 'config'>('donate');
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
+  const [spaceDownloadOpen, setSpaceDownloadOpen] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [lyricsTrack, setLyricsTrack] = useState<Track | null>(null);
@@ -297,8 +322,101 @@ export function App() {
     };
   }, []);
 
+  // Setup YouTube IFrame Full-Length Audio Engine (zero 30s previews — plays complete official songs!)
+  useEffect(() => {
+    const win = window as unknown as {
+      YT?: {
+        Player: new (
+          id: string,
+          opts: Record<string, unknown>
+        ) => NonNullable<typeof ytPlayerRef.current>;
+      };
+      onYouTubeIframeAPIReady?: () => void;
+    };
+
+    const initYt = () => {
+      if (ytPlayerRef.current || !win.YT?.Player) return;
+      const hostEl = document.getElementById('lenkyx-yt-audio-host');
+      if (!hostEl) return;
+      ytPlayerRef.current = new win.YT.Player('lenkyx-yt-audio-host', {
+        height: '180',
+        width: '320',
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: () => {
+            ytPlayerRef.current?.setVolume?.(Math.round(volume * 100));
+            if (ytPendingVideoRef.current) {
+              const vid = ytPendingVideoRef.current;
+              ytPendingVideoRef.current = null;
+              ytPlayerRef.current?.loadVideoById?.(vid);
+            }
+          },
+          onStateChange: (ev: { data: number }) => {
+            if (!currentTrackRef.current?.youtubeVideoId) return;
+            if (ev.data === 1) {
+              setIsPlaying(true);
+              const dur = ytPlayerRef.current?.getDuration?.() || 0;
+              if (dur > 0) setDuration(dur);
+            } else if (ev.data === 2) {
+              setIsPlaying(false);
+            } else if (ev.data === 0) {
+              setIsPlaying(false);
+              const list = playQueueRef.current.length ? playQueueRef.current : tracks;
+              const cur = currentTrackRef.current;
+              if (cur && list.length > 0) {
+                const idx = list.findIndex((t) => t.id === cur.id);
+                const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
+                if (next && handlePlayTrackRef.current) {
+                  void handlePlayTrackRef.current(next, 'v1', list);
+                }
+              }
+            }
+          },
+        },
+      });
+    };
+
+    if (win.YT?.Player) {
+      initYt();
+    } else {
+      const prevReady = win.onYouTubeIframeAPIReady;
+      win.onYouTubeIframeAPIReady = () => {
+        prevReady?.();
+        initYt();
+      };
+      if (!document.getElementById('yt-iframe-api-script')) {
+        const s = document.createElement('script');
+        s.id = 'yt-iframe-api-script';
+        s.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(s);
+      }
+    }
+
+    const timer = window.setInterval(() => {
+      if (!currentTrackRef.current?.youtubeVideoId || !ytPlayerRef.current) return;
+      const st = ytPlayerRef.current.getPlayerState?.();
+      if (st === 1) {
+        const ct = ytPlayerRef.current.getCurrentTime?.() || 0;
+        const dt = ytPlayerRef.current.getDuration?.() || 0;
+        setCurrentTime(ct);
+        if (dt > 0) setDuration(dt);
+      }
+    }, 350);
+
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const pauseCatalogPlayer = useCallback(() => {
     audioRef.current?.pause();
+    ytPlayerRef.current?.pauseVideo?.();
   }, []);
 
   const handlePlayTrack = useCallback(
@@ -311,13 +429,26 @@ export function App() {
       }
       if (customQueue && customQueue.length > 0) {
         setPlayQueue(customQueue);
+        playQueueRef.current = customQueue;
       }
 
       const targetVersion: AudioVersion =
         requestedVersion || (currentTrack?.id === track.id ? activeVersion : 'v1');
       const finalVersion: AudioVersion = targetVersion === 'v2' && track.audioUrlV2 ? 'v2' : 'v1';
 
+      // Toggle play/pause if tapping the already active track without changing version
       if (currentTrack?.id === track.id && activeVersion === finalVersion && !requestedVersion) {
+        if (track.youtubeVideoId && !track.audioUrl) {
+          const st = ytPlayerRef.current?.getPlayerState?.();
+          if (st === 1) {
+            ytPlayerRef.current?.pauseVideo?.();
+          } else {
+            djEngine.pauseDeck('A');
+            djEngine.pauseDeck('B');
+            ytPlayerRef.current?.playVideo?.();
+          }
+          return;
+        }
         if (audio.paused) {
           djEngine.pauseDeck('A');
           djEngine.pauseDeck('B');
@@ -331,7 +462,28 @@ export function App() {
       djEngine.pauseDeck('A');
       djEngine.pauseDeck('B');
       setCurrentTrack(track);
+      currentTrackRef.current = track;
       setActiveVersion(finalVersion);
+
+      // Play full-length YouTube audio track when track is backed by youtubeVideoId
+      if (track.youtubeVideoId && !track.audioUrl) {
+        audio.pause();
+        audio.removeAttribute('src');
+        setIsPlayingFromOffline(false);
+        setCurrentTime(0);
+        setDuration(track.durationSec || 0);
+        if (ytPlayerRef.current?.loadVideoById) {
+          ytPlayerRef.current.setVolume?.(Math.round(volume * 100));
+          ytPlayerRef.current.loadVideoById(track.youtubeVideoId);
+          setIsPlaying(true);
+        } else {
+          ytPendingVideoRef.current = track.youtubeVideoId;
+        }
+        return;
+      }
+
+      // Stop any active YouTube playback when switching to direct MP3/MP4/Offline stream
+      ytPlayerRef.current?.pauseVideo?.();
 
       const resolved = await resolvePlayableAudioUrl(track, finalVersion);
       setIsPlayingFromOffline(resolved.fromOffline);
@@ -357,12 +509,20 @@ export function App() {
         );
       }
     },
-    [currentTrack?.id, activeVersion, showToast]
+    [currentTrack?.id, activeVersion, volume, showToast]
   );
+
+  useEffect(() => {
+    handlePlayTrackRef.current = handlePlayTrack;
+  }, [handlePlayTrack]);
 
   // Offline download toggle (single track) & Download All
   const handleToggleOffline = useCallback(
     async (track: Track) => {
+      if (track.youtubeVideoId && !track.audioUrl) {
+        showToast('Faixas do YouTube são reproduzidas online; use as faixas LENKYX/Audius/Espaço para salvar offline!');
+        return;
+      }
       if (offlineTrackIds.has(track.id)) {
         await removeTrackOffline(track.id);
         setOfflineTrackIds(getOfflineTrackIds());
@@ -416,20 +576,20 @@ export function App() {
     showToast(`📱 ${okCount} músicas baixadas no aparelho! Agora tocam mesmo sem internet.`);
   }, [tracks, offlineTrackIds, showToast]);
 
-  // Auto-next when song ends
+  // Auto-next when HTML5 song ends (strictly follows active playQueue!)
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const onEnded = () => {
-      const list = playQueue.length ? playQueue : tracks;
+      const list = playQueueRef.current.length ? playQueueRef.current : tracks;
       if (!currentTrack || list.length === 0) return;
       const idx = list.findIndex((t) => t.id === currentTrack.id);
-      const next = list[(idx + 1) % list.length];
+      const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
       if (next) void handlePlayTrack(next, 'v1', list);
     };
     audio.addEventListener('ended', onEnded);
     return () => audio.removeEventListener('ended', onEnded);
-  }, [currentTrack, playQueue, tracks, handlePlayTrack]);
+  }, [currentTrack, tracks, handlePlayTrack]);
 
   const handleSelectVersion = (ver: AudioVersion) => {
     if (!currentTrack) return;
@@ -438,8 +598,20 @@ export function App() {
   };
 
   const handleTogglePlay = async () => {
+    if (!currentTrack) return;
+    if (currentTrack.youtubeVideoId && !currentTrack.audioUrl) {
+      const st = ytPlayerRef.current?.getPlayerState?.();
+      if (st === 1) {
+        ytPlayerRef.current?.pauseVideo?.();
+      } else {
+        djEngine.pauseDeck('A');
+        djEngine.pauseDeck('B');
+        ytPlayerRef.current?.playVideo?.();
+      }
+      return;
+    }
     const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
+    if (!audio) return;
     if (!audio.src) {
       await handlePlayTrack(currentTrack, activeVersion);
       return;
@@ -455,13 +627,14 @@ export function App() {
 
   const handlePrevNext = useCallback(
     (dir: -1 | 1) => {
-      const list = playQueue.length ? playQueue : tracks;
+      const list = playQueueRef.current.length ? playQueueRef.current : tracks;
       if (!list.length) return;
       const idx = currentTrack ? list.findIndex((t) => t.id === currentTrack.id) : 0;
-      const nextIdx = (idx + dir + list.length) % list.length;
+      const safeIdx = idx >= 0 ? idx : 0;
+      const nextIdx = (safeIdx + dir + list.length) % list.length;
       void handlePlayTrack(list[nextIdx], 'v1', list);
     },
-    [playQueue, tracks, currentTrack, handlePlayTrack]
+    [tracks, currentTrack, handlePlayTrack]
   );
 
   // Lock-Screen MediaSession (Chrome/Safari/PWA) + Native Android Lock-Screen Foreground Service Bridge
@@ -513,15 +686,22 @@ export function App() {
   // Android Lock-Screen Notification Action Callback
   useEffect(() => {
     window.__lenkyxMediaAction = (action) => {
-      const audio = audioRef.current;
       if (action === 'prev') {
         handlePrevNext(-1);
       } else if (action === 'next') {
         handlePrevNext(1);
       } else if (action === 'play') {
-        if (audio && audio.paused) void audio.play().catch(() => {});
+        if (currentTrackRef.current?.youtubeVideoId && !currentTrackRef.current.audioUrl) {
+          ytPlayerRef.current?.playVideo?.();
+        } else if (audioRef.current?.paused) {
+          void audioRef.current.play().catch(() => {});
+        }
       } else if (action === 'pause') {
-        if (audio && !audio.paused) audio.pause();
+        if (currentTrackRef.current?.youtubeVideoId && !currentTrackRef.current.audioUrl) {
+          ytPlayerRef.current?.pauseVideo?.();
+        } else if (audioRef.current && !audioRef.current.paused) {
+          audioRef.current.pause();
+        }
       } else if (action === 'toggle') {
         void handleTogglePlay();
       }
@@ -532,13 +712,18 @@ export function App() {
   }, [handlePrevNext]);
 
   const handleSeek = (t: number) => {
-    if (audioRef.current) audioRef.current.currentTime = t;
+    if (currentTrackRef.current?.youtubeVideoId && !currentTrackRef.current.audioUrl) {
+      ytPlayerRef.current?.seekTo?.(t, true);
+    } else if (audioRef.current) {
+      audioRef.current.currentTime = t;
+    }
     setCurrentTime(t);
   };
 
   const handleVolume = (v: number) => {
     setVolume(v);
     if (audioRef.current) audioRef.current.volume = v;
+    ytPlayerRef.current?.setVolume?.(Math.round(v * 100));
   };
 
   // Playlist mutations
@@ -857,17 +1042,15 @@ export function App() {
           </div>
         </div>
 
-        {/* Sidebar Footer: Download App + Share + PIX + Creator */}
+        {/* Sidebar Footer: Space Download + Share + PIX + Creator */}
         <div className="p-2.5 pb-20 border-t border-white/10 space-y-1.5">
           {!isAndroidApk() && (
-            <a
-              href={settings.apkDownloadUrl || '/download/apk'}
-              target="_blank"
-              rel="noreferrer"
-              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black text-xs font-black flex items-center justify-center gap-1.5 shadow transition"
+            <button
+              onClick={() => setSpaceDownloadOpen(true)}
+              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500 hover:brightness-110 text-black text-xs font-black flex items-center justify-center gap-1.5 shadow-[0_0_20px_rgba(34,211,238,0.35)] transition"
             >
-              <Smartphone className="w-3.5 h-3.5" /> Baixar App Android
-            </a>
+              <Rocket className="w-3.5 h-3.5" /> Baixar App Espacial
+            </button>
           )}
           <button
             onClick={() => {
@@ -911,38 +1094,35 @@ export function App() {
             <span className="font-display text-xs font-black">LENKYX</span>
           </div>
 
-          {/* GLOBAL SEARCH BAR — filters catalog OR searches worldwide music! */}
+          {/* GLOBAL SEARCH BAR — ONLY ONE magnifying glass across the entire app! */}
           <form onSubmit={handleGlobalSearchSubmit} className="flex-1 max-w-xl relative flex items-center">
-            <Search className="w-4 h-4 text-purple-300/70 absolute left-3 pointer-events-none" />
+            <Search className="w-4 h-4 text-cyan-300/80 absolute left-3 pointer-events-none" />
             <input
               type="text"
               value={globalSearch}
               onChange={(e) => setGlobalSearch(e.target.value)}
-              placeholder="Buscar músicas LENKYX ou qualquer artista do mundo..."
-              className="w-full pl-9 pr-24 sm:pr-28 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/[0.1] focus:bg-white/[0.12] border border-white/10 focus:border-cyan-400/50 text-xs sm:text-sm text-white placeholder-purple-300/60 focus:outline-none transition"
+              placeholder="Buscar artista, sertanejo, rock, geração ou som do espaço..."
+              className="w-full pl-9 pr-20 sm:pr-24 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/[0.1] focus:bg-white/[0.12] border border-white/10 focus:border-cyan-400/50 text-xs sm:text-sm text-white placeholder-purple-300/60 focus:outline-none transition"
             />
             <button
               type="submit"
-              className="absolute right-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-pink-500 text-white text-[10px] font-extrabold flex items-center gap-1 hover:brightness-110 transition"
-              title="Pesquisar músicas do mundo inteiro"
+              className="absolute right-1 px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-pink-500 text-white text-[10px] font-extrabold hover:brightness-110 transition"
+              title="Pesquisar músicas completas na Terra e no Espaço"
             >
-              <Globe2 className="w-3 h-3" />
-              <span className="hidden sm:inline">Mundo</span>
+              Buscar
             </button>
           </form>
 
           {/* Right User / Fan Auth & Quick Actions */}
           <div className="flex items-center gap-1.5 shrink-0">
             {!isAndroidApk() && (
-              <a
-                href={settings.apkDownloadUrl || '/download/apk'}
-                target="_blank"
-                rel="noreferrer"
-                className="md:hidden px-2.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-[11px] font-black flex items-center gap-1 shadow"
-                title="Baixar App Android (APK)"
+              <button
+                onClick={() => setSpaceDownloadOpen(true)}
+                className="md:hidden px-2.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500 text-black text-[11px] font-black flex items-center gap-1 shadow"
+                title="Portal Espacial — Baixar App Android (APK)"
               >
-                <Smartphone className="w-3.5 h-3.5" /> App
-              </a>
+                <Rocket className="w-3.5 h-3.5" /> App
+              </button>
             )}
             <button
               onClick={() => {
@@ -1052,7 +1232,7 @@ export function App() {
                   currentTrack={currentTrack}
                   isPlaying={isPlaying}
                   playlists={playlists}
-                  onPlayTrack={(t) => void handlePlayTrack(t, 'v1')}
+                  onPlayTrack={(t, queue) => void handlePlayTrack(t, 'v1', queue)}
                   onAddToPlaylist={addTrackToPlaylist}
                   onSendToDJ={handleSendToDJ}
                 />
@@ -1066,7 +1246,7 @@ export function App() {
                   userTracks={userTracks}
                   currentTrack={currentTrack}
                   isPlaying={isPlaying}
-                  onPlayTrack={(t) => void handlePlayTrack(t, 'v1')}
+                  onPlayTrack={(t, queue) => void handlePlayTrack(t, 'v1', queue)}
                   onCreatePlaylist={handleCreatePlaylist}
                   onDeletePlaylist={handleDeletePlaylist}
                   onRemoveFromPlaylist={handleRemoveFromPlaylist}
@@ -1199,8 +1379,26 @@ export function App() {
         settings={settings}
         mode={mode}
         onSaveSettings={handleSaveSettings}
+        onOpenSpaceDownload={() => setSpaceDownloadOpen(true)}
         onToast={showToast}
       />
+      <SpaceDownloadModal
+        open={spaceDownloadOpen}
+        onClose={() => setSpaceDownloadOpen(false)}
+        settings={settings}
+        onOpenShare={() => {
+          setShareTrack(null);
+          setShareOpen(true);
+        }}
+        onToast={showToast}
+      />
+      {/* Hidden YouTube IFrame Full-Length Audio Engine Host */}
+      <div
+        aria-hidden="true"
+        className="fixed -left-[9999px] -top-[9999px] w-[320px] h-[180px] opacity-0 pointer-events-none"
+      >
+        <div id="lenkyx-yt-audio-host" />
+      </div>
       <UploadTrackModal
         open={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}

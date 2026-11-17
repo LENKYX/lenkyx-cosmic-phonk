@@ -22,7 +22,7 @@ interface Props {
   userTracks: Track[];
   currentTrack: Track | null;
   isPlaying: boolean;
-  onPlayTrack: (track: Track) => void;
+  onPlayTrack: (track: Track, queue?: Track[]) => void;
   onSendToDJ: (track: Track, deck: 'A' | 'B') => void;
   onCreatePlaylist: (name: string, description: string, emoji: string) => void;
   onDeletePlaylist: (id: string) => void;
@@ -259,7 +259,7 @@ export const PlaylistsView: React.FC<Props> = ({
             </div>
             {resolvedTracks[0] && (
               <button
-                onClick={() => onPlayTrack(resolvedTracks[0])}
+                onClick={() => onPlayTrack(resolvedTracks[0], resolvedTracks)}
                 className="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow shrink-0"
               >
                 <Play className="w-3.5 h-3.5 fill-white" /> Tocar
@@ -290,7 +290,7 @@ export const PlaylistsView: React.FC<Props> = ({
                   >
                     <span className="w-5 text-right text-[11px] font-mono text-purple-300/60">{idx + 1}</span>
                     <button
-                      onClick={() => onPlayTrack(t)}
+                      onClick={() => onPlayTrack(t, resolvedTracks)}
                       className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-black"
                     >
                       <img src={t.coverUrl} alt={t.title} className="w-full h-full object-cover" />
@@ -302,7 +302,7 @@ export const PlaylistsView: React.FC<Props> = ({
                         )}
                       </div>
                     </button>
-                    <div className="min-w-0 flex-1 cursor-pointer" onClick={() => onPlayTrack(t)}>
+                    <div className="min-w-0 flex-1 cursor-pointer" onClick={() => onPlayTrack(t, resolvedTracks)}>
                       <div className={`text-xs sm:text-sm font-bold truncate ${active ? 'text-pink-400' : 'text-white'}`}>
                         {t.title}
                       </div>

@@ -12,6 +12,7 @@ import {
   Send,
   QrCode,
   Megaphone,
+  Rocket,
 } from 'lucide-react';
 import { AppSettings, Track, AppMode } from '../types';
 import { copyTextReliable, isAndroidApk } from '../utils/androidBridge';
@@ -23,6 +24,7 @@ interface Props {
   settings: AppSettings;
   mode: AppMode;
   onSaveSettings: (partial: Partial<AppSettings>) => Promise<void>;
+  onOpenSpaceDownload?: () => void;
   onToast: (msg: string) => void;
 }
 
@@ -31,11 +33,20 @@ function isLocalHostUrl(url: string): boolean {
   return /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.|10\.)/i.test(url.trim());
 }
 
-export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mode, onSaveSettings, onToast }) => {
+export const ShareModal: React.FC<Props> = ({
+  open,
+  onClose,
+  track,
+  settings,
+  mode,
+  onSaveSettings,
+  onOpenSpaceDownload,
+  onToast,
+}) => {
   const [includePixText, setIncludePixText] = useState(true);
   const [copied, setCopied] = useState(false);
   const [copiedBio, setCopiedBio] = useState(false);
-  const [showQr, setShowQr] = useState(false);
+  const [showQr, setShowQr] = useState(true);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [customUrl, setCustomUrl] = useState(settings.publicUrl || '');
   const [apkUrl, setApkUrl] = useState(settings.apkDownloadUrl || '');
@@ -147,40 +158,49 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 overflow-y-auto">
-      <div className="relative w-full max-w-md rounded-2xl glass-panel neon-border overflow-hidden my-auto">
-        <div className="h-1 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500" />
-        <div className="p-4 sm:p-5 space-y-3.5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-lg p-3 overflow-y-auto">
+      <div className="relative w-full max-w-md rounded-3xl border border-cyan-400/35 bg-[#080417] shadow-[0_0_70px_rgba(236,72,153,0.28)] overflow-hidden my-auto">
+        <div
+          className="absolute inset-0 pointer-events-none opacity-60"
+          style={{
+            background:
+              'radial-gradient(circle at 15% 10%, rgba(236,72,153,0.28), transparent 45%), radial-gradient(circle at 85% 20%, rgba(34,211,238,0.25), transparent 45%)',
+          }}
+        />
+        <div className="relative z-10 h-1.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500" />
+        <div className="relative z-10 p-4 sm:p-5 space-y-3.5">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shadow">
-                <Megaphone className="w-5 h-5 text-black" />
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pink-500 via-purple-600 to-cyan-400 p-[2px] shadow-[0_0_18px_rgba(34,211,238,0.4)] shrink-0">
+                <div className="w-full h-full rounded-[14px] bg-[#090517] flex items-center justify-center">
+                  <Megaphone className="w-5 h-5 text-cyan-300" />
+                </div>
               </div>
               <div>
-                <h2 className="font-display text-sm sm:text-base font-extrabold text-white">
-                  {track ? `DIVULGAR: ${track.title}` : 'DIVULGAÇÃO & REDES SOCIAIS'}
+                <h2 className="font-display text-sm sm:text-base font-black text-white">
+                  {track ? `DIVULGAR: ${track.title}` : 'PORTAL CÓSMICO DE DIVULGAÇÃO'}
                 </h2>
-                <p className="text-[11px] text-purple-200/75">
-                  Compartilhe com 1 clique no WhatsApp, Instagram, TikTok, Telegram e Google
+                <p className="text-[11px] text-purple-200/80">
+                  Compartilhe na galáxia: WhatsApp, Instagram, TikTok, Telegram & QR
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-purple-200">
+            <button onClick={onClose} className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-purple-200">
               <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Link Direto (Bio Instagram / TikTok / YouTube) + QR Code */}
-          <div className="rounded-xl bg-white/[0.04] border border-white/10 p-2.5 space-y-2">
+          <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-2.5">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-300">
                 Link Oficial (Bio Instagram · TikTok · YouTube)
               </span>
               <button
                 onClick={() => setShowQr((v) => !v)}
-                className="px-2 py-0.5 rounded-md bg-pink-500/20 hover:bg-pink-500/35 text-pink-200 text-[10px] font-bold flex items-center gap-1"
+                className="px-2.5 py-0.5 rounded-full bg-pink-500/20 hover:bg-pink-500/35 text-pink-200 text-[10px] font-bold flex items-center gap-1"
               >
-                <QrCode className="w-3 h-3" /> {showQr ? 'Ocultar QR' : 'QR Code'}
+                <QrCode className="w-3 h-3" /> {showQr ? 'Ocultar QR' : 'Ver QR'}
               </button>
             </div>
             <div className="flex items-center gap-1.5">
@@ -188,25 +208,39 @@ export const ShareModal: React.FC<Props> = ({ open, onClose, track, settings, mo
                 type="text"
                 readOnly
                 value={mainClickableLink}
-                className="flex-1 px-2.5 py-1.5 rounded-lg bg-black/50 border border-white/10 text-[11px] text-cyan-200 font-mono truncate"
+                className="flex-1 px-2.5 py-1.5 rounded-xl bg-black/55 border border-white/10 text-[11px] text-cyan-200 font-mono truncate"
               />
               <button
                 onClick={handleCopyLinkOnly}
-                className="px-2.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-[11px] font-extrabold shrink-0 flex items-center gap-1"
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black shrink-0 flex items-center gap-1"
               >
                 {copiedBio ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copiedBio ? 'Copiado' : 'Link'}
               </button>
             </div>
             {showQr && qrDataUrl && (
-              <div className="pt-2 flex flex-col items-center gap-1.5">
-                <img src={qrDataUrl} alt="QR Code LENKYX" className="w-40 h-40 rounded-xl bg-white p-1.5 shadow-lg" />
-                <span className="text-[10px] text-purple-200/75">
-                  Aponte a câmera do celular para abrir e tocar na hora!
+              <div className="pt-1 flex flex-col items-center gap-1.5">
+                <div className="p-2 rounded-2xl bg-white shadow-[0_0_30px_rgba(34,211,238,0.45)]">
+                  <img src={qrDataUrl} alt="QR Code LENKYX" className="w-32 h-32 rounded-lg" />
+                </div>
+                <span className="text-[10px] text-cyan-200/80 font-semibold">
+                  ✨ Escaneie para abrir o som direto no celular!
                 </span>
               </div>
             )}
           </div>
+
+          {onOpenSpaceDownload && !isAndroidApk() && (
+            <button
+              onClick={() => {
+                onClose();
+                onOpenSpaceDownload();
+              }}
+              className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-indigo-500/30 via-purple-500/30 to-cyan-500/30 hover:brightness-110 border border-cyan-400/40 text-xs font-extrabold text-white flex items-center justify-center gap-2 transition"
+            >
+              <Rocket className="w-4 h-4 text-cyan-300" /> Abrir Portal Espacial de Download (APK)
+            </button>
+          )}
 
           {/* Unified Message Preview */}
           <div>

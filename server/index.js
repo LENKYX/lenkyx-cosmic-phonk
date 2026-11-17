@@ -14,6 +14,11 @@ import {
   upsertFanToSupabase,
   findFanInSupabase,
 } from './supabaseStore.js';
+import {
+  runSmartWorldSearch,
+  getFamousArtistsWithPhotos,
+  CURATED_PLAYLISTS,
+} from './musicAI.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -517,100 +522,42 @@ app.get('/api/export-backup', auth.requireCreator, (req, res) => {
   res.json(db);
 });
 
-// === GLOBAL WORLD MUSIC SEARCH & TRENDING (Audius Full-Length ONLY — Zero 30s Previews!) ===
+// === AI-POWERED WORLD MUSIC DISCOVERY (Brasil, Mundo, Todas as Gerações & Espaço/E.T. — 100% Completas!) ===
+app.use('/api/world-', (_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+});
+
+app.get('/api/world-directory', async (_req, res) => {
+  try {
+    const artists = await getFamousArtistsWithPhotos();
+    res.json({ artists, playlists: CURATED_PLAYLISTS });
+  } catch {
+    res.json({ artists: [], playlists: CURATED_PLAYLISTS });
+  }
+});
+
 app.get('/api/world-trending', async (_req, res) => {
   try {
-    const r = await fetch('https://api.audius.co/v1/tracks/trending?app_name=LENKYX&limit=30', {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
-    const d = await r.json();
-    const tracks = (d?.data || [])
-      .filter((item) => item?.id && Number(item.duration) >= 45)
-      .slice(0, 24)
-      .map((item, idx) => {
-        const artwork = item.artwork || {};
-        return {
-          id: `world-audius-${item.id}`,
-          number: idx + 1,
-          title: String(item.title || 'Faixa Global').trim(),
-          emoji: '🌍',
-          artist: String(item.user?.name || item.user?.handle || 'Artista Global').trim(),
-          album: String(item.genre || 'Em Alta no Mundo'),
-          bpm: 128,
-          key: 'Fm',
-          coverUrl: artwork['480x480'] || artwork['150x150'] || '/covers/void-horizon.jpg',
-          audioUrl: `https://api.audius.co/v1/tracks/${encodeURIComponent(item.id)}/stream?app_name=LENKYX`,
-          durationSec: Math.round(Number(item.duration) || 0),
-          source: 'world_full',
-          externalUrl: `https://audius.co${item.permalink || ''}`,
-          isDemoAudio: false,
-          hasCustomCover: true,
-          plays: Number(item.play_count) || 0,
-          likes: Number(item.favorite_count) || 0,
-          favorite: false,
-          releaseBatch: 0,
-          status: { suno: false, cover: true, app: true, youtube: false, distrokid: false },
-          sunoPrompt: '',
-          lyrics: '',
-          createdAt: item.release_date || new Date().toISOString(),
-        };
-      });
-    res.json({ tracks });
+    const payload = await runSmartWorldSearch('');
+    res.json(payload);
   } catch {
-    res.json({ tracks: [] });
+    res.json({ tracks: [], playlists: CURATED_PLAYLISTS, artistProfile: null, aiInsight: null });
   }
 });
 
 app.get('/api/world-search', async (req, res) => {
   const q = String(req.query.q || '').trim();
-  if (!q) return res.json({ tracks: [] });
-  const enc = encodeURIComponent(q);
-
+  const space = req.query.space === '1' || req.query.space === 'true';
   try {
-    const r = await fetch(`https://api.audius.co/v1/tracks/search?query=${enc}&app_name=LENKYX`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    });
-    const audius = await r.json();
-    const tracks = [];
-    if (Array.isArray(audius?.data)) {
-      for (const item of audius.data) {
-        if (!item?.id || Number(item.duration) < 45) continue;
-        const artwork = item.artwork || {};
-        tracks.push({
-          id: `world-audius-${item.id}`,
-          number: tracks.length + 1,
-          title: String(item.title || 'Faixa Global').trim(),
-          emoji: '🌍',
-          artist: String(item.user?.name || item.user?.handle || 'Artista Global').trim(),
-          album: String(item.genre || 'Audius Global'),
-          bpm: 128,
-          key: 'Fm',
-          coverUrl: artwork['480x480'] || artwork['150x150'] || '/covers/void-horizon.jpg',
-          audioUrl: `https://api.audius.co/v1/tracks/${encodeURIComponent(item.id)}/stream?app_name=LENKYX`,
-          durationSec: Math.round(Number(item.duration) || 0),
-          source: 'world_full',
-          externalUrl: `https://audius.co${item.permalink || ''}`,
-          isDemoAudio: false,
-          hasCustomCover: true,
-          plays: Number(item.play_count) || 0,
-          likes: Number(item.favorite_count) || 0,
-          favorite: false,
-          releaseBatch: 0,
-          status: { suno: false, cover: true, app: true, youtube: false, distrokid: false },
-          sunoPrompt: '',
-          lyrics: '',
-          createdAt: item.release_date || new Date().toISOString(),
-        });
-        if (tracks.length >= 24) break;
-      }
-    }
-    res.json({ tracks });
+    const payload = await runSmartWorldSearch(q, { includeArchiveSpace: space });
+    res.json(payload);
   } catch {
-    res.json({ tracks: [] });
+    res.json({ tracks: [], playlists: CURATED_PLAYLISTS, artistProfile: null, aiInsight: null });
   }
 });
 
-// Safe CORS Audio/Media Proxy for Offline Device Downloads (Suno & Audius CDNs only)
+// Safe CORS Audio/Media Proxy for Offline Device Downloads (Suno, Audius & Archive.org CDNs only)
 app.get('/api/audio-proxy', async (req, res) => {
   const rawUrl = String(req.query.url || '').trim();
   if (!rawUrl) return res.status(400).json({ error: 'Missing url' });
@@ -627,7 +574,9 @@ app.get('/api/audio-proxy', async (req, res) => {
       host.endsWith('.suno.com') ||
       host === 'api.audius.co' ||
       host.endsWith('.audius.co') ||
-      host.includes('audius'));
+      host.includes('audius') ||
+      host === 'archive.org' ||
+      host.endsWith('.archive.org'));
   if (!allowed) {
     return res.status(403).json({ error: 'Host not permitted for offline caching' });
   }
@@ -689,7 +638,7 @@ app.get('/download/apk', (_req, res) => {
   const db = readDb();
   const redirectUrl =
     (db.settings?.apkDownloadUrl || '').trim() ||
-    'https://drive.google.com/uc?id=109-i00UMsMlBY_RcrVvng-oHiW0cXwFZ&export=download';
+    'https://drive.google.com/uc?id=1JDjLjRpzs5gAoGnpAmRmZbsCo_KQiEda&export=download';
   return res.redirect(302, redirectUrl);
 });
 

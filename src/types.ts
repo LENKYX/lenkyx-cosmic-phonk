@@ -31,6 +31,9 @@ export interface Track {
   isDemoAudio?: boolean;
   hasCustomCover?: boolean;
   source?: TrackSource;
+  sourceLabel?: string;
+  genre?: string;
+  youtubeVideoId?: string;
   externalUrl?: string;
   plays: number;
   likes: number;
@@ -85,3 +88,46 @@ export interface AppSettings {
 export type AudioVersion = 'v1' | 'v2';
 export type TabId = 'catalog' | 'explore' | 'dj' | 'playlists' | 'video' | 'studio';
 export type AppMode = 'creator' | 'fan';
+
+export interface WorldArtistDirectoryItem {
+  name: string;
+  genre: string;
+  era: string;
+  query: string;
+  photoUrl: string;
+  bio?: string;
+}
+
+export interface WorldCuratedPlaylist {
+  id: string;
+  title: string;
+  subtitle: string;
+  emoji: string;
+  era: string;
+  searchQuery: string;
+  gradient: string;
+  includeArchiveSpace?: boolean;
+}
+
+export interface WorldArtistProfile {
+  name: string;
+  photoUrl: string;
+  bio?: string;
+  genre?: string;
+  era?: string;
+  wikiUrl?: string;
+}
+
+export interface WorldAiInsight {
+  title: string;
+  summary: string;
+  tags: string[];
+}
+
+export interface WorldSearchPayload {
+  query: string;
+  aiInsight: WorldAiInsight | null;
+  artistProfile: WorldArtistProfile | null;
+  tracks: Track[];
+  playlists: WorldCuratedPlaylist[];
+}
