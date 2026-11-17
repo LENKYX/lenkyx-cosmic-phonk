@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Loader2,
   WifiOff,
+  Film,
 } from 'lucide-react';
 import { AudioVersion, Track } from '../types';
 
@@ -39,6 +40,7 @@ interface Props {
   onOpenLyrics: (track: Track) => void;
   onLike: (track: Track) => void;
   onToggleOffline: (track: Track) => void;
+  onWatchClip?: () => void;
 }
 
 function fmt(sec: number): string {
@@ -69,6 +71,7 @@ export const MiniPlayer: React.FC<Props> = ({
   onOpenLyrics,
   onLike,
   onToggleOffline,
+  onWatchClip,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const bigCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -283,6 +286,17 @@ export const MiniPlayer: React.FC<Props> = ({
                 <Disc3 className="w-4 h-4" /> Mesa DJ
               </button>
             </div>
+            {track.youtubeVideoId && onWatchClip && (
+              <button
+                onClick={() => {
+                  setExpanded(false);
+                  onWatchClip();
+                }}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-purple-600 text-white text-xs font-black flex items-center justify-center gap-2 shadow-lg hover:brightness-110 transition"
+              >
+                <Film className="w-4 h-4" /> ASSISTIR CLIPE OFICIAL COMPLETO
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -379,8 +393,18 @@ export const MiniPlayer: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Right: Mobile Expand/Offline + Desktop Quick Icons + Volume */}
+          {/* Right: Clip / Expand / Offline + Desktop Quick Icons + Volume */}
           <div className="flex items-center gap-1 justify-end md:w-80">
+            {track.youtubeVideoId && onWatchClip && (
+              <button
+                onClick={onWatchClip}
+                className="px-2 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 text-[10px] font-extrabold flex items-center gap-1 shrink-0 transition"
+                title="Assistir Clipe Oficial Completo"
+              >
+                <Film className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Clipe</span>
+              </button>
+            )}
             <button
               onClick={() => onToggleOffline(track)}
               disabled={isDownloadingOffline}

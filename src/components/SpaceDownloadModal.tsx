@@ -69,7 +69,7 @@ export const SpaceDownloadModal: React.FC<Props> = ({
       } else {
         window.open(apkUrl, '_blank', 'noopener,noreferrer');
       }
-      onToast('🚀 Download cósmico do LENKYX Cosmic Phonk v2.0.4 iniciado!');
+      onToast('🚀 Download cósmico do LENKYX Cosmic Phonk v2.0.5 iniciado!');
     }, 750);
   };
 
@@ -109,7 +109,7 @@ export const SpaceDownloadModal: React.FC<Props> = ({
               </div>
               <div>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-[10px] font-black uppercase tracking-widest mb-1">
-                  <Sparkles className="w-3 h-3" /> Portal Espacial Oficial · v2.0.4
+                  <Sparkles className="w-3 h-3" /> Portal Espacial Oficial · v2.0.5
                 </div>
                 <h2 className="font-display text-lg sm:text-xl font-black text-white leading-tight">
                   LENKYX <span className="neon-text">COSMIC PHONK</span> APP
@@ -191,7 +191,7 @@ export const SpaceDownloadModal: React.FC<Props> = ({
               className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500 text-black font-display text-xs sm:text-sm font-black tracking-wide flex items-center justify-center gap-2.5 shadow-[0_0_30px_rgba(34,211,238,0.45)] hover:brightness-110 active:scale-[0.99] transition"
             >
               <Download className="w-5 h-5" />
-              BAIXAR APP ANDROID OFICIAL (APK v2.0.4)
+              BAIXAR APP ANDROID OFICIAL (APK v2.0.5)
               <Rocket className="w-4 h-4" />
             </button>
 

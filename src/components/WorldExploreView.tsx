@@ -13,6 +13,7 @@ import {
   Rocket,
   ListMusic,
   UserCheck,
+  Film,
 } from 'lucide-react';
 import {
   Track,
@@ -35,12 +36,14 @@ interface Props {
   isPlaying: boolean;
   playlists: UserPlaylist[];
   onPlayTrack: (track: Track, queue: Track[], queueLabel?: string) => void;
+  onWatchClip?: (track: Track, queue: Track[]) => void;
   onSendToDJ: (track: Track, deck: 'A' | 'B') => void;
   onAddToPlaylist: (playlistId: string, track: Track) => void;
 }
 
 const GENRE_CHIPS = [
   { label: '🔥 Em Alta (Brasil & Mundo)', q: '', space: false },
+  { label: '🎬 Clipes Oficiais', q: 'Henrique e Juliano Marilia Mendonca Queen Michael Jackson clipe oficial', space: false },
   { label: '🤠 Sertanejo', q: 'Henrique e Juliano Marilia Mendonca sertanejo', space: false },
   { label: '🇧🇷 Funk & Pagode', q: 'funk brasil pagode hits completos', space: false },
   { label: '🕰️ Anos 70 & 80', q: 'anos 80 flashback Queen Michael Jackson', space: false },
@@ -64,6 +67,7 @@ export const WorldExploreView: React.FC<Props> = ({
   isPlaying,
   playlists,
   onPlayTrack,
+  onWatchClip,
   onSendToDJ,
   onAddToPlaylist,
 }) => {
@@ -392,6 +396,17 @@ export const WorldExploreView: React.FC<Props> = ({
 
                 {/* Actions */}
                 <div className="flex items-center gap-1.5 relative">
+                  {t.youtubeVideoId && onWatchClip && (
+                    <button
+                      onClick={() => onWatchClip(t, results)}
+                      className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-rose-500/25 to-pink-500/25 hover:from-rose-500/40 hover:to-pink-500/40 border border-rose-400/40 text-rose-200 text-[10px] font-extrabold flex items-center gap-1"
+                      title="Assistir Clipe Oficial Completo dentro do app"
+                    >
+                      <Film className="w-3.5 h-3.5" />
+                      <span>Clipe</span>
+                    </button>
+                  )}
+
                   {hasDirectAudio && (
                     <button
                       onClick={() => onSendToDJ(t, 'A')}

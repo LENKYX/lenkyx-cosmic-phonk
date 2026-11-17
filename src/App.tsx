@@ -13,6 +13,13 @@ import {
   Sparkles,
   LogOut,
   Rocket,
+  Film,
+  X,
+  SkipBack,
+  SkipForward,
+  Play,
+  Pause,
+  Minimize2,
 } from 'lucide-react';
 import {
   AppMode,
@@ -65,7 +72,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pixCity: 'CAMPO GRANDE',
   pixMessage: 'Apoio LENKYX Cosmic Phonk',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
-  apkDownloadUrl: 'https://drive.google.com/uc?id=1JDjLjRpzs5gAoGnpAmRmZbsCo_KQiEda&export=download',
+  apkDownloadUrl: 'https://drive.google.com/uc?id=16CbgrhZ_3GvCcnV0VeTFDn_Wb5hSUXmJ&export=download',
   youtubeUrl: '',
   sunoHandle: '@lenkyx',
   sunoProfileUrl: 'https://suno.com/@lenkyx',
@@ -155,6 +162,7 @@ export function App() {
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
   const [spaceDownloadOpen, setSpaceDownloadOpen] = useState(false);
+  const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [lyricsTrack, setLyricsTrack] = useState<Track | null>(null);
@@ -339,14 +347,15 @@ export function App() {
       const hostEl = document.getElementById('lenkyx-yt-audio-host');
       if (!hostEl) return;
       ytPlayerRef.current = new win.YT.Player('lenkyx-yt-audio-host', {
-        height: '180',
-        width: '320',
+        height: '100%',
+        width: '100%',
         playerVars: {
           autoplay: 0,
-          controls: 0,
+          controls: 1,
           playsinline: 1,
           rel: 0,
           modestbranding: 1,
+          fs: 1,
           origin: window.location.origin,
         },
         events: {
@@ -484,6 +493,7 @@ export function App() {
 
       // Stop any active YouTube playback when switching to direct MP3/MP4/Offline stream
       ytPlayerRef.current?.pauseVideo?.();
+      setClipTheaterOpen(false);
 
       const resolved = await resolvePlayableAudioUrl(track, finalVersion);
       setIsPlayingFromOffline(resolved.fromOffline);
@@ -1233,6 +1243,10 @@ export function App() {
                   isPlaying={isPlaying}
                   playlists={playlists}
                   onPlayTrack={(t, queue) => void handlePlayTrack(t, 'v1', queue)}
+                  onWatchClip={(t, queue) => {
+                    void handlePlayTrack(t, 'v1', queue);
+                    setClipTheaterOpen(true);
+                  }}
                   onAddToPlaylist={addTrackToPlaylist}
                   onSendToDJ={handleSendToDJ}
                 />
@@ -1323,6 +1337,9 @@ export function App() {
           }}
           onLike={(t) => void handleLikeTrack(t)}
           onToggleOffline={(t) => void handleToggleOffline(t)}
+          onWatchClip={() => {
+            if (currentTrack?.youtubeVideoId) setClipTheaterOpen(true);
+          }}
         />
       )}
 
@@ -1392,12 +1409,91 @@ export function App() {
         }}
         onToast={showToast}
       />
-      {/* Hidden YouTube IFrame Full-Length Audio Engine Host */}
+      {/* Persistent Cinema Clip Theater (never unmounts #lenkyx-yt-audio-host — zero audio hiccups!) */}
+      {clipTheaterOpen && currentTrack?.youtubeVideoId && (
+        <div
+          onClick={() => setClipTheaterOpen(false)}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-lg"
+        />
+      )}
       <div
-        aria-hidden="true"
-        className="fixed -left-[9999px] -top-[9999px] w-[320px] h-[180px] opacity-0 pointer-events-none"
+        className={
+          clipTheaterOpen && currentTrack?.youtubeVideoId
+            ? 'fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-3xl rounded-3xl overflow-hidden border border-cyan-400/40 bg-[#090418] shadow-[0_0_70px_rgba(236,72,153,0.35)]'
+            : 'fixed -left-[9999px] -top-[9999px] w-[320px] h-[180px] opacity-0 pointer-events-none'
+        }
       >
-        <div id="lenkyx-yt-audio-host" />
+        {clipTheaterOpen && currentTrack?.youtubeVideoId && (
+          <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e]">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-8 h-8 rounded-xl bg-rose-500/25 border border-rose-400/40 flex items-center justify-center shrink-0">
+                <Film className="w-4 h-4 text-rose-300" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[10px] font-black uppercase tracking-widest text-cyan-300">
+                  Clipe Oficial Completo · Modo Cinema
+                </div>
+                <div className="text-xs sm:text-sm font-black text-white truncate">
+                  {currentTrack.title}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => setClipTheaterOpen(false)}
+                className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-bold text-purple-100 flex items-center gap-1"
+                title="Continuar ouvindo em segundo plano"
+              >
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Só Áudio</span>
+              </button>
+              <button
+                onClick={() => setClipTheaterOpen(false)}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                title="Fechar janela do vídeo"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="w-full aspect-video bg-black">
+          <div id="lenkyx-yt-audio-host" className="w-full h-full" />
+        </div>
+
+        {clipTheaterOpen && currentTrack?.youtubeVideoId && (
+          <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between gap-3 bg-[#090418]">
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
+              <div className="text-[10px] text-cyan-300/80">
+                Próxima segue automaticamente na sequência da lista
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => handlePrevNext(-1)}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                title="Clipe Anterior"
+              >
+                <SkipBack className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => void handleTogglePlay()}
+                className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow"
+              >
+                {isPlaying ? <Pause className="w-5 h-5 fill-black" /> : <Play className="w-5 h-5 fill-black ml-0.5" />}
+              </button>
+              <button
+                onClick={() => handlePrevNext(1)}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                title="Próximo Clipe"
+              >
+                <SkipForward className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       <UploadTrackModal
         open={uploadModalOpen}

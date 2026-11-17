@@ -10,6 +10,15 @@ const CLOUD_API_BASE = 'https://lenkyx-cosmic-phonk.onrender.com';
 
 export const FALLBACK_CURATED_PLAYLISTS: WorldCuratedPlaylist[] = [
   {
+    id: 'pl-clips-oficiais',
+    title: 'Melhores Clipes Oficiais & DVDs Completos',
+    subtitle: 'Henrique & Juliano, Marília Mendonça, Gusttavo Lima, Queen, Michael Jackson, Alok',
+    emoji: '🎬',
+    era: 'Cinema & Clipes HD',
+    searchQuery: 'Henrique e Juliano Marilia Mendonca Queen Michael Jackson The Weeknd clipe oficial official music video',
+    gradient: 'from-rose-600/40 via-purple-600/25 to-cyan-500/25',
+  },
+  {
     id: 'pl-sertanejo-top',
     title: 'Sertanejo Gigantes & Sofrência',
     subtitle: 'Henrique & Juliano, Marília Mendonça, Gusttavo Lima, Jorge & Mateus',
