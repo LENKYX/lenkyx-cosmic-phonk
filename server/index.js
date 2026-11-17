@@ -5,6 +5,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { CATALOG_VERSION, SUNO_PLAYLIST_ID, getInitialDb } from './seed.js';
 import { createAuthManager } from './auth.js';
+import {
+  isSupabaseEnabled,
+  hydrateDbFromSupabase,
+  syncDbToSupabase,
+  hydrateAuthFromSupabase,
+  syncAuthToSupabase,
+  upsertFanToSupabase,
+  findFanInSupabase,
+} from './supabaseStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -85,8 +94,9 @@ function readDb() {
   }
 }
 
-function writeDb(db) {
+function writeDb(db, deletedTrackId = null) {
   fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+  void syncDbToSupabase(db, deletedTrackId);
 }
 
 // Configure multer storage for user-uploaded Suno WAV/MP3 (V1 & V2) + Cover arts (up to 150 MB per WAV!)
@@ -114,7 +124,13 @@ app.use(express.json({ limit: '5mb' }));
 
 // Health check for Render / Railway / Fly.io
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, service: 'lenkyx-cosmic-phonk', timestamp: new Date().toISOString() });
+  res.json({
+    ok: true,
+    service: 'lenkyx-cosmic-phonk',
+    database: isSupabaseEnabled() ? 'supabase' : 'local-json',
+    tracksCount: readDb().tracks.length,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Static assets
@@ -166,7 +182,34 @@ app.post('/api/auth/change-password', auth.requireCreator, (req, res) => {
     return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' });
   }
   const newToken = auth.changePassword(newPassword);
+  void syncAuthToSupabase(auth.getConfig());
   res.json({ ok: true, token: newToken, hasCustomPassword: true });
+});
+
+// === FAN CLOUD ACCOUNTS & PLAYLISTS SYNC (Supabase) ===
+app.post('/api/fans/sync', async (req, res) => {
+  try {
+    const { id, name, email, avatarColor, playlists } = req.body || {};
+    if (!id || !name) return res.status(400).json({ error: 'Perfil inválido' });
+    if (isSupabaseEnabled()) {
+      await upsertFanToSupabase({ id, name, email, avatarColor, playlists });
+    }
+    res.json({ ok: true, cloud: isSupabaseEnabled() });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Erro ao sincronizar perfil' });
+  }
+});
+
+app.get('/api/fans/lookup', async (req, res) => {
+  try {
+    const email = String(req.query.email || '').trim();
+    const id = String(req.query.id || '').trim();
+    if (!email && !id) return res.status(400).json({ error: 'Informe e-mail ou ID' });
+    const fan = await findFanInSupabase({ id, email });
+    res.json({ found: Boolean(fan), fan: fan || null });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Erro ao buscar perfil' });
+  }
 });
 
 // === PUBLIC API ROUTES ===
@@ -327,7 +370,7 @@ app.delete('/api/tracks/:id', auth.requireCreator, (req, res) => {
   const idx = db.tracks.findIndex((t) => t.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Faixa não encontrada' });
   db.tracks.splice(idx, 1);
-  writeDb(db);
+  writeDb(db, req.params.id);
   res.json({ ok: true });
 });
 
@@ -658,7 +701,7 @@ app.get('/download/apk', (_req, res) => {
   const db = readDb();
   const redirectUrl =
     (db.settings?.apkDownloadUrl || '').trim() ||
-    'https://drive.google.com/uc?id=1jFR9MhmD1MP9bDzAmHM17Nk_-cwa9CN1&export=download';
+    'https://drive.google.com/uc?id=1mPrKj1ojdqDL-Eh2e1ra6TvUUtnGYv0-&export=download';
   return res.redirect(302, redirectUrl);
 });
 
@@ -672,7 +715,28 @@ if (fs.existsSync(DIST_DIR)) {
 }
 
 const PORT = Number(process.env.PORT) || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`LENKYX Cosmic Phonk Server running on http://0.0.0.0:${PORT}`);
-  console.log(`Data dir: ${DATA_DIR} | Storage dir: ${STORAGE_ROOT}`);
-});
+
+async function boot() {
+  if (isSupabaseEnabled()) {
+    console.log('[Supabase] Cloud PostgreSQL enabled — hydrating LENKYX state...');
+    const cloudAuth = await hydrateAuthFromSupabase();
+    if (cloudAuth) {
+      auth.replaceConfig(cloudAuth);
+    } else {
+      await syncAuthToSupabase(auth.getConfig());
+    }
+    const localDb = readDb();
+    const cloudDb = await hydrateDbFromSupabase(localDb);
+    if (cloudDb) {
+      fs.writeFileSync(DB_PATH, JSON.stringify(cloudDb, null, 2), 'utf-8');
+    }
+  }
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`LENKYX Cosmic Phonk Server running on http://0.0.0.0:${PORT}`);
+    console.log(
+      `Storage mode: ${isSupabaseEnabled() ? 'Supabase Cloud PostgreSQL + local cache' : 'Local JSON'} | Data dir: ${DATA_DIR}`
+    );
+  });
+}
+
+void boot();

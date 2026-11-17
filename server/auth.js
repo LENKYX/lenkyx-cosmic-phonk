@@ -169,5 +169,7 @@ export function createAuthManager(dataDir) {
     recordFailedAttempt,
     clearAttempts,
     getStatus,
+    getConfig: loadAuthConfig,
+    replaceConfig: saveAuthConfig,
   };
 }

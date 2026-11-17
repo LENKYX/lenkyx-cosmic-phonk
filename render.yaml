@@ -11,3 +11,7 @@ services:
         value: lenkyx2026
       - key: AUTH_SECRET
         generateValue: true
+      - key: SUPABASE_URL
+        value: https://uzififnhdzfobynsbcgk.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

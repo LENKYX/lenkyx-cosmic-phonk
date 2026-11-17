@@ -59,8 +59,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   pixName: 'LENKYX COSMIC PHONK',
   pixCity: 'CAMPO GRANDE',
   pixMessage: 'Apoio LENKYX Cosmic Phonk',
-  publicUrl: '',
-  apkDownloadUrl: 'https://drive.google.com/uc?id=1jFR9MhmD1MP9bDzAmHM17Nk_-cwa9CN1&export=download',
+  publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
+  apkDownloadUrl: 'https://lenkyx-cosmic-phonk.onrender.com/download/apk',
   youtubeUrl: '',
   sunoHandle: '@lenkyx',
   sunoProfileUrl: 'https://suno.com/@lenkyx',
@@ -151,6 +151,25 @@ export function App() {
   useEffect(() => {
     void loadUserTracks().then((loaded: Track[]) => setUserTracks(loaded));
   }, []);
+
+  // Silent Cloud Sync for Fan Profile + Playlists (Supabase when online!)
+  useEffect(() => {
+    if (!userProfile || isAndroidApk()) return;
+    const t = window.setTimeout(() => {
+      void fetch('/api/fans/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: userProfile.id,
+          name: userProfile.name,
+          email: userProfile.email || '',
+          avatarColor: userProfile.avatarColor,
+          playlists,
+        }),
+      }).catch(() => {});
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [userProfile, playlists]);
 
   // Fetch initial catalog + check creator session
   useEffect(() => {

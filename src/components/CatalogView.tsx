@@ -251,13 +251,13 @@ export const CatalogView: React.FC<Props> = ({
         <div className="rounded-2xl bg-white/[0.03] border border-white/10 overflow-visible">
           {/* Table header */}
           <div className="hidden md:grid grid-cols-12 gap-2 px-3 py-2 border-b border-white/10 text-[10px] font-bold uppercase tracking-wider text-purple-300/65">
-            <div className="col-span-5 pl-2"># · Título</div>
+            <div className="col-span-4 pl-2"># · Título</div>
             <div className="col-span-2">Versões (V1 / V2)</div>
             <div className="col-span-2">Álbum</div>
-            <div className="col-span-1 text-right flex items-center justify-end">
+            <div className="col-span-1 text-right pr-2 flex items-center justify-end">
               <Clock className="w-3.5 h-3.5" />
             </div>
-            <div className="col-span-2 text-right pr-1">Ações</div>
+            <div className="col-span-3 text-right pr-1">Ações</div>
           </div>
 
           <div className="divide-y divide-white/[0.05]">
@@ -271,7 +271,7 @@ export const CatalogView: React.FC<Props> = ({
                   }`}
                 >
                   {/* # + Cover + Title */}
-                  <div className="col-span-8 sm:col-span-6 md:col-span-5 flex items-center gap-2.5 min-w-0">
+                  <div className="col-span-8 sm:col-span-5 md:col-span-4 flex items-center gap-2.5 min-w-0">
                     <span className="w-5 text-right text-[11px] font-mono text-purple-300/60 shrink-0 hidden sm:inline">
                       {String(track.number).padStart(2, '0')}
                     </span>
@@ -300,7 +300,16 @@ export const CatalogView: React.FC<Props> = ({
                         <span>{track.artist}</span>
                         <span className="font-mono text-[10px] text-cyan-300/80">{track.bpm} BPM</span>
                         {track.sunoPrivate && track.isDemoAudio && (
-                          <span className="px-1 rounded bg-amber-500/25 text-amber-200 text-[9px] font-bold">PRIVADA</span>
+                          <a
+                            href={track.sunoUrl || 'https://suno.com/@lenkyx'}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-1.5 py-0.2 rounded bg-amber-500/25 hover:bg-amber-500/40 text-amber-200 text-[9px] font-bold"
+                            title="Esta música ainda está privada no Suno — clique para abrir no Suno e deixar Pública (ou suba o WAV no botão Upload)"
+                          >
+                            PRIVADA NO SUNO ↗
+                          </a>
                         )}
                       </div>
                     </div>
@@ -339,12 +348,12 @@ export const CatalogView: React.FC<Props> = ({
                   </div>
 
                   {/* Duration */}
-                  <div className="hidden md:block md:col-span-1 text-right text-[11px] font-mono text-purple-300/70">
+                  <div className="hidden md:block md:col-span-1 text-right pr-2 text-[11px] font-mono text-purple-300/70">
                     {fmtDur(track.durationSec)}
                   </div>
 
                   {/* Compact Action Icons */}
-                  <div className="hidden sm:flex sm:col-span-3 md:col-span-2 items-center justify-end gap-1 relative">
+                  <div className="hidden sm:flex sm:col-span-4 md:col-span-3 items-center justify-end gap-0.5 relative">
                     <button
                       onClick={() => onLikeTrack(track)}
                       className="p-1.5 rounded-lg hover:bg-white/10 transition"
