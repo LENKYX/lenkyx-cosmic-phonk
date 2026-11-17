@@ -27,6 +27,18 @@ import {
 } from './musicAI.js';
 import { getMoviesDirectory, searchMovies } from './moviesAI.js';
 import { getLiveTvDirectory, searchLiveTv } from './tvAI.js';
+import {
+  getChatMessages,
+  postChatMessage,
+  getCommentsForTarget,
+  postComment,
+  likeComment,
+  getCommunityShorts,
+  createCommunityShort,
+  likeCommunityShort,
+  getActiveLives,
+  startOrUpdateLive,
+} from './communityStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -823,8 +835,8 @@ app.get('/api/app-update', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const db = readDb();
   const fallback = {
-    latestVersionCode: 16,
-    latestVersionName: '2.1.2',
+    latestVersionCode: 17,
+    latestVersionName: '2.1.3',
     apkUrl:
       (db.settings?.apkDownloadUrl || '').trim() ||
       'https://drive.google.com/uc?id=1CqwpvAgNKH_ULB5msJzVXwYz-voJ-Hjk&export=download',
@@ -856,6 +868,128 @@ app.get('/api/app-update', async (_req, res) => {
     // fallback
   }
   return res.json(fallback);
+});
+
+// === COMMUNITY SOCIAL ENGINE (Chat, Comments, Likes, Horizontal Shorts, Go Live) ===
+app.get('/api/community/chat', async (req, res) => {
+  try {
+    const room = String(req.query.room || 'global');
+    const messages = await getChatMessages(room, 70);
+    res.json({ room, messages });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/chat', async (req, res) => {
+  try {
+    const msg = await postChatMessage({
+      roomId: req.body?.roomId || 'global',
+      authorName: req.body?.authorName,
+      authorColor: req.body?.authorColor,
+      message: req.body?.message,
+    });
+    res.status(201).json(msg);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/community/comments', async (req, res) => {
+  try {
+    const targetId = String(req.query.targetId || '');
+    const comments = await getCommentsForTarget(targetId, 80);
+    res.json({ targetId, comments });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/comments', async (req, res) => {
+  try {
+    const item = await postComment({
+      targetId: req.body?.targetId,
+      authorName: req.body?.authorName,
+      authorColor: req.body?.authorColor,
+      text: req.body?.text,
+    });
+    res.status(201).json(item);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/comments/:id/like', async (req, res) => {
+  try {
+    const upd = await likeComment(req.params.id);
+    res.json(upd || { id: req.params.id });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/community/shorts', async (_req, res) => {
+  try {
+    const shorts = await getCommunityShorts();
+    res.json({ shorts });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/shorts', async (req, res) => {
+  try {
+    const created = await createCommunityShort({
+      title: req.body?.title,
+      creatorName: req.body?.creatorName,
+      creatorColor: req.body?.creatorColor,
+      description: req.body?.description,
+      mediaType: req.body?.mediaType,
+      videoUrl: req.body?.videoUrl,
+      youtubeId: req.body?.youtubeId,
+      posterUrl: req.body?.posterUrl,
+      audioTitle: req.body?.audioTitle,
+    });
+    res.status(201).json(created);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/shorts/:id/like', async (req, res) => {
+  try {
+    const upd = await likeCommunityShort(req.params.id);
+    res.json(upd || { id: req.params.id });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/community/lives', async (_req, res) => {
+  try {
+    const lives = await getActiveLives();
+    res.json({ lives });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/lives', async (req, res) => {
+  try {
+    const live = await startOrUpdateLive({
+      id: req.body?.id,
+      hostName: req.body?.hostName,
+      hostColor: req.body?.hostColor,
+      title: req.body?.title,
+      theme: req.body?.theme,
+      posterUrl: req.body?.posterUrl,
+      isLive: req.body?.isLive !== false,
+      likeDelta: Number(req.body?.likeDelta || 0),
+    });
+    res.json(live);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
 });
 
 // Serve built frontend with optimized mobile/desktop HTTP caching

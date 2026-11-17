@@ -50,6 +50,7 @@ interface Props {
   onAddTrack: () => void;
   lyricsTrack: Track | null;
   onSetLyricsTrack: (track: Track | null) => void;
+  onCommentTrack?: (track: Track) => void;
   onSearchWorld?: (query: string) => void;
   onToast: (msg: string) => void;
 }
@@ -83,6 +84,7 @@ export const CatalogView: React.FC<Props> = ({
   onAddTrack,
   lyricsTrack,
   onSetLyricsTrack,
+  onCommentTrack,
   onSearchWorld,
   onToast,
 }) => {
@@ -401,6 +403,15 @@ export const CatalogView: React.FC<Props> = ({
                       className={`w-4 h-4 ${track.favorite ? 'fill-pink-500 text-pink-500' : 'text-purple-200'}`}
                     />
                   </button>
+                  {onCommentTrack && (
+                    <button
+                      onClick={() => onCommentTrack(track)}
+                      className="p-1.5 rounded-lg text-cyan-300"
+                      title="Comentar na faixa"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Album */}
@@ -438,6 +449,15 @@ export const CatalogView: React.FC<Props> = ({
                       className={`w-3.5 h-3.5 ${track.favorite ? 'fill-pink-500 text-pink-500' : 'text-purple-200'}`}
                     />
                   </button>
+                  {onCommentTrack && (
+                    <button
+                      onClick={() => onCommentTrack(track)}
+                      className="p-1.5 rounded-lg hover:bg-cyan-500/20 text-cyan-300 transition"
+                      title="Comentar nesta música"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => setPickerTrackId(pickerTrackId === track.id ? null : track.id)}
                     className="p-1.5 rounded-lg hover:bg-white/10 text-purple-200 hover:text-white transition"

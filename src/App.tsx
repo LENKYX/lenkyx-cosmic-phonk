@@ -25,6 +25,7 @@ import {
   VolumeX,
   Zap,
   Waves,
+  MessageSquare,
 } from 'lucide-react';
 import {
   AppMode,
@@ -43,11 +44,14 @@ import { PlaylistsView } from './components/PlaylistsView';
 import { CosmicSpaceBackdrop } from './components/CosmicSpaceBackdrop';
 import { JblLightShowOverlay, JblLightTheme } from './components/JblLightShowOverlay';
 const MoviesView = React.lazy(() => import('./components/MoviesView').then((m) => ({ default: m.MoviesView })));
-const VideoStudioView = React.lazy(() => import('./components/VideoStudioView').then((m) => ({ default: m.VideoStudioView })));
+const SocialShortsAndLiveView = React.lazy(() =>
+  import('./components/SocialShortsAndLiveView').then((m) => ({ default: m.SocialShortsAndLiveView }))
+);
 const StudioCreateView = React.lazy(() => import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView })));
 import { MiniPlayer } from './components/MiniPlayer';
 import { CosmicScreensaver3D, ExperienceMode } from './components/CosmicScreensaver3D';
 import { SoundBoostModal } from './components/SoundBoostModal';
+import { CommunityChatModal, TargetCommentsModal } from './components/CommunityChatModal';
 import { PixModal } from './components/PixModal';
 import {
   AudioSoundProfile,
@@ -148,6 +152,8 @@ export function App() {
   const [soundProfile, setSoundProfile] = useState<AudioSoundProfile>(() => loadSoundProfile());
   const [soundBoostOpen, setSoundBoostOpen] = useState(false);
   const [screensaverOpen, setScreensaverOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [commentTarget, setCommentTarget] = useState<{ id: string; title: string } | null>(null);
   const [autoScreensaverOnPlay, setAutoScreensaverOnPlay] = useState<boolean>(() => {
     try {
       return localStorage.getItem('lenkyx_auto_screensaver_v1') === '1';
@@ -1091,7 +1097,7 @@ export function App() {
     { id: 'catalog', label: 'Início · LENKYX', icon: <Music className="w-4 h-4" /> },
     { id: 'explore', label: 'Artistas & Mundo', icon: <Globe2 className="w-4 h-4" /> },
     { id: 'movies', label: 'Cinema, Séries & TV', icon: <Clapperboard className="w-4 h-4" /> },
-    { id: 'video', label: 'Criar Vídeos', icon: <Video className="w-4 h-4" /> },
+    { id: 'video', label: 'Reels, Live & Vídeos', icon: <Video className="w-4 h-4" /> },
     { id: 'playlists', label: 'Minhas Playlists', icon: <ListMusic className="w-4 h-4" /> },
   ];
 
@@ -1201,8 +1207,14 @@ export function App() {
           </div>
         </div>
 
-        {/* Sidebar Footer: Space Download + Share + PIX + Creator */}
+        {/* Sidebar Footer: Community Chat + Space Download + Share + PIX + Creator */}
         <div className="p-3 pb-4 border-t border-white/10 space-y-1.5">
+          <button
+            onClick={() => setChatOpen(true)}
+            className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-500/25 to-cyan-500/25 hover:from-purple-500/40 hover:to-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-xs font-extrabold flex items-center justify-center gap-1.5 transition"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-cyan-300" /> Chat da Comunidade
+          </button>
           {!isAndroidApk() && (
             <button
               onClick={() => setSpaceDownloadOpen(true)}
@@ -1323,6 +1335,16 @@ export function App() {
             >
               <Waves className="w-3.5 h-3.5 text-cyan-300" />
               <span className="hidden xl:inline">Efeito 3D</span>
+            </button>
+
+            {/* Global Community Chat Button */}
+            <button
+              onClick={() => setChatOpen(true)}
+              className="px-2.5 py-1.5 rounded-full bg-white/[0.08] hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-200 text-[11px] font-extrabold flex items-center gap-1 transition"
+              title="Abrir Chat ao Vivo com a Comunidade"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Chat</span>
             </button>
 
             <button
@@ -1490,6 +1512,7 @@ export function App() {
                   }}
                   lyricsTrack={lyricsTrack}
                   onSetLyricsTrack={setLyricsTrack}
+                  onCommentTrack={(t) => setCommentTarget({ id: `track:${t.id}`, title: `${t.title} — ${t.artist}` })}
                   onSearchWorld={triggerWorldSearchDirect}
                   onToast={showToast}
                 />
@@ -1550,10 +1573,13 @@ export function App() {
                 )}
 
                 {activeTab === 'video' && (
-                  <VideoStudioView
+                  <SocialShortsAndLiveView
                     tracks={allTracksPool}
                     initialTrack={videoTrack || currentTrack}
+                    user={userProfile}
+                    onPlayTrack={(t) => void handlePlayTrack(t, 'v1', allTracksPool)}
                     onPauseCatalogPlayer={pauseCatalogPlayer}
+                    onOpenUserAuth={() => setUserAuthOpen(true)}
                     onToast={showToast}
                   />
                 )}
@@ -1623,7 +1649,7 @@ export function App() {
             { id: 'catalog' as TabId, label: 'Início', icon: <Music className="w-4 h-4" /> },
             { id: 'explore' as TabId, label: 'Artistas', icon: <Globe2 className="w-4 h-4" /> },
             { id: 'movies' as TabId, label: 'Cinema/TV', icon: <Clapperboard className="w-4 h-4" /> },
-            { id: 'video' as TabId, label: 'Vídeos', icon: <Video className="w-4 h-4" /> },
+            { id: 'video' as TabId, label: 'Reels/Live', icon: <Video className="w-4 h-4" /> },
             { id: 'playlists' as TabId, label: 'Playlists', icon: <ListMusic className="w-4 h-4" /> },
           ] as { id: TabId; label: string; icon: React.ReactNode; isPix?: boolean }[]
         ).map((item) => {
@@ -1717,6 +1743,24 @@ export function App() {
         onVolume={handleVolume}
         onToggleMute={handleToggleMute}
         onChangeProfile={handleChangeSoundProfile}
+      />
+
+      {/* COMMUNITY GLOBAL CHAT & TRACK COMMENTS */}
+      <CommunityChatModal
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        user={userProfile}
+        onOpenAuth={() => {
+          setChatOpen(false);
+          setUserAuthOpen(true);
+        }}
+      />
+      <TargetCommentsModal
+        open={Boolean(commentTarget)}
+        onClose={() => setCommentTarget(null)}
+        targetId={commentTarget?.id || ''}
+        targetTitle={commentTarget?.title || ''}
+        user={userProfile}
       />
 
       {/* Persistent Cinema Clip Theater (hidden offscreen unless user chooses Vídeo — zero unwanted mini-box!) */}
