@@ -15,6 +15,12 @@ import {
   findFanInSupabase,
 } from './supabaseStore.js';
 import {
+  registerFanUser,
+  loginFanUser,
+  requestPasswordRecovery,
+  verifyPasswordRecovery,
+} from './fanAuthStore.js';
+import {
   runSmartWorldSearch,
   getFamousArtistsWithPhotos,
   CURATED_PLAYLISTS,
@@ -638,8 +644,52 @@ app.get('/download/apk', (_req, res) => {
   const db = readDb();
   const redirectUrl =
     (db.settings?.apkDownloadUrl || '').trim() ||
-    'https://drive.google.com/uc?id=1pbXXlgAoLMygiIni7ivc3xIfRfCWmwzo&export=download';
+    'https://drive.google.com/uc?id=1CqwpvAgNKH_ULB5msJzVXwYz-voJ-Hjk&export=download';
   return res.redirect(302, redirectUrl);
+});
+
+// Live App Auto-Update Manifest (reads Supabase public manifest or local fallback)
+app.post('/api/fan-auth/register', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  try {
+    const user = await registerFanUser(req.body || {});
+    return res.json({ ok: true, user });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e?.message || 'Erro no cadastro.' });
+  }
+});
+
+app.post('/api/fan-auth/login', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  try {
+    const { identifier, passwordHash } = req.body || {};
+    const result = await loginFanUser(identifier, passwordHash);
+    return res.status(result.ok ? 200 : 401).json(result);
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e?.message || 'Erro no login.' });
+  }
+});
+
+app.post('/api/fan-auth/recover-request', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  try {
+    const { identifier } = req.body || {};
+    const result = await requestPasswordRecovery(identifier);
+    return res.status(result.ok ? 200 : 404).json(result);
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e?.message || 'Erro ao gerar código.' });
+  }
+});
+
+app.post('/api/fan-auth/recover-verify', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  try {
+    const { identifier, code, newPasswordHash } = req.body || {};
+    const result = await verifyPasswordRecovery(identifier, code, newPasswordHash);
+    return res.status(result.ok ? 200 : 400).json(result);
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e?.message || 'Erro ao redefinir senha.' });
+  }
 });
 
 // Live App Auto-Update Manifest (reads Supabase public manifest or local fallback)
@@ -648,11 +698,11 @@ app.get('/api/app-update', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const db = readDb();
   const fallback = {
-    latestVersionCode: 12,
-    latestVersionName: '2.0.8',
+    latestVersionCode: 13,
+    latestVersionName: '2.0.9',
     apkUrl:
       (db.settings?.apkDownloadUrl || '').trim() ||
-      'https://drive.google.com/uc?id=1pbXXlgAoLMygiIni7ivc3xIfRfCWmwzo&export=download',
+      'https://drive.google.com/uc?id=1CqwpvAgNKH_ULB5msJzVXwYz-voJ-Hjk&export=download',
     releaseNotes: 'App 100% otimizado, busca IA, clipes HD, modo offline e auto-atualização.',
     updateAvailable: false,
   };

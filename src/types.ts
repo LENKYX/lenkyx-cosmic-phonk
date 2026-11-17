@@ -49,6 +49,9 @@ export interface UserProfile {
   id: string;
   name: string;
   email?: string;
+  phone?: string;
+  passwordHash?: string;
+  deviceUnlockEnabled?: boolean;
   avatarColor: string;
   acceptedTermsAt?: string;
   createdAt: string;

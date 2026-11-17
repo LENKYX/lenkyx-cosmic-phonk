@@ -31,6 +31,7 @@ import {
   UserProfile,
 } from './types';
 import { isAndroidApk } from './utils/androidBridge';
+import { saveDeviceAccount } from './utils/fanAuth';
 import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
 import { PlaylistsView } from './components/PlaylistsView';
@@ -73,7 +74,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pixCity: 'CAMPO GRANDE',
   pixMessage: 'Apoio LENKYX Cosmic Phonk',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
-  apkDownloadUrl: 'https://drive.google.com/uc?id=1pbXXlgAoLMygiIni7ivc3xIfRfCWmwzo&export=download',
+  apkDownloadUrl: 'https://drive.google.com/uc?id=1CqwpvAgNKH_ULB5msJzVXwYz-voJ-Hjk&export=download',
   youtubeUrl: '',
   sunoHandle: '@lenkyx',
   sunoProfileUrl: 'https://suno.com/@lenkyx',
@@ -1642,11 +1643,12 @@ export function App() {
         onSaveUser={(u) => {
           setUserProfile(u);
           saveUserProfile(u);
+          saveDeviceAccount(u);
         }}
         onLogoutUser={() => {
           setUserProfile(null);
           saveUserProfile(null);
-          showToast('Você saiu do perfil de ouvinte.');
+          showToast('Sessão encerrada.');
         }}
         onOpenShare={() => {
           setUserAuthOpen(false);
