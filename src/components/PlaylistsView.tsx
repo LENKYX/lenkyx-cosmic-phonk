@@ -8,7 +8,7 @@ import {
   Upload,
   Music,
   Image as ImageIcon,
-  Disc3,
+  Video,
   Heart,
   Sparkles,
   User,
@@ -23,7 +23,7 @@ interface Props {
   currentTrack: Track | null;
   isPlaying: boolean;
   onPlayTrack: (track: Track, queue?: Track[]) => void;
-  onSendToDJ: (track: Track, deck: 'A' | 'B') => void;
+  onSendToVideo: (track: Track) => void;
   onCreatePlaylist: (name: string, description: string, emoji: string) => void;
   onDeletePlaylist: (id: string) => void;
   onRemoveFromPlaylist: (playlistId: string, trackId: string) => void;
@@ -49,7 +49,7 @@ export const PlaylistsView: React.FC<Props> = ({
   currentTrack,
   isPlaying,
   onPlayTrack,
-  onSendToDJ,
+  onSendToVideo,
   onCreatePlaylist,
   onDeletePlaylist,
   onRemoveFromPlaylist,
@@ -253,7 +253,7 @@ export const PlaylistsView: React.FC<Props> = ({
               </h2>
               <p className="text-xs text-purple-200/75">
                 {selectedId === 'USER_UPLOADS'
-                  ? 'Arquivos MP3/WAV salvos no seu aparelho — toque ou mande direto pra Mesa de DJ!'
+                  ? 'Arquivos MP3/WAV salvos no seu aparelho — toque ou crie vídeos incríveis com eles!'
                   : selectedPlaylist?.description || `${resolvedTracks.length} músicas`}
               </p>
             </div>
@@ -311,11 +311,11 @@ export const PlaylistsView: React.FC<Props> = ({
                       </div>
                     </div>
                     <button
-                      onClick={() => onSendToDJ(t, 'A')}
+                      onClick={() => onSendToVideo(t)}
                       className="p-2 rounded-lg bg-white/5 hover:bg-cyan-500/25 text-cyan-300"
-                      title="Mandar pra Mesa de DJ"
+                      title="Criar Vídeo com esta Música"
                     >
-                      <Disc3 className="w-4 h-4" />
+                      <Video className="w-4 h-4" />
                     </button>
                     {selectedId === 'USER_UPLOADS' && (
                       <button

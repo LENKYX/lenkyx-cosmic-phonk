@@ -5,27 +5,38 @@ const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 export const FAMOUS_ARTISTS_DIRECTORY = [
-  // Brasil — Sertanejo & Raiz
+  // Internacionais — Estrelas Globais (Pop, Hip-Hop, R&B, Rock, Eletrônica)
+  { name: 'The Weeknd', genre: 'Pop / Synthwave', era: 'Global Top', wiki: 'The_Weeknd', lang: 'en', query: 'The Weeknd official audio' },
+  { name: 'Taylor Swift', genre: 'Pop Global', era: 'Global Top', wiki: 'Taylor_Swift', lang: 'en', query: 'Taylor Swift official music' },
+  { name: 'Billie Eilish', genre: 'Alt Pop', era: 'Global Top', wiki: 'Billie_Eilish', lang: 'en', query: 'Billie Eilish official audio' },
+  { name: 'Bruno Mars', genre: 'Pop / R&B', era: 'Global Top', wiki: 'Bruno_Mars', lang: 'en', query: 'Bruno Mars official audio' },
+  { name: 'Dua Lipa', genre: 'Pop / Dance', era: 'Global Top', wiki: 'Dua_Lipa', lang: 'en', query: 'Dua Lipa official music' },
+  { name: 'Drake', genre: 'Hip-Hop / R&B', era: 'Global Top', wiki: 'Drake_(musician)', lang: 'en', query: 'Drake official audio' },
+  { name: 'Bad Bunny', genre: 'Reggaeton / Trap', era: 'Latina Global', wiki: 'Bad_Bunny', lang: 'en', query: 'Bad Bunny official audio' },
+  { name: 'Travis Scott', genre: 'Trap / Hip-Hop', era: 'Global Top', wiki: 'Travis_Scott', lang: 'en', query: 'Travis Scott official audio' },
+  { name: 'Eminem', genre: 'Hip-Hop / Rap', era: 'Lenda Global', wiki: 'Eminem', lang: 'en', query: 'Eminem official audio' },
+  { name: 'Rihanna', genre: 'Pop / R&B', era: 'Ícone Global', wiki: 'Rihanna', lang: 'en', query: 'Rihanna official music' },
+  { name: 'Post Malone', genre: 'Pop / Hip-Hop', era: 'Global Top', wiki: 'Post_Malone', lang: 'en', query: 'Post Malone official audio' },
+  { name: 'Ariana Grande', genre: 'Pop / R&B', era: 'Global Top', wiki: 'Ariana_Grande', lang: 'en', query: 'Ariana Grande official audio' },
+  { name: 'Coldplay', genre: 'Pop Rock', era: 'Global Top', wiki: 'Coldplay', lang: 'en', query: 'Coldplay official music' },
+  { name: 'Imagine Dragons', genre: 'Rock / Pop', era: 'Global Top', wiki: 'Imagine_Dragons', lang: 'en', query: 'Imagine Dragons official audio' },
+  { name: 'Daft Punk', genre: 'Eletrônica / Espacial', era: 'Lenda Global', wiki: 'Daft_Punk', lang: 'en', query: 'Daft Punk official audio' },
+  { name: 'Michael Jackson', genre: 'Rei do Pop', era: 'Anos 70/80/90', wiki: 'Michael_Jackson', lang: 'en', query: 'Michael Jackson official audio' },
+  { name: 'Queen', genre: 'Rock Clássico', era: 'Anos 70/80', wiki: 'Queen_(band)', lang: 'en', query: 'Queen official audio' },
+  { name: 'Linkin Park', genre: 'Rock / Nu Metal', era: 'Anos 2000/2020', wiki: 'Linkin_Park', lang: 'en', query: 'Linkin Park official' },
+  { name: 'Metallica', genre: 'Heavy Metal', era: 'Lenda Global', wiki: 'Metallica', lang: 'en', query: 'Metallica official audio' },
+  { name: 'Kordhell', genre: 'Phonk Mundial', era: 'Nova Geração', wiki: 'Phonk', lang: 'en', query: 'Kordhell phonk' },
+  // Brasil — Sertanejo, Pop, Eletrônica, Rap, Rock
   { name: 'Henrique & Juliano', genre: 'Sertanejo', era: 'Brasil', wiki: 'Henrique_&_Juliano', lang: 'pt', query: 'Henrique e Juliano musica oficial' },
   { name: 'Marília Mendonça', genre: 'Sertanejo', era: 'Rainha da Sofrência', wiki: 'Marília_Mendonça', lang: 'pt', query: 'Marilia Mendonca melhores musicas' },
   { name: 'Gusttavo Lima', genre: 'Sertanejo', era: 'Embaixador', wiki: 'Gusttavo_Lima', lang: 'pt', query: 'Gusttavo Lima oficial audio' },
   { name: 'Jorge & Mateus', genre: 'Sertanejo', era: 'Brasil', wiki: 'Jorge_&_Mateus', lang: 'pt', query: 'Jorge e Mateus sucessos' },
-  { name: 'Zé Neto & Cristiano', genre: 'Sertanejo', era: 'Brasil', wiki: 'Zé_Neto_&_Cristiano', lang: 'pt', query: 'Ze Neto e Cristiano oficial' },
-  { name: 'Chitãozinho & Xororó', genre: 'Sertanejo Raiz', era: 'Anos 80/90', wiki: 'Chitãozinho_&_Xororó', lang: 'pt', query: 'Chitaozinho e Xororo classicos' },
-  // Brasil — Pop, Funk, Eletrônica, Rap, Rock
+  { name: 'Luan Santana', genre: 'Sertanejo / Pop', era: 'Brasil', wiki: 'Luan_Santana', lang: 'pt', query: 'Luan Santana oficial' },
   { name: 'Alok', genre: 'Eletrônica / House', era: 'Brasil & Mundo', wiki: 'Alok', lang: 'pt', query: 'Alok official music' },
+  { name: 'Vintage Culture', genre: 'House / Eletrônica', era: 'Brasil & Mundo', wiki: 'Vintage_Culture', lang: 'pt', query: 'Vintage Culture official' },
   { name: 'Anitta', genre: 'Pop / Funk Brasil', era: 'Brasil & Mundo', wiki: 'Anitta', lang: 'pt', query: 'Anitta official audio' },
   { name: "Racionais MC's", genre: 'Rap Nacional', era: 'Anos 90/2000', wiki: "Racionais_MC's", lang: 'pt', query: 'Racionais MCs musicas' },
   { name: 'Legião Urbana', genre: 'Rock Nacional', era: 'Anos 80/90', wiki: 'Legião_Urbana', lang: 'pt', query: 'Legiao Urbana sucessos' },
-  // Internacionais — Todas as Gerações
-  { name: 'Michael Jackson', genre: 'Pop Rei', era: 'Anos 70/80/90', wiki: 'Michael_Jackson', lang: 'en', query: 'Michael Jackson official audio' },
-  { name: 'Queen', genre: 'Rock Clássico', era: 'Anos 70/80', wiki: 'Queen_(band)', lang: 'en', query: 'Queen official audio' },
-  { name: 'The Weeknd', genre: 'Pop / Synthwave', era: '2010s/2020s', wiki: 'The_Weeknd', lang: 'en', query: 'The Weeknd official audio' },
-  { name: 'Eminem', genre: 'Hip-Hop / Rap', era: 'Anos 2000/2020', wiki: 'Eminem', lang: 'en', query: 'Eminem official audio' },
-  { name: 'Daft Punk', genre: 'Eletrônica / Espacial', era: 'Anos 90/2010', wiki: 'Daft_Punk', lang: 'en', query: 'Daft Punk official audio' },
-  { name: 'Linkin Park', genre: 'Rock / Nu Metal', era: 'Anos 2000', wiki: 'Linkin_Park', lang: 'en', query: 'Linkin Park official' },
-  { name: 'Bruno Mars', genre: 'Pop / Funk', era: '2010s/2020s', wiki: 'Bruno_Mars', lang: 'en', query: 'Bruno Mars official audio' },
-  { name: 'Kordhell', genre: 'Phonk Mundial', era: 'Nova Geração', wiki: 'Phonk', lang: 'en', query: 'Kordhell phonk' },
 ];
 
 export const CURATED_PLAYLISTS = [

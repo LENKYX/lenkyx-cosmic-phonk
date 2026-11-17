@@ -4,7 +4,7 @@ const DB_LS_KEY = 'lenkyx_offline_db_v1';
 const AUTH_LS_KEY = 'lenkyx_offline_auth_v1';
 const IDB_NAME = 'lenkyx_media_vault_v1';
 const IDB_STORE = 'blobs';
-const TARGET_CATALOG_VERSION = 7;
+const TARGET_CATALOG_VERSION = 8;
 
 const DEFAULT_PASSWORD_SHA256 = '321a63151fae18ed6677a4dbd331d1ac914dbd3291ca346589b7bde02afd9f7b';
 

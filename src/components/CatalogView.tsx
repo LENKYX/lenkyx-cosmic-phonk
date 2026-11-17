@@ -4,7 +4,6 @@ import {
   Pause,
   Heart,
   MessageCircle,
-  Disc3,
   Video,
   Upload,
   Sparkles,
@@ -43,7 +42,6 @@ interface Props {
   onLikeTrack: (track: Track) => void;
   onShareTrack: (track: Track | null) => void;
   onOpenPix: () => void;
-  onSendToDJ: (track: Track, deck: 'A' | 'B') => void;
   onSendToVideo: (track: Track) => void;
   onAddToPlaylist: (playlistId: string, track: Track) => void;
   onToggleOffline: (track: Track) => void;
@@ -76,7 +74,6 @@ export const CatalogView: React.FC<Props> = ({
   onPlayTrack,
   onLikeTrack,
   onShareTrack,
-  onSendToDJ,
   onSendToVideo,
   onAddToPlaylist,
   onToggleOffline,
@@ -431,11 +428,11 @@ export const CatalogView: React.FC<Props> = ({
                     <ListPlus className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => onSendToDJ(track, 'A')}
+                    onClick={() => onSendToVideo(track)}
                     className="p-1.5 rounded-lg hover:bg-cyan-500/20 text-cyan-300 transition"
-                    title="Mixar na Mesa DJ"
+                    title="Criar Vídeo (Reels / TikTok / YouTube)"
                   >
-                    <Disc3 className="w-3.5 h-3.5" />
+                    <Video className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => onSetLyricsTrack(track)}
@@ -452,22 +449,13 @@ export const CatalogView: React.FC<Props> = ({
                     <MessageCircle className="w-3.5 h-3.5" />
                   </button>
                   {mode === 'creator' && (
-                    <>
-                      <button
-                        onClick={() => onEditTrack(track)}
-                        className="p-1.5 rounded-lg hover:bg-pink-500/25 text-pink-300 transition"
-                        title="Editar Faixa"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onSendToVideo(track)}
-                        className="p-1.5 rounded-lg hover:bg-red-500/25 text-red-300 transition"
-                        title="Vídeo YouTube"
-                      >
-                        <Video className="w-3.5 h-3.5" />
-                      </button>
-                    </>
+                    <button
+                      onClick={() => onEditTrack(track)}
+                      className="p-1.5 rounded-lg hover:bg-pink-500/25 text-pink-300 transition"
+                      title="Editar Faixa"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                    </button>
                   )}
 
                   {pickerTrackId === track.id && (
@@ -561,11 +549,11 @@ export const CatalogView: React.FC<Props> = ({
                         )}
                       </button>
                       <button
-                        onClick={() => onSendToDJ(track, 'A')}
+                        onClick={() => onSendToVideo(track)}
                         className="p-1 rounded bg-white/5 hover:bg-cyan-500/25 text-cyan-300"
-                        title="Mesa DJ"
+                        title="Criar Vídeo"
                       >
-                        <Disc3 className="w-3 h-3" />
+                        <Video className="w-3 h-3" />
                       </button>
                     </div>
                   </div>

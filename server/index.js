@@ -25,6 +25,7 @@ import {
   getFamousArtistsWithPhotos,
   CURATED_PLAYLISTS,
 } from './musicAI.js';
+import { getMoviesDirectory, searchMovies } from './moviesAI.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -563,6 +564,38 @@ app.get('/api/world-search', async (req, res) => {
   }
 });
 
+// === NETFLIX-STYLE FREE FULL MOVIES & OFFICIAL TRAILERS ===
+app.use('/api/movies-', (_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+});
+
+app.get('/api/movies-directory', async (_req, res) => {
+  try {
+    const payload = await getMoviesDirectory();
+    res.json(payload);
+  } catch {
+    res.json({ categories: [] });
+  }
+});
+
+app.get('/api/movies-search', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const isTrailer = req.query.trailer === '1' || req.query.trailer === 'true';
+  const mediaType = String(req.query.type || 'movie').trim();
+  try {
+    const movies = await searchMovies(
+      q || 'filme internacional completo dublado full hd',
+      q || 'Busca de Cinema',
+      isTrailer,
+      mediaType
+    );
+    res.json({ movies });
+  } catch {
+    res.json({ movies: [] });
+  }
+});
+
 // Safe CORS Audio/Media Proxy for Offline Device Downloads (Suno, Audius & Archive.org CDNs only)
 app.get('/api/audio-proxy', async (req, res) => {
   const rawUrl = String(req.query.url || '').trim();
@@ -698,8 +731,8 @@ app.get('/api/app-update', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const db = readDb();
   const fallback = {
-    latestVersionCode: 13,
-    latestVersionName: '2.0.9',
+    latestVersionCode: 14,
+    latestVersionName: '2.1.0',
     apkUrl:
       (db.settings?.apkDownloadUrl || '').trim() ||
       'https://drive.google.com/uc?id=1CqwpvAgNKH_ULB5msJzVXwYz-voJ-Hjk&export=download',

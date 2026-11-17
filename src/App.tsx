@@ -1,7 +1,6 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Music,
-  Disc3,
   Video,
   Wand2,
   QrCode,
@@ -20,6 +19,8 @@ import {
   Play,
   Pause,
   Minimize2,
+  Clapperboard,
+  Speaker,
 } from 'lucide-react';
 import {
   AppMode,
@@ -36,7 +37,8 @@ import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
 import { PlaylistsView } from './components/PlaylistsView';
 import { CosmicSpaceBackdrop } from './components/CosmicSpaceBackdrop';
-const DJMixerView = React.lazy(() => import('./components/DJMixerView').then((m) => ({ default: m.DJMixerView })));
+import { JblLightShowOverlay, JblLightTheme } from './components/JblLightShowOverlay';
+const MoviesView = React.lazy(() => import('./components/MoviesView').then((m) => ({ default: m.MoviesView })));
 const VideoStudioView = React.lazy(() => import('./components/VideoStudioView').then((m) => ({ default: m.VideoStudioView })));
 const StudioCreateView = React.lazy(() => import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView })));
 import { MiniPlayer } from './components/MiniPlayer';
@@ -47,7 +49,6 @@ import { UploadTrackModal } from './components/UploadTrackModal';
 import { CreatorModal } from './components/CreatorModal';
 import { UserAuthModal } from './components/UserAuthModal';
 import { authFetch, setAuthToken } from './utils/api';
-import { djEngine } from './audio/djEngine';
 import {
   addUserLocalTrack,
   deleteUserLocalTrack,
@@ -144,10 +145,11 @@ export function App() {
     currentTrackRef.current = currentTrack;
   }, [currentTrack]);
 
-  // Cross-tab context
-  const [djDeckA, setDjDeckA] = useState<Track | null>(null);
-  const [djDeckB, setDjDeckB] = useState<Track | null>(null);
+  // Cross-tab context & JBL Light Show + Cinema Movie mode
   const [videoTrack, setVideoTrack] = useState<Track | null>(null);
+  const [jblLightsEnabled, setJblLightsEnabled] = useState(true);
+  const [jblTheme, setJblTheme] = useState<JblLightTheme>('partybox');
+  const [watchingMovie, setWatchingMovie] = useState(false);
 
   // Offline Downloads state
   const [offlineTrackIds, setOfflineTrackIds] = useState<Set<string>>(() => getOfflineTrackIds());
@@ -494,15 +496,11 @@ export function App() {
           if (st === 1) {
             ytPlayerRef.current?.pauseVideo?.();
           } else {
-            djEngine.pauseDeck('A');
-            djEngine.pauseDeck('B');
             ytPlayerRef.current?.playVideo?.();
           }
           return;
         }
         if (audio.paused) {
-          djEngine.pauseDeck('A');
-          djEngine.pauseDeck('B');
           await audio.play().catch(() => {});
         } else {
           audio.pause();
@@ -510,8 +508,6 @@ export function App() {
         return;
       }
 
-      djEngine.pauseDeck('A');
-      djEngine.pauseDeck('B');
       setCurrentTrack(track);
       currentTrackRef.current = track;
       setActiveVersion(finalVersion);
@@ -656,8 +652,6 @@ export function App() {
       if (st === 1) {
         ytPlayerRef.current?.pauseVideo?.();
       } else {
-        djEngine.pauseDeck('A');
-        djEngine.pauseDeck('B');
         ytPlayerRef.current?.playVideo?.();
       }
       return;
@@ -669,8 +663,6 @@ export function App() {
       return;
     }
     if (audio.paused) {
-      djEngine.pauseDeck('A');
-      djEngine.pauseDeck('B');
       await audio.play().catch(() => {});
     } else {
       audio.pause();
@@ -966,18 +958,17 @@ export function App() {
     await authFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     setAuthToken(null);
     setMode('fan');
-    if (activeTab === 'video' || activeTab === 'studio') setActiveTab('catalog');
+    if (activeTab === 'studio') setActiveTab('catalog');
     showToast('Modo Fã ativado.');
   };
 
-  const handleSendToDJ = (track: Track, deck: 'A' | 'B') => {
+  const handleSendToVideo = (track: Track) => {
     if (track.source === 'world_full' || track.source === 'world_preview') {
       setWorldCacheTracks((prev) => (prev.some((x) => x.id === track.id) ? prev : [track, ...prev].slice(0, 60)));
     }
-    if (deck === 'A') setDjDeckA(track);
-    else setDjDeckB(track);
-    setActiveTab('dj');
-    showToast(`🎛️ "${track.title}" carregada no Deck ${deck}!`);
+    setVideoTrack(track);
+    setActiveTab('video');
+    showToast(`🎬 "${track.title}" pronta no Estúdio de Vídeos!`);
   };
 
   const handleGlobalSearchSubmit = (e: React.FormEvent) => {
@@ -990,15 +981,27 @@ export function App() {
 
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'catalog', label: 'Início · LENKYX', icon: <Music className="w-4 h-4" /> },
-    { id: 'explore', label: 'Explorar Mundo', icon: <Globe2 className="w-4 h-4" /> },
+    { id: 'explore', label: 'Artistas & Mundo', icon: <Globe2 className="w-4 h-4" /> },
+    { id: 'movies', label: 'Filmes, Séries & Animes', icon: <Clapperboard className="w-4 h-4" /> },
+    { id: 'video', label: 'Criar Vídeos', icon: <Video className="w-4 h-4" /> },
     { id: 'playlists', label: 'Minhas Playlists', icon: <ListMusic className="w-4 h-4" /> },
-    { id: 'dj', label: 'Mesa de DJ Pro', icon: <Disc3 className="w-4 h-4" /> },
   ];
 
+  const isWatchingVideoOrMovie =
+    clipTheaterOpen || watchingMovie || Boolean(currentTrack?.youtubeVideoId && !currentTrack?.audioUrl);
+
   return (
-    <div className="min-h-screen bg-[#04010c] text-white flex relative cosmic-scene">
+    <div className="min-h-screen bg-[#04010c] text-white flex relative">
       {/* === 3D DEEP SPACE PARALLAX STARFIELD & FLOATING PLANETS === */}
       <CosmicSpaceBackdrop />
+
+      {/* === JBL PARTYBOX REACTIVE LIGHT SHOW (dims automatically for Videos & Movies!) === */}
+      <JblLightShowOverlay
+        enabled={jblLightsEnabled}
+        isPlaying={isPlaying}
+        dimForVideo={isWatchingVideoOrMovie}
+        theme={jblTheme}
+      />
 
       {/* === DESKTOP FLOATING GLASS LEFT SIDEBAR === */}
       <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
@@ -1046,17 +1049,6 @@ export function App() {
               <div className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-pink-300/80 mb-1">
                 Estúdio Criador
               </div>
-              <button
-                onClick={() => setActiveTab('video')}
-                className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
-                  activeTab === 'video'
-                    ? 'bg-pink-500/25 text-white border border-pink-500/40'
-                    : 'text-purple-200/80 hover:text-white hover:bg-white/[0.06]'
-                }`}
-              >
-                <Video className="w-4 h-4 text-red-400" />
-                <span>Estúdio YouTube</span>
-              </button>
               <button
                 onClick={() => setActiveTab('studio')}
                 className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
@@ -1170,6 +1162,34 @@ export function App() {
 
           {/* Right User / Fan Auth & Quick Actions */}
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => {
+                if (!jblLightsEnabled) {
+                  setJblLightsEnabled(true);
+                  setJblTheme('partybox');
+                  showToast('🔊 Luzes JBL PartyBox Ligadas!');
+                } else if (jblTheme === 'partybox') {
+                  setJblTheme('aurora');
+                  showToast('✨ Tema JBL Aurora Ativado!');
+                } else if (jblTheme === 'aurora') {
+                  setJblTheme('cosmic');
+                  showToast('🌌 Tema JBL Cósmico Ativado!');
+                } else {
+                  setJblLightsEnabled(false);
+                  showToast('Luzes JBL Desligadas.');
+                }
+              }}
+              className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1 border transition ${
+                jblLightsEnabled
+                  ? 'bg-pink-500/25 border-pink-400/50 text-pink-200'
+                  : 'bg-white/[0.06] border-white/10 text-purple-200/75'
+              }`}
+              title="Trocar Tema das Luzes JBL (PartyBox / Aurora / Cósmico / Off)"
+            >
+              <Speaker className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{jblLightsEnabled ? 'Luzes JBL' : 'Luz Off'}</span>
+            </button>
+
             {!isAndroidApk() && (
               <button
                 onClick={() => setSpaceDownloadOpen(true)}
@@ -1293,11 +1313,7 @@ export function App() {
                     setPixInitialTab('donate');
                     setPixOpen(true);
                   }}
-                  onSendToDJ={handleSendToDJ}
-                  onSendToVideo={(t) => {
-                    setVideoTrack(t);
-                    setActiveTab('video');
-                  }}
+                  onSendToVideo={handleSendToVideo}
                   onAddToPlaylist={addTrackToPlaylist}
                   onToggleOffline={(t) => void handleToggleOffline(t)}
                   onDownloadAllOffline={() => void handleDownloadAllOffline()}
@@ -1327,7 +1343,7 @@ export function App() {
                     setClipTheaterOpen(true);
                   }}
                   onAddToPlaylist={addTrackToPlaylist}
-                  onSendToDJ={handleSendToDJ}
+                  onSendToVideo={handleSendToVideo}
                 />
               )}
 
@@ -1345,7 +1361,7 @@ export function App() {
                   onRemoveFromPlaylist={handleRemoveFromPlaylist}
                   onUploadUserTrack={handleUploadUserTrack}
                   onDeleteUserTrack={handleDeleteUserTrack}
-                  onSendToDJ={handleSendToDJ}
+                  onSendToVideo={handleSendToVideo}
                   onOpenUserAuth={() => setUserAuthOpen(true)}
                 />
               )}
@@ -1357,21 +1373,16 @@ export function App() {
                   </div>
                 }
               >
-                {activeTab === 'dj' && (
-                  <DJMixerView
-                    tracks={allTracksPool}
-                    isCreator={mode === 'creator'}
-                    initialDeckA={djDeckA}
-                    initialDeckB={djDeckB}
-                    onPauseCatalogPlayer={pauseCatalogPlayer}
-                    onMixSaved={handleTrackSaved}
-                    onToast={showToast}
+                {activeTab === 'movies' && (
+                  <MoviesView
+                    onPauseMusic={pauseCatalogPlayer}
+                    onMovieModalChange={setWatchingMovie}
                   />
                 )}
 
-                {activeTab === 'video' && mode === 'creator' && (
+                {activeTab === 'video' && (
                   <VideoStudioView
-                    tracks={tracks}
+                    tracks={allTracksPool}
                     initialTrack={videoTrack || currentTrack}
                     onPauseCatalogPlayer={pauseCatalogPlayer}
                     onToast={showToast}
@@ -1395,52 +1406,50 @@ export function App() {
         </main>
       </div>
 
-      {/* PERSISTENT COMPACT SPOTIFY MINI PLAYER */}
-      {activeTab !== 'dj' && (
-        <MiniPlayer
-          track={currentTrack}
-          activeVersion={activeVersion}
-          isPlaying={isPlaying}
-          isPlayingFromOffline={isPlayingFromOffline}
-          isCurrentTrackOffline={currentTrack ? offlineTrackIds.has(currentTrack.id) : false}
-          isDownloadingOffline={currentTrack ? downloadingIds.has(currentTrack.id) : false}
-          currentTime={currentTime}
-          duration={duration}
-          volume={volume}
-          onTogglePlay={() => void handleTogglePlay()}
-          onSelectVersion={handleSelectVersion}
-          onPrev={() => handlePrevNext(-1)}
-          onNext={() => handlePrevNext(1)}
-          onSeek={handleSeek}
-          onVolume={handleVolume}
-          onShare={(t) => {
-            setShareTrack(t);
-            setShareOpen(true);
-          }}
-          onSendToDJ={(t) => handleSendToDJ(t, 'A')}
-          onOpenLyrics={(t) => {
-            setActiveTab('catalog');
-            setLyricsTrack(t);
-          }}
-          onLike={(t) => void handleLikeTrack(t)}
-          onToggleOffline={(t) => void handleToggleOffline(t)}
-          onWatchClip={() => {
-            if (currentTrack?.youtubeVideoId) setClipTheaterOpen(true);
-          }}
-        />
-      )}
+      {/* ALWAYS-VISIBLE YOUTUBE MUSIC STYLE BOTTOM PLAYER BAR */}
+      <MiniPlayer
+        track={currentTrack}
+        activeVersion={activeVersion}
+        isPlaying={isPlaying}
+        isPlayingFromOffline={isPlayingFromOffline}
+        isCurrentTrackOffline={currentTrack ? offlineTrackIds.has(currentTrack.id) : false}
+        isDownloadingOffline={currentTrack ? downloadingIds.has(currentTrack.id) : false}
+        currentTime={currentTime}
+        duration={duration}
+        volume={volume}
+        jblLightsEnabled={jblLightsEnabled}
+        onToggleJblLights={() => setJblLightsEnabled((v) => !v)}
+        onTogglePlay={() => void handleTogglePlay()}
+        onSelectVersion={handleSelectVersion}
+        onPrev={() => handlePrevNext(-1)}
+        onNext={() => handlePrevNext(1)}
+        onSeek={handleSeek}
+        onVolume={handleVolume}
+        onShare={(t) => {
+          setShareTrack(t);
+          setShareOpen(true);
+        }}
+        onSendToVideo={handleSendToVideo}
+        onOpenLyrics={(t) => {
+          setActiveTab('catalog');
+          setLyricsTrack(t);
+        }}
+        onLike={(t) => void handleLikeTrack(t)}
+        onToggleOffline={(t) => void handleToggleOffline(t)}
+        onWatchClip={() => {
+          if (currentTrack?.youtubeVideoId) setClipTheaterOpen(true);
+        }}
+      />
 
-      {/* MOBILE BOTTOM NAVIGATION BAR (Spotify / YouTube Music Pro style) */}
+      {/* MOBILE BOTTOM NAVIGATION BAR (YouTube Music / Netflix style) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-5 items-center px-1">
         {(
           [
             { id: 'catalog' as TabId, label: 'Início', icon: <Music className="w-4 h-4" /> },
-            { id: 'explore' as TabId, label: 'Mundo', icon: <Globe2 className="w-4 h-4" /> },
+            { id: 'explore' as TabId, label: 'Artistas', icon: <Globe2 className="w-4 h-4" /> },
+            { id: 'movies' as TabId, label: 'Filmes', icon: <Clapperboard className="w-4 h-4" /> },
+            { id: 'video' as TabId, label: 'Vídeos', icon: <Video className="w-4 h-4" /> },
             { id: 'playlists' as TabId, label: 'Playlists', icon: <ListMusic className="w-4 h-4" /> },
-            { id: 'dj' as TabId, label: 'DJ Pro', icon: <Disc3 className="w-4 h-4" /> },
-            mode === 'creator'
-              ? { id: 'studio' as TabId, label: 'Estúdio', icon: <Wand2 className="w-4 h-4" /> }
-              : { id: 'catalog' as TabId, label: 'PIX', icon: <QrCode className="w-4 h-4" />, isPix: true },
           ] as { id: TabId; label: string; icon: React.ReactNode; isPix?: boolean }[]
         ).map((item) => {
           const active = !item.isPix && activeTab === item.id;

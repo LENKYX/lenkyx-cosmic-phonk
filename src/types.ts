@@ -89,8 +89,26 @@ export interface AppSettings {
 }
 
 export type AudioVersion = 'v1' | 'v2';
-export type TabId = 'catalog' | 'explore' | 'dj' | 'playlists' | 'video' | 'studio';
+export type TabId = 'catalog' | 'explore' | 'movies' | 'playlists' | 'video' | 'studio';
 export type AppMode = 'creator' | 'fan';
+
+export interface MovieItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  category: string;
+  year?: string;
+  durationLabel: string;
+  posterUrl: string;
+  youtubeVideoId?: string;
+  videoStreamUrl?: string;
+  externalUrl?: string;
+  isTrailer?: boolean;
+  sourceLabel: string;
+  qualityLabel?: string;
+  isDubbed?: boolean;
+  mediaType?: 'movie' | 'series' | 'anime' | 'trailer';
+}
 
 export interface WorldArtistDirectoryItem {
   name: string;
