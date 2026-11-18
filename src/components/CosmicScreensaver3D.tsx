@@ -17,9 +17,10 @@ import {
   Upload,
   Trash2,
   Check,
-  LayoutGrid,
+  ArrowLeft,
   Waves,
   Zap,
+  Power,
 } from 'lucide-react';
 import { Track } from '../types';
 import { lenkyxAudioEngine } from '../utils/audioBoostEngine';
@@ -270,11 +271,11 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
 
   const [prefs, setPrefs] = useState<ScreensaverPrefs>(() => loadPrefs());
   const [customImages, setCustomImages] = useState<CustomScreensaverImage[]>(() => loadCustomImages());
+  const [effectsEnabled, setEffectsEnabled] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hudVisible, setHudVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [liveFps, setLiveFps] = useState(60);
   const hudTimerRef = useRef<number | null>(null);
 
   // Persist prefs & custom images
@@ -369,9 +370,9 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
     }
   };
 
-  // === 60-144 FPS 3D NEON SOUNDWAVE + MIRROR REFLECTION + COSMIC PARTICLES CANVAS (skipped when WebGL2 GPU mode active) ===
+  // === 60-144 FPS 3D NEON SOUNDWAVE + MIRROR REFLECTION + COSMIC PARTICLES CANVAS (skipped when WebGL2 GPU mode active or effects OFF) ===
   useEffect(() => {
-    if (!open || prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula' || prefs.style === 'shader_blackhole') return;
+    if (!open || !effectsEnabled || prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula' || prefs.style === 'shader_blackhole') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -380,17 +381,18 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
     let raf = 0;
     let phase = 0;
     const bpm = genreProfile.defaultBpm;
-    let fpsFrames = 0;
-    let fpsStart = performance.now();
 
-    // Cosmic star particles
-    const stars = Array.from({ length: 130 }, () => ({
-      x: Math.random(),
-      y: Math.random() * 0.68,
-      z: 0.3 + Math.random() * 1.4,
-      r: 0.6 + Math.random() * 1.9,
-      hue: Math.random() > 0.5 ? genreProfile.palette[0].c1 : genreProfile.palette[1].c1,
+    // 3D Depth Warp Stars (center-outward parallax!)
+    const stars = Array.from({ length: 160 }, () => ({
+      angle: Math.random() * Math.PI * 2,
+      dist: 0.04 + Math.random() * 0.95,
+      speed: 0.0012 + Math.random() * 0.0032,
+      r: 0.7 + Math.random() * 1.9,
+      hue: Math.random() > 0.45 ? genreProfile.palette[0].c1 : genreProfile.palette[1].c1,
     }));
+
+    // Floating beat shockwave rings
+    let shockAge = 1;
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -427,13 +429,6 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
     };
 
     const draw = () => {
-      const nowTs = performance.now();
-      fpsFrames++;
-      if (nowTs - fpsStart >= 600) {
-        setLiveFps(Math.round((fpsFrames * 1000) / (nowTs - fpsStart)));
-        fpsFrames = 0;
-        fpsStart = nowTs;
-      }
       const w = canvas.width;
       const h = canvas.height;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -443,29 +438,60 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
 
       ctx.clearRect(0, 0, w, h);
 
-      // Subtle dark radial vignette so neon ribbons pop over any photo
-      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.45, w * 0.05, w * 0.5, h * 0.5, w * 0.72);
-      bgGrad.addColorStop(0, 'rgba(24, 6, 56, 0.32)');
-      bgGrad.addColorStop(0.6, 'rgba(8, 2, 24, 0.58)');
-      bgGrad.addColorStop(1, 'rgba(2, 0, 10, 0.85)');
+      // Deep velvety radial aura behind the 3D visualizer
+      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.46, w * 0.04, w * 0.5, h * 0.5, w * 0.75);
+      bgGrad.addColorStop(0, 'rgba(32, 10, 74, 0.36)');
+      bgGrad.addColorStop(0.55, 'rgba(10, 3, 28, 0.62)');
+      bgGrad.addColorStop(1, 'rgba(2, 0, 10, 0.88)');
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // Floating Cosmic Stars accelerating on the beat
-      for (const s of stars) {
-        s.x -= (isPlaying ? 0.0005 + liveBass * 0.0009 : 0.00012) * s.z;
-        if (s.x < 0) s.x = 1;
-        const pulse = isPlaying ? 0.55 + 0.45 * Math.sin(phase * 3 + s.x * 20) : 0.4;
-        ctx.fillStyle = s.hue;
-        ctx.globalAlpha = pulse * 0.78;
-        ctx.beginPath();
-        ctx.arc(s.x * w, s.y * h, (s.r + liveBass * 0.9) * dpr, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-
-      const horizonY = prefs.style === 'gallery_waves' ? h * 0.78 : h * 0.54;
       const bass = Math.max(liveBass, sampleEnergy(2, 64, phase, liveSpectrum, liveBass));
+      if (isPlaying && bass > 0.72 && shockAge > 0.42) shockAge = 0;
+      shockAge = Math.min(1.5, shockAge + (isPlaying ? 0.022 : 0.006));
+
+      // 3D Warp Starfield expanding radially from center
+      const cx0 = w * 0.5;
+      const cy0 = h * 0.46;
+      const maxR = Math.hypot(w, h) * 0.55;
+      ctx.save();
+      for (const s of stars) {
+        const prevDist = s.dist;
+        s.dist += s.speed * (isPlaying ? 1.0 + bass * 2.4 : 0.25);
+        if (s.dist > 1.05) {
+          s.dist = 0.03 + Math.random() * 0.08;
+          s.angle = Math.random() * Math.PI * 2;
+        }
+        const x1 = cx0 + Math.cos(s.angle) * prevDist * maxR;
+        const y1 = cy0 + Math.sin(s.angle) * prevDist * maxR;
+        const x2 = cx0 + Math.cos(s.angle) * s.dist * maxR;
+        const y2 = cy0 + Math.sin(s.angle) * s.dist * maxR;
+        ctx.strokeStyle = s.hue;
+        ctx.globalAlpha = Math.min(0.85, s.dist * 0.9);
+        ctx.lineWidth = s.r * (0.6 + s.dist * 1.1) * dpr;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Beat Shockwave Halo Ring
+      if (shockAge < 1.0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = genreProfile.palette[1].c1;
+        ctx.globalAlpha = (1 - shockAge) * 0.45;
+        ctx.lineWidth = (2.5 - shockAge * 1.5) * dpr;
+        ctx.shadowColor = genreProfile.palette[0].c1;
+        ctx.shadowBlur = 18 * dpr;
+        ctx.beginPath();
+        ctx.arc(cx0, cy0, shockAge * Math.min(w, h) * 0.52, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const horizonY = prefs.style === 'gallery_waves' ? h * 0.78 : h * 0.58;
 
       if (prefs.style === 'waves3d' || prefs.style === 'gallery_waves') {
         // Perspective cosmic floor grid (gives true 3D depth like image-33.png)
@@ -629,7 +655,7 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
     };
-  }, [open, isPlaying, prefs.style, genreProfile, audioElement]);
+  }, [open, effectsEnabled, isPlaying, prefs.style, genreProfile, audioElement]);
 
   if (!open) return null;
 
@@ -678,22 +704,28 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
       onClick={bumpHud}
       className="fixed inset-0 z-[9990] bg-[#03000a] text-white overflow-hidden select-none animate-fade-in"
     >
-      {/* BACKGROUND CHOSEN IMAGE / SLIDESHOW LAYER */}
+      {/* BACKGROUND CHOSEN IMAGE: Cinematic Velvet Blurred Glow + Floating Glass Album Showcase */}
       {currentImg && (
-        <img
-          key={currentImg}
-          src={currentImg}
-          alt={track?.title || 'Cosmic Phonk Screensaver'}
-          style={{ opacity: prefs.imageOpacity }}
-          className={`absolute inset-0 w-full h-full object-cover transition-all duration-1000 ${
-            isPlaying ? 'scale-105' : 'scale-100'
-          }`}
-        />
+        <>
+          <img
+            key={`bg-${currentImg}`}
+            src={currentImg}
+            alt=""
+            style={{ opacity: Math.min(0.65, prefs.imageOpacity + 0.1) }}
+            className={`absolute inset-0 w-full h-full object-cover blur-3xl saturate-150 brightness-50 transition-all duration-1000 ${
+              isPlaying ? 'scale-125' : 'scale-110'
+            }`}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#04010c]/70 via-transparent to-[#04010c]/90 pointer-events-none" />
+        </>
       )}
 
-      {/* WEBGL2 GPU INTERACTIVE QUANTUM GALAXY / PLANET / BLACK HOLE 3D SHADER (Up to 120+ FPS Native VSync) */}
+      {/* WEBGL2 GPU INTERACTIVE QUANTUM GALAXY / PLANET / BLACK HOLE 3D SHADER (Only when Efeito 3D is ON!) */}
       <QuantumGalaxyWebGL
-        active={prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula' || prefs.style === 'shader_blackhole'}
+        active={
+          effectsEnabled &&
+          (prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula' || prefs.style === 'shader_blackhole')
+        }
         mode={
           prefs.style === 'shader_blackhole'
             ? 'shader_blackhole'
@@ -709,26 +741,63 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
         c2Hex={genreProfile.palette[1].c1}
         c3Hex={genreProfile.palette[3]?.c1 || '#fbbf24'}
         hasBackgroundImage={Boolean(currentImg)}
-        onFps={setLiveFps}
       />
 
-      {/* 2D/3D CANVAS NEON SOUNDWAVE + COSMIC PARTICLES */}
-      {prefs.style !== 'shader_galaxy' && prefs.style !== 'shader_nebula' && prefs.style !== 'shader_blackhole' && (
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
-      )}
+      {/* 2D/3D CANVAS NEON SOUNDWAVE + COSMIC PARTICLES (Only when Efeito 3D is ON!) */}
+      {effectsEnabled &&
+        prefs.style !== 'shader_galaxy' &&
+        prefs.style !== 'shader_nebula' &&
+        prefs.style !== 'shader_blackhole' && (
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
+        )}
+
+      {/* CENTERED SOPHISTICATED 3D LEVITATING GLASS COVER ART (Shown cleanly when effects are OFF or in 2D/3D wave styles!) */}
+      {currentImg &&
+        (!effectsEnabled ||
+          (prefs.style !== 'shader_galaxy' &&
+            prefs.style !== 'shader_nebula' &&
+            prefs.style !== 'shader_blackhole')) && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pb-20">
+            <div className="relative flex flex-col items-center">
+              {/* Outer Glowing Beat Aura */}
+              <div
+                className={`absolute -inset-6 rounded-[2.5rem] bg-gradient-to-tr from-cyan-400/35 via-fuchsia-500/30 to-amber-400/25 blur-2xl transition-transform duration-700 ${
+                  isPlaying && effectsEnabled ? 'animate-pulse scale-110' : 'scale-95 opacity-60'
+                }`}
+              />
+              {/* Floating Glass Cover Frame */}
+              <div
+                className={`relative w-44 h-44 sm:w-60 sm:h-60 rounded-3xl p-1.5 bg-gradient-to-br from-white/25 via-cyan-400/20 to-pink-500/25 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.85)] border border-white/20 transition-transform duration-700 ${
+                  isPlaying && effectsEnabled ? 'scale-[1.03]' : 'scale-100'
+                }`}
+              >
+                <img
+                  src={currentImg}
+                  alt={track?.title || 'LENKYX'}
+                  className="w-full h-full rounded-[1.25rem] object-cover"
+                />
+              </div>
+              {!effectsEnabled && (
+                <div className="mt-4 px-3.5 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-bold text-slate-200 backdrop-blur-md">
+                  Modo Estático · Efeito 3D Desligado
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
       {/* FLOATING MINIMAL SONG BADGE (ALWAYS SUBTLY VISIBLE EVEN WHEN HUD HIDES) */}
       <div
-        className={`absolute left-4 sm:left-8 transition-all duration-500 pointer-events-none ${
+        className={`absolute left-4 sm:left-8 transition-all duration-500 pointer-events-none z-20 ${
           hudVisible ? 'bottom-36 sm:bottom-32 opacity-0' : 'bottom-6 opacity-85'
         }`}
       >
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-black/45 backdrop-blur-md border border-white/10">
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-black/50 backdrop-blur-md border border-white/10">
           <img
             src={track?.coverUrl || '/covers/album-official.jpg'}
             alt={track?.title || ''}
             className={`w-10 h-10 rounded-xl object-cover border border-cyan-400/50 ${
-              isPlaying ? 'animate-pulse' : ''
+              isPlaying && effectsEnabled ? 'animate-pulse' : ''
             }`}
           />
           <div className="min-w-0">
@@ -736,110 +805,102 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
               {track?.title || 'LENKYX Cosmic Phonk'}
             </div>
             <div className="text-[10px] font-bold text-cyan-300 truncate max-w-[240px]">
-              {track?.artist || 'Modo Protetor de Tela 3D'} · Toque para controles
+              {track?.artist || 'Modo Cinema & Música'} · Toque para controles
             </div>
           </div>
         </div>
       </div>
 
-      {/* TOP BAR (AUTO-HIDES LIKE REAL SCREENSAVER) */}
+      {/* SOPHISTICATED GLASS TOP BAR (Clean "← Voltar" + Track + Compact Visual & Customizer Pills) */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`absolute top-0 inset-x-0 z-20 p-3 sm:p-5 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-b from-black/80 via-black/40 to-transparent transition-all duration-500 ${
+        className={`absolute top-0 inset-x-0 z-20 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 bg-gradient-to-b from-black/85 via-black/45 to-transparent transition-all duration-500 ${
           hudVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
         }`}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <img
-            src={track?.coverUrl || '/covers/album-official.jpg'}
-            alt={track?.title || 'LENKYX'}
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover border border-pink-400/60 shadow-[0_0_20px_rgba(236,72,153,0.45)] shrink-0"
-          />
-          <div className="min-w-0">
-            <div className="text-[10px] font-black uppercase tracking-widest text-cyan-300 flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3 text-pink-400" />
-              Protetor de Tela 3D · LENKYX Cosmic Phonk
-            </div>
-            <div className="text-sm sm:text-base font-black text-white truncate max-w-[220px] sm:max-w-md">
-              {track?.title || 'Escolha uma música para tocar'}
-            </div>
-            <div className="text-[11px] text-purple-200/80 truncate flex items-center gap-2 flex-wrap">
-              <span className="truncate">{track?.artist || 'LENKYX'}</span>
-              <span className="px-2 py-0.5 rounded-full bg-white/10 border border-cyan-400/35 text-[9px] font-bold text-cyan-200 shrink-0">
-                ⚡ {genreProfile.label} · {genreProfile.defaultBpm} BPM
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[9px] font-black text-emerald-200 shrink-0">
-                {liveFps} FPS · {lenkyxAudioEngine.getSampleRateKhz().toFixed(1)} kHz GPU
-              </span>
-              {(prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula' || prefs.style === 'shader_blackhole') && (
-                <span className="text-[9px] text-amber-300/95 font-semibold hidden md:inline">
-                  {prefs.style === 'shader_blackhole'
-                    ? '🕳️ Buraco Negro 3D Horário ativo — toque ou arraste para distorcer a gravidade!'
-                    : '✨ Arraste ou clique na galáxia para criar vórtices e supernovas!'}
-                </span>
-              )}
+        {/* Left: Clean Voltar + Track Info */}
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+          <button
+            onClick={onClose}
+            className="px-3 py-2 rounded-full bg-white/12 hover:bg-white/25 backdrop-blur-xl border border-white/20 text-white text-xs font-black flex items-center gap-1.5 shrink-0 shadow-lg transition active:scale-95"
+            title="Voltar para a tela anterior"
+          >
+            <ArrowLeft className="w-4 h-4 text-cyan-300" />
+            <span>Voltar</span>
+          </button>
+
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img
+              src={track?.coverUrl || '/covers/album-official.jpg'}
+              alt={track?.title || 'LENKYX'}
+              className="hidden xs:block w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover border border-white/25 shadow shrink-0"
+            />
+            <div className="min-w-0">
+              <div className="text-xs sm:text-sm font-black text-white truncate max-w-[160px] sm:max-w-sm">
+                {track?.title || 'LENKYX Cosmic Phonk'}
+              </div>
+              <div className="text-[11px] text-cyan-200/80 truncate max-w-[160px] sm:max-w-sm">
+                {track?.artist || 'Modo Imersivo 3D'}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Right: Sleek Minimal Action Pills */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
-            onClick={() =>
-              setPrefs((p) => ({
-                ...p,
-                style: p.style === 'shader_blackhole' ? 'shader_galaxy' : 'shader_blackhole',
-              }))
-            }
-            className={`px-3 py-1.5 rounded-full text-[11px] font-black border transition flex items-center gap-1.5 ${
-              prefs.style === 'shader_blackhole'
-                ? 'bg-gradient-to-r from-orange-500 to-amber-400 border-amber-200 text-black shadow-[0_0_20px_rgba(249,115,22,0.6)]'
-                : 'bg-white/10 border-white/15 text-orange-200 hover:bg-orange-500/20'
-            }`}
-            title="Alternar Efeito Buraco Negro 3D (Sentido Horário + Fio Laranja Luminoso)"
+            onClick={() => {
+              const order: VisualizerStyle[] = [
+                'shader_blackhole',
+                'shader_galaxy',
+                'shader_nebula',
+                'waves3d',
+                'cosmic_portal',
+                'jbl_spectrum',
+              ];
+              const next = order[(order.indexOf(prefs.style) + 1) % order.length];
+              setEffectsEnabled(true);
+              setPrefs((p) => ({ ...p, style: next }));
+            }}
+            className="px-3 py-2 rounded-full text-[11px] font-black bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/15 text-cyan-100 flex items-center gap-1.5 transition"
+            title="Trocar o estilo do efeito 3D"
           >
-            <span>🕳️ Buraco Negro 3D</span>
-          </button>
-          <button
-            onClick={onToggleAutoOnPlay}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-extrabold border transition flex items-center gap-1.5 ${
-              autoOnPlay
-                ? 'bg-emerald-500/25 border-emerald-400/60 text-emerald-200'
-                : 'bg-white/10 border-white/15 text-purple-200 hover:bg-white/20'
-            }`}
-            title="Ativar automaticamente este Protetor 3D sempre que uma música começar"
-          >
-            <Waves className="w-3.5 h-3.5" />
-            <span>{autoOnPlay ? 'Auto ao Tocar: ON' : 'Auto ao Tocar: OFF'}</span>
+            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+            <span className="hidden md:inline">
+              {prefs.style === 'shader_blackhole'
+                ? 'Buraco Negro 3D'
+                : prefs.style === 'shader_galaxy'
+                  ? 'Galáxia 3D'
+                  : prefs.style === 'shader_nebula'
+                    ? 'Planeta 3D'
+                    : prefs.style === 'waves3d'
+                      ? 'Aurora Neon 3D'
+                      : prefs.style === 'cosmic_portal'
+                        ? 'Portal 3D'
+                        : 'Espectro JBL'}
+            </span>
           </button>
 
           <button
             onClick={() => setDrawerOpen((v) => !v)}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-extrabold border transition flex items-center gap-1.5 ${
+            className={`px-3 py-2 rounded-full text-[11px] font-extrabold backdrop-blur-xl border transition flex items-center gap-1.5 ${
               drawerOpen
-                ? 'bg-pink-500 text-white border-pink-300'
-                : 'bg-white/10 hover:bg-white/20 border-white/20 text-white'
+                ? 'bg-gradient-to-r from-pink-500 to-cyan-500 text-black border-white/40'
+                : 'bg-white/10 hover:bg-white/20 border-white/15 text-white'
             }`}
+            title="Escolher efeitos, imagens de fundo e opções"
           >
-            <ImageIcon className="w-3.5 h-3.5 text-cyan-300" />
-            <span>Escolher Imagens & Efeitos</span>
+            <ImageIcon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Personalizar</span>
           </button>
 
           <button
             onClick={() => void toggleFullscreen()}
-            className="px-3 py-1.5 rounded-full bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/50 text-cyan-100 text-[11px] font-extrabold flex items-center gap-1"
-            title="Alternar Tela Cheia"
+            className="p-2 sm:px-3 sm:py-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/15 text-cyan-100 text-[11px] font-extrabold flex items-center gap-1.5 transition"
+            title={isFullscreen ? 'Sair da Tela Cheia' : 'Tela Cheia'}
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">{isFullscreen ? 'Sair Tela Cheia' : 'Tela Cheia'}</span>
-          </button>
-
-          <button
-            onClick={onClose}
-            className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-pink-600 text-white text-[11px] font-black flex items-center gap-1 transition"
-            title="Voltar para os Menus"
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            <span>Mostrar Menus</span>
+            <span className="hidden lg:inline">{isFullscreen ? 'Sair' : 'Tela Cheia'}</span>
           </button>
         </div>
       </div>
@@ -850,16 +911,30 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
           onClick={(e) => e.stopPropagation()}
           className="absolute right-3 sm:right-5 top-20 z-30 w-[calc(100vw-1.5rem)] max-w-md max-h-[68vh] overflow-y-auto rounded-3xl bg-[#0a0418]/95 backdrop-blur-2xl border border-cyan-400/35 p-4 space-y-4 shadow-[0_0_50px_rgba(34,211,238,0.28)]"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-black text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-pink-400" /> Personalizar Protetor de Tela 3D
+              <Sparkles className="w-4 h-4 text-pink-400" /> Personalizar Efeito 3D
             </h3>
-            <button
-              onClick={() => setDrawerOpen(false)}
-              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={onToggleAutoOnPlay}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-black border transition flex items-center gap-1 ${
+                  autoOnPlay
+                    ? 'bg-emerald-500/25 border-emerald-400/60 text-emerald-200'
+                    : 'bg-white/10 border-white/15 text-purple-200 hover:bg-white/20'
+                }`}
+                title="Abrir o Efeito 3D automaticamente ao dar Play"
+              >
+                <Waves className="w-3 h-3" />
+                <span>{autoOnPlay ? 'Auto: ON' : 'Auto: OFF'}</span>
+              </button>
+              <button
+                onClick={() => setDrawerOpen(false)}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* 1. Effect Style */}
@@ -881,7 +956,10 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
               ).map((st) => (
                 <button
                   key={st.id}
-                  onClick={() => setPrefs((p) => ({ ...p, style: st.id }))}
+                  onClick={() => {
+                    setEffectsEnabled(true);
+                    setPrefs((p) => ({ ...p, style: st.id }));
+                  }}
                   className={`px-3 py-2 rounded-xl text-xs font-bold border text-left transition ${
                     prefs.style === st.id
                       ? 'bg-gradient-to-r from-pink-500/40 to-cyan-500/40 border-cyan-400 text-white'
@@ -1060,22 +1138,27 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
 
           {/* Main Controls Row */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* Mode Switcher: Só Som | Efeito 3D | Vídeo */}
+            {/* Mode Switcher: Só Som | Efeito 3D (Ligar/Desligar!) | Vídeo */}
             <div className="flex items-center gap-1 p-1 rounded-full bg-white/[0.07] border border-white/10">
               <button
                 onClick={() => onSelectMode('audio')}
                 className="px-2.5 py-1 rounded-full text-[11px] font-bold text-purple-100 hover:bg-white/10 flex items-center gap-1"
-                title="Voltar aos menus tocando somente o áudio"
+                title="Voltar tocando somente o áudio"
               >
                 <Volume1 className="w-3.5 h-3.5 text-cyan-300" />
                 <span>Só Som</span>
               </button>
               <button
-                onClick={() => onSelectMode('screensaver')}
-                className="px-2.5 py-1 rounded-full text-[11px] font-black bg-gradient-to-r from-cyan-500 to-pink-500 text-white flex items-center gap-1 shadow"
+                onClick={() => setEffectsEnabled((v) => !v)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-black flex items-center gap-1 transition ${
+                  effectsEnabled
+                    ? 'bg-gradient-to-r from-cyan-500 to-pink-500 text-white shadow'
+                    : 'bg-white/10 text-slate-300 hover:bg-white/20 border border-white/15'
+                }`}
+                title={effectsEnabled ? 'Desligar Efeito 3D (ficar só com a capa limpa)' : 'Ligar Efeito 3D'}
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Efeito 3D</span>
+                {effectsEnabled ? <Sparkles className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5 text-rose-400" />}
+                <span>{effectsEnabled ? 'Efeito 3D · ON' : 'Efeito 3D · OFF'}</span>
               </button>
               {hasVideo && (
                 <button

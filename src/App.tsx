@@ -1765,14 +1765,18 @@ export function App() {
               <span className="hidden xl:inline">TV</span>
             </button>
 
-            {/* 3D Cosmic Screensaver Button */}
+            {/* 3D Cosmic Screensaver Toggle Button (Ligar / Desligar) */}
             <button
-              onClick={() => setScreensaverOpen(true)}
-              className="hidden sm:flex px-2 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/25 to-pink-500/25 hover:from-cyan-500/45 hover:to-pink-500/45 border border-cyan-400/50 text-cyan-100 text-[11px] font-black items-center gap-1 transition"
-              title="Protetor de Tela 3D"
+              onClick={() => setScreensaverOpen((v) => !v)}
+              className={`hidden sm:flex px-2.5 py-1.5 rounded-full border text-[11px] font-black items-center gap-1 transition ${
+                screensaverOpen
+                  ? 'bg-gradient-to-r from-cyan-400 to-pink-500 border-white/40 text-black shadow-[0_0_16px_rgba(34,211,238,0.45)]'
+                  : 'bg-gradient-to-r from-cyan-500/20 to-pink-500/20 hover:from-cyan-500/40 hover:to-pink-500/40 border-cyan-400/50 text-cyan-100'
+              }`}
+              title={screensaverOpen ? 'Desligar Efeito 3D' : 'Ligar Efeito 3D'}
             >
-              <Waves className="w-3.5 h-3.5 text-cyan-300" />
-              <span className="hidden 2xl:inline">Efeito 3D</span>
+              <Waves className="w-3.5 h-3.5" />
+              <span className="hidden 2xl:inline">{screensaverOpen ? 'Efeito 3D ON' : 'Efeito 3D'}</span>
             </button>
 
             <button
