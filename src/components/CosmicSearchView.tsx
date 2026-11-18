@@ -172,20 +172,29 @@ export const CosmicSearchView: React.FC<Props> = ({
         fetch(`/api/arcade/search?q=${encodeURIComponent(clean)}`).then((r) => (r.ok ? r.json() : null)),
       ]);
 
+      let webPlayableTracks: Track[] = [];
       if (webRes.status === 'fulfilled' && webRes.value) {
         setAiSummary(webRes.value.aiSummary || null);
         setWebResults(Array.isArray(webRes.value.webResults) ? webRes.value.webResults : []);
+        if (Array.isArray(webRes.value.playableMedia)) {
+          webPlayableTracks = webRes.value.playableMedia;
+        }
       } else {
         setAiSummary(null);
         setWebResults([]);
       }
 
       const worldList = worldMus.status === 'fulfilled' ? worldMus.value.tracks || [] : [];
-      const mergedMusic = [...localMatches];
-      for (const wt of worldList) {
-        if (!mergedMusic.some((m) => m.id === wt.id)) mergedMusic.push(wt);
+      const mergedMusic: Track[] = [...localMatches];
+      for (const item of [...webPlayableTracks, ...worldList]) {
+        const dup = mergedMusic.some(
+          (m) =>
+            m.id === item.id ||
+            (m.youtubeVideoId && item.youtubeVideoId && m.youtubeVideoId === item.youtubeVideoId)
+        );
+        if (!dup) mergedMusic.push(item);
       }
-      setMusicResults(mergedMusic.slice(0, 14));
+      setMusicResults(mergedMusic.slice(0, 16));
 
       setVideoResults(shortsRes.status === 'fulfilled' ? (shortsRes.value || []).slice(0, 12) : []);
 
@@ -574,7 +583,8 @@ export const CosmicSearchView: React.FC<Props> = ({
                 {webResults.map((r, i) => (
                   <div
                     key={`${r.url}-${i}`}
-                    className="p-3.5 rounded-2xl cosmic-card-3d flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    onClick={() => void openSiteInReader(r.url)}
+                    className="p-3.5 rounded-2xl cosmic-card-3d flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.06] transition"
                   >
                     <div className="min-w-0 space-y-1 flex-1">
                       <div className="text-[11px] font-bold text-emerald-300 truncate">{r.domain}</div>
@@ -586,19 +596,14 @@ export const CosmicSearchView: React.FC<Props> = ({
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
-                        onClick={() => void openSiteInReader(r.url)}
-                        className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-xs font-black flex items-center gap-1.5 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void openSiteInReader(r.url);
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500/25 to-pink-500/25 hover:from-cyan-500/40 hover:to-pink-500/40 border border-cyan-400/45 text-cyan-100 text-xs font-black flex items-center gap-1.5 transition"
                       >
-                        <BookOpen className="w-3.5 h-3.5" /> Ler Aqui
+                        <BookOpen className="w-3.5 h-3.5" /> Abrir no LENKYX
                       </button>
-                      <a
-                        href={r.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold flex items-center gap-1 transition"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" /> Abrir Site
-                      </a>
                     </div>
                   </div>
                 ))}

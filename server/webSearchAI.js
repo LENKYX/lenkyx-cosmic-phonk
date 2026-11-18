@@ -71,8 +71,37 @@ export async function getSearchSuggestions(query = '') {
   ];
 }
 
+const BLOCKED_MEDIA_HOSTS = [
+  'youtube.com',
+  'youtu.be',
+  'music.youtube.com',
+  'spotify.com',
+  'tiktok.com',
+  'deezer.com',
+  'netflix.com',
+  'music.apple.com',
+  'soundcloud.com',
+  'dailymotion.com',
+];
+
+function extractYtIdFromUrl(raw = '') {
+  try {
+    const u = new URL(raw);
+    const h = u.hostname.replace(/^www\./, '').toLowerCase();
+    if (h === 'youtu.be') return u.pathname.slice(1).split('/')[0] || '';
+    if (h.endsWith('youtube.com')) {
+      if (u.pathname === '/watch') return u.searchParams.get('v') || '';
+      if (u.pathname.startsWith('/shorts/')) return u.pathname.split('/')[2] || '';
+    }
+  } catch {
+    // ignore
+  }
+  return '';
+}
+
 async function fetchDuckDuckGoWeb(query) {
   const results = [];
+  const playableMedia = [];
   try {
     const r = await fetch(
       `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=br-pt`,
@@ -84,32 +113,55 @@ async function fetchDuckDuckGoWeb(query) {
         signal: AbortSignal.timeout(7000),
       }
     );
-    if (!r.ok) return results;
+    if (!r.ok) return { results, playableMedia };
     const html = await r.text();
 
-    const blocks = html.split(/class="result results_links/i).slice(1, 16);
+    const blocks = html.split(/class="result results_links/i).slice(1, 20);
     for (const block of blocks) {
       if (block.includes('result--ad') || block.includes('badge--ad')) continue;
       const titleMatch = block.match(/class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
       if (!titleMatch) continue;
       const url = unwrapDdgUrl(decodeHtmlEntities(titleMatch[1]));
       if (!url || url.includes('duckduckgo.com/y.js') || url.includes('ad_domain=')) continue;
-      const title = decodeHtmlEntities(titleMatch[2]);
+      const rawTitle = decodeHtmlEntities(titleMatch[2]);
       const snipMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>|class="result__snippet"[^>]*>([\s\S]*?)<\/div>/i);
       const snippet = decodeHtmlEntities(snipMatch?.[1] || snipMatch?.[2] || '');
-      if (!url.startsWith('http') || !title) continue;
+      if (!url.startsWith('http') || !rawTitle) continue;
       let domain = '';
       try {
-        domain = new URL(url).hostname.replace(/^www\./, '');
+        domain = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
       } catch {
         domain = '';
       }
-      results.push({ title, url, domain, snippet });
+
+      // Never show YouTube / Spotify / TikTok / Netflix links in Web Results!
+      // Instead, convert playable video hits silently into native LENKYX playable tracks!
+      const isBlockedHost = BLOCKED_MEDIA_HOSTS.some(
+        (b) => domain === b || domain.endsWith('.' + b)
+      );
+      if (isBlockedHost) {
+        const ytId = extractYtIdFromUrl(url);
+        if (ytId && /^[a-zA-Z0-9_-]{11}$/.test(ytId)) {
+          const cleanTitle = rawTitle.replace(/\s*[-|·]\s*YouTube\s*$/i, '').trim();
+          playableMedia.push({
+            id: `web-yt-${ytId}`,
+            title: cleanTitle || rawTitle,
+            artist: 'Mix & Áudio Web · LENKYX',
+            youtubeVideoId: ytId,
+            coverUrl: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+            genre: 'Web Discovery',
+            source: 'world_full',
+          });
+        }
+        continue;
+      }
+
+      results.push({ title: rawTitle, url, domain, snippet });
     }
   } catch {
     // ignore
   }
-  return results;
+  return { results, playableMedia };
 }
 
 async function fetchInstantKnowledge(query) {
@@ -176,13 +228,15 @@ export async function runCosmicWebSearch(rawQuery = '', options = {}) {
     }
   }
 
-  const [webResults, knowledge] = await Promise.all([
+  const [ddgData, knowledge] = await Promise.all([
     fetchDuckDuckGoWeb(q),
     fetchInstantKnowledge(q),
   ]);
+  const webResults = ddgData.results || [];
+  const playableMedia = ddgData.playableMedia || [];
 
   let aiSummary = null;
-  if (knowledge || webResults.length > 0) {
+  if (knowledge || webResults.length > 0 || playableMedia.length > 0) {
     const bullets = webResults
       .slice(0, 3)
       .map((r) => `• ${r.title}: ${r.snippet || r.domain}`)
@@ -191,7 +245,7 @@ export async function runCosmicWebSearch(rawQuery = '', options = {}) {
       headline: knowledge?.title || `Síntese IA sobre "${q}"`,
       answer:
         knowledge?.summary ||
-        `Encontrei ${webResults.length} resultados relevantes na internet para "${q}". Confira os principais pontos e sites abaixo.`,
+        `Encontrei ${webResults.length} páginas e ${playableMedia.length} mídias reproduzíveis no LENKYX para "${q}".`,
       highlights: bullets,
       imageUrl: knowledge?.imageUrl || '',
       sourceUrl: knowledge?.sourceUrl || webResults[0]?.url || '',
@@ -204,6 +258,7 @@ export async function runCosmicWebSearch(rawQuery = '', options = {}) {
     privateMode: isPrivate,
     aiSummary,
     webResults,
+    playableMedia,
   };
 
   if (!isPrivate) {
