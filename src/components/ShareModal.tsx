@@ -202,7 +202,7 @@ export const ShareModal: React.FC<Props> = ({
                   {track ? `ENVIAR: ${track.title}` : 'ENVIAR APP LENKYX (AUTOMÁTICO)'}
                 </h2>
                 <p className="text-[11px] text-cyan-200/85">
-                  Envia somente o App limpo — baixa fácil em qualquer PC, TV ou celular!
+                  Envia somente o App limpo — baixa fácil no Android, iPhone, PC e Smart TV!
                 </p>
               </div>
             </div>
@@ -386,7 +386,7 @@ export const ShareModal: React.FC<Props> = ({
               }}
               className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-500/25 via-cyan-500/25 to-purple-500/25 hover:brightness-110 border border-emerald-400/40 text-xs font-extrabold text-white flex items-center justify-center gap-2 transition"
             >
-              <Zap className="w-4 h-4 text-emerald-300" /> Baixar no PC, TV ou Qualquer Celular (Verificado ✓)
+              <Zap className="w-4 h-4 text-emerald-300" /> Baixar no Android, iPhone, PC ou Smart TV (Verificado ✓)
             </button>
           )}
 
