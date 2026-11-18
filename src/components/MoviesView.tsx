@@ -349,22 +349,51 @@ export const MoviesView: React.FC<Props> = ({
     }
   }, [volume, muted, activeChannel]);
 
-  // === HLS LIVE TV PLAYER LIFECYCLE ===
+  // === HLS + YOUTUBE LIVE TV PLAYER LIFECYCLE (with auto-heal & auto-skip on dead streams) ===
+  const [useYtFallback, setUseYtFallback] = useState(false);
+
   useEffect(() => {
     if (!activeChannel) return;
     const video = tvVideoRef.current;
-    if (!video) return;
-
+    setUseYtFallback(false);
     setTvError('');
     setTvLevels([]);
     setSelectedTvLevel(-1);
-    setTvStatusMsg('Conectando ao sinal ao vivo...');
+
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
 
+    // Channel uses direct 24h YouTube Live stream
+    if (!activeChannel.streamUrl && activeChannel.youtubeLiveId) {
+      setUseYtFallback(true);
+      setTvStatusMsg('AO VIVO · 24h YouTube HD');
+      return;
+    }
+    if (!video) return;
+
+    let cancelled = false;
+    let skipTimer: number | null = null;
+    setTvStatusMsg('Conectando ao sinal ao vivo...');
+
+    const handleFatalStreamFail = () => {
+      if (cancelled) return;
+      if (activeChannel.youtubeLiveId) {
+        setUseYtFallback(true);
+        setTvStatusMsg('AO VIVO · Backup HD');
+        return;
+      }
+      setTvError('Canal temporariamente fora do ar. Sintonizando próximo canal ao vivo...');
+      if (tvQueue.length > 1) {
+        skipTimer = window.setTimeout(() => {
+          if (!cancelled) stepChannel(1);
+        }, 1600);
+      }
+    };
+
     const startStream = (url: string, triedProxy: boolean) => {
+      if (cancelled) return;
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
@@ -374,12 +403,15 @@ export const MoviesView: React.FC<Props> = ({
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
-          maxBufferLength: 20,
+          maxBufferLength: 18,
+          manifestLoadingTimeOut: 7000,
+          fragLoadingTimeOut: 7000,
         });
         hlsRef.current = hls;
         hls.loadSource(url);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, (_ev, data) => {
+          if (cancelled) return;
           const lvls = (data?.levels || []).map((lvl, idx) => ({
             index: idx,
             label: lvl.height ? `${lvl.height}p` : `Nível ${idx + 1}`,
@@ -389,18 +421,18 @@ export const MoviesView: React.FC<Props> = ({
             hls.currentLevel = lvls.length - 1;
             setSelectedTvLevel(lvls.length - 1);
           }
-          setTvStatusMsg('AO VIVO · HD');
+          setTvStatusMsg('AO VIVO · HD Verificado');
           video.volume = muted ? 0 : volume;
           video.muted = muted;
           void video.play().catch(() => {});
         });
         hls.on(Hls.Events.ERROR, (_ev, data) => {
-          if (data.fatal) {
-            if (!triedProxy && activeChannel.streamUrl.startsWith('https://')) {
-              setTvStatusMsg('Tentando rota alternativa...');
+          if (data.fatal && !cancelled) {
+            if (!triedProxy && (activeChannel.streamUrl.startsWith('https://') || activeChannel.streamUrl.startsWith('http://'))) {
+              setTvStatusMsg('Tentando rota segura via servidor...');
               startStream(`/api/tv-proxy?url=${encodeURIComponent(activeChannel.streamUrl)}`, true);
             } else {
-              setTvError('Este canal está temporariamente fora do ar. Clique em "Próximo Canal"!');
+              handleFatalStreamFail();
             }
           }
         });
@@ -414,14 +446,22 @@ export const MoviesView: React.FC<Props> = ({
           },
           { once: true }
         );
+        video.addEventListener('error', () => handleFatalStreamFail(), { once: true });
       } else {
-        setTvError('Seu navegador não suporta stream HLS ao vivo.');
+        handleFatalStreamFail();
       }
     };
 
-    startStream(activeChannel.streamUrl, false);
+    // Start via direct HTTPS or proxy directly if source URL is plain HTTP
+    if (activeChannel.streamUrl.startsWith('http://')) {
+      startStream(`/api/tv-proxy?url=${encodeURIComponent(activeChannel.streamUrl)}`, true);
+    } else {
+      startStream(activeChannel.streamUrl, false);
+    }
 
     return () => {
+      cancelled = true;
+      if (skipTimer) window.clearTimeout(skipTimer);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
@@ -994,8 +1034,18 @@ export const MoviesView: React.FC<Props> = ({
           </div>
 
           <div className={`relative w-full bg-black ${expandedView ? 'flex-1 min-h-0' : 'flex-1 min-h-[240px] aspect-video'}`}>
-            <video ref={tvVideoRef} controls autoPlay playsInline className="w-full h-full object-contain bg-black" />
-            {tvError && (
+            {useYtFallback && activeChannel.youtubeLiveId ? (
+              <iframe
+                src={`https://www.youtube.com/embed/${activeChannel.youtubeLiveId}?autoplay=1&rel=0&playsinline=1`}
+                title={activeChannel.name}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                className="w-full h-full border-0"
+              />
+            ) : (
+              <video ref={tvVideoRef} controls autoPlay playsInline className="w-full h-full object-contain bg-black" />
+            )}
+            {tvError && !useYtFallback && (
               <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-6 text-center gap-3">
                 <AlertCircle className="w-10 h-10 text-amber-400" />
                 <p className="text-sm font-bold text-white max-w-md">{tvError}</p>
@@ -1351,9 +1401,24 @@ export const MoviesView: React.FC<Props> = ({
                 Canais de TV do Brasil & do Mundo ({tvTotalAvailable > 0 ? tvTotalAvailable.toLocaleString('pt-BR') : '7.000+'} Liberados)
               </h1>
               <p className="text-xs text-cyan-100/80">
-                Use as setinhas transparentes ◀ ▶ ou o modo Grade TV para escolher canais facilmente na Smart TV.
+                Todos os canais passam por verificação ao vivo (#EXTM3U online) para funcionar sem travar. Use as setinhas transparentes ◀ ▶ ou Grade TV.
               </p>
             </div>
+            <button
+              onClick={() => {
+                setTvLoading(true);
+                void fetchLiveTvDirectory(true).then((res) => {
+                  setTvCategories(res.categories);
+                  setTvTotalAvailable(res.totalAvailable);
+                  setTvLoading(false);
+                });
+              }}
+              disabled={tvLoading}
+              className="px-4 py-2.5 rounded-2xl bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/50 text-xs font-black text-cyan-100 flex items-center gap-1.5 shrink-0 transition"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${tvLoading ? 'animate-spin' : ''}`} />
+              {tvLoading ? 'Verificando sinais...' : 'Testar & Atualizar Canais'}
+            </button>
           </section>
 
           <form

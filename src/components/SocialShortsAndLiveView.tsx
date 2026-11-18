@@ -28,6 +28,7 @@ import {
   Wand2,
   Zap,
   Bot,
+  RefreshCw,
 } from 'lucide-react';
 import { Track, UserProfile } from '../types';
 import {
@@ -44,6 +45,7 @@ import {
 } from '../utils/communityApi';
 import { TargetCommentsModal } from './CommunityChatModal';
 import { LiveSpaceCreatures, SpaceCreatureSpecies } from './LiveSpaceCreatures';
+import { CosmicScrollRow } from './CosmicScrollRow';
 
 const VideoStudioView = React.lazy(() =>
   import('./VideoStudioView').then((m) => ({ default: m.VideoStudioView }))
@@ -709,6 +711,15 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
         </div>
         <div className="flex items-center gap-1.5">
           <button
+            onClick={() => void loadShorts(shortCategory, shortSearch)}
+            disabled={shortsLoading}
+            className="px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-[11px] font-bold text-emerald-300 flex items-center gap-1 transition"
+            title="Buscar novos vídeos curtos agora"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${shortsLoading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Atualizar</span>
+          </button>
+          <button
             onClick={() => scrollToShort(activeIndex - 1)}
             disabled={activeIndex <= 0}
             className="p-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-35 text-white transition"
@@ -727,19 +738,31 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* HORIZONTAL SNAP-X EXCLUSIVE REELS CAROUSEL */}
+      {/* HORIZONTAL SNAP-X EXCLUSIVE REELS CAROUSEL WITH TRANSLUCENT FLOATING ◀▶ ARROWS */}
       {shortsLoading && shorts.length === 0 ? (
         <div className="py-16 text-center text-xs text-cyan-300 font-bold">
           🌍 Buscando vídeos curtos do mundo inteiro...
         </div>
       ) : (
-        <div
-          ref={railRef}
-          className={`flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 px-1 scroll-smooth ${
-            isExclusiveModal ? 'flex-1 items-center' : ''
-          }`}
-        >
-          {shorts.map((s, idx) => (
+        <div className={`relative group/shorts ${isExclusiveModal ? 'flex-1 flex items-center' : ''}`}>
+          {/* Translucent Floating Left Arrow */}
+          <button
+            type="button"
+            onClick={() => scrollToShort(activeIndex - 1)}
+            disabled={activeIndex <= 0}
+            aria-label="Vídeo curto anterior"
+            className="flex items-center justify-center absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-30 w-10 sm:w-12 h-24 rounded-2xl bg-black/45 hover:bg-black/80 disabled:opacity-25 backdrop-blur-md border border-white/25 text-white shadow-[0_0_25px_rgba(0,0,0,0.8)] transition active:scale-95"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+
+          <div
+            ref={railRef}
+            className={`flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 px-12 sm:px-14 scroll-smooth w-full ${
+              isExclusiveModal ? 'items-center' : ''
+            }`}
+          >
+            {shorts.map((s, idx) => (
             <div
               key={s.id}
               onMouseEnter={() => setActiveIndex(idx)}
@@ -841,6 +864,18 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               </div>
             </div>
           ))}
+          </div>
+
+          {/* Translucent Floating Right Arrow */}
+          <button
+            type="button"
+            onClick={() => scrollToShort(activeIndex + 1)}
+            disabled={activeIndex >= shorts.length - 1}
+            aria-label="Próximo vídeo curto"
+            className="flex items-center justify-center absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-30 w-10 sm:w-12 h-24 rounded-2xl bg-black/45 hover:bg-black/80 disabled:opacity-25 backdrop-blur-md border border-white/25 text-white shadow-[0_0_25px_rgba(0,0,0,0.8)] transition active:scale-95"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
         </div>
       )}
     </div>
@@ -1230,18 +1265,24 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Active Lives List */}
+            {/* Active Lives Horizontal Row with Translucent ◀▶ Arrows */}
             {lives.length > 0 && (
-              <div className="pt-2 border-t border-white/10 space-y-2">
-                <div className="text-[11px] font-black uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5" /> Transmissões Ativas Agora ({lives.length})
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="pt-2 border-t border-white/10">
+                <CosmicScrollRow
+                  title={
+                    <>
+                      <Users className="w-3.5 h-3.5 text-rose-300" />
+                      <span className="text-rose-300">Transmissões Ativas Agora</span>
+                    </>
+                  }
+                  count={lives.length}
+                  gridToggleable={false}
+                >
                   {lives.map((l) => (
                     <button
                       key={l.id}
                       onClick={() => setWatchingLive(l)}
-                      className="p-2.5 rounded-2xl bg-white/[0.06] hover:bg-rose-500/15 border border-white/10 text-left flex items-center gap-2.5 transition"
+                      className="w-60 shrink-0 p-2.5 rounded-2xl bg-white/[0.06] hover:bg-rose-500/15 border border-white/10 text-left flex items-center gap-2.5 transition"
                     >
                       <span className="w-9 h-9 rounded-xl bg-rose-600/30 border border-rose-400/50 flex items-center justify-center shrink-0">
                         <Radio className="w-4 h-4 text-rose-300 animate-pulse" />
@@ -1254,7 +1295,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                       </div>
                     </button>
                   ))}
-                </div>
+                </CosmicScrollRow>
               </div>
             )}
           </div>

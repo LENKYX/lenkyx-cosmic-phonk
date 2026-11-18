@@ -24,6 +24,7 @@ import {
   runSmartWorldSearch,
   searchWorldShorts,
   getFamousArtistsWithPhotos,
+  getWorldNewReleases,
   CURATED_PLAYLISTS,
 } from './musicAI.js';
 import { getMoviesDirectory, searchMovies } from './moviesAI.js';
@@ -332,6 +333,14 @@ app.post(
 
     db.tracks.push(newTrack);
     writeDb(db);
+    const pubBase = (db.settings?.publicUrl || 'https://lenkyx-cosmic-phonk.onrender.com').replace(/\/$/, '');
+    void dispatchSocialWebhook(db, {
+      event: 'new_track_published',
+      title: `${newTrack.title} — ${newTrack.artist}`,
+      url: `${pubBase}/?track=${encodeURIComponent(newTrack.id)}`,
+      coverUrl: newTrack.coverUrl.startsWith('http') ? newTrack.coverUrl : `${pubBase}${newTrack.coverUrl}`,
+      platforms: ['instagram', 'youtube', 'tiktok', 'facebook', 'x'],
+    });
     res.status(201).json(newTrack);
   }
 );
@@ -551,12 +560,31 @@ app.use('/api/world-', (_req, res, next) => {
   next();
 });
 
-app.get('/api/world-directory', async (_req, res) => {
+app.get('/api/world-directory', async (req, res) => {
   try {
-    const artists = await getFamousArtistsWithPhotos();
-    res.json({ artists, playlists: CURATED_PLAYLISTS });
+    const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+    const [artists, releases] = await Promise.all([
+      getFamousArtistsWithPhotos(),
+      getWorldNewReleases(refresh),
+    ]);
+    res.json({
+      artists,
+      playlists: CURATED_PLAYLISTS,
+      newReleases: releases.tracks || [],
+      updatedAt: releases.updatedAt,
+    });
   } catch {
-    res.json({ artists: [], playlists: CURATED_PLAYLISTS });
+    res.json({ artists: [], playlists: CURATED_PLAYLISTS, newReleases: [] });
+  }
+});
+
+app.get('/api/world-new-releases', async (req, res) => {
+  try {
+    const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+    const releases = await getWorldNewReleases(refresh);
+    res.json(releases);
+  } catch {
+    res.json({ updatedAt: new Date().toISOString(), year: new Date().getFullYear(), tracks: [] });
   }
 });
 
@@ -619,9 +647,10 @@ app.use('/api/tv-', (_req, res, next) => {
   next();
 });
 
-app.get('/api/tv-directory', async (_req, res) => {
+app.get('/api/tv-directory', async (req, res) => {
   try {
-    const payload = await getLiveTvDirectory();
+    const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+    const payload = await getLiveTvDirectory(refresh);
     res.json(payload);
   } catch {
     res.json({ totalAvailable: 0, categories: [] });
@@ -649,7 +678,7 @@ app.get('/api/tv-proxy', async (req, res) => {
   }
   const host = parsed.hostname.toLowerCase();
   if (
-    parsed.protocol !== 'https:' ||
+    (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') ||
     host === 'localhost' ||
     host.startsWith('127.') ||
     host.startsWith('10.') ||
@@ -753,12 +782,94 @@ app.get('/robots.txt', (req, res) => {
   res.type('text/plain').send(`User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`);
 });
 
+async function dispatchSocialWebhook(db, payload) {
+  const hook = String(db?.settings?.socialWebhookUrl || '').trim();
+  if (!hook || !hook.startsWith('https://')) return false;
+  try {
+    const r = await fetch(hook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'LENKYX-AutoPublisher/2.2' },
+      body: JSON.stringify({
+        source: 'LENKYX Cosmic Phonk',
+        timestamp: new Date().toISOString(),
+        ...payload,
+      }),
+      signal: AbortSignal.timeout(7000),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Global JSON & RSS Auto-Syndication Feeds (for Zapier / Make / IFTTT / Buffer / Social Platforms)
+app.get('/api/releases.json', (req, res) => {
+  const db = readDb();
+  const base = (db.settings?.publicUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.json({
+    version: 'https://jsonfeed.org/version/1.1',
+    title: `${db.settings?.artistName || 'LENKYX'} — ${db.settings?.brandSubtitle || 'Cosmic Phonk'}`,
+    home_page_url: base,
+    feed_url: `${base}/api/releases.json`,
+    items: (db.tracks || []).slice(-30).reverse().map((t) => ({
+      id: t.id,
+      url: `${base}/?track=${encodeURIComponent(t.id)}`,
+      title: `${t.title} — ${t.artist}`,
+      content_text: `Ouça "${t.title}" (${t.bpm} BPM) completo em LENKYX Cosmic Phonk! #LENKYX #CosmicPhonk`,
+      image: t.coverUrl?.startsWith('http') ? t.coverUrl : `${base}${t.coverUrl}`,
+      date_published: t.createdAt || new Date().toISOString(),
+    })),
+  });
+});
+
+app.get('/api/feed.xml', (req, res) => {
+  const db = readDb();
+  const base = (db.settings?.publicUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  const esc = (s = '') =>
+    String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const itemsXml = (db.tracks || [])
+    .slice(-25)
+    .reverse()
+    .map((t) => {
+      const link = `${base}/?track=${encodeURIComponent(t.id)}`;
+      return `<item><title>${esc(t.title)} — ${esc(t.artist)}</title><link>${esc(link)}</link><guid isPermaLink="false">${esc(t.id)}</guid><pubDate>${new Date(t.createdAt || Date.now()).toUTCString()}</pubDate><description>${esc(`Ouça ${t.title} (${t.bpm} BPM) grátis no Super App LENKYX! #LENKYX #CosmicPhonk`)}</description></item>`;
+    })
+    .join('\n');
+  res
+    .type('application/rss+xml')
+    .send(
+      `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel><title>${esc(db.settings?.artistName || 'LENKYX')} — Cosmic Phonk</title><link>${esc(base)}</link><description>Lançamentos musicais, clipes, cinema e entretenimento global LENKYX</description>\n${itemsXml}\n</channel></rss>`
+    );
+});
+
+app.post('/api/social/auto-publish', auth.requireCreator, async (req, res) => {
+  const db = readDb();
+  const dispatched = await dispatchSocialWebhook(db, {
+    event: 'manual_or_ai_social_publish',
+    title: req.body?.title || 'LENKYX Cosmic Phonk',
+    caption: req.body?.caption || '',
+    url: req.body?.url || db.settings?.publicUrl || 'https://lenkyx-cosmic-phonk.onrender.com',
+    coverUrl: req.body?.coverUrl || '',
+    platforms: req.body?.platforms || ['instagram', 'youtube', 'tiktok', 'facebook', 'x'],
+  });
+  res.json({
+    ok: true,
+    dispatched,
+    message: dispatched
+      ? 'Auto-publicação disparada via Webhook oficial!'
+      : 'Feed RSS/JSON atualizado. Conecte um Webhook HTTPS (Zapier/Make/n8n) para disparo automático.',
+  });
+});
+
 app.get('/sitemap.xml', (req, res) => {
   const db = readDb();
   const base = (db.settings?.publicUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
   const now = new Date().toISOString().slice(0, 10);
   const urls = [
     `<url><loc>${base}/</loc><lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+    `<url><loc>${base}/tv</loc><lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`,
+    `<url><loc>${base}/app</loc><lastmod>${now}</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>`,
     ...db.tracks.map(
       (t) =>
         `<url><loc>${base}/?track=${encodeURIComponent(t.id)}</loc><lastmod>${now}</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>`

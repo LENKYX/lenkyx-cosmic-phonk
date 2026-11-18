@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { lenkyxAudioEngine } from '../utils/audioBoostEngine';
 
-export type GpuShaderMode = 'shader_galaxy' | 'shader_nebula';
+export type GpuShaderMode = 'shader_galaxy' | 'shader_nebula' | 'shader_blackhole';
 
 interface Props {
   active: boolean;
@@ -50,7 +50,7 @@ uniform float u_shockTime;
 uniform vec3 u_c1;
 uniform vec3 u_c2;
 uniform vec3 u_c3;
-uniform float u_mode; // 0.0 = Quantum Galaxy, 1.0 = Cosmic Planet & Rings
+uniform float u_mode; // 0.0 = Quantum Galaxy, 1.0 = Cosmic Planet & Rings, 2.0 = Gargantua Clockwise Black Hole
 uniform float u_transparentBg;
 
 float hash(vec2 p) {
@@ -125,8 +125,87 @@ void main() {
   }
 
   vec3 col = vec3(0.01, 0.004, 0.03);
+  float bhCoreMask = 0.0;
 
-  if (u_mode < 0.5) {
+  if (u_mode > 1.5) {
+    // === MODE 2: 3D GARGANTUA CLOCKWISE CLOSING BLACK HOLE (POPPING OUT OF SCREEN!) ===
+    float r = length(uv);
+    float a = atan(uv.y, uv.x);
+
+    // Event horizon radius tightens dynamically with bass & breathing inward cycle
+    float pinch = 0.024 * sin(u_time * 2.1) + u_bass * 0.036;
+    float horizonR = 0.205 - pinch * 0.35;
+
+    // 3D Parallax Zoom Streaks rushing TOWARD the camera (pop-out-of-screen effect)
+    vec2 zoomUv = uv / (1.0 + 0.12 * u_bass);
+    float starZoom = 0.0;
+    for (int z = 0; z < 3; z++) {
+      float fz = float(z);
+      float zPhase = fract(u_time * (0.28 + fz * 0.11) - fz * 0.33);
+      float zScale = mix(14.0, 1.8, zPhase);
+      vec2 zCoord = vec2(a * 6.0 / 3.14159, log(max(r, 0.02)) * 2.5 + zPhase * 5.0);
+      float spark = pow(noise(zCoord * zScale * 0.15 + vec2(u_time * 0.4, 0.0)), 6.0);
+      starZoom += spark * (1.0 - zPhase) * smoothstep(horizonR * 0.9, horizonR * 2.4, r);
+    }
+
+    // Clockwise inward spiraling coordinates (increasing u_time rotates CLOCKWISE & pulls inward!)
+    float swirlSpeed = 1.65 + u_bass * 1.35 + u_mid * 0.65;
+    float radialPull = r + u_time * (0.22 + u_bass * 0.18);
+    float cwAngle = a + u_time * swirlSpeed + 5.2 * log(max(r, 0.03));
+
+    // Luminous orange / molten gold filaments swirling clockwise into the dark core
+    float filamentTex = fbm(vec2(cos(cwAngle) * 2.6 + radialPull * 3.0, sin(cwAngle) * 2.6 - radialPull * 3.0));
+    float filamentFine = fbm(vec2(cwAngle * 1.4, radialPull * 9.5));
+    float cwRibbons = pow(0.5 + 0.5 * sin(cwAngle * 3.0 + filamentTex * 3.4), 2.2);
+
+    // 3D Gravitational Lensing Halo (bent luminous orange ring arching over & under the dark center)
+    float ringDist = r - (horizonR + 0.032 + u_bass * 0.015);
+    float photonRing = exp(-abs(ringDist) * (42.0 - u_treble * 10.0));
+    float outerCorona = exp(-max(0.0, r - horizonR) * 6.2) * (0.55 + filamentTex * 0.95);
+
+    // 3D Tilted Equatorial Accretion Disk passing IN FRONT of the black hole sphere
+    vec2 diskUv = uv;
+    float tilt = -0.22 + sin(u_time * 0.35) * 0.05;
+    diskUv = mat2(cos(tilt), -sin(tilt), sin(tilt), cos(tilt)) * diskUv;
+    diskUv.y *= 3.85; // 3D foreshortening
+    float dr = length(diskUv);
+    float da = atan(diskUv.y, diskUv.x);
+    float diskSwirl = da + u_time * (swirlSpeed * 1.35) + 4.2 * log(max(dr, 0.04));
+    float diskFbm = fbm(vec2(cos(diskSwirl) * 3.2, sin(diskSwirl) * 3.2 + dr * 7.0));
+    float diskBand = smoothstep(horizonR * 0.88, horizonR * 1.25, dr) * exp(-max(0.0, dr - horizonR * 1.15) * 3.4);
+    // Front bottom arc passes IN FRONT of the black sphere; top back arc is gravitationally lensed around it
+    float frontOcclusion = (r < horizonR && diskUv.y > 0.0) ? 0.15 : 1.0;
+    float dopplerBoost = 0.78 + 0.45 * clamp(-diskUv.x * 1.6, -0.5, 0.9);
+    float diskEnergy = diskBand * (0.45 + 0.95 * diskFbm) * frontOcclusion * dopplerBoost * (1.2 + u_bass * 1.1);
+
+    // Hot Orange -> Amber -> White-Hot Core Palette
+    vec3 orangeHot = vec3(1.0, 0.36, 0.02);
+    vec3 goldBright = vec3(1.0, 0.68, 0.18);
+    vec3 whiteCore = vec3(1.0, 0.94, 0.80);
+
+    vec3 haloCol = mix(orangeHot, goldBright, clamp(filamentFine + cwRibbons * 0.45, 0.0, 1.0));
+    vec3 photonCol = mix(goldBright, whiteCore, clamp(photonRing * 0.85 + u_treble * 0.25, 0.0, 1.0));
+    vec3 diskCol = mix(orangeHot, whiteCore, clamp(diskFbm * 0.72 + u_bass * 0.25, 0.0, 1.0));
+
+    // Deep dark cosmic space behind + subtle orange gravitational glow
+    col = vec3(0.006, 0.002, 0.012);
+    col += starLayer(uv * (1.0 + u_bass * 0.05) + vec2(u_time * 0.008, 0.0), 6.5, 2.5, u_treble) * 0.38 * smoothstep(horizonR, horizonR * 2.5, r);
+    col += haloCol * outerCorona * (0.8 + cwRibbons * 0.95) * (1.0 + u_bass * 0.85);
+    col += photonCol * photonRing * (2.1 + u_bass * 1.45);
+    col += goldBright * starZoom * (1.3 + u_bass * 1.2);
+
+    // Pure pitch-black Event Horizon Sphere inside! (Swallows light completely)
+    float insideHole = smoothstep(horizonR + 0.012, horizonR - 0.008, r);
+    bhCoreMask = insideHole;
+    col *= (1.0 - insideHole);
+
+    // Bright equatorial orange filament sweeping clockwise IN FRONT of the dark hole!
+    float frontPass = (diskUv.y <= 0.0) ? 1.0 : (1.0 - insideHole * 0.88);
+    col += diskCol * diskEnergy * frontPass * 1.45;
+    // Ultra-crisp luminous orange filament ring hugging the closing edge
+    float edgeThread = exp(-abs(r - horizonR) * 95.0) * (1.6 + u_treble * 1.4 + u_bass * 0.9);
+    col += mix(orangeHot, whiteCore, 0.45) * edgeThread;
+  } else if (u_mode < 0.5) {
     // === MODE 0: QUANTUM INTERACTIVE GALAXY (FBM Spiral Arms + 3-Layer Starfield + Pulsing Core) ===
     float zoom = 1.0 - u_bass * 0.14;
     vec2 gUv = uv * zoom;
@@ -200,7 +279,10 @@ void main() {
 
   // Filmic tone-mapping
   col = col / (1.0 + col * 0.35);
-  float alpha = u_transparentBg > 0.5 ? clamp(max(col.r, max(col.g, col.b)) * 1.35 + 0.15, 0.0, 0.92) : 1.0;
+  float maxCh = max(col.r, max(col.g, col.b));
+  float alpha = u_transparentBg > 0.5
+    ? clamp(max(bhCoreMask, maxCh * 1.42 + 0.14), 0.0, 1.0)
+    : 1.0;
   outColor = vec4(col, alpha);
 }`;
 
@@ -354,7 +436,10 @@ export const QuantumGalaxyWebGL: React.FC<Props> = ({
       gl.uniform3f(uC1, vC1[0], vC1[1], vC1[2]);
       gl.uniform3f(uC2, vC2[0], vC2[1], vC2[2]);
       gl.uniform3f(uC3, vC3[0], vC3[1], vC3[2]);
-      gl.uniform1f(uMode, mode === 'shader_nebula' ? 1.0 : 0.0);
+      gl.uniform1f(
+        uMode,
+        mode === 'shader_blackhole' ? 2.0 : mode === 'shader_nebula' ? 1.0 : 0.0
+      );
       gl.uniform1f(uTrans, hasBackgroundImage ? 1.0 : 0.0);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);

@@ -53,12 +53,14 @@ export async function searchMoviesCatalog(
   return data?.movies || [];
 }
 
-export async function fetchLiveTvDirectory(): Promise<{
+export async function fetchLiveTvDirectory(forceRefresh = false): Promise<{
   totalAvailable: number;
   categories: LiveTvCategory[];
 }> {
+  const qs = forceRefresh ? '?refresh=1' : '';
   const data = await fetchJsonWithFallback<{ totalAvailable?: number; categories?: LiveTvCategory[] }>(
-    '/api/tv-directory'
+    `/api/tv-directory${qs}`,
+    25000
   );
   return {
     totalAvailable: data?.totalAvailable || 0,

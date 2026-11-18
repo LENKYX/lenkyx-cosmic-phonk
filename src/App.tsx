@@ -31,6 +31,8 @@ import {
   Tv,
   Scale,
   Download,
+  Power,
+  Share2,
 } from 'lucide-react';
 import {
   AppMode,
@@ -60,6 +62,8 @@ import { CommunityChatModal, TargetCommentsModal } from './components/CommunityC
 import { TvCastModal } from './components/TvCastModal';
 import { LegalTermsModal } from './components/LegalTermsModal';
 import { CosmicGtaLoader } from './components/CosmicGtaLoader';
+import { SafeExitModal } from './components/SafeExitModal';
+import { SocialDistributionModal } from './components/SocialDistributionModal';
 import { fetchTvHandoff } from './utils/communityApi';
 import { PixModal } from './components/PixModal';
 import {
@@ -119,6 +123,27 @@ export function App() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('catalog');
+  const [tabHistory, setTabHistory] = useState<TabId[]>([]);
+
+  const navigateTab = useCallback((next: TabId) => {
+    setActiveTab((prev) => {
+      if (prev === next) return prev;
+      setTabHistory((h) => [...h.slice(-15), prev]);
+      return next;
+    });
+  }, []);
+
+  const goBackTab = useCallback(() => {
+    setTabHistory((h) => {
+      if (h.length > 0) {
+        const last = h[h.length - 1];
+        setActiveTab(last);
+        return h.slice(0, -1);
+      }
+      setActiveTab('catalog');
+      return h;
+    });
+  }, []);
 
   // Global search bar state (Spotify / YouTube Music top bar)
   const [globalSearch, setGlobalSearch] = useState('');
@@ -207,6 +232,8 @@ export function App() {
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
   const [clipFitMode, setClipFitMode] = useState<'standard' | 'compact' | 'fullscreen'>('standard');
   const [legalOpen, setLegalOpen] = useState(false);
+  const [safeExitOpen, setSafeExitOpen] = useState(false);
+  const [socialDistOpen, setSocialDistOpen] = useState(false);
   const [tvCastOpen, setTvCastOpen] = useState(false);
   const [tvCustomMedia, setTvCustomMedia] = useState<{
     title: string;
@@ -1213,7 +1240,7 @@ export function App() {
     if (q) {
       setWorldTriggerQuery(q);
       setWorldSearchNonce((n) => n + 1);
-      setActiveTab('explore');
+      navigateTab('explore');
     }
   };
 
@@ -1223,7 +1250,7 @@ export function App() {
     setGlobalSearch(clean);
     setWorldTriggerQuery(clean);
     setWorldSearchNonce((n) => n + 1);
-    setActiveTab('explore');
+    navigateTab('explore');
   };
 
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
@@ -1280,7 +1307,7 @@ export function App() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => navigateTab(tab.id)}
                   className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
                     active
                       ? 'bg-gradient-to-r from-pink-500/25 to-cyan-500/20 text-white border border-pink-500/35'
@@ -1301,7 +1328,7 @@ export function App() {
                 Estúdio Criador
               </div>
               <button
-                onClick={() => setActiveTab('studio')}
+                onClick={() => navigateTab('studio')}
                 className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
                   activeTab === 'studio'
                     ? 'bg-cyan-500/25 text-white border border-cyan-400/40'
@@ -1319,7 +1346,7 @@ export function App() {
             <div className="px-3 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-purple-300/65 mb-1">
               <span>Suas Playlists</span>
               <button
-                onClick={() => setActiveTab('playlists')}
+                onClick={() => navigateTab('playlists')}
                 className="text-cyan-300 hover:underline normal-case font-bold"
               >
                 + Nova
@@ -1328,7 +1355,7 @@ export function App() {
             {playlists.map((pl) => (
               <button
                 key={pl.id}
-                onClick={() => setActiveTab('playlists')}
+                onClick={() => navigateTab('playlists')}
                 className="w-full px-3 py-1.5 rounded-lg hover:bg-white/[0.06] text-left text-xs text-purple-200/85 hover:text-white flex items-center justify-between gap-2 transition"
               >
                 <span className="truncate">
@@ -1389,6 +1416,18 @@ export function App() {
           >
             <Scale className="w-3.5 h-3.5 text-cyan-300" /> Direitos Autorais & DMCA
           </button>
+          <button
+            onClick={() => setSocialDistOpen(true)}
+            className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-pink-500/20 to-purple-500/20 hover:from-pink-500/35 hover:to-purple-500/35 border border-pink-400/40 text-pink-100 text-xs font-extrabold flex items-center justify-center gap-1.5 transition"
+          >
+            <Share2 className="w-3.5 h-3.5 text-pink-300" /> Auto-Divulgar Redes
+          </button>
+          <button
+            onClick={() => setSafeExitOpen(true)}
+            className="w-full py-1.5 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-400/35 text-emerald-200 text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition"
+          >
+            <Power className="w-3.5 h-3.5" /> Sair com Segurança
+          </button>
           {mode === 'creator' && (
             <button
               onClick={() => setCreatorModalOpen(true)}
@@ -1407,14 +1446,36 @@ export function App() {
         }`}
       >
         {/* SLIM FLOATING GLASS TOP HEADER */}
-        <header className="sticky top-2 z-30 mx-3 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-3 sm:px-4 flex items-center justify-between gap-2">
-          {/* Mobile Brand Mini (tap 5x secretly for Creator access) */}
-          <div
-            onClick={handleBrandTap}
-            className="flex md:hidden items-center gap-1.5 shrink-0 cursor-pointer select-none"
-          >
-            <img src="/covers/avatar.jpg" alt="LENKYX" className="w-7 h-7 rounded-full border border-pink-500" />
-            <span className="font-display text-xs font-black">LENKYX</span>
+        <header className="sticky top-2 z-30 mx-3 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-2.5 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-2">
+          {/* Universal Back (←) + Close (X) Navigation across ALL menus */}
+          <div className="flex items-center gap-1 shrink-0">
+            {(tabHistory.length > 0 || activeTab !== 'catalog') && (
+              <>
+                <button
+                  onClick={goBackTab}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition"
+                  title="Voltar para a tela anterior"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => navigateTab('catalog')}
+                  className="hidden sm:flex p-2 rounded-xl bg-white/10 hover:bg-red-500/80 border border-white/15 text-white transition"
+                  title="Fechar seção e voltar ao Início"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </>
+            )}
+
+            {/* Mobile Brand Mini (tap 5x secretly for Creator access) */}
+            <div
+              onClick={handleBrandTap}
+              className="flex md:hidden items-center gap-1.5 shrink-0 cursor-pointer select-none"
+            >
+              <img src="/covers/avatar.jpg" alt="LENKYX" className="w-7 h-7 rounded-full border border-pink-500" />
+              <span className="font-display text-xs font-black hidden xs:inline">LENKYX</span>
+            </div>
           </div>
 
           {/* GLOBAL SEARCH BAR — ONLY ONE magnifying glass across the entire app! */}
@@ -1580,6 +1641,24 @@ export function App() {
               </button>
             )}
 
+            {/* Global Auto-Share & Safe Exit Buttons in Header */}
+            <button
+              onClick={() => setSocialDistOpen(true)}
+              className="hidden sm:flex px-2.5 py-1.5 rounded-full bg-pink-500/20 hover:bg-pink-500/35 border border-pink-400/40 text-pink-100 text-[11px] font-extrabold items-center gap-1 transition"
+              title="Publicar & Distribuir nas Redes Sociais (Instagram, TikTok, YouTube, Facebook, X)"
+            >
+              <Share2 className="w-3.5 h-3.5 text-pink-300" />
+              <span className="hidden xl:inline">Divulgar</span>
+            </button>
+
+            <button
+              onClick={() => setSafeExitOpen(true)}
+              className="p-2 rounded-full bg-emerald-500/15 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 transition"
+              title="Sair do App com Segurança (Salvar todos os dados)"
+            >
+              <Power className="w-3.5 h-3.5" />
+            </button>
+
             {mode === 'creator' && (
               <button
                 onClick={() => void handleCreatorLogout()}
@@ -1693,6 +1772,10 @@ export function App() {
                   }}
                   onAddToPlaylist={addTrackToPlaylist}
                   onSendToVideo={handleSendToVideo}
+                  onOpenTvCast={(m) => {
+                    setTvCustomMedia(m);
+                    setTvCastOpen(true);
+                  }}
                 />
               )}
 
@@ -1831,7 +1914,7 @@ export function App() {
                   setPixInitialTab('donate');
                   setPixOpen(true);
                 } else {
-                  setActiveTab(item.id);
+                  navigateTab(item.id);
                 }
               }}
               className={`flex flex-col items-center justify-center gap-0.5 py-1 transition ${
@@ -2021,6 +2104,53 @@ export function App() {
         open={legalOpen}
         onClose={() => setLegalOpen(false)}
         creatorEmail={userProfile?.email || undefined}
+      />
+
+      {/* SAFE EXIT MODAL (Saves Cloud, Playlists & Offline Data before exiting) */}
+      <SafeExitModal
+        open={safeExitOpen}
+        onClose={() => setSafeExitOpen(false)}
+        user={userProfile}
+        playlists={playlists}
+        userTracks={userTracks}
+        offlineCount={offlineTrackIds.size}
+        onSyncCloud={async () => {
+          if (userProfile) {
+            await authFetch('/api/fans/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: userProfile.id,
+                name: userProfile.name,
+                email: userProfile.email,
+                avatarColor: userProfile.avatarColor,
+                playlists,
+              }),
+            }).catch(() => {});
+          }
+        }}
+        onLogoutUser={() => {
+          setUserProfile(null);
+          saveUserProfile(null);
+          showToast('Sessão encerrada com segurança — suas playlists e offline continuam salvos!');
+        }}
+        onPauseAllMedia={() => {
+          pauseCatalogPlayer();
+          setClipTheaterOpen(false);
+          setScreensaverOpen(false);
+        }}
+        onToast={showToast}
+      />
+
+      {/* OFFICIAL GLOBAL SOCIAL DISTRIBUTION & AUTO-PUBLISH MODAL */}
+      <SocialDistributionModal
+        open={socialDistOpen}
+        onClose={() => setSocialDistOpen(false)}
+        track={currentTrack}
+        settings={settings}
+        mode={mode}
+        onSaveSettings={handleSaveSettings}
+        onToast={showToast}
       />
 
       {/* COMMUNITY GLOBAL CHAT & TRACK COMMENTS */}

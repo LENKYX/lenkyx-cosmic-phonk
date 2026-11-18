@@ -142,17 +142,38 @@ async function fetchWorldEndpoint<T>(path: string): Promise<T | null> {
   return null;
 }
 
-export async function getWorldDirectory(): Promise<{
+export async function getWorldDirectory(forceRefresh = false): Promise<{
   artists: WorldArtistDirectoryItem[];
   playlists: WorldCuratedPlaylist[];
+  newReleases: Track[];
+  updatedAt?: string;
 }> {
+  const qs = forceRefresh ? '?refresh=1' : '';
   const data = await fetchWorldEndpoint<{
     artists?: WorldArtistDirectoryItem[];
     playlists?: WorldCuratedPlaylist[];
-  }>('/api/world-directory');
+    newReleases?: Track[];
+    updatedAt?: string;
+  }>(`/api/world-directory${qs}`);
   return {
     artists: data?.artists || [],
     playlists: data?.playlists?.length ? data.playlists : FALLBACK_CURATED_PLAYLISTS,
+    newReleases: data?.newReleases || [],
+    updatedAt: data?.updatedAt,
+  };
+}
+
+export async function getWorldNewReleases(forceRefresh = false): Promise<{
+  tracks: Track[];
+  updatedAt?: string;
+}> {
+  const qs = forceRefresh ? '?refresh=1' : '';
+  const data = await fetchWorldEndpoint<{ tracks?: Track[]; updatedAt?: string }>(
+    `/api/world-new-releases${qs}`
+  );
+  return {
+    tracks: data?.tracks || [],
+    updatedAt: data?.updatedAt,
   };
 }
 

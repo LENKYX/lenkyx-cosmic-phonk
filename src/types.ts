@@ -84,6 +84,7 @@ export interface AppSettings {
   sunoHandle?: string;
   sunoPlaylistId?: string;
   sunoProfileUrl?: string;
+  socialWebhookUrl?: string;
   dailyGoal: number;
   totalGoal: number;
 }

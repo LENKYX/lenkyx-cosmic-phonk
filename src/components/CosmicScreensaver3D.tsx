@@ -113,6 +113,7 @@ function detectGenreVisualProfile(track: Track | null): GenreVisualProfile {
 
 export type ExperienceMode = 'audio' | 'screensaver' | 'video';
 export type VisualizerStyle =
+  | 'shader_blackhole'
   | 'shader_galaxy'
   | 'shader_nebula'
   | 'waves3d'
@@ -154,8 +155,8 @@ interface ScreensaverPrefs {
 const DEFAULT_PREFS: ScreensaverPrefs = {
   imageSource: 'current_cover',
   enabledPresetIds: ['preset-album', 'preset-01', 'preset-05', 'preset-12'],
-  style: 'shader_galaxy',
-  imageOpacity: 0.36,
+  style: 'shader_blackhole',
+  imageOpacity: 0.4,
   slideSeconds: 10,
 };
 
@@ -370,7 +371,7 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
 
   // === 60-144 FPS 3D NEON SOUNDWAVE + MIRROR REFLECTION + COSMIC PARTICLES CANVAS (skipped when WebGL2 GPU mode active) ===
   useEffect(() => {
-    if (!open || prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula') return;
+    if (!open || prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula' || prefs.style === 'shader_blackhole') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -690,10 +691,16 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
         />
       )}
 
-      {/* WEBGL2 GPU INTERACTIVE QUANTUM GALAXY / PLANET SHADER (Up to 120+ FPS Native VSync) */}
+      {/* WEBGL2 GPU INTERACTIVE QUANTUM GALAXY / PLANET / BLACK HOLE 3D SHADER (Up to 120+ FPS Native VSync) */}
       <QuantumGalaxyWebGL
-        active={prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula'}
-        mode={prefs.style === 'shader_nebula' ? 'shader_nebula' : 'shader_galaxy'}
+        active={prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula' || prefs.style === 'shader_blackhole'}
+        mode={
+          prefs.style === 'shader_blackhole'
+            ? 'shader_blackhole'
+            : prefs.style === 'shader_nebula'
+              ? 'shader_nebula'
+              : 'shader_galaxy'
+        }
         isPlaying={isPlaying}
         bpm={genreProfile.defaultBpm}
         sharpness={genreProfile.sharpness}
@@ -706,7 +713,7 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
       />
 
       {/* 2D/3D CANVAS NEON SOUNDWAVE + COSMIC PARTICLES */}
-      {prefs.style !== 'shader_galaxy' && prefs.style !== 'shader_nebula' && (
+      {prefs.style !== 'shader_galaxy' && prefs.style !== 'shader_nebula' && prefs.style !== 'shader_blackhole' && (
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
       )}
 
@@ -764,9 +771,11 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
               <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[9px] font-black text-emerald-200 shrink-0">
                 {liveFps} FPS · {lenkyxAudioEngine.getSampleRateKhz().toFixed(1)} kHz GPU
               </span>
-              {(prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula') && (
-                <span className="text-[9px] text-pink-300/90 font-semibold hidden md:inline">
-                  ✨ Arraste ou clique na galáxia para criar vórtices e supernovas!
+              {(prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula' || prefs.style === 'shader_blackhole') && (
+                <span className="text-[9px] text-amber-300/95 font-semibold hidden md:inline">
+                  {prefs.style === 'shader_blackhole'
+                    ? '🕳️ Buraco Negro 3D Horário ativo — toque ou arraste para distorcer a gravidade!'
+                    : '✨ Arraste ou clique na galáxia para criar vórtices e supernovas!'}
                 </span>
               )}
             </div>
@@ -774,6 +783,22 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={() =>
+              setPrefs((p) => ({
+                ...p,
+                style: p.style === 'shader_blackhole' ? 'shader_galaxy' : 'shader_blackhole',
+              }))
+            }
+            className={`px-3 py-1.5 rounded-full text-[11px] font-black border transition flex items-center gap-1.5 ${
+              prefs.style === 'shader_blackhole'
+                ? 'bg-gradient-to-r from-orange-500 to-amber-400 border-amber-200 text-black shadow-[0_0_20px_rgba(249,115,22,0.6)]'
+                : 'bg-white/10 border-white/15 text-orange-200 hover:bg-orange-500/20'
+            }`}
+            title="Alternar Efeito Buraco Negro 3D (Sentido Horário + Fio Laranja Luminoso)"
+          >
+            <span>🕳️ Buraco Negro 3D</span>
+          </button>
           <button
             onClick={onToggleAutoOnPlay}
             className={`px-3 py-1.5 rounded-full text-[11px] font-extrabold border transition flex items-center gap-1.5 ${
@@ -845,6 +870,7 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
             <div className="grid grid-cols-2 gap-1.5">
               {(
                 [
+                  { id: 'shader_blackhole', label: '🕳️ Buraco Negro 3D Horário (Laranja Luminoso)' },
                   { id: 'shader_galaxy', label: '🌌 Galáxia Quântica GPU (Interativa)' },
                   { id: 'shader_nebula', label: '🪐 Planeta & Anéis GPU (Interativo)' },
                   { id: 'waves3d', label: '🌊 Ondas Neon 3D + Reflexo' },

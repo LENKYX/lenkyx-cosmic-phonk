@@ -37,6 +37,16 @@ export const FAMOUS_ARTISTS_DIRECTORY = [
   { name: 'Anitta', genre: 'Pop / Funk Brasil', era: 'Brasil & Mundo', wiki: 'Anitta', lang: 'pt', query: 'Anitta official audio' },
   { name: "Racionais MC's", genre: 'Rap Nacional', era: 'Anos 90/2000', wiki: "Racionais_MC's", lang: 'pt', query: 'Racionais MCs musicas' },
   { name: 'Legião Urbana', genre: 'Rock Nacional', era: 'Anos 80/90', wiki: 'Legião_Urbana', lang: 'pt', query: 'Legiao Urbana sucessos' },
+  { name: 'Ana Castela', genre: 'Agronejo / Sertanejo', era: 'Brasil Top', wiki: 'Ana_Castela', lang: 'pt', query: 'Ana Castela musica oficial' },
+  { name: 'Zé Neto & Cristiano', genre: 'Sertanejo', era: 'Brasil Top', wiki: 'Zé_Neto_&_Cristiano', lang: 'pt', query: 'Ze Neto e Cristiano oficial' },
+  { name: 'Simone Mendes', genre: 'Sertanejo', era: 'Brasil Top', wiki: 'Simone_Mendes', lang: 'pt', query: 'Simone Mendes oficial' },
+  { name: 'Matuê', genre: 'Trap Nacional', era: 'Brasil Top', wiki: 'Matuê', lang: 'pt', query: 'Matue oficial audio' },
+  { name: 'MC Hariel', genre: 'Funk Consciente', era: 'Brasil Top', wiki: 'MC_Hariel', lang: 'pt', query: 'MC Hariel oficial' },
+  { name: 'Shakira', genre: 'Pop Latino', era: 'Global Top', wiki: 'Shakira', lang: 'en', query: 'Shakira official music' },
+  { name: 'Karol G', genre: 'Reggaeton / Pop', era: 'Global Top', wiki: 'Karol_G', lang: 'en', query: 'Karol G official audio' },
+  { name: 'Kendrick Lamar', genre: 'Hip-Hop / Rap', era: 'Global Top', wiki: 'Kendrick_Lamar', lang: 'en', query: 'Kendrick Lamar official audio' },
+  { name: 'SZA', genre: 'R&B / Soul', era: 'Global Top', wiki: 'SZA', lang: 'en', query: 'SZA official audio' },
+  { name: 'Sabrina Carpenter', genre: 'Pop Global', era: 'Global Top', wiki: 'Sabrina_Carpenter', lang: 'en', query: 'Sabrina Carpenter official' },
 ];
 
 export const CURATED_PLAYLISTS = [
@@ -731,3 +741,55 @@ export async function getFamousArtistsWithPhotos() {
   cachedArtistsTs = Date.now();
   return enriched;
 }
+
+let newReleasesCache = { ts: 0, tracks: [], year: 0 };
+
+export async function getWorldNewReleases(forceRefresh = false) {
+  const CURRENT_YEAR = new Date().getFullYear();
+  if (
+    !forceRefresh &&
+    newReleasesCache.tracks.length > 0 &&
+    newReleasesCache.year === CURRENT_YEAR &&
+    Date.now() - newReleasesCache.ts < 30 * 60 * 1000
+  ) {
+    return {
+      updatedAt: new Date(newReleasesCache.ts).toISOString(),
+      year: CURRENT_YEAR,
+      tracks: newReleasesCache.tracks,
+    };
+  }
+
+  const queries = [
+    `lancamentos musicas novas brasil ${CURRENT_YEAR} clipe oficial sertanejo funk trap`,
+    `new music releases ${CURRENT_YEAR} official audio pop hip hop phonk`,
+    `The Weeknd Bruno Mars Sabrina Carpenter Ana Castela Matue ${CURRENT_YEAR} oficial`,
+  ];
+
+  const batches = await Promise.all([
+    ...queries.map((q) => searchYouTubeMusic(q, 12)),
+    searchAudiusFull(`phonk ${CURRENT_YEAR}`, 6),
+  ]);
+
+  const seen = new Set();
+  const merged = [];
+  for (const list of batches) {
+    for (const t of list) {
+      if (!seen.has(t.id)) {
+        seen.add(t.id);
+        merged.push({
+          ...t,
+          number: merged.length + 1,
+          sourceLabel: `Novo ${CURRENT_YEAR}`,
+        });
+      }
+    }
+  }
+
+  newReleasesCache = { ts: Date.now(), tracks: merged, year: CURRENT_YEAR };
+  return {
+    updatedAt: new Date(newReleasesCache.ts).toISOString(),
+    year: CURRENT_YEAR,
+    tracks: merged,
+  };
+}
+

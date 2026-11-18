@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Play,
   Pause,
@@ -12,8 +12,10 @@ import {
   UserCheck,
   Film,
   Video,
-  ChevronDown,
-  ChevronUp,
+  RefreshCw,
+  ArrowLeft,
+  Tv,
+  Disc3,
 } from 'lucide-react';
 import {
   Track,
@@ -25,10 +27,13 @@ import {
 import {
   FALLBACK_CURATED_PLAYLISTS,
   getWorldDirectory,
+  getWorldNewReleases,
   getWorldTrending,
   searchWorldMusic,
 } from '../utils/worldMusic';
 import { getSmartDiscoveryQueries, recordPlayTaste, recordSearchTaste } from '../utils/tasteProfile';
+import { CosmicScrollRow } from './CosmicScrollRow';
+import { CosmicGtaLoader } from './CosmicGtaLoader';
 
 interface Props {
   initialQuery?: string;
@@ -40,15 +45,32 @@ interface Props {
   onWatchClip?: (track: Track, queue: Track[]) => void;
   onSendToVideo: (track: Track) => void;
   onAddToPlaylist: (playlistId: string, track: Track) => void;
+  onOpenTvCast?: (media: {
+    title: string;
+    artist?: string;
+    mode?: 'galaxy' | 'video' | 'shorts' | 'tv';
+    youtubeVideoId?: string;
+    audioUrl?: string;
+    coverUrl?: string;
+  }) => void;
 }
 
 const GENRE_CHIPS = [
   { label: '🔥 Em Alta', q: '', space: false },
+  { label: '🚀 Lançamentos IA', q: `lancamentos musicas novas brasil global ${new Date().getFullYear()}`, space: false },
   { label: '🌎 Internacionais', q: 'The Weeknd Taylor Swift Bruno Mars Dua Lipa Billie Eilish official', space: false },
   { label: '🎬 Clipes HD', q: 'Henrique e Juliano The Weeknd Queen Michael Jackson clipe oficial', space: false },
-  { label: '🤠 Sertanejo', q: 'Henrique e Juliano Marilia Mendonca Gusttavo Lima', space: false },
+  { label: '🤠 Sertanejo', q: 'Henrique e Juliano Marilia Mendonca Gusttavo Lima Ana Castela', space: false },
   { label: '⚡ Phonk', q: 'brazilian phonk Kordhell DVRST', space: false },
   { label: '🛸 Espaço & E.T.', q: 'espaco galaxia NASA voyager cosmic synthwave', space: true },
+];
+
+const ARTIST_REGION_FILTERS = [
+  { id: 'all', label: 'Todos' },
+  { id: 'br', label: '🇧🇷 Brasil' },
+  { id: 'global', label: '🌍 Globais' },
+  { id: 'sertanejo', label: '🤠 Sertanejo' },
+  { id: 'urban', label: '🎤 Rap/Trap/Phonk' },
 ];
 
 function fmtDur(sec?: number): string {
@@ -70,19 +92,20 @@ export const WorldExploreView: React.FC<Props> = ({
   onWatchClip,
   onSendToVideo,
   onAddToPlaylist,
+  onOpenTvCast,
 }) => {
   const [results, setResults] = useState<Track[]>([]);
+  const [newReleases, setNewReleases] = useState<Track[]>([]);
   const [artistProfile, setArtistProfile] = useState<WorldArtistProfile | null>(null);
   const [famousArtists, setFamousArtists] = useState<WorldArtistDirectoryItem[]>([]);
   const [curatedPlaylists, setCuratedPlaylists] = useState<WorldCuratedPlaylist[]>(FALLBACK_CURATED_PLAYLISTS);
   const [smartPicks, setSmartPicks] = useState<{ label: string; query: string }[]>(() => getSmartDiscoveryQueries());
+  const [artistRegion, setArtistRegion] = useState<string>('all');
   const [loading, setLoading] = useState(false);
+  const [refreshingReleases, setRefreshingReleases] = useState(false);
+  const [lastUpdatedLabel, setLastUpdatedLabel] = useState('IA Ativa');
   const [activeLabel, setActiveLabel] = useState('🔥 Em Alta');
   const [pickerTrackId, setPickerTrackId] = useState<string | null>(null);
-
-  // Minimizable horizontal carousels
-  const [artistsCollapsed, setArtistsCollapsed] = useState(false);
-  const [playlistsCollapsed, setPlaylistsCollapsed] = useState(true);
 
   const runSearch = async (term: string, label?: string, includeArchiveSpace = false) => {
     setLoading(true);
@@ -105,13 +128,36 @@ export const WorldExploreView: React.FC<Props> = ({
     }
   };
 
+  const refreshNewReleasesAI = async (force = false) => {
+    setRefreshingReleases(true);
+    try {
+      const rel = await getWorldNewReleases(force);
+      if (rel.tracks?.length) setNewReleases(rel.tracks);
+      setLastUpdatedLabel(
+        `IA · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+      );
+    } finally {
+      setRefreshingReleases(false);
+    }
+  };
+
   useEffect(() => {
-    getWorldDirectory()
+    getWorldDirectory(false)
       .then((dir) => {
         if (dir.artists?.length) setFamousArtists(dir.artists);
         if (dir.playlists?.length) setCuratedPlaylists(dir.playlists);
+        if (dir.newReleases?.length) setNewReleases(dir.newReleases);
+        setLastUpdatedLabel(
+          `IA · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+        );
       })
       .catch(() => {});
+
+    // Auto-refresh new music releases by AI every 25 minutes automatically!
+    const autoTimer = window.setInterval(() => {
+      void refreshNewReleasesAI(true);
+    }, 25 * 60 * 1000);
+    return () => window.clearInterval(autoTimer);
   }, []);
 
   useEffect(() => {
@@ -123,15 +169,39 @@ export const WorldExploreView: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery, searchNonce]);
 
-  const handlePlayRow = (track: Track) => {
+  const filteredArtists = useMemo(() => {
+    if (artistRegion === 'all') return famousArtists;
+    return famousArtists.filter((a) => {
+      const low = `${a.genre} ${a.era}`.toLowerCase();
+      if (artistRegion === 'br') return low.includes('brasil') || low.includes('sertanejo') || low.includes('nacional');
+      if (artistRegion === 'global') return low.includes('global') || low.includes('lenda') || low.includes('anos');
+      if (artistRegion === 'sertanejo') return low.includes('sertanejo') || low.includes('agronejo');
+      if (artistRegion === 'urban') return low.includes('phonk') || low.includes('rap') || low.includes('trap') || low.includes('funk') || low.includes('hip-hop');
+      return true;
+    });
+  }, [famousArtists, artistRegion]);
+
+  const clipTracks = useMemo(
+    () => results.filter((t) => Boolean(t.youtubeVideoId)).slice(0, 20),
+    [results]
+  );
+
+  const handlePlayRow = (track: Track, customQueue?: Track[]) => {
     recordPlayTaste(track.artist, track.genre, track.title);
     setSmartPicks(getSmartDiscoveryQueries());
-    onPlayTrack(track, results, activeLabel);
+    onPlayTrack(track, customQueue || results, activeLabel);
   };
 
   return (
-    <div className="space-y-4 pb-36 md:pb-28">
-      {/* Compact Genre & AI Smart Discovery Bar */}
+    <div className="space-y-5 pb-36 md:pb-28">
+      <CosmicGtaLoader
+        open={refreshingReleases}
+        mode="discreet_corner"
+        statusText="IA buscando músicas novas..."
+        onSkip={() => setRefreshingReleases(false)}
+      />
+
+      {/* SPOTIFY / YOUTUBE MUSIC GENRE CHIPS + AUTO-REFRESH AI */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {GENRE_CHIPS.map((chip) => (
@@ -140,7 +210,7 @@ export const WorldExploreView: React.FC<Props> = ({
               onClick={() => void runSearch(chip.q, chip.label, chip.space)}
               className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
                 activeLabel === chip.label
-                  ? 'bg-gradient-to-r from-pink-500 to-cyan-500 text-white shadow'
+                  ? 'bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500 text-black shadow font-black'
                   : 'bg-white/[0.07] hover:bg-white/15 text-purple-100 border border-white/10'
               }`}
             >
@@ -148,17 +218,30 @@ export const WorldExploreView: React.FC<Props> = ({
             </button>
           ))}
         </div>
-        {results.length > 0 && (
+
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => handlePlayRow(results[0])}
-            className="px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-xs font-black flex items-center gap-1.5 shrink-0 shadow hover:brightness-110 transition"
+            onClick={() => void refreshNewReleasesAI(true)}
+            disabled={refreshingReleases}
+            className="px-3 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/15 border border-white/15 text-[11px] font-bold text-emerald-300 flex items-center gap-1.5 transition"
+            title="Atualizar lançamentos musicais automaticamente com IA agora"
           >
-            <Play className="w-3.5 h-3.5 fill-current" /> Tocar Sequência
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshingReleases ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{lastUpdatedLabel}</span>
           </button>
-        )}
+
+          {results.length > 0 && (
+            <button
+              onClick={() => handlePlayRow(results[0])}
+              className="px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-xs font-black flex items-center gap-1.5 shadow hover:brightness-110 transition"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" /> Tocar Sequência
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* AI Continuous Discovery Chips (learns from your searches & plays) */}
+      {/* AI Continuous Discovery Chips */}
       {smartPicks.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
           <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1 shrink-0 pr-1">
@@ -176,122 +259,267 @@ export const WorldExploreView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Artist Official Spotlight Card (when searching an artist) */}
+      {/* SPOTIFY / YOUTUBE MUSIC OFFICIAL ARTIST HERO BANNER (when an artist is selected!) */}
       {artistProfile && (
-        <div className="rounded-3xl cosmic-card-3d p-4 flex flex-col sm:flex-row items-center sm:items-start gap-4">
-          <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl p-[2px] bg-gradient-to-br from-pink-500 via-purple-500 to-cyan-400 shrink-0 shadow-[0_0_25px_rgba(236,72,153,0.4)]">
-            <img
-              src={artistProfile.photoUrl || '/covers/album-official.jpg'}
-              alt={artistProfile.name}
-              className="w-full h-full object-cover rounded-[14px]"
-            />
-            <span className="absolute -bottom-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-emerald-400 text-black text-[9px] font-black flex items-center gap-0.5 shadow">
-              <UserCheck className="w-2.5 h-2.5" /> OFICIAL
-            </span>
-          </div>
-          <div className="flex-1 text-center sm:text-left space-y-1">
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <h2 className="font-display text-lg font-black text-white">{artistProfile.name}</h2>
-              {artistProfile.genre && (
-                <span className="px-2 py-0.5 rounded-full bg-pink-500/20 border border-pink-400/35 text-pink-200 text-[10px] font-extrabold">
-                  {artistProfile.genre}
-                </span>
-              )}
-              {artistProfile.era && (
-                <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/35 text-cyan-200 text-[10px] font-extrabold">
-                  {artistProfile.era}
-                </span>
-              )}
+        <section className="relative rounded-[28px] overflow-hidden border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.75)]">
+          <img
+            src={artistProfile.photoUrl || '/covers/album-official.jpg'}
+            alt={artistProfile.name}
+            className="absolute inset-0 w-full h-full object-cover opacity-35 blur-sm scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#05020f] via-[#070316]/75 to-transparent" />
+
+          <div className="relative z-10 p-5 sm:p-7 flex flex-col sm:flex-row items-center sm:items-end gap-5">
+            <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full p-[3px] bg-gradient-to-br from-emerald-400 via-cyan-400 to-pink-500 shrink-0 shadow-[0_0_35px_rgba(34,211,238,0.45)]">
+              <img
+                src={artistProfile.photoUrl || '/covers/album-official.jpg'}
+                alt={artistProfile.name}
+                className="w-full h-full object-cover rounded-full bg-black"
+              />
+              <span className="absolute bottom-0 right-0 px-2.5 py-0.5 rounded-full bg-emerald-400 text-black text-[9px] font-black flex items-center gap-0.5 shadow-lg">
+                <UserCheck className="w-3 h-3" /> VERIFICADO
+              </span>
             </div>
-            {artistProfile.bio && (
-              <p className="text-xs text-purple-100/80 line-clamp-2 leading-relaxed">{artistProfile.bio}</p>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* FAMOUS INTERNATIONAL & BRAZILIAN ARTISTS CAROUSEL (Minimizable!) */}
-      {famousArtists.length > 0 && (
-        <section className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="font-display text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
-              <UserCheck className="w-4 h-4 text-pink-400" /> ARTISTAS FAMOSOS — INTERNACIONAL & BRASIL ({famousArtists.length})
-            </h2>
-            <button
-              onClick={() => setArtistsCollapsed((v) => !v)}
-              className="px-2.5 py-1 rounded-full bg-white/[0.07] hover:bg-white/[0.15] border border-white/10 text-[10px] font-bold text-purple-200 flex items-center gap-1 transition"
-            >
-              {artistsCollapsed ? 'Mostrar' : 'Minimizar'}
-              {artistsCollapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-            </button>
-          </div>
+            <div className="flex-1 text-center sm:text-left space-y-2 min-w-0">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                {artistProfile.genre && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-pink-500/25 border border-pink-400/40 text-pink-200 text-[10px] font-extrabold">
+                    {artistProfile.genre}
+                  </span>
+                )}
+                {artistProfile.era && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/25 border border-cyan-400/40 text-cyan-200 text-[10px] font-extrabold">
+                    {artistProfile.era}
+                  </span>
+                )}
+              </div>
+              <h1 className="font-display text-2xl sm:text-4xl font-black text-white tracking-tight truncate">
+                {artistProfile.name}
+              </h1>
+              {artistProfile.bio && (
+                <p className="text-xs text-purple-100/85 line-clamp-2 max-w-2xl leading-relaxed">
+                  {artistProfile.bio}
+                </p>
+              )}
 
-          {!artistsCollapsed && (
-            <div className="flex items-stretch gap-2.5 overflow-x-auto pb-2">
-              {famousArtists.map((art) => (
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                {results.length > 0 && (
+                  <button
+                    onClick={() => handlePlayRow(results[0])}
+                    className="px-5 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-black flex items-center gap-1.5 shadow-lg transition active:scale-95"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-black" /> Tocar Mix do Artista
+                  </button>
+                )}
+                {clipTracks[0] && onWatchClip && (
+                  <button
+                    onClick={() => onWatchClip(clipTracks[0], clipTracks)}
+                    className="px-4 py-2 rounded-full bg-rose-600/85 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1.5 transition"
+                  >
+                    <Film className="w-3.5 h-3.5" /> Assistir Clipes
+                  </button>
+                )}
                 <button
-                  key={art.name}
-                  onClick={() => void runSearch(art.name, `🎤 ${art.name}`)}
-                  className="group w-26 sm:w-30 shrink-0 rounded-2xl cosmic-card-3d p-2.5 flex flex-col items-center text-center gap-1.5"
+                  onClick={() => void runSearch('', '🔥 Em Alta')}
+                  className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white flex items-center gap-1 transition"
                 >
-                  <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-full p-[2px] bg-gradient-to-tr from-pink-500 via-purple-500 to-cyan-400 group-hover:scale-105 transition">
-                    <img
-                      src={art.photoUrl || '/covers/album-official.jpg'}
-                      alt={art.name}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover rounded-full bg-black"
-                    />
-                  </div>
-                  <div className="min-w-0 w-full">
-                    <div className="text-[11px] font-extrabold text-white truncate">{art.name}</div>
-                    <div className="text-[9px] text-cyan-300/85 truncate">{art.genre}</div>
-                  </div>
+                  <ArrowLeft className="w-3.5 h-3.5" /> Todos os Artistas
                 </button>
-              ))}
+              </div>
             </div>
-          )}
+          </div>
         </section>
       )}
 
-      {/* CURATED PLAYLISTS CAROUSEL (Minimizable!) */}
-      <section className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="font-display text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
-            <ListMusic className="w-4 h-4 text-cyan-400" /> PLAYLISTS POR ESTILO & GERAÇÃO
-          </h2>
-          <button
-            onClick={() => setPlaylistsCollapsed((v) => !v)}
-            className="px-2.5 py-1 rounded-full bg-white/[0.07] hover:bg-white/[0.15] border border-white/10 text-[10px] font-bold text-purple-200 flex items-center gap-1 transition"
-          >
-            {playlistsCollapsed ? 'Mostrar' : 'Minimizar'}
-            {playlistsCollapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-          </button>
-        </div>
+      {/* === SECTION 1: ARTISTAS EM ALTA — SPOTIFY / YOUTUBE MUSIC STYLE WITH TRANSLUCENT ◀▶ ARROWS === */}
+      {famousArtists.length > 0 && (
+        <CosmicScrollRow
+          title={
+            <>
+              <UserCheck className="w-4 h-4 text-emerald-400" />
+              <span>Artistas em Alta — Estilo Spotify & YouTube Music</span>
+            </>
+          }
+          subtitle="Clique em um artista para abrir o perfil oficial, músicas completas e novos lançamentos"
+          count={filteredArtists.length}
+          collapsible
+          rightActions={
+            <div className="hidden md:flex items-center gap-1">
+              {ARTIST_REGION_FILTERS.map((rf) => (
+                <button
+                  key={rf.id}
+                  onClick={() => setArtistRegion(rf.id)}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition ${
+                    artistRegion === rf.id
+                      ? 'bg-emerald-400 text-black font-black'
+                      : 'bg-white/[0.06] hover:bg-white/15 text-purple-200'
+                  }`}
+                >
+                  {rf.label}
+                </button>
+              ))}
+            </div>
+          }
+        >
+          {filteredArtists.map((art) => (
+            <button
+              key={art.name}
+              onClick={() => void runSearch(art.name, `🎤 ${art.name}`)}
+              className="group w-32 sm:w-36 shrink-0 rounded-2xl cosmic-card-3d p-3 flex flex-col items-center text-center gap-2 hover:bg-white/[0.09] transition"
+            >
+              <div className="relative w-22 h-22 sm:w-24 sm:h-24 rounded-full p-[2.5px] bg-gradient-to-tr from-emerald-400 via-cyan-400 to-pink-500 group-hover:scale-105 transition shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
+                <img
+                  src={art.photoUrl || '/covers/album-official.jpg'}
+                  alt={art.name}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover rounded-full bg-black"
+                />
+                <span className="opacity-0 group-hover:opacity-100 absolute bottom-0 right-0 w-8 h-8 rounded-full bg-emerald-400 text-black flex items-center justify-center shadow-lg transition">
+                  <Play className="w-4 h-4 fill-black ml-0.5" />
+                </span>
+              </div>
+              <div className="min-w-0 w-full">
+                <div className="text-xs font-black text-white truncate group-hover:text-emerald-300 transition">
+                  {art.name}
+                </div>
+                <div className="text-[10px] text-cyan-300/85 truncate">{art.genre}</div>
+              </div>
+            </button>
+          ))}
+        </CosmicScrollRow>
+      )}
 
-        {!playlistsCollapsed && (
-          <div className="flex items-stretch gap-2.5 overflow-x-auto pb-2">
-            {curatedPlaylists.map((pl) => (
-              <button
-                key={pl.id}
-                onClick={() =>
-                  void runSearch(pl.searchQuery, `${pl.emoji} ${pl.title}`, Boolean(pl.includeArchiveSpace))
-                }
-                className={`w-64 shrink-0 text-left rounded-2xl p-3 bg-gradient-to-br ${pl.gradient} cosmic-card-3d flex items-start gap-2.5`}
+      {/* === SECTION 2: NOVOS LANÇAMENTOS AUTO-ATUALIZÁVEIS POR IA (◀▶ ARROWS) === */}
+      {newReleases.length > 0 && (
+        <CosmicScrollRow
+          title={
+            <>
+              <Disc3 className="w-4 h-4 text-pink-400 animate-spin" style={{ animationDuration: '6s' }} />
+              <span>Lançamentos Novos {new Date().getFullYear()} · Atualizado por IA</span>
+            </>
+          }
+          subtitle="Músicas novas assim que os artistas lançam, atualizadas automaticamente em tempo real"
+          count={newReleases.length}
+          collapsible
+        >
+          {newReleases.map((t) => {
+            const active = currentTrack?.id === t.id;
+            return (
+              <div
+                key={t.id}
+                className={`group w-40 sm:w-44 shrink-0 rounded-2xl cosmic-card-3d p-2.5 flex flex-col gap-2 transition ${
+                  active ? 'border-emerald-400 bg-emerald-500/15' : 'hover:bg-white/[0.08]'
+                }`}
               >
-                <div className="w-10 h-10 rounded-xl bg-black/45 border border-white/15 flex items-center justify-center text-xl shrink-0">
-                  {pl.emoji}
+                <div
+                  onClick={() => handlePlayRow(t, newReleases)}
+                  className="relative aspect-square rounded-xl overflow-hidden bg-black cursor-pointer"
+                >
+                  <img
+                    src={t.coverUrl || '/covers/album-official.jpg'}
+                    alt={t.title}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                  />
+                  <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-emerald-400 text-black text-[9px] font-black shadow">
+                    NOVO
+                  </span>
+                  <span className="opacity-90 group-hover:scale-110 absolute bottom-2 right-2 w-9 h-9 rounded-full bg-emerald-400 text-black flex items-center justify-center shadow-lg transition">
+                    {active && isPlaying ? (
+                      <Pause className="w-4 h-4 fill-black" />
+                    ) : (
+                      <Play className="w-4 h-4 fill-black ml-0.5" />
+                    )}
+                  </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-200">{pl.era}</div>
-                  <div className="text-xs font-black text-white truncate">{pl.title}</div>
-                  <div className="text-[10px] text-purple-100/75 line-clamp-1 mt-0.5">{pl.subtitle}</div>
+                <div className="min-w-0">
+                  <div
+                    onClick={() => handlePlayRow(t, newReleases)}
+                    className="text-xs font-black text-white truncate cursor-pointer hover:text-emerald-300"
+                  >
+                    {t.title}
+                  </div>
+                  <div className="text-[10px] text-purple-200/75 truncate">{t.artist}</div>
                 </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+              </div>
+            );
+          })}
+        </CosmicScrollRow>
+      )}
+
+      {/* === SECTION 3: PLAYLISTS POR ESTILO & GERAÇÃO (◀▶ ARROWS) === */}
+      <CosmicScrollRow
+        title={
+          <>
+            <ListMusic className="w-4 h-4 text-cyan-400" />
+            <span>Playlists & Mixes por Estilo</span>
+          </>
+        }
+        count={curatedPlaylists.length}
+        collapsible
+      >
+        {curatedPlaylists.map((pl) => (
+          <button
+            key={pl.id}
+            onClick={() =>
+              void runSearch(pl.searchQuery, `${pl.emoji} ${pl.title}`, Boolean(pl.includeArchiveSpace))
+            }
+            className={`w-64 shrink-0 text-left rounded-2xl p-3.5 bg-gradient-to-br ${pl.gradient} cosmic-card-3d flex items-start gap-3 hover:scale-[1.02] transition`}
+          >
+            <div className="w-11 h-11 rounded-xl bg-black/45 border border-white/15 flex items-center justify-center text-xl shrink-0">
+              {pl.emoji}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-200">{pl.era}</div>
+              <div className="text-xs font-black text-white truncate">{pl.title}</div>
+              <div className="text-[10px] text-purple-100/80 line-clamp-2 mt-0.5">{pl.subtitle}</div>
+            </div>
+          </button>
+        ))}
+      </CosmicScrollRow>
+
+      {/* === SECTION 4: CLIPES OFICIAIS HD EM CARROSSEL (◀▶ ARROWS) === */}
+      {clipTracks.length > 0 && onWatchClip && (
+        <CosmicScrollRow
+          title={
+            <>
+              <Film className="w-4 h-4 text-rose-400" />
+              <span>Clipes Oficiais HD — {activeLabel}</span>
+            </>
+          }
+          count={clipTracks.length}
+          collapsible
+        >
+          {clipTracks.map((t) => (
+            <div
+              key={`clip-${t.id}`}
+              onClick={() => onWatchClip(t, clipTracks)}
+              className="group w-56 sm:w-64 shrink-0 rounded-2xl cosmic-card-3d overflow-hidden cursor-pointer hover:border-rose-400/50 transition"
+            >
+              <div className="relative aspect-video bg-black">
+                <img
+                  src={t.coverUrl || '/covers/album-official.jpg'}
+                  alt={t.title}
+                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-105 transition"
+                />
+                <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-rose-600 text-[9px] font-black text-white">
+                  CLIPE HD
+                </span>
+                <span className="absolute inset-0 m-auto w-11 h-11 rounded-full bg-black/70 border border-white/30 text-white flex items-center justify-center group-hover:bg-rose-600 transition">
+                  <Play className="w-5 h-5 fill-white ml-0.5" />
+                </span>
+              </div>
+              <div className="p-2.5">
+                <div className="text-xs font-black text-white truncate">{t.title}</div>
+                <div className="text-[10px] text-purple-200/75 truncate">{t.artist}</div>
+              </div>
+            </div>
+          ))}
+        </CosmicScrollRow>
+      )}
 
       {/* Results Header */}
       <div className="flex items-center justify-between text-xs text-purple-200/80 px-1 pt-1">
@@ -302,7 +530,7 @@ export const WorldExploreView: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Track List */}
+      {/* Track List (Spotify / YT Music Clean Rows) */}
       {loading ? (
         <div className="py-14 flex flex-col items-center justify-center gap-2 text-purple-300">
           <Loader2 className="w-7 h-7 animate-spin text-cyan-400" />
@@ -321,7 +549,7 @@ export const WorldExploreView: React.FC<Props> = ({
               <div
                 key={t.id}
                 className={`group flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.06] transition ${
-                  active ? 'bg-pink-500/15' : ''
+                  active ? 'bg-emerald-500/15' : ''
                 }`}
               >
                 <button
@@ -329,7 +557,7 @@ export const WorldExploreView: React.FC<Props> = ({
                   className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 relative"
                 >
                   {active && isPlaying ? (
-                    <Pause className="w-4 h-4 text-pink-400" />
+                    <Pause className="w-4 h-4 text-emerald-400" />
                   ) : (
                     <>
                       <span className="text-xs text-purple-300/70 group-hover:hidden">{idx + 1}</span>
@@ -349,7 +577,7 @@ export const WorldExploreView: React.FC<Props> = ({
 
                 <div onClick={() => handlePlayRow(t)} className="min-w-0 flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs sm:text-sm font-bold truncate ${active ? 'text-pink-400' : 'text-white'}`}>
+                    <span className={`text-xs sm:text-sm font-bold truncate ${active ? 'text-emerald-400' : 'text-white'}`}>
                       {t.title}
                     </span>
                     <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold shrink-0">
@@ -374,6 +602,25 @@ export const WorldExploreView: React.FC<Props> = ({
                     >
                       <Film className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Clipe</span>
+                    </button>
+                  )}
+
+                  {onOpenTvCast && (
+                    <button
+                      onClick={() =>
+                        onOpenTvCast({
+                          title: t.title,
+                          artist: t.artist,
+                          mode: t.youtubeVideoId ? 'video' : 'galaxy',
+                          youtubeVideoId: t.youtubeVideoId,
+                          audioUrl: t.audioUrl,
+                          coverUrl: t.coverUrl,
+                        })
+                      }
+                      className="p-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/35 border border-cyan-400/35 text-cyan-200"
+                      title="Passar música/clipe para Smart TV"
+                    >
+                      <Tv className="w-3.5 h-3.5" />
                     </button>
                   )}
 
