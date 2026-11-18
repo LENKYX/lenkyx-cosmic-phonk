@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Layers,
   Loader2,
+  QrCode,
 } from 'lucide-react';
 import { MovieItem, SeriesEpisodeItem, SeriesSeasonInfo } from '../types';
 import {
@@ -27,7 +28,7 @@ import {
   MovieCategory,
   searchMoviesCatalog,
 } from '../utils/moviesApi';
-import { CinemaPrerollIntro, CosmicGtaLoader } from './CosmicGtaLoader';
+import { CosmicGtaLoader } from './CosmicGtaLoader';
 import { PlayerQueueStrip } from './PlayerQueueStrip';
 
 interface Props {
@@ -37,6 +38,7 @@ interface Props {
   muted?: boolean;
   onVolume?: (v: number) => void;
   onToggleMute?: () => void;
+  onOpenPix?: () => void;
   initialMovie?: MovieItem | null;
   onConsumeInitialMovie?: () => void;
 }
@@ -173,6 +175,7 @@ export const MoviesView: React.FC<Props> = ({
   muted = false,
   onVolume,
   onToggleMute,
+  onOpenPix,
   initialMovie = null,
   onConsumeInitialMovie,
 }) => {
@@ -190,7 +193,7 @@ export const MoviesView: React.FC<Props> = ({
   const [heroIdx, setHeroIdx] = useState(0);
   const [activeMovie, setActiveMovie] = useState<MovieItem | null>(null);
   const [movieQueue, setMovieQueue] = useState<MovieItem[]>([]);
-  const [prerollActive, setPrerollActive] = useState(false);
+  const [, setPrerollActive] = useState(false);
   const [cinemaQuality, setCinemaQuality] = useState<'auto' | 'large' | 'hd720' | 'hd1080' | 'hd2160'>('hd720');
   const [expandedView, setExpandedView] = useState(false);
 
@@ -604,6 +607,17 @@ export const MoviesView: React.FC<Props> = ({
                 </>
               )}
 
+              {onOpenPix && (
+                <button
+                  onClick={onOpenPix}
+                  className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 text-[11px] font-black flex items-center gap-1"
+                  title="Apoiar via PIX (QR Code)"
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">PIX</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setActiveMovie(null)}
                 className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-rose-600 text-white text-xs font-black flex items-center gap-1"
@@ -614,49 +628,32 @@ export const MoviesView: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Video Viewport — Perfect on Mobile Portrait, Landscape & Smart TV */}
+          {/* Video Viewport — Immediate playback without intro */}
           <div className="relative w-full bg-black flex-1 min-h-[220px] sm:aspect-video flex items-center justify-center overflow-hidden">
-            {prerollActive && (
-              <CinemaPrerollIntro
-                open={prerollActive}
-                title={activeMovie.title}
-                subtitle={
-                  activeMovie.mediaType === 'series'
-                    ? 'LENKYX SÉRIES'
-                    : activeMovie.mediaType === 'anime'
-                      ? 'LENKYX ANIMES'
-                      : 'LENKYX CINEMA'
-                }
-                onFinish={() => setPrerollActive(false)}
+            {activeMovie.videoStreamUrl && !activeMovie.youtubeVideoId && !activeMovie.youtubePlaylistId ? (
+              <video
+                key={activeMovie.id}
+                src={activeMovie.videoStreamUrl}
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain bg-black"
               />
-            )}
-
-            {!prerollActive && (
-              activeMovie.videoStreamUrl && !activeMovie.youtubeVideoId && !activeMovie.youtubePlaylistId ? (
-                <video
-                  key={activeMovie.id}
-                  src={activeMovie.videoStreamUrl}
-                  controls
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-contain bg-black"
-                />
-              ) : (
-                <iframe
-                  key={`${activeMovie.id}-${cinemaQuality}`}
-                  src={
-                    activeMovie.youtubePlaylistId
-                      ? `https://www.youtube.com/embed/videoseries?list=${activeMovie.youtubePlaylistId}&autoplay=1&rel=0&playsinline=1${cinemaQuality !== 'auto' ? `&vq=${cinemaQuality}` : ''}&hl=pt-BR&cc_lang_pref=pt`
-                      : activeMovie.youtubeVideoId
-                        ? `https://www.youtube.com/embed/${activeMovie.youtubeVideoId}?autoplay=1&rel=0&playsinline=1${cinemaQuality !== 'auto' ? `&vq=${cinemaQuality}` : ''}&hl=pt-BR&cc_lang_pref=pt`
-                        : activeMovie.videoStreamUrl || ''
-                  }
-                  title={activeMovie.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                  allowFullScreen
-                  className="w-full h-full border-0"
-                />
-              )
+            ) : (
+              <iframe
+                key={`${activeMovie.id}-${cinemaQuality}`}
+                src={
+                  activeMovie.youtubePlaylistId
+                    ? `https://www.youtube.com/embed/videoseries?list=${activeMovie.youtubePlaylistId}&autoplay=1&rel=0&playsinline=1${cinemaQuality !== 'auto' ? `&vq=${cinemaQuality}` : ''}&hl=pt-BR&cc_lang_pref=pt`
+                    : activeMovie.youtubeVideoId
+                      ? `https://www.youtube.com/embed/${activeMovie.youtubeVideoId}?autoplay=1&rel=0&playsinline=1${cinemaQuality !== 'auto' ? `&vq=${cinemaQuality}` : ''}&hl=pt-BR&cc_lang_pref=pt`
+                      : activeMovie.videoStreamUrl || ''
+                }
+                title={activeMovie.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                className="w-full h-full border-0"
+              />
             )}
           </div>
 

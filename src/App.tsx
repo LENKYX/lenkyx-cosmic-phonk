@@ -27,6 +27,8 @@ import {
   Trophy,
   Users,
   Target,
+  AudioWaveform,
+  Crown,
 } from 'lucide-react';
 import {
   AppMode,
@@ -55,7 +57,7 @@ const CosmicSearchView = React.lazy(() =>
 );
 import { BassBoostLevel, MiniPlayer } from './components/MiniPlayer';
 import { LegalTermsModal } from './components/LegalTermsModal';
-import { CinemaPrerollIntro, CosmicGtaLoader } from './components/CosmicGtaLoader';
+import { CosmicGtaLoader } from './components/CosmicGtaLoader';
 import { PlayerQueueStrip } from './components/PlayerQueueStrip';
 import { PixModal } from './components/PixModal';
 import { ShareModal } from './components/ShareModal';
@@ -130,11 +132,19 @@ export function App() {
   });
   const liveSessionIdRef = useRef<string>(getOrCreateSessionId());
 
-  // Bass Boost Web Audio nodes (lazy-initialized only when enabled)
+  // Bass Boost Web Audio nodes + Speed + Loop
   const [bassBoostLevel, setBassBoostLevel] = useState<BassBoostLevel>(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const [loopTrack, setLoopTrack] = useState<boolean>(false);
+  const loopTrackRef = useRef<boolean>(false);
+  useEffect(() => {
+    loopTrackRef.current = loopTrack;
+    if (audioRef.current) audioRef.current.loop = loopTrack;
+  }, [loopTrack]);
   const bassAudioCtxRef = useRef<AudioContext | null>(null);
   const bassLowShelfRef = useRef<BiquadFilterNode | null>(null);
   const bassPeakRef = useRef<BiquadFilterNode | null>(null);
+  const bassGainRef = useRef<GainNode | null>(null);
 
   // Cinematic Startup Intro + Auto-Update Check on Entry
   const [gtaLoaderOpen, setGtaLoaderOpen] = useState(() => !sessionStorage.getItem('lenkyx_splash_done'));
@@ -262,11 +272,11 @@ export function App() {
 
   // Modals & notifications
   const [pixOpen, setPixOpen] = useState(false);
-  const [pixInitialTab, setPixInitialTab] = useState<'donate' | 'config'>('donate');
+  const [pixInitialTab, setPixInitialTab] = useState<'donate' | 'ranking' | 'collection' | 'config'>('donate');
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
-  const [clipPrerollActive, setClipPrerollActive] = useState(false);
+  const [, setClipPrerollActive] = useState(false);
   const clipTheaterOpenRef = useRef(false);
   useEffect(() => {
     clipTheaterOpenRef.current = clipTheaterOpen;
@@ -670,48 +680,84 @@ export function App() {
     };
   }, [activeTab]);
 
-  // Apply Web Audio Bass Boost safely when enabled
+  // Apply Web Audio Bass Boost + Anti-Clipping Limiter safely across all menus
   const applyBassBoostGain = useCallback((level: BassBoostLevel) => {
     const audio = audioRef.current;
-    if (!audio) return;
-    if (level > 0 && !bassAudioCtxRef.current) {
-      try {
-        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        if (AudioCtx) {
-          const ctx = new AudioCtx();
-          const source = ctx.createMediaElementSource(audio);
-          const lowShelf = ctx.createBiquadFilter();
-          lowShelf.type = 'lowshelf';
-          lowShelf.frequency.value = 90;
-          const peak = ctx.createBiquadFilter();
-          peak.type = 'peaking';
-          peak.frequency.value = 55;
-          peak.Q.value = 1.1;
-          source.connect(lowShelf);
-          lowShelf.connect(peak);
-          peak.connect(ctx.destination);
-          bassAudioCtxRef.current = ctx;
-          bassLowShelfRef.current = lowShelf;
-          bassPeakRef.current = peak;
+    if (audio && (!currentTrackRef.current?.youtubeVideoId || Boolean(currentTrackRef.current?.audioUrl))) {
+      const curSrc = audio.currentSrc || audio.src || '';
+      const isSameOriginOrBlob =
+        !curSrc ||
+        curSrc.startsWith('blob:') ||
+        curSrc.startsWith('data:') ||
+        curSrc.startsWith(window.location.origin) ||
+        curSrc.startsWith('/');
+
+      if (level > 0 && isSameOriginOrBlob && !bassAudioCtxRef.current) {
+        try {
+          const AudioCtx =
+            window.AudioContext ||
+            (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+          if (AudioCtx) {
+            const ctx = new AudioCtx();
+            const source = ctx.createMediaElementSource(audio);
+            const lowShelf = ctx.createBiquadFilter();
+            lowShelf.type = 'lowshelf';
+            lowShelf.frequency.value = 95;
+            const peak = ctx.createBiquadFilter();
+            peak.type = 'peaking';
+            peak.frequency.value = 55;
+            peak.Q.value = 1.1;
+            const gain = ctx.createGain();
+            gain.gain.value = 1.0;
+            const limiter = ctx.createDynamicsCompressor();
+            limiter.threshold.value = -3;
+            limiter.knee.value = 6;
+            limiter.ratio.value = 12;
+            limiter.attack.value = 0.003;
+            limiter.release.value = 0.12;
+            source.connect(lowShelf);
+            lowShelf.connect(peak);
+            peak.connect(gain);
+            gain.connect(limiter);
+            limiter.connect(ctx.destination);
+            bassAudioCtxRef.current = ctx;
+            bassLowShelfRef.current = lowShelf;
+            bassPeakRef.current = peak;
+            bassGainRef.current = gain;
+          }
+        } catch {
+          // Fallback if already attached
         }
-      } catch {
-        // Fallback if already attached or unsupported
       }
+      if (bassAudioCtxRef.current?.state === 'suspended') {
+        void bassAudioCtxRef.current.resume().catch(() => {});
+      }
+      const shelfGains = [0, 4.5, 9, 14];
+      const peakGains = [0, 3, 6.5, 10];
+      const punchGains = [1.0, 1.08, 1.18, 1.28];
+      if (bassLowShelfRef.current) bassLowShelfRef.current.gain.value = shelfGains[level] || 0;
+      if (bassPeakRef.current) bassPeakRef.current.gain.value = peakGains[level] || 0;
+      if (bassGainRef.current) bassGainRef.current.gain.value = punchGains[level] || 1.0;
     }
-    if (bassAudioCtxRef.current?.state === 'suspended') {
-      void bassAudioCtxRef.current.resume().catch(() => {});
+
+    // For embed-stream tracks, keep volume punch synced cleanly
+    if (currentTrackRef.current?.youtubeVideoId && !currentTrackRef.current?.audioUrl && ytPlayerRef.current?.setVolume) {
+      const targetVol = muted ? 0 : Math.min(100, Math.round((level > 0 ? Math.max(volume, 0.92) : volume) * 100));
+      ytPlayerRef.current.setVolume(targetVol);
     }
-    const shelfGains = [0, 4.5, 9, 14];
-    const peakGains = [0, 3, 6.5, 10];
-    if (bassLowShelfRef.current) bassLowShelfRef.current.gain.value = shelfGains[level] || 0;
-    if (bassPeakRef.current) bassPeakRef.current.gain.value = peakGains[level] || 0;
-  }, []);
+  }, [volume, muted]);
+
+  const handleSetBassBoostLevel = useCallback(
+    (level: BassBoostLevel) => {
+      setBassBoostLevel(level);
+      applyBassBoostGain(level);
+      const labels = ['Graves Normal', 'Graves Suave (+4dB)', 'Graves Pesado (+9dB)', 'Subwoofer Máximo (+14dB)'];
+      showToast(`🔊 ${labels[level]}`);
+    },
+    [applyBassBoostGain, showToast]
+  );
 
   const handleCycleBassBoost = useCallback(() => {
-    if (currentTrack?.youtubeVideoId && !currentTrack.audioUrl) {
-      showToast('O reforço de graves funciona nas faixas de áudio direto do catálogo LENKYX!');
-      return;
-    }
     setBassBoostLevel((prev) => {
       const next = ((prev + 1) % 4) as BassBoostLevel;
       applyBassBoostGain(next);
@@ -719,7 +765,25 @@ export function App() {
       showToast(`🔊 ${labels[next]}`);
       return next;
     });
-  }, [currentTrack, applyBassBoostGain, showToast]);
+  }, [applyBassBoostGain, showToast]);
+
+  const handleCycleSpeed = useCallback(() => {
+    const speeds = [1, 1.15, 1.25, 0.85];
+    setPlaybackSpeed((prev) => {
+      const next = speeds[(speeds.indexOf(prev) + 1) % speeds.length] || 1;
+      if (audioRef.current) audioRef.current.playbackRate = next;
+      showToast(`⚡ Velocidade: ${next}x`);
+      return next;
+    });
+  }, [showToast]);
+
+  const handleToggleLoop = useCallback(() => {
+    setLoopTrack((prev) => {
+      const next = !prev;
+      showToast(next ? '🔁 Repetir música ativado' : 'Repetição desativada');
+      return next;
+    });
+  }, [showToast]);
 
   const handlePlayTrack = useCallback(
     async (track: Track, requestedVersion?: AudioVersion, customQueue?: Track[]) => {
@@ -785,9 +849,17 @@ export function App() {
 
       const resolved = await resolvePlayableAudioUrl(track, finalVersion);
       setIsPlayingFromOffline(resolved.fromOffline);
-      audio.src = resolved.url;
+      const playableSrc =
+        !resolved.fromOffline &&
+        resolved.url.startsWith('https://') &&
+        (resolved.url.includes('audius') || resolved.url.includes('archive.org') || resolved.url.includes('suno'))
+          ? `/api/audio-proxy?url=${encodeURIComponent(resolved.url)}`
+          : resolved.url;
+      audio.src = playableSrc;
       audio.volume = muted ? 0 : volume;
       audio.muted = muted;
+      audio.playbackRate = playbackSpeed;
+      audio.loop = loopTrackRef.current;
       audio.load();
       if (bassBoostLevel > 0) {
         applyBassBoostGain(bassBoostLevel);
@@ -821,7 +893,7 @@ export function App() {
 
   const openClipWithIntro = useCallback(
     (track: Track, queue?: Track[]) => {
-      setClipPrerollActive(true);
+      setClipPrerollActive(false);
       setClipTheaterOpen(true);
       void handlePlayTrack(track, 'v1', queue);
     },
@@ -1384,17 +1456,39 @@ export function App() {
           </div>
         </div>
 
-        {/* Clean Utility Dock (Site Maintenance PicPay PIX + Share + Legal) */}
+        {/* Clean Utility Dock (PIX QR + Ranking & Bonequinhos + Share + Legal) */}
         <div className="p-2.5 border-t border-white/[0.08] bg-black/25 space-y-2">
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={() => {
+                setPixInitialTab('donate');
+                setPixOpen(true);
+              }}
+              className="py-2 px-2 rounded-xl bg-gradient-to-r from-emerald-500/25 to-cyan-500/25 hover:from-emerald-500/40 hover:to-cyan-500/40 border border-emerald-400/45 text-emerald-100 text-[11px] font-black flex items-center justify-center gap-1 transition"
+              title="Abrir QR Code PIX & Meta Diária"
+            >
+              <QrCode className="w-3.5 h-3.5 text-emerald-300" /> PIX QR
+            </button>
+            <button
+              onClick={() => {
+                setPixInitialTab('ranking');
+                setPixOpen(true);
+              }}
+              className="py-2 px-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-pink-500/20 hover:from-amber-500/35 hover:to-pink-500/35 border border-amber-400/40 text-amber-100 text-[11px] font-black flex items-center justify-center gap-1 transition"
+              title="Ver Ranking de Apoiadores & Bonequinhos"
+            >
+              <Crown className="w-3.5 h-3.5 text-amber-300" /> Ranking
+            </button>
+          </div>
+
           <button
             onClick={() => {
-              setPixInitialTab('donate');
+              setPixInitialTab('collection');
               setPixOpen(true);
             }}
-            className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-pink-500/20 to-cyan-500/20 hover:from-pink-500/35 hover:to-cyan-500/35 border border-pink-400/40 text-pink-100 text-xs font-black flex items-center justify-center gap-1.5 transition"
-            title="Apoiar manutenção do site sem anúncios via PicPay PIX"
+            className="w-full py-1.5 px-2.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/30 border border-purple-400/35 text-purple-100 text-[11px] font-black flex items-center justify-center gap-1.5 transition"
           >
-            <QrCode className="w-4 h-4 text-pink-300" /> Apoiar Site (PIX)
+            <span>👾</span> Meus Bonequinhos (1.000)
           </button>
 
           <div className="grid grid-cols-2 gap-1.5">
@@ -1587,17 +1681,29 @@ export function App() {
               />
             </div>
 
-            {/* Mobile PIX Maintenance Button */}
+            {/* Quick PIX QR + Ranking Pills */}
             <button
               onClick={() => {
                 setPixInitialTab('donate');
                 setPixOpen(true);
               }}
-              className="md:hidden px-2.5 py-1.5 rounded-full bg-pink-500/20 border border-pink-400/40 text-pink-100 text-[11px] font-black flex items-center gap-1"
-              title="Apoiar site sem anúncios via PIX"
+              className="px-2.5 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/45 text-emerald-100 text-[11px] font-black flex items-center gap-1 transition"
+              title="Abrir QR Code PIX & Apoiar Igrejas/Combate à Fome"
             >
-              <QrCode className="w-3.5 h-3.5 text-pink-300" />
-              <span className="hidden xs:inline">PIX</span>
+              <QrCode className="w-3.5 h-3.5 text-emerald-300" />
+              <span>PIX</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setPixInitialTab('ranking');
+                setPixOpen(true);
+              }}
+              className="hidden sm:flex px-2.5 py-1.5 rounded-full bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/40 text-amber-100 text-[11px] font-black items-center gap-1 transition"
+              title="Classificação de Apoio & Coleção de Bonequinhos"
+            >
+              <Crown className="w-3.5 h-3.5 text-amber-300" />
+              <span className="hidden lg:inline">Ranking</span>
             </button>
 
             {/* Quick Invite Friends Button */}
@@ -1661,6 +1767,22 @@ export function App() {
                       style={{ width: `${dailyPixPct}%` }}
                       className="block h-full bg-gradient-to-r from-emerald-400 to-pink-500"
                     />
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPixInitialTab('ranking');
+                    setPixOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 hover:bg-amber-500/30 border border-amber-400/35 text-[11px] font-black text-amber-200 transition"
+                >
+                  <Crown className="w-3.5 h-3.5 text-amber-300" />
+                  <span>
+                    {liveStats.leaderboard && liveStats.leaderboard[0]
+                      ? `Top #1: ${liveStats.leaderboard[0].name} (R$ ${liveStats.leaderboard[0].totalBrl.toFixed(0)})`
+                      : 'Ranking & Bonequinhos 👾'}
                   </span>
                 </button>
               </div>
@@ -1803,6 +1925,10 @@ export function App() {
                       muted={muted}
                       onVolume={handleVolume}
                       onToggleMute={handleToggleMute}
+                      onOpenPix={() => {
+                        setPixInitialTab('donate');
+                        setPixOpen(true);
+                      }}
                       initialMovie={pendingMovie}
                       onConsumeInitialMovie={() => setPendingMovie(null)}
                     />
@@ -1816,6 +1942,10 @@ export function App() {
                       muted={muted}
                       onVolume={handleVolume}
                       onToggleMute={handleToggleMute}
+                      onOpenPix={() => {
+                        setPixInitialTab('donate');
+                        setPixOpen(true);
+                      }}
                     />
                   )}
 
@@ -1867,8 +1997,16 @@ export function App() {
           volume={volume}
           muted={muted}
           bassBoostLevel={bassBoostLevel}
-          bassBoostAvailable={!currentTrack.youtubeVideoId || Boolean(currentTrack.audioUrl)}
+          playbackSpeed={playbackSpeed}
+          loopTrack={loopTrack}
           onCycleBassBoost={handleCycleBassBoost}
+          onSetBassBoostLevel={handleSetBassBoostLevel}
+          onCycleSpeed={handleCycleSpeed}
+          onToggleLoop={handleToggleLoop}
+          onOpenPix={() => {
+            setPixInitialTab('donate');
+            setPixOpen(true);
+          }}
           onTogglePlay={() => void handleTogglePlay()}
           onSelectVersion={handleSelectVersion}
           onPrev={() => handlePrevNext(-1)}
@@ -1888,7 +2026,7 @@ export function App() {
           onToggleOffline={(t) => void handleToggleOffline(t)}
           onWatchClip={() => {
             if (currentTrack?.youtubeVideoId) {
-              setClipPrerollActive(true);
+              setClipPrerollActive(false);
               setClipTheaterOpen(true);
             }
           }}
@@ -2021,6 +2159,38 @@ export function App() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                <button
+                  onClick={handleCycleBassBoost}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-black flex items-center gap-1 transition ${
+                    bassBoostLevel > 0
+                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 border-pink-300 text-white shadow-[0_0_14px_rgba(236,72,153,0.5)]'
+                      : 'bg-white/10 hover:bg-white/20 border-white/15 text-purple-100'
+                  }`}
+                  title="Turbina os graves do som"
+                >
+                  <AudioWaveform className="w-3.5 h-3.5" />
+                  <span>
+                    {bassBoostLevel === 3
+                      ? 'Subwoofer'
+                      : bassBoostLevel === 2
+                        ? 'Pesado'
+                        : bassBoostLevel === 1
+                          ? 'Suave'
+                          : 'Graves +'}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    setClipTheaterOpen(false);
+                    setPixInitialTab('donate');
+                    setPixOpen(true);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 text-[11px] font-black flex items-center gap-1"
+                  title="Abrir QR Code PIX"
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">PIX</span>
+                </button>
                 <select
                   value={clipQuality}
                   onChange={(e) => {
@@ -2076,16 +2246,7 @@ export function App() {
           >
             <div id="lenkyx-yt-audio-host" className="w-full h-full" />
 
-            {clipTheaterOpen && clipPrerollActive && currentTrack?.youtubeVideoId && (
-              <CinemaPrerollIntro
-                open={clipPrerollActive}
-                title={currentTrack.title}
-                subtitle="LENKYX CLIPES"
-                onFinish={() => setClipPrerollActive(false)}
-              />
-            )}
-
-            {clipTheaterOpen && !clipPrerollActive && currentTrack?.youtubeVideoId && !isPlaying && (
+            {clipTheaterOpen && currentTrack?.youtubeVideoId && !isPlaying && (
               <div
                 onClick={() => void handleTogglePlay()}
                 className="absolute inset-0 z-10 cursor-pointer flex items-center justify-center bg-black/70 backdrop-blur-sm transition"

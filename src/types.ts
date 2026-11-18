@@ -96,6 +96,15 @@ export type AudioVersion = 'v1' | 'v2';
 export type TabId = 'catalog' | 'search' | 'explore' | 'movies' | 'sports' | 'playlists' | 'studio';
 export type AppMode = 'creator' | 'fan';
 
+export interface SupporterRankEntry {
+  id: string;
+  name: string;
+  totalBrl: number;
+  donationsCount: number;
+  mascots: number[];
+  lastDonationAt: string;
+}
+
 export interface LiveStats {
   onlineCount: number;
   dateKey: string;
@@ -103,6 +112,7 @@ export interface LiveStats {
   dailyCollectedBrl: number;
   dailyContributors: number;
   recentSupporters?: { name: string; amount: number; at: string }[];
+  leaderboard?: SupporterRankEntry[];
 }
 
 export interface SeriesSeasonInfo {

@@ -795,13 +795,33 @@ app.get('/api/sports-search', async (req, res) => {
   }
 });
 
-// === REAL-TIME ONLINE LISTENERS + DAILY PIX GOAL ===
+// === REAL-TIME ONLINE LISTENERS + DAILY PIX GOAL + SUPPORTER RANKING & ALIEN MASCOTS ===
 const LIVE_STATS_PATH = path.join(DATA_DIR, 'live-stats.json');
 const activeListenerSessions = new Map(); // sessionId -> { ts, activity }
 const LISTENER_TTL_MS = 180 * 1000; // 3 min heartbeat window
 
 function getTodayBrtKey() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+}
+
+function pickUniqueMascotId(existingIds = []) {
+  const owned = new Set((existingIds || []).map((n) => Number(n)));
+  if (owned.size >= 1000) return ((owned.size % 1000) + 1);
+  // Try random picks first, then linear scan for guaranteed unique ID in 1..1000
+  for (let i = 0; i < 40; i++) {
+    const candidate = Math.floor(Math.random() * 1000) + 1;
+    if (!owned.has(candidate)) return candidate;
+  }
+  for (let id = 1; id <= 1000; id++) {
+    if (!owned.has(id)) return id;
+  }
+  return 1;
+}
+
+function getSortedLeaderboard(supporters = []) {
+  return [...(supporters || [])]
+    .sort((a, b) => Number(b.totalBrl || 0) - Number(a.totalBrl || 0) || Number(b.donationsCount || 0) - Number(a.donationsCount || 0))
+    .slice(0, 50);
 }
 
 function readLiveStatsStore() {
@@ -812,6 +832,7 @@ function readLiveStatsStore() {
     dailyCollectedBrl: 0,
     dailyContributors: 0,
     recentSupporters: [],
+    supporters: [],
   };
   try {
     if (!fs.existsSync(LIVE_STATS_PATH)) {
@@ -826,11 +847,16 @@ function readLiveStatsStore() {
         dailyCollectedBrl: 0,
         dailyContributors: 0,
         recentSupporters: [],
+        supporters: Array.isArray(parsed.supporters) ? parsed.supporters : [],
       };
       fs.writeFileSync(LIVE_STATS_PATH, JSON.stringify(rolled, null, 2), 'utf-8');
       return rolled;
     }
-    return { ...defaults, ...parsed };
+    return {
+      ...defaults,
+      ...parsed,
+      supporters: Array.isArray(parsed.supporters) ? parsed.supporters : [],
+    };
   } catch {
     return defaults;
   }
@@ -858,6 +884,7 @@ app.get('/api/live-stats', (_req, res) => {
   res.json({
     onlineCount: pruneAndCountListeners(),
     ...store,
+    leaderboard: getSortedLeaderboard(store.supporters),
   });
 });
 
@@ -870,12 +897,15 @@ app.post('/api/live-stats/ping', (req, res) => {
   res.json({
     onlineCount: pruneAndCountListeners(),
     ...store,
+    leaderboard: getSortedLeaderboard(store.supporters),
   });
 });
 
 app.post('/api/live-stats/pix-pledge', (req, res) => {
   const amount = Math.round(Number(req.body?.amount || 0) * 100) / 100;
   const donorName = String(req.body?.donorName || 'Fã LENKYX').trim().slice(0, 40) || 'Fã LENKYX';
+  const donorKey = String(req.body?.supporterId || donorName.toLowerCase().replace(/\s+/g, '-')).slice(0, 48);
+  const existingOwned = Array.isArray(req.body?.ownedMascots) ? req.body.ownedMascots.map(Number) : [];
   if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
     return res.status(400).json({ error: 'Informe um valor válido entre R$ 1 e R$ 10.000.' });
   }
@@ -886,11 +916,42 @@ app.post('/api/live-stats/pix-pledge', (req, res) => {
     { name: donorName, amount, at: new Date().toISOString() },
     ...(store.recentSupporters || []),
   ].slice(0, 8);
+
+  const supporters = Array.isArray(store.supporters) ? [...store.supporters] : [];
+  let entry = supporters.find(
+    (s) => s.id === donorKey || String(s.name || '').toLowerCase() === donorName.toLowerCase()
+  );
+  const combinedOwned = Array.from(new Set([...(entry?.mascots || []), ...existingOwned]));
+  const unlockedMascotId = pickUniqueMascotId(combinedOwned);
+  const nextMascots = [...(entry?.mascots || []), unlockedMascotId];
+
+  if (entry) {
+    entry.name = donorName;
+    entry.totalBrl = Math.round((Number(entry.totalBrl || 0) + amount) * 100) / 100;
+    entry.donationsCount = Number(entry.donationsCount || 0) + 1;
+    entry.mascots = Array.from(new Set(nextMascots));
+    entry.lastDonationAt = new Date().toISOString();
+  } else {
+    entry = {
+      id: donorKey || `sup-${Date.now().toString(36)}`,
+      name: donorName,
+      totalBrl: amount,
+      donationsCount: 1,
+      mascots: [unlockedMascotId],
+      lastDonationAt: new Date().toISOString(),
+    };
+    supporters.push(entry);
+  }
+  store.supporters = supporters;
   writeLiveStatsStore(store);
+
   res.json({
     ok: true,
+    unlockedMascotId,
+    supporterEntry: entry,
     onlineCount: pruneAndCountListeners(),
     ...store,
+    leaderboard: getSortedLeaderboard(store.supporters),
   });
 });
 
@@ -909,6 +970,7 @@ app.post('/api/live-stats/pix-goal', auth.requireCreator, (req, res) => {
     ok: true,
     onlineCount: pruneAndCountListeners(),
     ...store,
+    leaderboard: getSortedLeaderboard(store.supporters),
   });
 });
 
@@ -1037,6 +1099,7 @@ app.get('/api/audio-proxy', async (req, res) => {
     }
     const ct = upstream.headers.get('content-type') || 'audio/mpeg';
     const cl = upstream.headers.get('content-length');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', ct);
     if (cl) res.setHeader('Content-Length', cl);
     res.setHeader('Cache-Control', 'public, max-age=86400');

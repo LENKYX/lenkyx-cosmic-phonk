@@ -16,6 +16,7 @@ import {
   Flame,
   LayoutGrid,
   Radio,
+  QrCode,
 } from 'lucide-react';
 import { MmaScoreItem, SoccerScoreItem, SportStreamItem } from '../types';
 import {
@@ -23,7 +24,7 @@ import {
   searchSportsCatalog,
   SportsCategory,
 } from '../utils/moviesApi';
-import { CinemaPrerollIntro, CosmicGtaLoader } from './CosmicGtaLoader';
+import { CosmicGtaLoader } from './CosmicGtaLoader';
 import { PlayerQueueStrip } from './PlayerQueueStrip';
 
 interface Props {
@@ -33,6 +34,7 @@ interface Props {
   muted?: boolean;
   onVolume?: (v: number) => void;
   onToggleMute?: () => void;
+  onOpenPix?: () => void;
 }
 
 type SportFilter = 'all' | 'soccer' | 'mma';
@@ -55,6 +57,7 @@ export const SportsArenaView: React.FC<Props> = ({
   muted = false,
   onVolume,
   onToggleMute,
+  onOpenPix,
 }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,7 +73,7 @@ export const SportsArenaView: React.FC<Props> = ({
 
   const [activeStream, setActiveStream] = useState<SportStreamItem | null>(null);
   const [streamQueue, setStreamQueue] = useState<SportStreamItem[]>([]);
-  const [prerollActive, setPrerollActive] = useState(false);
+  const [, setPrerollActive] = useState(false);
   const [expandedView, setExpandedView] = useState(false);
   const [quality, setQuality] = useState<'auto' | 'hd720' | 'hd1080' | 'large'>('hd720');
 
@@ -303,6 +306,17 @@ export const SportsArenaView: React.FC<Props> = ({
                 </>
               )}
 
+              {onOpenPix && (
+                <button
+                  onClick={onOpenPix}
+                  className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 text-[11px] font-black flex items-center gap-1"
+                  title="Apoiar via PIX (QR Code)"
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">PIX</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setActiveStream(null)}
                 className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-rose-600 text-white text-xs font-black flex items-center gap-1"
@@ -313,16 +327,7 @@ export const SportsArenaView: React.FC<Props> = ({
           </div>
 
           <div className="relative w-full bg-black flex-1 min-h-[220px] sm:aspect-video flex items-center justify-center overflow-hidden">
-            {prerollActive && (
-              <CinemaPrerollIntro
-                open={prerollActive}
-                title={activeStream.title}
-                subtitle={activeStream.sport === 'mma' ? 'LENKYX OCTÓGONO' : 'LENKYX ARENA FUTEBOL'}
-                onFinish={() => setPrerollActive(false)}
-              />
-            )}
-
-            {!prerollActive && activeStream.youtubeVideoId && (
+            {activeStream.youtubeVideoId && (
               <iframe
                 key={`${activeStream.id}-${quality}`}
                 src={`https://www.youtube.com/embed/${activeStream.youtubeVideoId}?autoplay=1&rel=0&playsinline=1${

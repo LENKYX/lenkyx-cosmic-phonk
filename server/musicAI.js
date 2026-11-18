@@ -451,7 +451,7 @@ async function searchYouTubeMusic(query, limit = 18) {
         externalUrl: `https://www.youtube.com/watch?v=${v.videoId}`,
         durationSec: durSec || 210,
         source: 'world_full',
-        sourceLabel: 'Completa (YouTube)',
+        sourceLabel: 'Completa HD',
         plays: 0,
         favorite: false,
         status: { recorded: true, finalized: true, spotify: true, youtube: true },
@@ -695,7 +695,7 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
             title: String(title).slice(0, 110),
             creator_name: 'Criador Global',
             creator_color: 'from-cyan-400 to-pink-500',
-            description: `Toque para assistir em tela cheia estilo YouTube Shorts · ⬆️⬇️`,
+            description: `Toque para assistir em tela cheia · ⬆️⬇️`,
             media_type: 'youtube_short',
             video_url: '',
             youtube_id: vid,
@@ -724,13 +724,13 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
             creator_name: String(channel).replace(/ - Topic$/i, '').slice(0, 36),
             creator_color: isLiveMode ? 'from-rose-500 to-amber-500' : 'from-pink-500 to-purple-500',
             description: isLiveMode
-              ? `Transmissão Ao Vivo do YouTube agora · ${channel}`
+              ? `Transmissão Ao Vivo agora · ${channel}`
               : `Vídeo curto mundial · Categoria ${cat.toUpperCase()}`,
             media_type: 'youtube_short',
             video_url: '',
             youtube_id: vid,
             poster_url: thumb,
-            audio_title: isLiveMode ? '🔴 YouTube Ao Vivo' : channel,
+            audio_title: isLiveMode ? '🔴 Ao Vivo' : channel,
             category: cat,
             likes: 85 + items.length * 13,
             created_at: new Date().toISOString(),

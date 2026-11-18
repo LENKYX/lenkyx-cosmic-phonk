@@ -18,6 +18,9 @@ import {
   Film,
   X,
   AudioWaveform,
+  QrCode,
+  Repeat,
+  Gauge,
 } from 'lucide-react';
 import { AudioVersion, Track } from '../types';
 
@@ -35,8 +38,13 @@ interface Props {
   volume: number;
   muted: boolean;
   bassBoostLevel?: BassBoostLevel;
-  bassBoostAvailable?: boolean;
+  playbackSpeed?: number;
+  loopTrack?: boolean;
   onCycleBassBoost?: () => void;
+  onSetBassBoostLevel?: (level: BassBoostLevel) => void;
+  onCycleSpeed?: () => void;
+  onToggleLoop?: () => void;
+  onOpenPix?: () => void;
   onTogglePlay: () => void;
   onSelectVersion: (ver: AudioVersion) => void;
   onPrev: () => void;
@@ -70,8 +78,13 @@ export const MiniPlayer: React.FC<Props> = ({
   volume,
   muted,
   bassBoostLevel = 0,
-  bassBoostAvailable = true,
+  playbackSpeed = 1,
+  loopTrack = false,
   onCycleBassBoost,
+  onSetBassBoostLevel,
+  onCycleSpeed,
+  onToggleLoop,
+  onOpenPix,
   onTogglePlay,
   onPrev,
   onNext,
@@ -108,7 +121,7 @@ export const MiniPlayer: React.FC<Props> = ({
       let lastDraw = 0;
       const draw = (now: number) => {
         raf = requestAnimationFrame(draw);
-        if (now - lastDraw < 44) return; // Smooth ~22fps cap so audio never stutters on mobile
+        if (now - lastDraw < 44) return;
         lastDraw = now;
         const w = canvas.width;
         const h = canvas.height;
@@ -116,14 +129,15 @@ export const MiniPlayer: React.FC<Props> = ({
         const bw = w / bars;
         phase += isPlaying ? 0.22 : 0.03;
         for (let i = 0; i < bars; i++) {
-          const amp = isPlaying
+          const boostMul = bassBoostLevel > 0 && i < bars * 0.35 ? 1 + bassBoostLevel * 0.14 : 1;
+          const rawAmp = isPlaying
             ? (Math.sin(phase + i * 0.52) * 0.5 + 0.5) * 0.72 + (Math.cos(phase * 1.5 - i * 0.35) * 0.5 + 0.5) * 0.28
             : 0.14;
-          const bh = Math.max(2, amp * h);
+          const bh = Math.max(2, Math.min(1, rawAmp * boostMul) * h);
           const grad = ctx.createLinearGradient(0, h, 0, 0);
           grad.addColorStop(0, '#ec4899');
           grad.addColorStop(0.55, '#a855f7');
-          grad.addColorStop(1, '#38bdf8');
+          grad.addColorStop(1, '#22d3ee');
           ctx.fillStyle = grad;
           ctx.fillRect(i * bw + 1, h - bh, Math.max(2, bw - 2), bh);
         }
@@ -138,7 +152,7 @@ export const MiniPlayer: React.FC<Props> = ({
       stopMini();
       stopBig();
     };
-  }, [isPlaying, expanded]);
+  }, [isPlaying, expanded, bassBoostLevel]);
 
   if (!track) return null;
 
@@ -146,9 +160,9 @@ export const MiniPlayer: React.FC<Props> = ({
 
   return (
     <>
-      {/* FULL-SCREEN YOUTUBE MUSIC STYLE NOW-PLAYING MODAL */}
+      {/* FUTURISTIC EXPANDED NOW-PLAYING AUDIO CORE (Responsive: Mobile, App, PC & Smart TV) */}
       {expanded && (
-        <div className="fixed inset-0 z-50 bg-[#04010c]/97 backdrop-blur-2xl flex flex-col justify-between p-5 sm:p-8 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-[#04010c]/97 backdrop-blur-2xl flex flex-col justify-between p-4 sm:p-8 overflow-y-auto">
           <div
             className="absolute inset-0 opacity-25 pointer-events-none blur-3xl scale-110"
             style={{
@@ -157,8 +171,9 @@ export const MiniPlayer: React.FC<Props> = ({
               backgroundPosition: 'center',
             }}
           />
-          <div className="relative z-10 max-w-md w-full mx-auto flex flex-col justify-between min-h-full gap-5">
-            <div className="flex items-center justify-between">
+          <div className="relative z-10 max-w-2xl w-full mx-auto flex flex-col justify-between min-h-full gap-4">
+            {/* Top Bar */}
+            <div className="flex items-center justify-between gap-2">
               <button
                 onClick={() => setExpanded(false)}
                 className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
@@ -166,99 +181,183 @@ export const MiniPlayer: React.FC<Props> = ({
               >
                 <ChevronDown className="w-5 h-5" />
               </button>
-              <div className="text-center">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-cyan-300">
-                  TOCANDO AGORA
+              <div className="text-center min-w-0">
+                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">
+                  LENKYX AUDIO CORE · HD
                 </div>
-                <div className="text-xs font-bold text-purple-200/80 truncate max-w-[200px]">{track.album}</div>
+                <div className="text-xs font-bold text-purple-200/80 truncate max-w-[240px]">{track.album}</div>
               </div>
-              <button
-                onClick={() => onShare(track)}
-                className="p-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300"
-                title="Compartilhar"
-              >
-                <MessageCircle className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                {onOpenPix && (
+                  <button
+                    onClick={() => {
+                      setExpanded(false);
+                      onOpenPix();
+                    }}
+                    className="px-2.5 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 text-[11px] font-black flex items-center gap-1"
+                    title="Apoiar via PIX (QR Code)"
+                  >
+                    <QrCode className="w-3.5 h-3.5" /> PIX
+                  </button>
+                )}
+                <button
+                  onClick={() => onShare(track)}
+                  className="p-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-200"
+                  title="Compartilhar"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            <div className="flex flex-col items-center gap-4 my-auto">
-              <div className="relative w-64 h-64 sm:w-72 sm:h-72">
-                <div className="w-full h-full rounded-3xl overflow-hidden border border-white/20 shadow-[0_24px_70px_rgba(236,72,153,0.32)]">
+            {/* Artwork + Live Spectrum + Track Details */}
+            <div className="flex flex-col md:flex-row items-center gap-6 my-auto">
+              <div className="relative w-52 h-52 sm:w-64 sm:h-64 shrink-0">
+                <div
+                  className={`w-full h-full rounded-3xl overflow-hidden border transition ${
+                    bassBoostLevel > 0
+                      ? 'border-pink-400/70 shadow-[0_0_55px_rgba(236,72,153,0.45)]'
+                      : 'border-white/20 shadow-[0_24px_70px_rgba(34,211,238,0.22)]'
+                  }`}
+                >
                   <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
                   {isPlayingFromOffline && (
                     <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/75 border border-emerald-400/50 text-[10px] font-extrabold text-emerald-300 flex items-center gap-1">
                       <WifiOff className="w-3 h-3" /> OFFLINE
                     </span>
                   )}
+                  {bassBoostLevel > 0 && (
+                    <span className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-pink-600/90 border border-pink-300/60 text-[10px] font-black text-white shadow">
+                      🔊 {bassLabel}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <canvas ref={bigCanvasRef} width={300} height={34} className="w-full max-w-[300px] opacity-90" />
-
-              <div className="w-full flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="font-display text-lg sm:text-xl font-black text-white truncate">
-                    {track.emoji} {track.title}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-purple-200/80 truncate">{track.artist}</p>
+              <div className="flex-1 w-full space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="font-display text-lg sm:text-2xl font-black text-white truncate">
+                      {track.emoji} {track.title}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-purple-200/80 truncate">{track.artist}</p>
+                  </div>
+                  <button
+                    onClick={() => onLike(track)}
+                    className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 shrink-0"
+                  >
+                    <Heart
+                      className={`w-5 h-5 ${track.favorite ? 'fill-pink-500 text-pink-500' : 'text-purple-200'}`}
+                    />
+                  </button>
                 </div>
-                <button
-                  onClick={() => onLike(track)}
-                  className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 shrink-0"
-                >
-                  <Heart
-                    className={`w-5 h-5 ${track.favorite ? 'fill-pink-500 text-pink-500' : 'text-purple-200'}`}
+
+                <canvas ref={bigCanvasRef} width={340} height={36} className="w-full opacity-95 rounded-lg" />
+
+                {/* Progress Bar */}
+                <div className="w-full space-y-1">
+                  <input
+                    type="range"
+                    min={0}
+                    max={duration || 1}
+                    step={0.1}
+                    value={currentTime}
+                    onChange={(e) => onSeek(Number(e.target.value))}
+                    className="dj-slider h-1.5 w-full"
                   />
-                </button>
-              </div>
-
-              <div className="w-full space-y-1">
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || 1}
-                  step={0.1}
-                  value={currentTime}
-                  onChange={(e) => onSeek(Number(e.target.value))}
-                  className="dj-slider h-1.5 w-full"
-                />
-                <div className="flex justify-between text-[11px] font-mono text-purple-300/80">
-                  <span>{fmt(currentTime)}</span>
-                  <span>{fmt(duration)}</span>
+                  <div className="flex justify-between text-[11px] font-mono text-purple-300/80">
+                    <span>{fmt(currentTime)}</span>
+                    <span>{fmt(duration)}</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-center gap-6 py-1">
-                <button onClick={onPrev} className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white">
-                  <SkipBack className="w-6 h-6" />
-                </button>
-                <button
-                  onClick={onTogglePlay}
-                  className="w-16 h-16 rounded-full bg-gradient-to-br from-white to-purple-100 text-black flex items-center justify-center shadow-[0_0_32px_rgba(236,72,153,0.65)] hover:scale-105 active:scale-95 transition"
-                >
-                  {isPlaying ? <Pause className="w-7 h-7 fill-black" /> : <Play className="w-7 h-7 fill-black ml-1" />}
-                </button>
-                <button onClick={onNext} className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white">
-                  <SkipForward className="w-6 h-6" />
-                </button>
+                {/* Main Transport + Speed & Loop */}
+                <div className="flex items-center justify-between gap-2 py-1">
+                  {onToggleLoop ? (
+                    <button
+                      onClick={onToggleLoop}
+                      className={`p-2.5 rounded-xl border text-xs font-black transition ${
+                        loopTrack
+                          ? 'bg-cyan-400/20 border-cyan-400 text-cyan-200'
+                          : 'bg-white/10 border-white/15 text-slate-300 hover:text-white'
+                      }`}
+                      title="Repetir música"
+                    >
+                      <Repeat className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <div className="w-9" />
+                  )}
+
+                  <div className="flex items-center gap-4">
+                    <button onClick={onPrev} className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white">
+                      <SkipBack className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={onTogglePlay}
+                      className="w-14 h-14 rounded-full bg-gradient-to-br from-white to-purple-100 text-black flex items-center justify-center shadow-[0_0_32px_rgba(236,72,153,0.65)] hover:scale-105 active:scale-95 transition"
+                    >
+                      {isPlaying ? <Pause className="w-6 h-6 fill-black" /> : <Play className="w-6 h-6 fill-black ml-0.5" />}
+                    </button>
+                    <button onClick={onNext} className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white">
+                      <SkipForward className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {onCycleSpeed ? (
+                    <button
+                      onClick={onCycleSpeed}
+                      className="px-2.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-[11px] font-black text-cyan-200 flex items-center gap-1"
+                      title="Velocidade de reprodução"
+                    >
+                      <Gauge className="w-3.5 h-3.5" /> {playbackSpeed}x
+                    </button>
+                  ) : (
+                    <div className="w-9" />
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 pb-2">
-              {onCycleBassBoost && (
-                <button
-                  onClick={onCycleBassBoost}
-                  disabled={!bassBoostAvailable}
-                  className={`py-2.5 px-2 rounded-xl text-[11px] font-extrabold flex flex-col items-center justify-center gap-1 border transition ${
-                    bassBoostLevel > 0
-                      ? 'bg-gradient-to-br from-pink-500/35 to-cyan-500/35 border-pink-400 text-white shadow-[0_0_18px_rgba(236,72,153,0.4)]'
-                      : 'bg-white/10 border-white/15 text-white hover:bg-white/20 disabled:opacity-45'
-                  }`}
-                >
-                  <AudioWaveform className="w-4 h-4 text-pink-300" />
-                  <span className="truncate max-w-full">{bassLabel}</span>
-                </button>
-              )}
+            {/* Technological 4-Stage Bass Boost EQ Dock */}
+            <div className="rounded-2xl bg-white/[0.04] border border-white/12 p-3 space-y-2">
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-pink-300">
+                <span className="flex items-center gap-1.5">
+                  <AudioWaveform className="w-3.5 h-3.5" /> MOTOR DE GRAVES & SUBWOOFER
+                </span>
+                <span className="text-cyan-300">{bassLabel}</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {(
+                  [
+                    { lvl: 0 as BassBoostLevel, label: 'Normal', sub: '0 dB' },
+                    { lvl: 1 as BassBoostLevel, label: 'Suave', sub: '+4 dB' },
+                    { lvl: 2 as BassBoostLevel, label: 'Pesado', sub: '+9 dB' },
+                    { lvl: 3 as BassBoostLevel, label: 'Subwoofer', sub: '+14 dB' },
+                  ]
+                ).map((preset) => {
+                  const active = bassBoostLevel === preset.lvl;
+                  return (
+                    <button
+                      key={preset.lvl}
+                      type="button"
+                      onClick={() => (onSetBassBoostLevel ? onSetBassBoostLevel(preset.lvl) : onCycleBassBoost?.())}
+                      className={`py-2 px-1.5 rounded-xl text-center border transition ${
+                        active
+                          ? 'bg-gradient-to-r from-pink-500 to-purple-600 border-pink-300 text-white shadow-[0_0_15px_rgba(236,72,153,0.45)]'
+                          : 'bg-white/[0.06] hover:bg-white/15 border-white/10 text-slate-200'
+                      }`}
+                    >
+                      <div className="text-[11px] font-black leading-tight">{preset.label}</div>
+                      <div className="text-[9px] opacity-75 font-mono">{preset.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bottom Action Bar */}
+            <div className="grid grid-cols-4 gap-2 pb-1">
               <button
                 onClick={() => onToggleOffline(track)}
                 disabled={isDownloadingOffline}
@@ -292,7 +391,26 @@ export const MiniPlayer: React.FC<Props> = ({
               >
                 <MessageCircle className="w-4 h-4" /> Enviar
               </button>
+              {onOpenPix ? (
+                <button
+                  onClick={() => {
+                    setExpanded(false);
+                    onOpenPix();
+                  }}
+                  className="py-2.5 px-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-[11px] font-black text-emerald-200 flex flex-col items-center justify-center gap-1"
+                >
+                  <QrCode className="w-4 h-4" /> Apoiar PIX
+                </button>
+              ) : (
+                <button
+                  onClick={() => setExpanded(false)}
+                  className="py-2.5 px-2 rounded-xl bg-white/10 border border-white/15 text-[11px] font-bold text-white flex flex-col items-center justify-center gap-1"
+                >
+                  <ChevronDown className="w-4 h-4" /> Fechar
+                </button>
+              )}
             </div>
+
             {track.youtubeVideoId && onWatchClip && (
               <button
                 onClick={() => {
@@ -308,8 +426,8 @@ export const MiniPlayer: React.FC<Props> = ({
         </div>
       )}
 
-      {/* ON-DEMAND BOTTOM PLAYER BAR */}
-      <div className="fixed bottom-14 md:bottom-0 left-0 md:left-60 lg:left-64 right-0 z-40 bg-[#0b0618]/96 backdrop-blur-2xl border-t border-white/15 shadow-[0_-10px_35px_rgba(0,0,0,0.85)]">
+      {/* FUTURISTIC COMPACT ON-DEMAND BOTTOM PLAYER BAR */}
+      <div className="fixed bottom-14 md:bottom-0 left-0 md:left-60 lg:left-64 right-0 z-40 bg-[#0b0618]/96 backdrop-blur-2xl border-t border-cyan-400/20 shadow-[0_-10px_35px_rgba(0,0,0,0.85)]">
         {/* Top Edge Interactive Progress Bar */}
         <div
           onClick={(e) => {
@@ -326,22 +444,22 @@ export const MiniPlayer: React.FC<Props> = ({
           />
         </div>
 
-        <div className="px-3 sm:px-5 py-2 flex items-center justify-between gap-2.5 h-14">
+        <div className="px-2.5 sm:px-5 py-2 flex items-center justify-between gap-2 h-14">
           {/* Left: Cover + Title + Artist (Tap to expand!) */}
           <div
             onClick={() => setExpanded(true)}
-            className="flex items-center gap-2.5 min-w-0 flex-1 md:flex-none md:w-64 cursor-pointer group"
-            title="Abrir Player em Tela Cheia"
+            className="flex items-center gap-2 min-w-0 flex-1 md:flex-none md:w-64 cursor-pointer group"
+            title="Abrir Deck Tecnológico em Tela Cheia"
           >
             <div className="relative shrink-0">
               <img
                 src={track.coverUrl}
                 alt={track.title}
-                className={`w-10 h-10 rounded-lg object-cover border border-white/20 ${
+                className={`w-10 h-10 rounded-xl object-cover border border-white/20 ${
                   isPlaying ? 'shadow-[0_0_16px_rgba(236,72,153,0.65)]' : ''
                 }`}
               />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/85 border border-white/25 flex items-center justify-center opacity-85 group-hover:opacity-100">
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/85 border border-cyan-400/50 flex items-center justify-center">
                 <ChevronUp className="w-3 h-3 text-cyan-300" />
               </span>
             </div>
@@ -362,10 +480,10 @@ export const MiniPlayer: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Center: YouTube-style Crisp Playback Controls */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Center: Crisp Playback Controls */}
+          <div className="flex items-center gap-1 sm:gap-3 shrink-0">
             <button onClick={onPrev} className="p-1.5 text-purple-200 hover:text-white transition" title="Anterior">
-              <SkipBack className="w-5 h-5" />
+              <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button
               onClick={onTogglePlay}
@@ -375,32 +493,41 @@ export const MiniPlayer: React.FC<Props> = ({
               {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black ml-0.5" />}
             </button>
             <button onClick={onNext} className="p-1.5 text-purple-200 hover:text-white transition" title="Próxima">
-              <SkipForward className="w-5 h-5" />
+              <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
 
-          {/* Right: Bass Boost, Clip, Offline & Volume */}
-          <div className="flex items-center gap-1 justify-end md:w-80">
+          {/* Right: Working Bass Boost (all menus), PIX QR, Clip, Offline & Volume */}
+          <div className="flex items-center gap-1 justify-end md:w-auto">
             {onCycleBassBoost && (
               <button
                 onClick={onCycleBassBoost}
-                disabled={!bassBoostAvailable}
-                className={`px-2 py-1 rounded-lg border text-[10px] font-black flex items-center gap-1 shrink-0 transition ${
+                className={`px-2 py-1 rounded-xl border text-[10px] font-black flex items-center gap-1 shrink-0 transition ${
                   bassBoostLevel > 0
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 border-pink-300 text-white shadow-[0_0_12px_rgba(236,72,153,0.5)]'
-                    : 'bg-white/10 hover:bg-white/20 border-white/15 text-purple-100 disabled:opacity-45'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 border-pink-300 text-white shadow-[0_0_14px_rgba(236,72,153,0.55)]'
+                    : 'bg-white/10 hover:bg-white/20 border-white/15 text-purple-100'
                 }`}
-                title="Turbina os graves da música (Off / Suave / Pesado / Subwoofer)"
+                title="Motor de Graves (Normal / Suave / Pesado / Subwoofer)"
               >
                 <AudioWaveform className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{bassLabel}</span>
+                <span className="hidden xs:inline">{bassLabel}</span>
+              </button>
+            )}
+            {onOpenPix && (
+              <button
+                onClick={onOpenPix}
+                className="hidden sm:flex px-2 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 text-[10px] font-black items-center gap-1 shrink-0 transition"
+                title="Apoiar via PIX (QR Code) & Ganhar Bonequinho"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">PIX</span>
               </button>
             )}
             {track.youtubeVideoId && onWatchClip && (
               <button
                 onClick={onWatchClip}
-                className="px-2.5 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 text-[10px] font-extrabold flex items-center gap-1 shrink-0 transition"
-                title="Assistir Clipe Oficial"
+                className="px-2 py-1 rounded-xl bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 text-[10px] font-extrabold flex items-center gap-1 shrink-0 transition"
+                title="Assistir Clipe em Tela Cheia"
               >
                 <Film className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Clipe</span>
@@ -409,7 +536,7 @@ export const MiniPlayer: React.FC<Props> = ({
             <button
               onClick={() => onToggleOffline(track)}
               disabled={isDownloadingOffline}
-              className={`p-1.5 rounded-lg transition ${
+              className={`hidden sm:inline-flex p-1.5 rounded-lg transition ${
                 isCurrentTrackOffline ? 'text-emerald-400' : 'text-purple-200/80 hover:text-cyan-300'
               }`}
               title={isCurrentTrackOffline ? 'Salva Offline' : 'Baixar Offline'}
@@ -459,8 +586,8 @@ export const MiniPlayer: React.FC<Props> = ({
             {onCloseMenu && (
               <button
                 onClick={onCloseMenu}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-red-500/80 text-white/85 hover:text-white transition ml-1 shrink-0"
-                title="Fechar menu de música para ver melhor as capas e telas"
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-red-500/80 text-white/85 hover:text-white transition shrink-0"
+                title="Fechar menu de música"
               >
                 <X className="w-4 h-4" />
               </button>
