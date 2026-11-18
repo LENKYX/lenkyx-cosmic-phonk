@@ -611,12 +611,15 @@ export const UserAuthModal: React.FC<Props> = ({
                 </div>
 
                 {showTermsText && (
-                  <div className="max-h-24 overflow-y-auto rounded-xl bg-black/55 p-2 text-[10px] text-purple-100/85 leading-relaxed space-y-1 border border-white/10">
+                  <div className="max-h-28 overflow-y-auto rounded-xl bg-black/55 p-2.5 text-[10px] text-purple-100/85 leading-relaxed space-y-1.5 border border-white/10">
                     <p>
-                      <strong>1. Uso Gratuito:</strong> Streaming completo gratuito, modo offline no celular, playlists e Mesa DJ.
+                      <strong>1. Autoria Original LENKYX:</strong> Todas as músicas oficiais Cosmic Phonk, capas, visualizadores WebGL2 e código são criações autorais originais de LENKYX.
                     </p>
                     <p>
-                      <strong>2. Privacidade & Segurança:</strong> Seu número/e-mail e senha criptografada servem apenas para identificar sua conta e permitir recuperação por WhatsApp, SMS ou e-mail.
+                      <strong>2. Fontes Públicas & Incorporações:</strong> Clipes, rádios e vídeos mundiais são reproduzidos diretamente de fontes/players públicos oficiais (YouTube Embed, Archive.org, streams abertos), sem pirataria ou hospedagem ilegal de terceiros.
+                    </p>
+                    <p>
+                      <strong>3. Privacidade, Conteúdo da Comunidade & Canal DMCA (Safe Harbor):</strong> Dados de login servem apenas para sua conta e recuperação por WhatsApp/SMS/e-mail. Vídeos curtos e chats enviados por usuários são de responsabilidade dos autores, com canal rápido de revisão/remoção DMCA para proteger o site e os criadores.
                     </p>
                   </div>
                 )}

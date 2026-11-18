@@ -602,6 +602,117 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
 let cachedArtistsDirectory = null;
 let cachedArtistsTs = 0;
 
+const worldShortsCache = new Map();
+
+const WORLD_SHORTS_QUERIES = {
+  all: 'cosmic phonk drift car edits dj live dance shorts #shorts',
+  phonk: 'phonk drift edits brazilian phonk car bass #shorts',
+  brazil: 'funk sertanejo brasil music dance festival #shorts',
+  djs: 'dj live set electronic edm club festival #shorts',
+  space: 'nasa space galaxy stars planets cosmic #shorts',
+  dance: 'viral dance music challenge hip hop global #shorts',
+  rock: 'electric guitar solo rock metal live stage #shorts',
+};
+
+export async function searchWorldShorts(category = 'all', customQuery = '') {
+  const cat = WORLD_SHORTS_QUERIES[category] ? category : 'all';
+  const q = customQuery.trim()
+    ? `${customQuery.trim()} #shorts`
+    : WORLD_SHORTS_QUERIES[cat];
+  const key = `${cat}|${q.toLowerCase()}`;
+  const cached = worldShortsCache.get(key);
+  if (cached && Date.now() - cached.ts < 10 * 60 * 1000) {
+    return cached.items;
+  }
+
+  try {
+    const r = await fetch(
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=EgIQAQ%253D%253D`,
+      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) return [];
+    const html = await r.text();
+    const m = html.match(/var ytInitialData = (\{.*?\});<\/script>/);
+    if (!m) return [];
+    const data = JSON.parse(m[1]);
+
+    const items = [];
+    const seen = new Set();
+
+    const walk = (node) => {
+      if (!node || typeof node !== 'object' || items.length >= 24) return;
+      if (node.shortsLockupViewModel) {
+        const s = node.shortsLockupViewModel;
+        const vid =
+          s?.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId ||
+          s?.inlinePlayerData?.onVisible?.innertubeCommand?.watchEndpoint?.videoId ||
+          '';
+        const title =
+          s?.overlayMetadata?.primaryText?.content ||
+          s?.accessibilityText ||
+          'Global Short';
+        if (vid && !seen.has(vid)) {
+          seen.add(vid);
+          items.push({
+            id: `wshort-${vid}`,
+            title: String(title).slice(0, 110),
+            creator_name: 'Criador Global',
+            creator_color: 'from-cyan-400 to-pink-500',
+            description: `Vídeo curto mundial (${cat.toUpperCase()}) · Arraste para o lado ⬅️➡️`,
+            media_type: 'youtube_short',
+            video_url: '',
+            youtube_id: vid,
+            poster_url: `https://i.ytimg.com/vi/${vid}/oar2.jpg`,
+            audio_title: 'Mundo Inteiro · Shorts',
+            category: cat,
+            likes: 120 + items.length * 17,
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+      if (node.videoRenderer?.videoId) {
+        const v = node.videoRenderer;
+        const vid = v.videoId;
+        const durSec = parseDurationText(v.lengthText?.simpleText || '');
+        if (vid && !seen.has(vid) && (durSec === 0 || durSec <= 120)) {
+          seen.add(vid);
+          const title = v.title?.runs?.map((x) => x.text).join('') || 'Global Music Short';
+          const channel = v.ownerText?.runs?.[0]?.text || 'Criador Global';
+          const thumb =
+            v.thumbnail?.thumbnails?.slice(-1)?.[0]?.url ||
+            `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+          items.push({
+            id: `wshort-${vid}`,
+            title: String(title).slice(0, 110),
+            creator_name: String(channel).replace(/ - Topic$/i, '').slice(0, 36),
+            creator_color: 'from-pink-500 to-purple-500',
+            description: `Vídeo curto mundial · Categoria ${cat.toUpperCase()}`,
+            media_type: 'youtube_short',
+            video_url: '',
+            youtube_id: vid,
+            poster_url: thumb,
+            audio_title: channel,
+            category: cat,
+            likes: 85 + items.length * 13,
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+      if (Array.isArray(node)) {
+        for (const el of node) walk(el);
+      } else {
+        for (const val of Object.values(node)) walk(val);
+      }
+    };
+    walk(data);
+
+    worldShortsCache.set(key, { ts: Date.now(), items });
+    return items;
+  } catch {
+    return [];
+  }
+}
+
 export async function getFamousArtistsWithPhotos() {
   if (cachedArtistsDirectory && Date.now() - cachedArtistsTs < 6 * 3600 * 1000) {
     return cachedArtistsDirectory;

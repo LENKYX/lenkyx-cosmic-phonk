@@ -28,6 +28,9 @@ import {
   MessageSquare,
   Maximize2,
   ArrowLeft,
+  Tv,
+  Scale,
+  Download,
 } from 'lucide-react';
 import {
   AppMode,
@@ -54,6 +57,9 @@ import { MiniPlayer } from './components/MiniPlayer';
 import { CosmicScreensaver3D, ExperienceMode } from './components/CosmicScreensaver3D';
 import { SoundBoostModal } from './components/SoundBoostModal';
 import { CommunityChatModal, TargetCommentsModal } from './components/CommunityChatModal';
+import { TvCastModal } from './components/TvCastModal';
+import { LegalTermsModal } from './components/LegalTermsModal';
+import { fetchTvHandoff } from './utils/communityApi';
 import { PixModal } from './components/PixModal';
 import {
   AudioSoundProfile,
@@ -199,6 +205,17 @@ export function App() {
   const [spaceDownloadOpen, setSpaceDownloadOpen] = useState(false);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
   const [clipFitMode, setClipFitMode] = useState<'standard' | 'compact' | 'fullscreen'>('standard');
+  const [legalOpen, setLegalOpen] = useState(false);
+  const [tvCastOpen, setTvCastOpen] = useState(false);
+  const [tvCustomMedia, setTvCustomMedia] = useState<{
+    title: string;
+    artist?: string;
+    mode?: 'galaxy' | 'video' | 'shorts' | 'tv';
+    youtubeVideoId?: string;
+    audioUrl?: string;
+    coverUrl?: string;
+  } | null>(null);
+  const [tvModeBanner, setTvModeBanner] = useState<string | null>(null);
   const [appUpdateInfo, setAppUpdateInfo] = useState<{
     latestVersionName: string;
     apkUrl: string;
@@ -251,6 +268,55 @@ export function App() {
   // Load persisted User Uploaded Tracks from IndexedDB
   useEffect(() => {
     void loadUserTracks().then((loaded: Track[]) => setUserTracks(loaded));
+  }, []);
+
+  // Smart TV Independent Handoff (?tv=LNX-XXX or ?tvMode=1)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tvCode = params.get('tv') || '';
+    const tvMode = params.get('tvMode') === '1';
+    if (!tvCode && !tvMode) return;
+
+    if (tvCode) {
+      void fetchTvHandoff(tvCode, true).then((session) => {
+        if (!session) {
+          setTvModeBanner('📺 Modo Smart TV ativo! Escolha uma música, filme ou TV ao vivo.');
+          return;
+        }
+        setTvModeBanner(`📺 Smart TV Conectada (${session.code}) · Modo Independente`);
+        const tvTrack: Track = {
+          id: session.trackId || `tv-${session.code}`,
+          number: 1,
+          title: session.title,
+          artist: session.artist || 'LENKYX',
+          album: 'Smart TV Handoff',
+          emoji: '📺',
+          bpm: 132,
+          key: 'Fm',
+          audioUrl: session.audioUrl || '',
+          youtubeVideoId: session.youtubeVideoId || undefined,
+          coverUrl: session.coverUrl || '/covers/album-official.jpg',
+          plays: 0,
+          likes: 0,
+          favorite: false,
+          releaseBatch: 1,
+          status: { suno: true, cover: true, app: true, youtube: Boolean(session.youtubeVideoId), distrokid: true },
+          sunoPrompt: '',
+          lyrics: '',
+          createdAt: new Date().toISOString(),
+        };
+        setCurrentTrack(tvTrack);
+        setIsPlaying(true);
+        if (session.youtubeVideoId) {
+          setClipTheaterOpen(true);
+        } else {
+          setScreensaverOpen(true);
+        }
+      });
+    } else if (tvMode) {
+      setTvModeBanner('📺 Modo Smart TV ativo! Toque livremente sem depender do celular.');
+      setScreensaverOpen(true);
+    }
   }, []);
 
   // Silent Auto-Update check (Android APK checks Supabase manifest via LocalAssetServer)
@@ -1210,13 +1276,22 @@ export function App() {
           </div>
         </div>
 
-        {/* Sidebar Footer: Community Chat + Space Download + Share + PIX + Creator */}
+        {/* Sidebar Footer: Community Chat + TV Cast + Space Download + Share + PIX + Legal */}
         <div className="p-3 pb-4 border-t border-white/10 space-y-1.5">
           <button
             onClick={() => setChatOpen(true)}
             className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-500/25 to-cyan-500/25 hover:from-purple-500/40 hover:to-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-xs font-extrabold flex items-center justify-center gap-1.5 transition"
           >
             <MessageSquare className="w-3.5 h-3.5 text-cyan-300" /> Chat da Comunidade
+          </button>
+          <button
+            onClick={() => {
+              setTvCustomMedia(null);
+              setTvCastOpen(true);
+            }}
+            className="w-full py-2 px-3 rounded-xl bg-blue-500/20 hover:bg-blue-500/35 border border-cyan-400/45 text-cyan-100 text-xs font-extrabold flex items-center justify-center gap-1.5 transition"
+          >
+            <Tv className="w-3.5 h-3.5 text-cyan-300" /> Passar p/ TV & Bluetooth
           </button>
           {!isAndroidApk() && (
             <button
@@ -1243,6 +1318,12 @@ export function App() {
             className="w-full py-2 px-3 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/35 text-pink-200 text-xs font-bold flex items-center justify-center gap-1.5"
           >
             <QrCode className="w-3.5 h-3.5" /> Apoiar via PIX
+          </button>
+          <button
+            onClick={() => setLegalOpen(true)}
+            className="w-full py-1.5 px-2 rounded-xl bg-white/[0.04] hover:bg-white/10 border border-white/10 text-purple-200/80 text-[11px] font-bold flex items-center justify-center gap-1.5"
+          >
+            <Scale className="w-3.5 h-3.5 text-cyan-300" /> Direitos Autorais & DMCA
           </button>
           {mode === 'creator' && (
             <button
@@ -1329,6 +1410,19 @@ export function App() {
                 <span className="hidden lg:inline">{soundProfile.turboEnabled ? 'Máx ON' : 'EQ/Máx'}</span>
               </button>
             </div>
+
+            {/* Smart TV Handoff & Bluetooth Button */}
+            <button
+              onClick={() => {
+                setTvCustomMedia(null);
+                setTvCastOpen(true);
+              }}
+              className="px-2.5 py-1.5 rounded-full bg-blue-500/20 hover:bg-blue-500/35 border border-cyan-400/45 text-cyan-100 text-[11px] font-extrabold flex items-center gap-1 transition"
+              title="Enviar para Smart TV & Separar Celular / Som Bluetooth"
+            >
+              <Tv className="w-3.5 h-3.5 text-cyan-300" />
+              <span className="hidden lg:inline">TV</span>
+            </button>
 
             {/* 3D Cosmic Screensaver Button */}
             <button
@@ -1583,6 +1677,10 @@ export function App() {
                     onPlayTrack={(t) => void handlePlayTrack(t, 'v1', allTracksPool)}
                     onPauseCatalogPlayer={pauseCatalogPlayer}
                     onOpenUserAuth={() => setUserAuthOpen(true)}
+                    onOpenTvCast={(m) => {
+                      setTvCustomMedia(m);
+                      setTvCastOpen(true);
+                    }}
                     onToast={showToast}
                   />
                 )}
@@ -1746,6 +1844,72 @@ export function App() {
         onVolume={handleVolume}
         onToggleMute={handleToggleMute}
         onChangeProfile={handleChangeSoundProfile}
+      />
+
+      {/* SMART TV INDEPENDENT MODE BANNER (When opened on a Smart TV via ?tv=CODE) */}
+      {tvModeBanner && (
+        <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[9994] w-[96vw] max-w-4xl rounded-2xl bg-[#090418]/95 border-2 border-cyan-400/70 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-[0_0_40px_rgba(34,211,238,0.45)]">
+          <div className="flex items-center gap-2 text-xs sm:text-sm font-black text-white">
+            <Tv className="w-4 h-4 text-cyan-300 shrink-0" />
+            <span>{tvModeBanner}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setScreensaverOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-cyan-400 text-black text-xs font-black"
+            >
+              🌌 Galáxia 3D Tela Cheia
+            </button>
+            {settings.apkDownloadUrl && (
+              <a
+                href={settings.apkDownloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-xl bg-emerald-400 text-black text-xs font-black flex items-center gap-1"
+              >
+                <Download className="w-3.5 h-3.5" /> Baixar App na TV
+              </a>
+            )}
+            <button
+              onClick={() => setTvModeBanner(null)}
+              className="p-1.5 rounded-full bg-white/10 text-white"
+              title="Ocultar aviso"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* SMART TV INDEPENDENT HANDOFF & BLUETOOTH MODAL */}
+      <TvCastModal
+        open={tvCastOpen}
+        onClose={() => setTvCastOpen(false)}
+        currentMedia={
+          tvCustomMedia || {
+            title: currentTrack?.title || 'LENKYX Cosmic Phonk',
+            artist: currentTrack?.artist || 'LENKYX',
+            mode: currentTrack?.youtubeVideoId ? 'video' : 'galaxy',
+            youtubeVideoId: currentTrack?.youtubeVideoId,
+            audioUrl: currentTrack?.audioUrl,
+            coverUrl: currentTrack?.coverUrl || '/covers/album-official.jpg',
+            trackId: currentTrack?.id,
+          }
+        }
+        apkDownloadUrl={settings.apkDownloadUrl}
+        onDetachPhone={() => {
+          pauseCatalogPlayer();
+          setClipTheaterOpen(false);
+          setScreensaverOpen(false);
+        }}
+        onToast={showToast}
+      />
+
+      {/* REAL COPYRIGHT / DMCA SAFE HARBOR LEGAL TERMS MODAL */}
+      <LegalTermsModal
+        open={legalOpen}
+        onClose={() => setLegalOpen(false)}
+        creatorEmail={userProfile?.email || undefined}
       />
 
       {/* COMMUNITY GLOBAL CHAT & TRACK COMMENTS */}

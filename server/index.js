@@ -22,6 +22,7 @@ import {
 } from './fanAuthStore.js';
 import {
   runSmartWorldSearch,
+  searchWorldShorts,
   getFamousArtistsWithPhotos,
   CURATED_PLAYLISTS,
 } from './musicAI.js';
@@ -38,6 +39,8 @@ import {
   likeCommunityShort,
   getActiveLives,
   startOrUpdateLive,
+  createTvHandoffSession,
+  getTvHandoffSession,
 } from './communityStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -935,6 +938,46 @@ app.get('/api/community/shorts', async (_req, res) => {
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }
+});
+
+app.get('/api/community/world-shorts', async (req, res) => {
+  const category = String(req.query.category || 'all').trim();
+  const q = String(req.query.q || '').trim();
+  try {
+    const [worldShorts, communityShorts] = await Promise.all([
+      searchWorldShorts(category, q),
+      getCommunityShorts(),
+    ]);
+    const combined =
+      category === 'community'
+        ? communityShorts
+        : category === 'all' && !q
+          ? [...communityShorts.slice(0, 4), ...worldShorts]
+          : worldShorts.length > 0
+            ? worldShorts
+            : communityShorts;
+    res.json({ shorts: combined });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/tv-handoff', (req, res) => {
+  try {
+    const session = createTvHandoffSession(req.body || {});
+    res.status(201).json(session);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/tv-handoff/:code', (req, res) => {
+  const claim = req.query.claim === '1' || req.query.claim === 'true';
+  const session = getTvHandoffSession(req.params.code, claim);
+  if (!session) {
+    return res.status(404).json({ error: 'Código de TV não encontrado ou expirado.' });
+  }
+  res.json(session);
 });
 
 app.post('/api/community/shorts', async (req, res) => {

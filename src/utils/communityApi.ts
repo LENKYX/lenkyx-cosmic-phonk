@@ -120,6 +120,55 @@ export async function fetchCommunityShorts(): Promise<CommunityShortItem[]> {
   return res?.shorts || [];
 }
 
+export async function fetchWorldShorts(
+  category = 'all',
+  q = ''
+): Promise<CommunityShortItem[]> {
+  const res = await req<{ shorts?: CommunityShortItem[] }>(
+    `/api/community/world-shorts?category=${encodeURIComponent(category)}&q=${encodeURIComponent(q)}`
+  );
+  return res?.shorts || [];
+}
+
+export interface TvHandoffSession {
+  code: string;
+  title: string;
+  artist: string;
+  mode: string;
+  youtubeVideoId?: string;
+  audioUrl?: string;
+  streamUrl?: string;
+  coverUrl?: string;
+  trackId?: string;
+  createdAt: number;
+  claimedByTv: boolean;
+}
+
+export async function createTvHandoff(payload: {
+  title: string;
+  artist?: string;
+  mode?: string;
+  youtubeVideoId?: string;
+  audioUrl?: string;
+  streamUrl?: string;
+  coverUrl?: string;
+  trackId?: string;
+}): Promise<TvHandoffSession | null> {
+  return req<TvHandoffSession>('/api/tv-handoff', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchTvHandoff(
+  code: string,
+  claim = false
+): Promise<TvHandoffSession | null> {
+  return req<TvHandoffSession>(
+    `/api/tv-handoff/${encodeURIComponent(code.trim().toUpperCase())}${claim ? '?claim=1' : ''}`
+  );
+}
+
 export async function publishCommunityShort(payload: {
   title: string;
   creatorName: string;

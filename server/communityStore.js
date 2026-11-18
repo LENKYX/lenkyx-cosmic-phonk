@@ -435,3 +435,43 @@ export async function startOrUpdateLive({ id, hostName, hostColor, title, theme,
   writeLocal(local);
   return item;
 }
+
+// === INDEPENDENT SMART TV HANDOFF SESSIONS ===
+const tvHandoffSessions = new Map();
+
+export function createTvHandoffSession(payload) {
+  const digits = String(Math.floor(100 + Math.random() * 900));
+  const letters = 'LNX';
+  const code = `${letters}-${digits}`;
+  const session = {
+    code,
+    title: String(payload?.title || 'LENKYX Cosmic Phonk').slice(0, 140),
+    artist: String(payload?.artist || 'LENKYX').slice(0, 80),
+    mode: String(payload?.mode || 'galaxy').slice(0, 24),
+    youtubeVideoId: String(payload?.youtubeVideoId || '').slice(0, 32),
+    audioUrl: String(payload?.audioUrl || '').slice(0, 600),
+    streamUrl: String(payload?.streamUrl || '').slice(0, 600),
+    coverUrl: String(payload?.coverUrl || '/covers/album-official.jpg').slice(0, 500),
+    trackId: String(payload?.trackId || '').slice(0, 80),
+    createdAt: Date.now(),
+    claimedByTv: false,
+  };
+  tvHandoffSessions.set(code, session);
+  // Prune sessions older than 2 hours
+  const cutoff = Date.now() - 2 * 3600 * 1000;
+  for (const [k, v] of tvHandoffSessions.entries()) {
+    if (v.createdAt < cutoff) tvHandoffSessions.delete(k);
+  }
+  return session;
+}
+
+export function getTvHandoffSession(code, markClaimed = false) {
+  const norm = String(code || '').trim().toUpperCase();
+  const s = tvHandoffSessions.get(norm);
+  if (!s) return null;
+  if (markClaimed) {
+    s.claimedByTv = true;
+    s.claimedAt = Date.now();
+  }
+  return s;
+}
