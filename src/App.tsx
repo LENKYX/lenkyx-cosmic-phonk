@@ -36,6 +36,11 @@ import {
   Power,
   ShieldOff,
   Car,
+  Monitor,
+  Download,
+  Copy,
+  ExternalLink,
+  Tv,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
@@ -53,7 +58,7 @@ import {
   Track,
   UserPlaylist,
 } from './types';
-import { isAndroidApk } from './utils/androidBridge';
+import { copyTextReliable, isAndroidApk } from './utils/androidBridge';
 import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
 import { PlaylistsView } from './components/PlaylistsView';
@@ -152,10 +157,16 @@ export function App() {
   });
   const liveSessionIdRef = useRef<string>(getOrCreateSessionId());
 
-  // Instant 2-Second PWA Install Prompt (zero Google Drive virus warning, zero cadastro)
+  // Instant 2-Second PWA Install & Official Site PC Download Modal
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [installModalOpen, setInstallModalOpen] = useState(false);
+  const [installPlatformTab, setInstallPlatformTab] = useState<'pc' | 'mobile' | 'tv'>(() => {
+    if (typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) {
+      return 'mobile';
+    }
+    return 'pc';
+  });
 
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
@@ -1602,6 +1613,12 @@ export function App() {
   const dailyPixPct = liveStats.dailyGoalBrl > 0
     ? Math.min(100, Math.round((liveStats.dailyCollectedBrl / liveStats.dailyGoalBrl) * 100))
     : 0;
+  const officialSiteUrl = useMemo(() => {
+    const origin = typeof window !== 'undefined' ? window.location.origin.replace(/\/$/, '') : '';
+    const isLocal = !origin || /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(origin);
+    if (!isAndroidApk() && !isLocal) return origin;
+    return (settings.publicUrl || 'https://lenkyx-cosmic-phonk.onrender.com').replace(/\/$/, '');
+  }, [settings.publicUrl]);
 
   return (
     <div className="h-dvh overflow-hidden bg-[#05020d] text-white flex relative">
@@ -1614,16 +1631,19 @@ export function App() {
           onClick={handleBrandTap}
           className="h-16 px-4 flex items-center gap-3 border-b border-white/[0.08] cursor-pointer hover:bg-white/[0.03] select-none"
         >
-          <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-cyan-400 via-pink-500 to-rose-500">
-            <img
-              src="/covers/avatar.jpg"
-              alt="LENKYX"
-              className="w-9 h-9 rounded-full object-cover bg-black"
-            />
-          </div>
+          <img
+            src="/covers/icon-192.png"
+            alt="LENKYX"
+            className="w-10 h-10 object-contain lenkyx-logo-3d shrink-0"
+          />
           <div className="leading-tight min-w-0">
-            <div className="font-display text-sm font-black tracking-[0.14em] text-white">LENKYX</div>
-            <div className="text-[9px] font-bold tracking-[0.22em] text-cyan-300/90 truncate">SEM ANÚNCIOS</div>
+            <div className="font-display text-sm font-black tracking-[0.14em] text-white flex items-center gap-1">
+              LENKYX
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            </div>
+            <div className="text-[9px] font-bold tracking-[0.14em] text-emerald-300/95 truncate">
+              OFICIAL · 100% SEGURO
+            </div>
           </div>
         </div>
 
@@ -1748,10 +1768,10 @@ export function App() {
           {!isAndroidApk() && (
             <button
               type="button"
-              onClick={() => void handleInstantInstall()}
-              className="w-full py-2 px-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black flex items-center justify-center gap-1 shadow transition"
+              onClick={() => setInstallModalOpen(true)}
+              className="w-full py-2 px-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black flex items-center justify-center gap-1.5 shadow transition"
             >
-              <Zap className="w-3.5 h-3.5" /> Instalar App (2s)
+              <Monitor className="w-3.5 h-3.5" /> Site Oficial · App PC/Cel
             </button>
           )}
 
@@ -1785,7 +1805,7 @@ export function App() {
               onClick={handleBrandTap}
               className="flex md:hidden items-center gap-1.5 shrink-0 cursor-pointer select-none"
             >
-              <img src="/covers/avatar.jpg" alt="LENKYX" className="w-7 h-7 rounded-full border border-pink-500" />
+              <img src="/covers/icon-192.png" alt="LENKYX" className="w-8 h-8 object-contain lenkyx-logo-3d" />
               <span className="font-display text-xs font-black hidden xs:inline">LENKYX</span>
             </div>
           </div>
@@ -2380,7 +2400,7 @@ export function App() {
       />
       <LegalTermsModal open={legalOpen} onClose={() => setLegalOpen(false)} />
 
-      {/* INSTANT 2-SECOND APP INSTALL MODAL (No Google Drive virus screen, No login/cadastro) */}
+      {/* OFFICIAL SITE, VERIFIED SECURITY BADGE & PC / MOBILE APP DOWNLOAD MODAL */}
       {installModalOpen && (
         <div
           onClick={() => setInstallModalOpen(false)}
@@ -2388,50 +2408,179 @@ export function App() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-3xl border border-emerald-400/40 bg-[#080417] shadow-[0_0_70px_rgba(16,185,129,0.28)] overflow-hidden"
+            className="w-full max-w-lg rounded-3xl border border-emerald-400/45 bg-[#080417] shadow-[0_0_80px_rgba(16,185,129,0.28)] overflow-hidden my-auto max-h-[92dvh] overflow-y-auto"
           >
             <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500" />
             <div className="p-5 space-y-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-400 p-[2px] shrink-0">
-                    <img src="/covers/avatar.jpg" alt="LENKYX" className="w-full h-full rounded-[14px] object-cover" />
-                  </div>
-                  <div>
-                    <h3 className="font-display text-base font-black text-white">Instalar App LENKYX (2s)</h3>
-                    <p className="text-[11px] text-emerald-300 font-semibold">
-                      100% Direto · Sem Cadastro · Sem Aviso de Vírus
+              {/* Official Brand 3D Header */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3.5">
+                  <img
+                    src="/covers/icon-512.png"
+                    alt="LENKYX Logo 3D"
+                    className="w-16 h-16 object-contain lenkyx-logo-3d shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] font-black text-emerald-300 mb-1">
+                      <CheckCircle2 className="w-3 h-3" /> OFICIAL · 100% SEGURO & VERIFICADO
+                    </div>
+                    <h3 className="font-display text-base sm:text-lg font-black text-white leading-tight">
+                      Site Oficial & App LENKYX
+                    </h3>
+                    <p className="text-[11px] text-cyan-200/85 font-semibold">
+                      Download para PC, Celular e Smart TV · Sem Vírus e Sem Cadastro
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setInstallModalOpen(false)}
-                  className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-purple-200"
+                  className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-purple-200 shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/30 p-3.5 space-y-2 text-xs text-slate-100">
+              {/* Official Verified Security Guarantee */}
+              <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/35 p-3.5 space-y-2 text-xs text-slate-100">
                 <div className="font-black text-emerald-300 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4" /> Por que instalar assim é instantâneo?
+                  <Shield className="w-4 h-4 text-emerald-300" /> Selo de Segurança Oficial LENKYX
                 </div>
-                <ul className="space-y-1 text-[11px] text-purple-100/90 leading-relaxed">
-                  <li>⚡ Instala em <strong>2 segundos</strong> direto na tela inicial do celular ou PC.</li>
-                  <li>🔓 <strong>Nunca pede cadastro/login</strong> e nunca baixa arquivo pesado do Drive.</li>
-                  <li>🚀 Sempre atualizado automaticamente com músicas, clipes, filmes e arena ao vivo.</li>
-                </ul>
+                <div className="grid grid-cols-2 gap-1.5 text-[11px] text-purple-100/95">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Aplicativo Oficial Verificado
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> 100% Seguro e Livre de Vírus
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Zero Anúncios & Zero Cadastro
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> Sempre Atualizado (v3.3 3D)
+                  </span>
+                </div>
               </div>
 
-              {deferredInstallPrompt ? (
+              {/* Official Website URL Bar */}
+              <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-300 flex items-center gap-1">
+                    <Globe2 className="w-3.5 h-3.5" /> Endereço do Site Oficial LENKYX
+                  </span>
+                  <a
+                    href={officialSiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] font-bold text-emerald-300 hover:underline flex items-center gap-1"
+                  >
+                    Abrir Site <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    readOnly
+                    value={officialSiteUrl}
+                    className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl bg-black/55 border border-white/10 text-[11px] text-cyan-200 font-mono truncate"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void copyTextReliable(officialSiteUrl).then((ok) => {
+                        if (ok) showToast('Link do Site Oficial copiado!');
+                      });
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold flex items-center gap-1 shrink-0"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-cyan-300" /> Copiar
+                  </button>
+                </div>
+              </div>
+
+              {/* Platform Switcher: PC / Mobile / TV */}
+              <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-white/[0.05] border border-white/10">
                 <button
-                  onClick={() => void handleInstantInstall()}
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(52,211,153,0.45)]"
+                  type="button"
+                  onClick={() => setInstallPlatformTab('pc')}
+                  className={`py-2 px-2 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 transition ${
+                    installPlatformTab === 'pc'
+                      ? 'bg-gradient-to-r from-cyan-400 to-emerald-400 text-black shadow'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
                 >
-                  <Zap className="w-4 h-4" /> Instalar Agora em 1 Toque
+                  <Monitor className="w-3.5 h-3.5" /> PC / Notebook
                 </button>
-              ) : (
+                <button
+                  type="button"
+                  onClick={() => setInstallPlatformTab('mobile')}
+                  className={`py-2 px-2 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 transition ${
+                    installPlatformTab === 'mobile'
+                      ? 'bg-gradient-to-r from-pink-500 to-cyan-400 text-white shadow'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" /> Celular
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstallPlatformTab('tv')}
+                  className={`py-2 px-2 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 transition ${
+                    installPlatformTab === 'tv'
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <Tv className="w-3.5 h-3.5" /> Smart TV
+                </button>
+              </div>
+
+              {installPlatformTab === 'pc' && (
+                <div className="space-y-2.5">
+                  {deferredInstallPrompt && (
+                    <button
+                      type="button"
+                      onClick={() => void handleInstantInstall()}
+                      className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(52,211,153,0.45)]"
+                    >
+                      <Zap className="w-4 h-4" /> Instalar App no PC Agora (1 Clique)
+                    </button>
+                  )}
+
+                  <a
+                    href="/download/pc"
+                    download="LENKYX-App-PC.zip"
+                    onClick={() => showToast('Download oficial do App LENKYX para PC iniciado! 💻🚀')}
+                    className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-purple-600 to-pink-500 hover:brightness-110 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(34,211,238,0.38)] transition"
+                  >
+                    <Download className="w-4 h-4" /> Baixar Aplicativo para PC (Windows / Mac .ZIP)
+                  </a>
+
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-1.5 text-[11px] text-slate-200 leading-relaxed">
+                    <div className="font-black text-cyan-300">Como instalar no PC em 2 segundos:</div>
+                    <p>
+                      • <strong>Pelo Arquivo .ZIP (Windows/Mac):</strong> Extraia e clique em{' '}
+                      <strong className="text-emerald-300">Criar-Atalho-Area-de-Trabalho.bat</strong> para ter o ícone 3D
+                      do LENKYX no seu computador (abre em janela própria sem navegador).
+                    </p>
+                    <p>
+                      • <strong>Pelo Chrome ou Edge:</strong> Clique no ícone{' '}
+                      <strong className="text-cyan-300">⊕ Instalar LENKYX</strong> no canto direito da barra de endereço.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {installPlatformTab === 'mobile' && (
                 <div className="space-y-2.5 text-xs">
+                  {deferredInstallPrompt && (
+                    <button
+                      type="button"
+                      onClick={() => void handleInstantInstall()}
+                      className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(52,211,153,0.45)]"
+                    >
+                      <Zap className="w-4 h-4" /> Instalar Agora em 1 Toque
+                    </button>
+                  )}
                   <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-1">
                     <div className="font-black text-cyan-300 flex items-center gap-1.5">
                       <Smartphone className="w-3.5 h-3.5" /> No Android (Chrome / Edge / Samsung)
@@ -2451,6 +2600,23 @@ export function App() {
                       <strong className="text-pink-300">"Adicionar à Tela de Início"</strong>.
                     </p>
                   </div>
+                </div>
+              )}
+
+              {installPlatformTab === 'tv' && (
+                <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3.5 space-y-2 text-[11px] text-slate-200 leading-relaxed">
+                  <div className="font-black text-purple-300 flex items-center gap-1.5">
+                    <Tv className="w-4 h-4" /> Abrir na Smart TV (Tela Cheia)
+                  </div>
+                  <p>
+                    No navegador da sua Smart TV (LG, Samsung, Android TV ou Google TV), acesse o Site Oficial:
+                  </p>
+                  <div className="px-3 py-2 rounded-xl bg-black/60 border border-purple-400/35 font-mono text-cyan-200 text-xs select-all">
+                    {officialSiteUrl}/tv
+                  </div>
+                  <p className="text-slate-300">
+                    Modo adaptado para controle remoto, filmes, séries por temporada e Futebol/UFC ao vivo sem anúncios.
+                  </p>
                 </div>
               )}
             </div>

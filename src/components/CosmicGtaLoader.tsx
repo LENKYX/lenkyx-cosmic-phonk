@@ -191,14 +191,12 @@ export const CosmicGtaLoader: React.FC<Props> = ({
           }`}
         >
           <div className="lenkyx-logo-float relative">
-            <div className="absolute -inset-7 rounded-full bg-gradient-to-tr from-rose-500/45 via-fuchsia-500/35 to-cyan-400/45 blur-3xl animate-pulse" />
-            <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-[2rem] p-[3px] bg-gradient-to-br from-rose-500 via-pink-500 to-cyan-400 shadow-[0_0_70px_rgba(236,72,153,0.65)]">
-              <img
-                src="/covers/avatar.jpg"
-                alt="LENKYX"
-                className="w-full h-full rounded-[1.85rem] object-cover"
-              />
-            </div>
+            <div className="absolute -inset-7 rounded-full bg-gradient-to-tr from-rose-500/40 via-fuchsia-500/30 to-cyan-400/40 blur-3xl animate-pulse" />
+            <img
+              src="/covers/icon-512.png"
+              alt="LENKYX Logo 3D"
+              className="relative w-28 h-28 sm:w-32 sm:h-32 object-contain lenkyx-logo-3d"
+            />
           </div>
         </div>
 
@@ -210,6 +208,9 @@ export const CosmicGtaLoader: React.FC<Props> = ({
           <h1 className="font-logo text-4xl sm:text-6xl font-black tracking-[0.22em] text-white drop-shadow-[0_6px_30px_rgba(236,72,153,0.55)]">
             LENKYX
           </h1>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] sm:text-[11px] font-black tracking-wider uppercase text-emerald-300">
+            ✓ Site & App Oficial · 100% Seguro e Verificado
+          </div>
           <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs sm:text-sm font-bold tracking-wider uppercase text-cyan-200">
             <span className="flex items-center gap-1"><Music className="w-3.5 h-3.5 text-pink-400" /> Som</span>
             <span className="text-white/30">•</span>
@@ -351,11 +352,13 @@ export const CinemaPrerollIntro: React.FC<{
               : 'scale-125 opacity-0'
         }`}
       >
-        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl p-[2px] bg-gradient-to-br from-rose-500 via-pink-500 to-cyan-400 shadow-[0_0_55px_rgba(244,63,94,0.7)] mb-4">
-          <img src="/covers/avatar.jpg" alt="LENKYX" className="w-full h-full rounded-[14px] object-cover" />
-        </div>
-        <div className="text-[10px] sm:text-xs font-black tracking-[0.38em] uppercase text-rose-400 mb-1">
-          {subtitle}
+        <img
+          src="/covers/icon-512.png"
+          alt="LENKYX"
+          className="w-20 h-20 sm:w-24 sm:h-24 object-contain lenkyx-logo-3d mb-4"
+        />
+        <div className="text-[10px] sm:text-xs font-black tracking-[0.26em] uppercase text-emerald-300 mb-1">
+          ✓ OFICIAL · 100% SEGURO & VERIFICADO · {subtitle}
         </div>
         <div className="font-logo text-3xl sm:text-5xl font-black tracking-[0.26em] text-white drop-shadow-[0_6px_32px_rgba(244,63,94,0.6)]">
           LENKYX

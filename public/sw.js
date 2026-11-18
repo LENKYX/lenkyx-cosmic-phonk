@@ -1,9 +1,14 @@
-const CACHE_NAME = 'lenkyx-cosmic-phonk-v32';
+const CACHE_NAME = 'lenkyx-cosmic-phonk-v33';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/covers/icon-192.png',
+  '/covers/icon-512.png',
+  '/covers/icon-maskable-512.png',
+  '/covers/apple-touch-icon.png',
+  '/covers/favicon.png',
+  '/covers/lenkyx-app.ico',
   '/covers/avatar.jpg',
   '/covers/banner.jpg',
   '/covers/album-official.jpg',

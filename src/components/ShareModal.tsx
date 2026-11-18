@@ -11,7 +11,6 @@ import {
   Smartphone,
   Send,
   QrCode,
-  Megaphone,
   Flame,
   TrendingUp,
   Mail,
@@ -216,12 +215,15 @@ export const ShareModal: React.FC<Props> = ({
         <div className="relative z-10 p-4 sm:p-5 space-y-3.5">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pink-500 via-purple-600 to-cyan-400 p-[2px] shadow-[0_0_18px_rgba(34,211,238,0.4)] shrink-0">
-                <div className="w-full h-full rounded-[14px] bg-[#090517] flex items-center justify-center">
-                  <Megaphone className="w-5 h-5 text-cyan-300" />
-                </div>
-              </div>
+              <img
+                src="/covers/icon-192.png"
+                alt="LENKYX"
+                className="w-11 h-11 object-contain lenkyx-logo-3d shrink-0"
+              />
               <div>
+                <div className="text-[10px] font-black text-emerald-300 flex items-center gap-1">
+                  ✓ SITE OFICIAL · 100% SEGURO & VERIFICADO
+                </div>
                 <h2 className="font-display text-sm sm:text-base font-black text-white">
                   {track ? `DIVULGAR: ${track.title}` : 'COMPARTILHAR & POPULARIDADE DO APP'}
                 </h2>
@@ -410,7 +412,7 @@ export const ShareModal: React.FC<Props> = ({
               }}
               className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-500/25 via-cyan-500/25 to-purple-500/25 hover:brightness-110 border border-emerald-400/40 text-xs font-extrabold text-white flex items-center justify-center gap-2 transition"
             >
-              <Zap className="w-4 h-4 text-emerald-300" /> Instalar App no Celular em 2 Segundos (Sem Cadastro)
+              <Zap className="w-4 h-4 text-emerald-300" /> Site Oficial · Baixar App no PC ou Celular (Verificado ✓)
             </button>
           )}
 

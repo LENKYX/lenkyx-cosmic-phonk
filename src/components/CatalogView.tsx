@@ -147,15 +147,20 @@ export const CatalogView: React.FC<Props> = ({
             <div className="flex items-center gap-4 sm:gap-5">
               <div className="relative shrink-0">
                 <img
-                  src="/covers/album-official.jpg"
-                  alt="LENKYX Cosmic Phonk"
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border border-white/25 shadow-[0_0_38px_rgba(236,72,153,0.5)] object-cover"
+                  src="/covers/icon-512.png"
+                  alt="LENKYX Logo 3D"
+                  className="w-20 h-20 sm:w-24 sm:h-24 object-contain lenkyx-logo-3d"
                 />
               </div>
 
               <div className="min-w-0 space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-pink-500/20 border border-pink-400/35 text-[10px] font-extrabold text-pink-200">
-                  <Sparkles className="w-2.5 h-2.5" /> SOM AUTORAL LENKYX · {tracks.length} FAIXAS SEM ANÚNCIOS
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] font-black text-emerald-300">
+                    <CheckCircle2 className="w-3 h-3" /> OFICIAL · 100% SEGURO & VERIFICADO
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-pink-500/20 border border-pink-400/35 text-[10px] font-extrabold text-pink-200">
+                    <Sparkles className="w-2.5 h-2.5" /> {tracks.length} FAIXAS SEM ANÚNCIOS
+                  </span>
                 </div>
                 <h1 className="font-display text-2xl sm:text-3xl font-black tracking-wide text-white truncate">
                   {settings.artistName} <span className="neon-text">{settings.brandSubtitle}</span>
@@ -206,7 +211,7 @@ export const CatalogView: React.FC<Props> = ({
                   onClick={onInstallApp}
                   className="px-4 py-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_18px_rgba(52,211,153,0.35)] transition active:scale-95"
                 >
-                  <Smartphone className="w-3.5 h-3.5" /> Instalar App
+                  <Smartphone className="w-3.5 h-3.5" /> Site Oficial · App PC & Celular
                 </button>
               )}
               {mode === 'creator' && (

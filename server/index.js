@@ -1421,6 +1421,199 @@ app.get('/sitemap.xml', (req, res) => {
     );
 });
 
+// Zero-dependency store-only ZIP archive builder for instant PC Desktop Launcher downloads
+function crc32Buffer(buf) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) {
+    crc ^= buf[i];
+    for (let j = 0; j < 8; j++) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function buildSimpleZip(entries) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  for (const item of entries) {
+    const nameBuf = Buffer.from(item.name, 'utf8');
+    const dataBuf = Buffer.isBuffer(item.content) ? item.content : Buffer.from(String(item.content), 'utf8');
+    const crc = crc32Buffer(dataBuf);
+
+    const localHeader = Buffer.alloc(30);
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0x0800, 6);
+    localHeader.writeUInt16LE(0, 8);
+    localHeader.writeUInt16LE(0, 10);
+    localHeader.writeUInt16LE(0, 12);
+    localHeader.writeUInt32LE(crc, 14);
+    localHeader.writeUInt32LE(dataBuf.length, 18);
+    localHeader.writeUInt32LE(dataBuf.length, 22);
+    localHeader.writeUInt16LE(nameBuf.length, 26);
+    localHeader.writeUInt16LE(0, 28);
+
+    localParts.push(localHeader, nameBuf, dataBuf);
+
+    const centralHeader = Buffer.alloc(46);
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(20, 4);
+    centralHeader.writeUInt16LE(20, 6);
+    centralHeader.writeUInt16LE(0x0800, 8);
+    centralHeader.writeUInt16LE(0, 10);
+    centralHeader.writeUInt16LE(0, 12);
+    centralHeader.writeUInt16LE(0, 14);
+    centralHeader.writeUInt32LE(crc, 16);
+    centralHeader.writeUInt32LE(dataBuf.length, 20);
+    centralHeader.writeUInt32LE(dataBuf.length, 24);
+    centralHeader.writeUInt16LE(nameBuf.length, 28);
+    centralHeader.writeUInt16LE(0, 30);
+    centralHeader.writeUInt16LE(0, 32);
+    centralHeader.writeUInt16LE(0, 34);
+    centralHeader.writeUInt16LE(0, 36);
+    centralHeader.writeUInt32LE(item.mode || 0, 38);
+    centralHeader.writeUInt32LE(offset, 42);
+
+    centralParts.push(centralHeader, nameBuf);
+    offset += localHeader.length + nameBuf.length + dataBuf.length;
+  }
+  const centralSize = centralParts.reduce((a, b) => a + b.length, 0);
+  const endRecord = Buffer.alloc(22);
+  endRecord.writeUInt32LE(0x06054b50, 0);
+  endRecord.writeUInt16LE(0, 4);
+  endRecord.writeUInt16LE(0, 6);
+  endRecord.writeUInt16LE(entries.length, 8);
+  endRecord.writeUInt16LE(entries.length, 10);
+  endRecord.writeUInt32LE(centralSize, 12);
+  endRecord.writeUInt32LE(offset, 16);
+  endRecord.writeUInt16LE(0, 20);
+
+  return Buffer.concat([...localParts, ...centralParts, endRecord]);
+}
+
+function resolveOfficialSiteUrl(req, db) {
+  const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
+  const host = String(req.headers['x-forwarded-host'] || req.get('host') || '').split(',')[0].trim();
+  const isLocal = !host || /^(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(host);
+  if (!isLocal) return `${proto}://${host}`;
+  const configured = String(db?.settings?.publicUrl || '').trim().replace(/\/$/, '');
+  return configured && !/localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(configured)
+    ? configured
+    : 'https://lenkyx-cosmic-phonk.onrender.com';
+}
+
+// Instant PC App Download (Windows / Mac / Linux standalone desktop launcher + 3D icon shortcut)
+app.get(['/download/pc', '/download/pc/windows', '/download/pc/mac', '/pc'], (req, res) => {
+  const db = readDb();
+  const siteUrl = resolveOfficialSiteUrl(req, db);
+  const icoUrl = `${siteUrl}/covers/lenkyx-app.ico`;
+
+  const winBat = [
+    '@echo off',
+    'title LENKYX - Aplicativo Oficial para PC',
+    'set "SITE_URL=' + siteUrl + '"',
+    'where msedge >nul 2>nul && (start "" msedge --app="%SITE_URL%" & exit /b 0)',
+    'if exist "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe" (start "" "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe" --app="%SITE_URL%" & exit /b 0)',
+    'if exist "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe" (start "" "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe" --app="%SITE_URL%" & exit /b 0)',
+    'if exist "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe" (start "" "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe" --app="%SITE_URL%" & exit /b 0)',
+    'if exist "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe" (start "" "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe" --app="%SITE_URL%" & exit /b 0)',
+    'start "" "%SITE_URL%"',
+    'exit /b 0',
+  ].join('\r\n');
+
+  const winShortcutBat = [
+    '@echo off',
+    'title LENKYX - Criar Atalho na Area de Trabalho',
+    'powershell -NoProfile -ExecutionPolicy Bypass -Command "' +
+      '$desktop = [Environment]::GetFolderPath(\'Desktop\'); ' +
+      '$icoDir = Join-Path $env:LOCALAPPDATA \'LENKYX\'; ' +
+      'New-Item -ItemType Directory -Force -Path $icoDir | Out-Null; ' +
+      '$icoPath = Join-Path $icoDir \'lenkyx-app.ico\'; ' +
+      'try { Invoke-WebRequest -Uri \'' + icoUrl + '\' -OutFile $icoPath -UseBasicParsing } catch {}; ' +
+      '$edge = @($env:ProgramFiles + \'\\Microsoft\\Edge\\Application\\msedge.exe\', ${env:ProgramFiles(x86)} + \'\\Microsoft\\Edge\\Application\\msedge.exe\') | Where-Object { Test-Path $_ } | Select-Object -First 1; ' +
+      '$chrome = @($env:ProgramFiles + \'\\Google\\Chrome\\Application\\chrome.exe\', ${env:ProgramFiles(x86)} + \'\\Google\\Chrome\\Application\\chrome.exe\') | Where-Object { Test-Path $_ } | Select-Object -First 1; ' +
+      '$ws = New-Object -ComObject WScript.Shell; ' +
+      '$sc = $ws.CreateShortcut((Join-Path $desktop \'LENKYX.lnk\')); ' +
+      'if ($edge) { $sc.TargetPath = $edge; $sc.Arguments = \'--app=' + siteUrl + '\'; } ' +
+      'elseif ($chrome) { $sc.TargetPath = $chrome; $sc.Arguments = \'--app=' + siteUrl + '\'; } ' +
+      'else { $sc.TargetPath = \'' + siteUrl + '\'; } ' +
+      'if (Test-Path $icoPath) { $sc.IconLocation = $icoPath; } ' +
+      '$sc.Description = \'LENKYX - Som, Clipes, Cinema e Arena Ao Vivo\'; ' +
+      '$sc.Save();"',
+    'echo.',
+    'echo [OK] Atalho 3D do LENKYX criado na sua Area de Trabalho!',
+    'timeout /t 3 >nul',
+  ].join('\r\n');
+
+  const urlFile = ['[InternetShortcut]', `URL=${siteUrl}`, 'IconIndex=0'].join('\r\n');
+
+  const macCmd = [
+    '#!/usr/bin/env bash',
+    `SITE_URL="${siteUrl}"`,
+    'if [ -d "/Applications/Google Chrome.app" ]; then',
+    '  open -na "Google Chrome" --args --app="$SITE_URL"',
+    'elif [ -d "/Applications/Microsoft Edge.app" ]; then',
+    '  open -na "Microsoft Edge" --args --app="$SITE_URL"',
+    'elif command -v google-chrome >/dev/null 2>&1; then',
+    '  google-chrome --app="$SITE_URL" &',
+    'elif command -v chromium >/dev/null 2>&1; then',
+    '  chromium --app="$SITE_URL" &',
+    'elif command -v open >/dev/null 2>&1; then',
+    '  open "$SITE_URL"',
+    'else',
+    '  xdg-open "$SITE_URL"',
+    'fi',
+  ].join('\n');
+
+  const readme = [
+    '====================================================',
+    '   LENKYX — APLICATIVO OFICIAL PARA PC (v3.3 3D)',
+    '====================================================',
+    `Site Oficial: ${siteUrl}`,
+    '',
+    'COMO USAR NO WINDOWS:',
+    '1. Extraia esta pasta em qualquer lugar (ou Area de Trabalho).',
+    '2. Clique duas vezes em "Criar-Atalho-Area-de-Trabalho.bat"',
+    '   para colocar o icone 3D do LENKYX na sua Area de Trabalho.',
+    '3. Ou clique duas vezes em "Abrir-LENKYX-App.bat" para abrir',
+    '   o aplicativo em janela propria (sem abas, sem anuncios).',
+    '',
+    'COMO USAR NO MAC / LINUX:',
+    ' - Execute "Abrir-LENKYX-Mac-Linux.command".',
+    '',
+    'DICA EXTRA (1 CLIQUE NO NAVEGADOR):',
+    ' - No Chrome ou Edge, abra o Site Oficial e clique no icone',
+    '   "Instalar LENKYX" no canto direito da barra de endereco!',
+    '====================================================',
+  ].join('\r\n');
+
+  const entries = [
+    { name: 'LENKYX-App-PC/Abrir-LENKYX-App.bat', content: winBat },
+    { name: 'LENKYX-App-PC/Criar-Atalho-Area-de-Trabalho.bat', content: winShortcutBat },
+    { name: 'LENKYX-App-PC/LENKYX-Site-Oficial.url', content: urlFile },
+    { name: 'LENKYX-App-PC/Abrir-LENKYX-Mac-Linux.command', content: macCmd, mode: (0o100755 << 16) >>> 0 },
+    { name: 'LENKYX-App-PC/LEIA-ME.txt', content: readme },
+  ];
+
+  const icoPath = path.join(PUBLIC_DIR, 'covers', 'lenkyx-app.ico');
+  if (fs.existsSync(icoPath)) {
+    entries.push({ name: 'LENKYX-App-PC/lenkyx-app.ico', content: fs.readFileSync(icoPath) });
+  }
+
+  const zipBuf = buildSimpleZip(entries);
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', 'attachment; filename="LENKYX-App-PC.zip"');
+  res.setHeader('Content-Length', String(zipBuf.length));
+  res.setHeader('Cache-Control', 'no-store');
+  return res.send(zipBuf);
+});
+
+app.get(['/site-oficial', '/oficial'], (_req, res) => {
+  res.redirect(302, '/?install=1');
+});
+
 // Direct Android APK download endpoint — streams local APK or opens Instant 2s PWA App Install (never sends to old Drive virus screen)
 app.get('/download/apk', (_req, res) => {
   const candidates = [
@@ -1496,10 +1689,10 @@ app.get('/api/app-update', async (_req, res) => {
       ? rawApkUrl
       : '/download/apk';
   const fallback = {
-    latestVersionCode: 32,
-    latestVersionName: '3.2.0-Cosmic',
+    latestVersionCode: 33,
+    latestVersionName: '3.3.0-Cosmic3D',
     apkUrl: safeApkUrl,
-    releaseNotes: 'LENKYX Cosmic Phonk v3.2: Instalação instantânea sem cadastro, Bass Boost em todas as abas e Popularidade ao vivo.',
+    releaseNotes: 'LENKYX Cosmic Phonk v3.3: Novo ícone 3D exclusivo da marca, Portal Site Oficial e Download direto do App para PC.',
     updateAvailable: false,
   };
   try {

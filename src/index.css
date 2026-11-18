@@ -89,6 +89,18 @@
     0 18px 42px rgba(0, 0, 0, 0.56);
 }
 
+/* Floating 3D Brand Emblem */
+.lenkyx-logo-3d {
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 10px 22px rgba(56, 189, 248, 0.28)) drop-shadow(0 6px 18px rgba(236, 72, 153, 0.28));
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), filter 0.35s ease;
+}
+
+.lenkyx-logo-3d:hover {
+  transform: perspective(600px) rotateY(-8deg) rotateX(6deg) scale(1.06);
+  filter: drop-shadow(0 14px 30px rgba(56, 189, 248, 0.48)) drop-shadow(0 8px 24px rgba(236, 72, 153, 0.45));
+}
+
 @keyframes cosmicFloatSlow {
   0%, 100% {
     transform: translate3d(0, 0px, 0) rotateX(0deg) rotateY(0deg);
