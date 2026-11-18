@@ -445,7 +445,7 @@ export function App() {
         setGtaLoaderOpen(false);
         sessionStorage.setItem('lenkyx_splash_done', '1');
       }
-    }, 2000);
+    }, 15000);
     return () => {
       cancelled = true;
       window.clearTimeout(t);

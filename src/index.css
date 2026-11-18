@@ -261,6 +261,80 @@ input[type='range'].dj-crossfader::-webkit-slider-thumb {
   animation: prismGlowCycle 3.4s ease-in-out infinite;
 }
 
+/* Netflix-style Galaxy Intro Animations (15s Cinematic Sequence) */
+@keyframes galaxyNebulaSpin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.12);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(1);
+  }
+}
+
+@keyframes galaxyShockwave {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.95;
+  }
+  70% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+@keyframes netflixTitleReveal {
+  0% {
+    opacity: 0;
+    letter-spacing: 0.72em;
+    transform: translateY(22px) scale(0.9);
+    filter: blur(10px);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    letter-spacing: 0.34em;
+    transform: translateY(0px) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes netflixRibbonGlow {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scaleY(0.95);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scaleY(1.1);
+  }
+}
+
+.galaxy-nebula-spin {
+  animation: galaxyNebulaSpin 28s linear infinite;
+  will-change: transform;
+}
+
+.galaxy-shockwave {
+  animation: galaxyShockwave 2.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.netflix-title-reveal {
+  animation: netflixTitleReveal 2.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.netflix-ribbon-glow {
+  animation: netflixRibbonGlow 4.5s ease-in-out infinite;
+}
+
 /* GTA-5 style smooth Ken Burns motion for loading artwork */
 @keyframes gtaKenBurns {
   0% {

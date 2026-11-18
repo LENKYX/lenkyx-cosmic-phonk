@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Sparkles, FastForward, Music, Clapperboard, Film, Trophy, QrCode, HeartHandshake, Share2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Sparkles, FastForward } from 'lucide-react';
 
 const INTRO_HIGHLIGHTS = [
   {
@@ -23,67 +23,222 @@ const INTRO_HIGHLIGHTS = [
 ];
 
 const MIRROR_SHARDS = [
-  { clip: 'polygon(0% 0%, 50% 0%, 26% 24%)', tx: '-74px', ty: '-68px', tz: '80px', rx: '32deg', ry: '-42deg', rz: '-26deg', delay: 0 },
-  { clip: 'polygon(50% 0%, 100% 0%, 74% 22%)', tx: '78px', ty: '-72px', tz: '65px', rx: '-28deg', ry: '44deg', rz: '24deg', delay: 40 },
-  { clip: 'polygon(50% 0%, 74% 22%, 50% 50%, 26% 24%)', tx: '6px', ty: '-86px', tz: '110px', rx: '45deg', ry: '10deg', rz: '-14deg', delay: 80 },
-  { clip: 'polygon(0% 0%, 26% 24%, 0% 50%)', tx: '-88px', ty: '-16px', tz: '55px', rx: '-22deg', ry: '-48deg', rz: '18deg', delay: 110 },
-  { clip: 'polygon(0% 50%, 26% 24%, 50% 50%, 22% 76%)', tx: '-64px', ty: '14px', tz: '95px', rx: '18deg', ry: '-36deg', rz: '-18deg', delay: 145 },
-  { clip: 'polygon(0% 50%, 22% 76%, 0% 100%)', tx: '-82px', ty: '68px', tz: '70px', rx: '-36deg', ry: '-34deg', rz: '28deg', delay: 180 },
-  { clip: 'polygon(100% 0%, 100% 50%, 74% 22%)', tx: '92px', ty: '-22px', tz: '65px', rx: '26deg', ry: '48deg', rz: '-22deg', delay: 215 },
-  { clip: 'polygon(74% 22%, 100% 50%, 78% 74%, 50% 50%)', tx: '66px', ty: '18px', tz: '105px', rx: '-24deg', ry: '38deg', rz: '16deg', delay: 250 },
-  { clip: 'polygon(100% 50%, 100% 100%, 78% 74%)', tx: '84px', ty: '72px', tz: '60px', rx: '34deg', ry: '38deg', rz: '-30deg', delay: 285 },
-  { clip: 'polygon(0% 100%, 22% 76%, 50% 100%)', tx: '-46px', ty: '88px', tz: '75px', rx: '-40deg', ry: '-22deg', rz: '20deg', delay: 320 },
-  { clip: 'polygon(22% 76%, 50% 50%, 78% 74%, 50% 100%)', tx: '4px', ty: '92px', tz: '115px', rx: '-44deg', ry: '12deg', rz: '14deg', delay: 355 },
-  { clip: 'polygon(78% 74%, 100% 100%, 50% 100%)', tx: '54px', ty: '84px', tz: '70px', rx: '36deg', ry: '26deg', rz: '-24deg', delay: 390 },
+  { clip: 'polygon(0% 0%, 50% 0%, 26% 24%)', tx: '-115px', ty: '-105px', tz: '140px', rx: '36deg', ry: '-46deg', rz: '-30deg', delayFast: 0, delaySlow: 0 },
+  { clip: 'polygon(50% 0%, 100% 0%, 74% 22%)', tx: '120px', ty: '-110px', tz: '120px', rx: '-32deg', ry: '48deg', rz: '28deg', delayFast: 40, delaySlow: 240 },
+  { clip: 'polygon(50% 0%, 74% 22%, 50% 50%, 26% 24%)', tx: '10px', ty: '-135px', tz: '170px', rx: '48deg', ry: '12deg', rz: '-16deg', delayFast: 80, delaySlow: 500 },
+  { clip: 'polygon(0% 0%, 26% 24%, 0% 50%)', tx: '-140px', ty: '-24px', tz: '100px', rx: '-24deg', ry: '-52deg', rz: '20deg', delayFast: 110, delaySlow: 760 },
+  { clip: 'polygon(0% 50%, 26% 24%, 50% 50%, 22% 76%)', tx: '-98px', ty: '20px', tz: '155px', rx: '20deg', ry: '-40deg', rz: '-22deg', delayFast: 145, delaySlow: 1020 },
+  { clip: 'polygon(0% 50%, 22% 76%, 0% 100%)', tx: '-128px', ty: '105px', tz: '115px', rx: '-38deg', ry: '-36deg', rz: '32deg', delayFast: 180, delaySlow: 1280 },
+  { clip: 'polygon(100% 0%, 100% 50%, 74% 22%)', tx: '142px', ty: '-32px', tz: '110px', rx: '28deg', ry: '52deg', rz: '-24deg', delayFast: 215, delaySlow: 1540 },
+  { clip: 'polygon(74% 22%, 100% 50%, 78% 74%, 50% 50%)', tx: '104px', ty: '26px', tz: '165px', rx: '-26deg', ry: '42deg', rz: '18deg', delayFast: 250, delaySlow: 1800 },
+  { clip: 'polygon(100% 50%, 100% 100%, 78% 74%)', tx: '130px', ty: '112px', tz: '105px', rx: '36deg', ry: '40deg', rz: '-34deg', delayFast: 285, delaySlow: 2060 },
+  { clip: 'polygon(0% 100%, 22% 76%, 50% 100%)', tx: '-74px', ty: '136px', tz: '125px', rx: '-42deg', ry: '-26deg', rz: '24deg', delayFast: 320, delaySlow: 2320 },
+  { clip: 'polygon(22% 76%, 50% 50%, 78% 74%, 50% 100%)', tx: '8px', ty: '142px', tz: '175px', rx: '-46deg', ry: '14deg', rz: '16deg', delayFast: 355, delaySlow: 2580 },
+  { clip: 'polygon(78% 74%, 100% 100%, 50% 100%)', tx: '84px', ty: '130px', tz: '115px', rx: '38deg', ry: '28deg', rz: '-26deg', delayFast: 390, delaySlow: 2840 },
 ];
 
-const ShatteredMirrorLogo: React.FC<{ sizeClass?: string }> = ({
-  sizeClass = 'w-32 h-32 sm:w-36 sm:h-36',
-}) => {
+/* === 60FPS DEEP-SPACE GALAXY STARFIELD + SPIRAL NEBULA CANVAS === */
+const GalaxyStarfieldCanvas: React.FC<{ warpBoost: boolean }> = ({ warpBoost }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const warpRef = useRef(warpBoost);
+  warpRef.current = warpBoost;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let raf = 0;
+    let w = (canvas.width = window.innerWidth);
+    let h = (canvas.height = window.innerHeight);
+
+    const handleResize = () => {
+      if (!canvas) return;
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', handleResize);
+
+    const starPalette = ['#ffffff', '#a5f3fc', '#f0abfc', '#c4b5fd', '#7dd3fc', '#f9a8d4'];
+    const stars = Array.from({ length: 220 }, () => ({
+      x: (Math.random() - 0.5) * 2,
+      y: (Math.random() - 0.5) * 2,
+      z: Math.random(),
+      size: 0.7 + Math.random() * 1.9,
+      color: starPalette[Math.floor(Math.random() * starPalette.length)],
+      twinkle: Math.random() * Math.PI * 2,
+    }));
+
+    const shootingStars: { x: number; y: number; vx: number; vy: number; life: number; max: number }[] = [];
+    let tick = 0;
+
+    const render = () => {
+      tick += 0.016;
+      const cx = w * 0.5;
+      const cy = h * 0.46;
+      const speed = warpRef.current ? 0.014 : 0.0028;
+
+      // Deep cosmos trail fade
+      ctx.fillStyle = warpRef.current ? 'rgba(3, 0, 12, 0.28)' : 'rgba(3, 0, 12, 0.42)';
+      ctx.fillRect(0, 0, w, h);
+
+      // Subtle spiral galaxy arm dust
+      for (let arm = 0; arm < 2; arm++) {
+        for (let i = 0; i < 24; i++) {
+          const angle = tick * 0.25 + arm * Math.PI + i * 0.28;
+          const radius = 38 + i * Math.min(w, h) * 0.022;
+          const px = cx + Math.cos(angle) * radius;
+          const py = cy + Math.sin(angle) * radius * 0.62;
+          ctx.beginPath();
+          ctx.arc(px, py, 14 + i * 1.6, 0, Math.PI * 2);
+          ctx.fillStyle = arm === 0 ? 'rgba(139, 92, 246, 0.022)' : 'rgba(34, 211, 238, 0.018)';
+          ctx.fill();
+        }
+      }
+
+      // 3D Starfield projection
+      for (const s of stars) {
+        s.z -= speed;
+        if (s.z <= 0.02) {
+          s.x = (Math.random() - 0.5) * 2;
+          s.y = (Math.random() - 0.5) * 2;
+          s.z = 1;
+        }
+        const sx = cx + (s.x / s.z) * (w * 0.52);
+        const sy = cy + (s.y / s.z) * (h * 0.52);
+        if (sx < -20 || sx > w + 20 || sy < -20 || sy > h + 20) continue;
+
+        const prevZ = Math.min(1, s.z + speed * (warpRef.current ? 3.5 : 1.8));
+        const px = cx + (s.x / prevZ) * (w * 0.52);
+        const py = cy + (s.y / prevZ) * (h * 0.52);
+        const alpha = Math.min(1, (1 - s.z) * 1.2) * (0.65 + 0.35 * Math.sin(tick * 3 + s.twinkle));
+        const r = Math.max(0.6, (1 - s.z) * s.size * 2.1);
+
+        ctx.strokeStyle = s.color;
+        ctx.globalAlpha = alpha * 0.7;
+        ctx.lineWidth = r;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+
+        ctx.fillStyle = s.color;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(sx, sy, r * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Occasional cosmic shooting star
+      if (Math.random() < 0.022 && shootingStars.length < 2) {
+        shootingStars.push({
+          x: Math.random() * w * 0.85,
+          y: Math.random() * h * 0.45,
+          vx: 8 + Math.random() * 8,
+          vy: 3 + Math.random() * 4,
+          life: 0,
+          max: 28 + Math.random() * 18,
+        });
+      }
+      for (let i = shootingStars.length - 1; i >= 0; i--) {
+        const st = shootingStars[i];
+        st.x += st.vx;
+        st.y += st.vy;
+        st.life += 1;
+        const a = 1 - st.life / st.max;
+        const grad = ctx.createLinearGradient(st.x - st.vx * 5, st.y - st.vy * 5, st.x, st.y);
+        grad.addColorStop(0, 'rgba(34,211,238,0)');
+        grad.addColorStop(1, `rgba(255,255,255,${a * 0.9})`);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(st.x - st.vx * 5, st.y - st.vy * 5);
+        ctx.lineTo(st.x, st.y);
+        ctx.stroke();
+        if (st.life >= st.max) shootingStars.splice(i, 1);
+      }
+
+      raf = window.requestAnimationFrame(render);
+    };
+
+    raf = window.requestAnimationFrame(render);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="fixed inset-0 w-full h-full pointer-events-none" />;
+};
+
+/* === SHATTERED-MIRROR SELF-ASSEMBLING 3D LOGO === */
+const ShatteredMirrorLogo: React.FC<{
+  sizeClass?: string;
+  durationMode?: 'fast' | 'netflix15';
+}> = ({ sizeClass = 'w-44 h-44 sm:w-60 sm:h-60', durationMode = 'fast' }) => {
   const [mirrorPhase, setMirrorPhase] = useState<'shattered' | 'healing' | 'radiant'>('shattered');
+  const [shockwave, setShockwave] = useState(false);
 
   useEffect(() => {
     setMirrorPhase('shattered');
-    const t1 = window.setTimeout(() => setMirrorPhase('healing'), 220);
-    const t2 = window.setTimeout(() => setMirrorPhase('radiant'), 1580);
+    setShockwave(false);
+    const tHeal = durationMode === 'netflix15' ? 2200 : 220;
+    const tRadiant = durationMode === 'netflix15' ? 7100 : 1580;
+
+    const t1 = window.setTimeout(() => setMirrorPhase('healing'), tHeal);
+    const t2 = window.setTimeout(() => {
+      setMirrorPhase('radiant');
+      setShockwave(true);
+    }, tRadiant);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, []);
+  }, [durationMode]);
+
+  const glideDuration = durationMode === 'netflix15' ? 1950 : 980;
+  const isSlow = durationMode === 'netflix15';
 
   return (
-    <div className="lenkyx-logo-float relative flex items-center justify-center" style={{ perspective: '900px' }}>
-      {/* Realistic Iridescent Prism Aura */}
+    <div className="lenkyx-logo-float relative flex items-center justify-center" style={{ perspective: '1100px' }}>
+      {/* Galaxy Prism Aura */}
       <div
-        className={`absolute -inset-9 rounded-full blur-3xl transition-all duration-1000 ${
+        className={`absolute -inset-14 rounded-full blur-3xl transition-all duration-1000 ${
           mirrorPhase === 'radiant'
-            ? 'opacity-100 scale-110 bg-gradient-to-tr from-cyan-400/55 via-fuchsia-500/45 to-amber-300/45'
+            ? 'opacity-100 scale-125 bg-gradient-to-tr from-cyan-400/55 via-fuchsia-500/45 to-violet-500/50'
             : mirrorPhase === 'healing'
-              ? 'opacity-80 scale-100 bg-gradient-to-tr from-cyan-400/40 via-purple-500/35 to-pink-500/40'
-              : 'opacity-40 scale-90 bg-gradient-to-tr from-sky-400/25 via-white/20 to-pink-400/25'
+              ? 'opacity-80 scale-105 bg-gradient-to-tr from-cyan-400/35 via-purple-500/35 to-pink-500/40'
+              : 'opacity-45 scale-90 bg-gradient-to-tr from-indigo-500/25 via-fuchsia-400/20 to-cyan-400/25'
         }`}
       />
 
+      {/* Galaxy Shockwave Ring on Full Assembly */}
+      {shockwave && (
+        <div className="absolute inset-0 rounded-full border-2 border-cyan-300/80 shadow-[0_0_50px_rgba(34,211,238,0.85)] pointer-events-none galaxy-shockwave" />
+      )}
+
       <div className={`relative ${sizeClass}`} style={{ transformStyle: 'preserve-3d' }}>
-        {/* 12 Shattered Crystal Mirror Shards Regenerating Together */}
+        {/* 12 Shattered Crystal Mirror Shards Assembling in 3D */}
         {MIRROR_SHARDS.map((s, idx) => {
           const isAssembled = mirrorPhase !== 'shattered';
+          const delay = isSlow ? s.delaySlow : s.delayFast;
           return (
             <div
               key={idx}
-              className="absolute inset-0 will-change-transform"
+              className="absolute inset-0 will-change-transform rounded-[24%] overflow-hidden"
               style={{
                 clipPath: s.clip,
                 transform: isAssembled
                   ? 'translate3d(0px, 0px, 0px) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1)'
-                  : `translate3d(${s.tx}, ${s.ty}, ${s.tz}) rotateX(${s.rx}) rotateY(${s.ry}) rotateZ(${s.rz}) scale(0.76)`,
-                opacity: mirrorPhase === 'radiant' ? 0 : isAssembled ? 1 : 0.88,
-                transition: `transform 980ms cubic-bezier(0.16, 1, 0.3, 1) ${s.delay}ms, opacity 420ms ease ${mirrorPhase === 'radiant' ? '0ms' : `${s.delay}ms`}`,
+                  : `translate3d(${s.tx}, ${s.ty}, ${s.tz}) rotateX(${s.rx}) rotateY(${s.ry}) rotateZ(${s.rz}) scale(0.72)`,
+                opacity: mirrorPhase === 'radiant' ? 0 : isAssembled ? 1 : 0.9,
+                transition: `transform ${glideDuration}ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, opacity 520ms ease ${mirrorPhase === 'radiant' ? '0ms' : `${delay}ms`}`,
                 filter:
                   mirrorPhase === 'healing'
-                    ? 'drop-shadow(0 0 8px rgba(103, 232, 249, 0.85)) brightness(1.18)'
-                    : 'drop-shadow(0 6px 14px rgba(255, 255, 255, 0.35)) contrast(1.12)',
+                    ? 'drop-shadow(0 0 12px rgba(103, 232, 249, 0.9)) brightness(1.2)'
+                    : 'drop-shadow(0 10px 22px rgba(192, 132, 252, 0.5)) contrast(1.15)',
               }}
             >
               <img
@@ -96,17 +251,17 @@ const ShatteredMirrorLogo: React.FC<{ sizeClass?: string }> = ({
           );
         })}
 
-        {/* Healing Luminous Crack Veins Overlay */}
+        {/* Healing Luminous Crack Veins Overlay (clipped to rounded emblem) */}
         <svg
           viewBox="0 0 100 100"
-          className={`absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 ${
+          className={`absolute inset-0 w-full h-full rounded-[24%] pointer-events-none transition-opacity duration-1000 ${
             mirrorPhase === 'healing' ? 'opacity-90' : 'opacity-0'
           }`}
         >
-          <g stroke="url(#mirrorCrackGrad)" strokeWidth="0.9" fill="none" strokeLinecap="round">
-            <path d="M50 0 L26 24 L0 50 M50 0 L74 22 L100 50 M26 24 L50 50 L74 22" />
-            <path d="M0 50 L22 76 L50 100 M100 50 L78 74 L50 100 M22 76 L50 50 L78 74" />
-            <path d="M0 0 L26 24 M100 0 L74 22 M0 100 L22 76 M100 100 L78 74" />
+          <g stroke="url(#mirrorCrackGrad)" strokeWidth="0.85" fill="none" strokeLinecap="round">
+            <path d="M50 6 L26 24 L6 50 M50 6 L74 22 L94 50 M26 24 L50 50 L74 22" />
+            <path d="M6 50 L22 76 L50 94 M94 50 L78 74 L50 94 M22 76 L50 50 L78 74" />
+            <path d="M12 12 L26 24 M88 12 L74 22 M12 88 L22 76 M88 88 L78 74" />
           </g>
           <defs>
             <linearGradient id="mirrorCrackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -117,9 +272,9 @@ const ShatteredMirrorLogo: React.FC<{ sizeClass?: string }> = ({
           </defs>
         </svg>
 
-        {/* Final Unified Radiant 3D Mirror Logo + Realistic Specular Reflection Sweep */}
+        {/* Unified Radiant 3D Mirror Logo + Specular Reflection Sweep */}
         <div
-          className={`relative w-full h-full rounded-[26%] overflow-hidden transition-all duration-500 ${
+          className={`relative w-full h-full rounded-[24%] overflow-hidden transition-all duration-700 ${
             mirrorPhase === 'radiant' ? 'opacity-100 scale-100 prism-glow-radiant' : 'opacity-0 scale-95'
           }`}
         >
@@ -132,7 +287,7 @@ const ShatteredMirrorLogo: React.FC<{ sizeClass?: string }> = ({
             className="absolute inset-y-0 w-1/2 pointer-events-none mirror-sheen-sweep"
             style={{
               background:
-                'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 48%, rgba(103,232,249,0.45) 65%, transparent 100%)',
+                'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 48%, rgba(103,232,249,0.5) 65%, transparent 100%)',
             }}
           />
         </div>
@@ -159,29 +314,37 @@ export const CosmicGtaLoader: React.FC<Props> = ({
   mode = 'splash',
   statusText = 'Preparando o som, cinema & arena ao vivo...',
   progress,
-  dailyCollectedBrl = 0,
-  dailyGoalBrl = 50,
-  onlineCount = 1,
-  onOpenPix,
-  onShareApp,
   onSkip,
 }) => {
   const [slideIdx, setSlideIdx] = useState(0);
   const [autoPct, setAutoPct] = useState(20);
-  const [introPulse, setIntroPulse] = useState(false);
+
+  // 15-Second Galaxy Netflix-Style Intro Phases
+  const [showRibbons, setShowRibbons] = useState(false);
+  const [showBrandTitle, setShowBrandTitle] = useState(false);
+  const [warpOutro, setWarpOutro] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setIntroPulse(false);
-    const pulseT = window.setTimeout(() => setIntroPulse(true), 60);
+    setShowRibbons(false);
+    setShowBrandTitle(false);
+    setWarpOutro(false);
+
+    const tRibbon = window.setTimeout(() => setShowRibbons(true), 6900);
+    const tTitle = window.setTimeout(() => setShowBrandTitle(true), 9200);
+    const tWarp = window.setTimeout(() => setWarpOutro(true), 13700);
+
     const t = window.setInterval(() => {
       setSlideIdx((i) => (i + 1) % INTRO_HIGHLIGHTS.length);
     }, 3400);
     const p = window.setInterval(() => {
       setAutoPct((v) => (v >= 98 ? 98 : v + Math.max(3, Math.round((100 - v) * 0.16))));
     }, 150);
+
     return () => {
-      window.clearTimeout(pulseT);
+      window.clearTimeout(tRibbon);
+      window.clearTimeout(tTitle);
+      window.clearTimeout(tWarp);
       window.clearInterval(t);
       window.clearInterval(p);
     };
@@ -191,7 +354,6 @@ export const CosmicGtaLoader: React.FC<Props> = ({
 
   const pct = typeof progress === 'number' ? Math.min(100, Math.max(0, Math.round(progress))) : autoPct;
   const current = INTRO_HIGHLIGHTS[slideIdx % INTRO_HIGHLIGHTS.length];
-  const pixPct = dailyGoalBrl > 0 ? Math.min(100, Math.round((dailyCollectedBrl / dailyGoalBrl) * 100)) : 0;
 
   if (mode === 'discreet_corner') {
     return (
@@ -261,138 +423,80 @@ export const CosmicGtaLoader: React.FC<Props> = ({
     );
   }
 
-  // Entry Splash Screen — Gentle Moving Logo + Special Effects + Daily PIX Goal Appeal
+  // === PURE NETFLIX-STYLE 15-SECOND GALAXY LOGO OPENING ===
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#030009] text-white overflow-y-auto select-none flex flex-col justify-between">
-      {/* Radiant Special Effects Backdrop */}
+    <div
+      className={`fixed inset-0 z-[9999] bg-[#02000a] text-white overflow-hidden select-none flex flex-col items-center justify-center transition-all duration-[1100ms] ease-in ${
+        warpOutro ? 'opacity-0 scale-125 pointer-events-none' : 'opacity-100 scale-100'
+      }`}
+    >
+      {/* 60fps Deep-Space Starfield & Spiral Galaxy */}
+      <GalaxyStarfieldCanvas warpBoost={warpOutro} />
+
+      {/* Rotating Multi-Color Cosmic Nebula Core */}
       <div
-        className="fixed inset-0 pointer-events-none transition-all duration-1000"
+        className="fixed left-1/2 top-[46%] w-[780px] h-[780px] sm:w-[1050px] sm:h-[1050px] rounded-full pointer-events-none blur-3xl opacity-75 galaxy-nebula-spin"
         style={{
           background:
-            'radial-gradient(ellipse 72% 58% at 50% 40%, rgba(236,72,153,0.26), transparent 65%), radial-gradient(ellipse 65% 50% at 25% 68%, rgba(34,211,238,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 78% 72%, rgba(168,85,247,0.18), transparent 65%)',
+            'conic-gradient(from 0deg, rgba(168,85,247,0.28), rgba(34,211,238,0.16), rgba(236,72,153,0.28), rgba(59,130,246,0.14), rgba(168,85,247,0.28))',
         }}
       />
 
-      {/* Orbiting Luminous Halos */}
-      <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+      {/* Orbital Gravitational Rings */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
         <div
-          className="w-[460px] h-[460px] sm:w-[580px] sm:h-[580px] rounded-full border border-pink-400/25 lenkyx-aura-orbit"
+          className="w-[340px] h-[340px] sm:w-[540px] sm:h-[540px] rounded-full border border-purple-400/20 lenkyx-aura-orbit"
           style={{
             background:
-              'conic-gradient(from 0deg, rgba(236,72,153,0.12), transparent 30%, rgba(34,211,238,0.16) 60%, transparent 90%)',
+              'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 66%)',
           }}
         />
-        <div className="absolute w-[310px] h-[310px] sm:w-[390px] sm:h-[390px] rounded-full border border-cyan-400/30 animate-pulse" />
+        <div className="absolute w-[250px] h-[250px] sm:w-[380px] sm:h-[380px] rounded-full border border-cyan-400/20" />
       </div>
 
-      {/* Top Status + Skip */}
-      <div className="relative z-10 p-4 sm:p-7 flex items-center justify-between gap-2">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.07] border border-white/15 text-[11px] font-bold text-emerald-300 backdrop-blur-md">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span>{onlineCount} {onlineCount === 1 ? 'pessoa curtindo agora' : 'pessoas curtindo agora'}</span>
-        </div>
-        {onSkip && (
-          <button
-            onClick={onSkip}
-            className="px-4 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-xs font-black text-white flex items-center gap-1.5 backdrop-blur-md transition"
-          >
-            <span>Entrar no App</span>
-            <FastForward className="w-3.5 h-3.5" />
-          </button>
-        )}
+      {/* Netflix-Style Vertical Cosmic Light Ribbons (appear as logo locks into place) */}
+      <div
+        className={`fixed inset-0 flex items-center justify-center gap-3 sm:gap-5 pointer-events-none transition-opacity duration-1000 ${
+          showRibbons ? 'opacity-85' : 'opacity-0'
+        }`}
+      >
+        <div className="w-2 sm:w-3 h-[78%] rounded-full bg-gradient-to-b from-transparent via-cyan-400/45 to-transparent blur-[2px] netflix-ribbon-glow" />
+        <div className="w-5 sm:w-8 h-[92%] rounded-full bg-gradient-to-b from-transparent via-fuchsia-500/50 to-transparent blur-[4px] netflix-ribbon-glow" />
+        <div className="w-2 sm:w-3 h-[78%] rounded-full bg-gradient-to-b from-transparent via-purple-400/45 to-transparent blur-[2px] netflix-ribbon-glow" />
       </div>
 
-      {/* Center Shattered-Mirror Self-Regenerating 3D Logo + Daily PIX Support Prompt */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-5 py-3 text-center space-y-4 my-auto">
-        <div
-          className={`relative transition-all duration-700 ease-out ${
-            introPulse ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}
+      {/* Whisper-quiet Netflix-style Skip Button */}
+      {onSkip && (
+        <button
+          type="button"
+          onClick={onSkip}
+          className="fixed top-4 right-4 sm:top-6 sm:right-6 z-30 px-3.5 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/20 border border-white/15 text-[11px] font-bold tracking-wider uppercase text-white/75 hover:text-white flex items-center gap-1.5 backdrop-blur-md transition"
         >
-          <ShatteredMirrorLogo sizeClass="w-32 h-32 sm:w-36 sm:h-36" />
-        </div>
+          <span>Pular Intro</span>
+          <FastForward className="w-3.5 h-3.5" />
+        </button>
+      )}
 
-        <div
-          className={`space-y-2 transition-all duration-1000 delay-150 ${
-            introPulse ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}
-        >
-          <h1 className="font-logo text-4xl sm:text-6xl font-black tracking-[0.22em] text-white drop-shadow-[0_6px_30px_rgba(236,72,153,0.55)]">
-            LENKYX
-          </h1>
-          <div className="inline-flex flex-wrap items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] sm:text-[11px] font-black tracking-wider uppercase text-emerald-300">
-            <span>✓ Oficial · 100% Seguro & Verificado</span>
-            <span className="text-white/40">•</span>
-            <span className="text-cyan-200">Android · iPhone · PC · TV</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs sm:text-sm font-bold tracking-wider uppercase text-cyan-200">
-            <span className="flex items-center gap-1"><Music className="w-3.5 h-3.5 text-pink-400" /> Som</span>
-            <span className="text-white/30">•</span>
-            <span className="flex items-center gap-1"><Film className="w-3.5 h-3.5 text-cyan-300" /> Clipes</span>
-            <span className="text-white/30">•</span>
-            <span className="flex items-center gap-1"><Clapperboard className="w-3.5 h-3.5 text-rose-400" /> Cinema</span>
-            <span className="text-white/30">•</span>
-            <span className="flex items-center gap-1"><Trophy className="w-3.5 h-3.5 text-amber-300" /> Futebol & UFC</span>
-          </div>
-        </div>
+      {/* Center Stage: ONLY the Big Assembling Logo, then the App Name */}
+      <div
+        className={`relative z-20 flex flex-col items-center justify-center text-center px-6 transition-transform duration-[4500ms] ease-out ${
+          showRibbons ? 'scale-105' : 'scale-95'
+        }`}
+      >
+        <ShatteredMirrorLogo
+          sizeClass="w-44 h-44 sm:w-64 sm:h-64"
+          durationMode="netflix15"
+        />
 
-        {/* Daily PIX Goal Appeal Card right on Intro */}
-        <div className="w-full max-w-md rounded-3xl bg-white/[0.06] backdrop-blur-xl border border-pink-400/35 p-4 space-y-2.5 shadow-[0_18px_50px_rgba(0,0,0,0.6)]">
-          <div className="flex items-center justify-between gap-2 text-xs font-extrabold">
-            <span className="text-pink-200 flex items-center gap-1.5">
-              <HeartHandshake className="w-4 h-4 text-pink-400" />
-              Ajude a manter o LENKYX 100% Sem Anúncios!
-            </span>
-            <span className="font-mono text-cyan-300">
-              R$ {dailyCollectedBrl.toFixed(0)} / R$ {dailyGoalBrl.toFixed(0)}
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-200/90 leading-relaxed text-left">
-            Este espaço é gratuito e livre de propagandas. Qualquer valor via <strong>PIX</strong> ajuda a bater nossa{' '}
-            <strong>meta diária</strong> para pagar servidores e trazer músicas, filmes, séries e lutas ao vivo todos os dias!
-          </p>
-          <div className="h-2 w-full rounded-full bg-black/50 overflow-hidden border border-white/10">
-            <div
-              style={{ width: `${pixPct}%` }}
-              className="h-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500 transition-all duration-500"
-            />
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            {onOpenPix && (
-              <button
-                type="button"
-                onClick={onOpenPix}
-                className="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black text-xs font-black flex items-center gap-1.5 shadow hover:brightness-110 transition"
-              >
-                <QrCode className="w-3.5 h-3.5" /> Apoiar Meta Diária (PIX)
-              </button>
-            )}
-            {onShareApp && (
-              <button
-                type="button"
-                onClick={onShareApp}
-                className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition"
-              >
-                <Share2 className="w-3.5 h-3.5 text-emerald-300" /> Indicar pra Galera
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Sync Progress */}
-      <div className="relative z-10 p-5 sm:p-7 flex flex-col items-center gap-2">
-        <div className="w-full max-w-xs space-y-1.5">
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
-            <span>{statusText}</span>
-            <span className="font-mono text-cyan-300">{pct}%</span>
-          </div>
-          <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-            <div
-              style={{ width: `${pct}%` }}
-              className="h-full bg-gradient-to-r from-rose-500 via-pink-500 to-cyan-400 transition-all duration-200"
-            />
-          </div>
+        {/* App Name Emerges AFTER Logo Pieces Finish Assembling */}
+        <div className="mt-8 sm:mt-10 min-h-[72px] flex items-center justify-center">
+          {showBrandTitle && (
+            <h1
+              className="font-logo text-4xl sm:text-7xl font-black uppercase bg-gradient-to-r from-cyan-200 via-white to-fuchsia-300 bg-clip-text text-transparent drop-shadow-[0_0_38px_rgba(236,72,153,0.75)] netflix-title-reveal"
+            >
+              LENKYX
+            </h1>
+          )}
         </div>
       </div>
     </div>
@@ -467,7 +571,7 @@ export const CinemaPrerollIntro: React.FC<{
         }`}
       >
         <div className="mb-4">
-          <ShatteredMirrorLogo sizeClass="w-24 h-24 sm:w-28 sm:h-28" />
+          <ShatteredMirrorLogo sizeClass="w-24 h-24 sm:w-28 sm:h-28" durationMode="fast" />
         </div>
         <div className="text-[10px] sm:text-xs font-black tracking-[0.26em] uppercase text-emerald-300 mb-1">
           ✓ OFICIAL · 100% SEGURO & VERIFICADO · {subtitle}
