@@ -321,9 +321,9 @@ export const UserAuthModal: React.FC<Props> = ({
                 style={{ transform: 'rotateX(68deg) rotateY(16deg)' }}
               />
               <img
-                src="/covers/album-official.jpg"
-                alt="LENKYX Cosmic Phonk"
-                className="w-16 h-16 rounded-2xl object-cover border border-white/25 shadow-[0_0_32px_rgba(236,72,153,0.55)]"
+                src="/covers/icon-512.png"
+                alt="LENKYX"
+                className="w-16 h-16 object-contain lenkyx-logo-3d"
               />
             </div>
 

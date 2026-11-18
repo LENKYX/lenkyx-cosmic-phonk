@@ -3,7 +3,7 @@ import { Sparkles, FastForward, Music, Clapperboard, Film, Trophy, QrCode, Heart
 
 const INTRO_HIGHLIGHTS = [
   {
-    img: '/covers/album-official.jpg',
+    img: '/covers/icon-512.png',
     title: 'LENKYX · UNIVERSO LIVRE',
     sub: 'Som Pesado, Clipes em HD, Cinema & Arena Ao Vivo',
     tip: 'Sem cadastro, sem login e zero anúncios — som direto no celular, PC ou Smart TV.',

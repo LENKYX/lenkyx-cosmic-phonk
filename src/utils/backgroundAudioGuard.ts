@@ -36,7 +36,7 @@ export function syncBackgroundMediaSession(meta: MediaGuardMeta, handlers: Media
   if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
 
   try {
-    const absCover = new URL(meta.artworkUrl || '/covers/album-official.jpg', window.location.origin).href;
+    const absCover = new URL(meta.artworkUrl || '/covers/icon-512.png', window.location.origin).href;
     navigator.mediaSession.metadata = new MediaMetadata({
       title: meta.title || 'LENKYX',
       artist: meta.artist || 'LENKYX',

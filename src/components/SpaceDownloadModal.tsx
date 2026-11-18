@@ -97,11 +97,11 @@ export const SpaceDownloadModal: React.FC<Props> = ({
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="relative w-14 h-14 rounded-2xl p-[2px] bg-gradient-to-br from-pink-500 via-purple-500 to-cyan-400 shadow-[0_0_25px_rgba(236,72,153,0.55)] shrink-0">
+              <div className="relative w-14 h-14 shrink-0">
                 <img
-                  src="/covers/album-official.jpg"
-                  alt="LENKYX Cosmic Phonk"
-                  className="w-full h-full object-cover rounded-[14px]"
+                  src="/covers/icon-512.png"
+                  alt="LENKYX"
+                  className="w-full h-full object-contain lenkyx-logo-3d"
                 />
                 <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-cyan-400 text-black flex items-center justify-center shadow">
                   <Rocket className="w-3.5 h-3.5" />

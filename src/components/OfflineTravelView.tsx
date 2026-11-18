@@ -511,7 +511,7 @@ export const OfflineTravelView: React.FC<Props> = ({
                       </span>
                       <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-black shrink-0">
                         <img
-                          src={item.coverUrl || '/covers/album-official.jpg'}
+                          src={item.coverUrl || '/covers/icon-512.png'}
                           alt={item.title}
                           loading="lazy"
                           className="w-full h-full object-cover"

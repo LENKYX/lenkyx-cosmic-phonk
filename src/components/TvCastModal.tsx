@@ -201,9 +201,9 @@ export const TvCastModal: React.FC<Props> = ({
             <>
               <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 flex items-center gap-3">
                 <img
-                  src={currentMedia.coverUrl || '/covers/album-official.jpg'}
+                  src={currentMedia.coverUrl || '/covers/icon-512.png'}
                   alt={currentMedia.title}
-                  className="w-12 h-12 rounded-xl object-cover border border-cyan-400/40 shrink-0"
+                  className="w-12 h-12 rounded-xl object-cover shrink-0"
                 />
                 <div className="min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-wider text-pink-300">

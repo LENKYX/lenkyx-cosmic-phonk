@@ -368,7 +368,7 @@ export async function importLocalMediaToFolder(
       genre: folder.title,
       bpm: 128,
       key: 'Am',
-      coverUrl: '/covers/album-official.jpg',
+      coverUrl: '/covers/icon-512.png',
       audioUrl: '',
       videoUrl: isVid ? 'local' : undefined,
       mediaKind: isVid ? 'video' : 'audio',

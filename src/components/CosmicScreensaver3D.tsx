@@ -135,7 +135,7 @@ const STORAGE_PREFS_KEY = 'lenkyx_screensaver_prefs_v1';
 
 const PRESET_COVERS: { id: string; label: string; url: string }[] = [
   { id: 'preset-album', label: 'Capa Oficial Cosmic Phonk', url: '/covers/album-official.jpg' },
-  { id: 'preset-avatar', label: 'LENKYX Portal', url: '/covers/avatar.jpg' },
+  { id: 'preset-avatar', label: 'LENKYX Logo 3D', url: '/covers/icon-512.png' },
   { id: 'preset-01', label: 'Faixa 01 · Nebulosa', url: '/covers/track-01.jpg' },
   { id: 'preset-02', label: 'Faixa 02 · Drift', url: '/covers/track-02.jpg' },
   { id: 'preset-05', label: 'Faixa 05 · Órbita', url: '/covers/track-05.jpg' },

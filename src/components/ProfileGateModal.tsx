@@ -13,7 +13,7 @@ export const DEFAULT_WORLD_PROFILES: WorldProfile[] = [
     avatarColor: 'from-rose-500 via-pink-500 to-purple-600',
     subtitle: 'Acesso completo · Músicas, Clipes, Séries & Filmes em HD',
     tags: ['Músicas Mundiais', 'Clipes Oficiais', 'Cinema HD'],
-    heroImg: '/covers/album-official.jpg',
+    heroImg: '/covers/icon-512.png',
     focusTab: 'catalog',
   },
   {
@@ -159,7 +159,7 @@ export const ProfileGateModal: React.FC<Props> = ({
         : 'Perfil Personalizado · Sem login e sem cadastro',
       tags: newIsKids ? ['Infantil', 'Família'] : ['Músicas', 'Clipes', 'Cinema'],
       isKids: newIsKids,
-      heroImg: newFocusTab === 'movies' ? '/covers/track-05.jpg' : '/covers/album-official.jpg',
+      heroImg: newFocusTab === 'movies' ? '/covers/track-05.jpg' : '/covers/icon-512.png',
       focusTab: newFocusTab,
     };
     const next = [...profiles, created];
