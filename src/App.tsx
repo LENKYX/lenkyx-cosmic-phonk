@@ -99,7 +99,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   artistName: 'LENKYX',
   brandSubtitle: 'COSMIC PHONK',
   tagline: 'Música Futurista · Cosmic Phonk & Funk Melody · Rumo às 1.000 Faixas',
-  pixKey: '2342f59b-02a2-403e-bb0e-2b5c4d2e997e',
+  pixKey: '41651191808',
   pixKeyConfigured: true,
   pixName: 'LENKYX COSMIC PHONK',
   pixCity: 'CAMPO GRANDE',

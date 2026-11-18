@@ -125,7 +125,19 @@ function readDb() {
   }
   try {
     const parsed = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
-    return migrateIfNeeded(parsed);
+    const migrated = migrateIfNeeded(parsed);
+    if (
+      migrated?.settings &&
+      (!migrated.settings.pixKeyConfigured ||
+        !migrated.settings.pixKey ||
+        migrated.settings.pixKey === 'lenkyx.cosmic@pix.exemplo.com')
+    ) {
+      migrated.settings.pixKey = '41651191808';
+      migrated.settings.pixKeyConfigured = true;
+      migrated.settings.pixName = migrated.settings.pixName || 'LENKYX COSMIC PHONK';
+      writeDb(migrated);
+    }
+    return migrated;
   } catch {
     const init = getInitialDb();
     fs.writeFileSync(DB_PATH, JSON.stringify(init, null, 2), 'utf-8');
