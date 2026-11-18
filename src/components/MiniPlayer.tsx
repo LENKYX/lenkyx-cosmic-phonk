@@ -17,8 +17,11 @@ import {
   WifiOff,
   Film,
   X,
+  AudioWaveform,
 } from 'lucide-react';
 import { AudioVersion, Track } from '../types';
+
+export type BassBoostLevel = 0 | 1 | 2 | 3;
 
 interface Props {
   track: Track | null;
@@ -31,6 +34,9 @@ interface Props {
   duration: number;
   volume: number;
   muted: boolean;
+  bassBoostLevel?: BassBoostLevel;
+  bassBoostAvailable?: boolean;
+  onCycleBassBoost?: () => void;
   onTogglePlay: () => void;
   onSelectVersion: (ver: AudioVersion) => void;
   onPrev: () => void;
@@ -63,6 +69,9 @@ export const MiniPlayer: React.FC<Props> = ({
   duration,
   volume,
   muted,
+  bassBoostLevel = 0,
+  bassBoostAvailable = true,
+  onCycleBassBoost,
   onTogglePlay,
   onPrev,
   onNext,
@@ -80,6 +89,15 @@ export const MiniPlayer: React.FC<Props> = ({
   const bigCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [expanded, setExpanded] = useState(false);
 
+  const bassLabel =
+    bassBoostLevel === 3
+      ? 'Subwoofer'
+      : bassBoostLevel === 2
+        ? 'Pesado'
+        : bassBoostLevel === 1
+          ? 'Suave'
+          : 'Graves +';
+
   useEffect(() => {
     const drawLoop = (canvas: HTMLCanvasElement | null, bars: number) => {
       if (!canvas) return () => {};
@@ -87,12 +105,16 @@ export const MiniPlayer: React.FC<Props> = ({
       if (!ctx) return () => {};
       let raf = 0;
       let phase = 0;
-      const draw = () => {
+      let lastDraw = 0;
+      const draw = (now: number) => {
+        raf = requestAnimationFrame(draw);
+        if (now - lastDraw < 44) return; // Smooth ~22fps cap so audio never stutters on mobile
+        lastDraw = now;
         const w = canvas.width;
         const h = canvas.height;
         ctx.clearRect(0, 0, w, h);
         const bw = w / bars;
-        phase += isPlaying ? 0.16 : 0.02;
+        phase += isPlaying ? 0.22 : 0.03;
         for (let i = 0; i < bars; i++) {
           const amp = isPlaying
             ? (Math.sin(phase + i * 0.52) * 0.5 + 0.5) * 0.72 + (Math.cos(phase * 1.5 - i * 0.35) * 0.5 + 0.5) * 0.28
@@ -105,14 +127,13 @@ export const MiniPlayer: React.FC<Props> = ({
           ctx.fillStyle = grad;
           ctx.fillRect(i * bw + 1, h - bh, Math.max(2, bw - 2), bh);
         }
-        raf = requestAnimationFrame(draw);
       };
-      draw();
+      raf = requestAnimationFrame(draw);
       return () => cancelAnimationFrame(raf);
     };
 
-    const stopMini = drawLoop(canvasRef.current, 18);
-    const stopBig = expanded ? drawLoop(bigCanvasRef.current, 36) : () => {};
+    const stopMini = drawLoop(canvasRef.current, 16);
+    const stopBig = expanded ? drawLoop(bigCanvasRef.current, 32) : () => {};
     return () => {
       stopMini();
       stopBig();
@@ -223,7 +244,21 @@ export const MiniPlayer: React.FC<Props> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 pb-2">
+            <div className="grid grid-cols-4 gap-2 pb-2">
+              {onCycleBassBoost && (
+                <button
+                  onClick={onCycleBassBoost}
+                  disabled={!bassBoostAvailable}
+                  className={`py-2.5 px-2 rounded-xl text-[11px] font-extrabold flex flex-col items-center justify-center gap-1 border transition ${
+                    bassBoostLevel > 0
+                      ? 'bg-gradient-to-br from-pink-500/35 to-cyan-500/35 border-pink-400 text-white shadow-[0_0_18px_rgba(236,72,153,0.4)]'
+                      : 'bg-white/10 border-white/15 text-white hover:bg-white/20 disabled:opacity-45'
+                  }`}
+                >
+                  <AudioWaveform className="w-4 h-4 text-pink-300" />
+                  <span className="truncate max-w-full">{bassLabel}</span>
+                </button>
+              )}
               <button
                 onClick={() => onToggleOffline(track)}
                 disabled={isDownloadingOffline}
@@ -273,9 +308,9 @@ export const MiniPlayer: React.FC<Props> = ({
         </div>
       )}
 
-      {/* ALWAYS-VISIBLE YOUTUBE MUSIC STYLE BOTTOM PLAYER BAR (Pinned solid to viewport!) */}
+      {/* ON-DEMAND BOTTOM PLAYER BAR */}
       <div className="fixed bottom-14 md:bottom-0 left-0 md:left-60 lg:left-64 right-0 z-40 bg-[#0b0618]/96 backdrop-blur-2xl border-t border-white/15 shadow-[0_-10px_35px_rgba(0,0,0,0.85)]">
-        {/* YouTube Music Top Edge Interactive Progress Bar */}
+        {/* Top Edge Interactive Progress Bar */}
         <div
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -344,8 +379,23 @@ export const MiniPlayer: React.FC<Props> = ({
             </button>
           </div>
 
-          {/* Right: Clip, Offline & Volume */}
-          <div className="flex items-center gap-1 justify-end md:w-72">
+          {/* Right: Bass Boost, Clip, Offline & Volume */}
+          <div className="flex items-center gap-1 justify-end md:w-80">
+            {onCycleBassBoost && (
+              <button
+                onClick={onCycleBassBoost}
+                disabled={!bassBoostAvailable}
+                className={`px-2 py-1 rounded-lg border text-[10px] font-black flex items-center gap-1 shrink-0 transition ${
+                  bassBoostLevel > 0
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 border-pink-300 text-white shadow-[0_0_12px_rgba(236,72,153,0.5)]'
+                    : 'bg-white/10 hover:bg-white/20 border-white/15 text-purple-100 disabled:opacity-45'
+                }`}
+                title="Turbina os graves da música (Off / Suave / Pesado / Subwoofer)"
+              >
+                <AudioWaveform className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{bassLabel}</span>
+              </button>
+            )}
             {track.youtubeVideoId && onWatchClip && (
               <button
                 onClick={onWatchClip}

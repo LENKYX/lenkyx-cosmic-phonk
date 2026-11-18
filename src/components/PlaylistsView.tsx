@@ -404,8 +404,8 @@ export const PlaylistsView: React.FC<Props> = ({
           <form onSubmit={handleUploadSubmit} className="w-full max-w-md rounded-2xl glass-panel neon-border p-5 space-y-3.5">
             <h3 className="font-display text-base font-extrabold text-white">COLOCAR MINHA MÚSICA NO APP</h3>
             <p className="text-[11px] text-purple-200/80">
-              Suba qualquer música MP3 / WAV / M4A do seu celular ou PC para ouvir no player, salvar nas suas playlists ou
-              mixar na Mesa de DJ!
+              Suba qualquer música MP3 / WAV / M4A do seu celular ou PC para ouvir no player com Grave Turbinado ou
+              salvar nas suas playlists pessoais!
             </p>
             <div className="grid grid-cols-2 gap-2.5">
               <label className="cursor-pointer rounded-xl border-2 border-dashed border-pink-500/45 bg-pink-500/5 p-3 text-center flex flex-col items-center gap-1">

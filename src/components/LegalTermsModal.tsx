@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ShieldCheck, Music2, Globe2, Mail, Scale } from 'lucide-react';
+import { X, ShieldCheck, Music2, Globe2, Mail, Scale, QrCode, Lock } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -19,16 +19,15 @@ export const LegalTermsModal: React.FC<Props> = ({ open, onClose, creatorEmail }
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-2xl max-h-[90dvh] flex flex-col rounded-3xl overflow-hidden bg-[#0a0418] border border-cyan-400/40 shadow-[0_0_60px_rgba(34,211,238,0.25)] text-white"
       >
-        {/* Header */}
         <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e] shrink-0">
           <div className="flex items-center gap-2.5">
             <Scale className="w-5 h-5 text-cyan-300" />
             <div>
               <h2 className="text-sm sm:text-base font-black text-white">
-                Direitos Autorais, Termos & Proteção DMCA (Safe Harbor)
+                Termos de Uso, Direitos Autorais & Privacidade (LENKYX)
               </h2>
               <p className="text-[11px] text-cyan-300/85">
-                LENKYX Cosmic Phonk · Transparência Legal e Autoria Original
+                Transparência Legal · Plataforma Sem Anúncios e Sem Cadastro
               </p>
             </div>
           </div>
@@ -41,72 +40,68 @@ export const LegalTermsModal: React.FC<Props> = ({ open, onClose, creatorEmail }
           </button>
         </div>
 
-        {/* Scrollable Legal Clauses */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs text-purple-100/90 leading-relaxed">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs text-slate-100/90 leading-relaxed">
           <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/35 p-4 space-y-1.5">
             <div className="font-black text-emerald-300 flex items-center gap-1.5 text-sm">
-              <Music2 className="w-4 h-4" /> 1. Autoria Original LENKYX Cosmic Phonk
+              <Music2 className="w-4 h-4" /> 1. Obras Autorais & Identidade LENKYX
             </div>
             <p>
-              Todas as faixas oficiais do álbum <strong>Cosmic Phonk</strong> (versões V1 e V2), capas visuais exclusivas,
-              visualizadores 3D/WebGL2, código-fonte e identidade visual da marca <strong>LENKYX</strong> são obras
-              originais criadas e publicadas pelo criador titular deste portal.
+              As faixas musicais autorais publicadas no catálogo <strong>LENKYX</strong>, artes visuais exclusivas,
+              experiência de interface e código-fonte deste aplicativo pertencem ao seu criador titular e são
+              oferecidos gratuitamente para audição pessoal e compartilhamento com amigos.
             </p>
           </div>
 
           <div className="rounded-2xl bg-cyan-500/10 border border-cyan-400/35 p-4 space-y-1.5">
             <div className="font-black text-cyan-300 flex items-center gap-1.5 text-sm">
-              <Globe2 className="w-4 h-4" /> 2. Reprodução de Fontes Públicas Oficiais (Embeds & Streams Abertos)
+              <Globe2 className="w-4 h-4" /> 2. Músicas, Clipes, Cinema, Séries & Arena Esportiva
             </div>
             <p>
-              Os conteúdos de busca mundial (clipes musicais oficiais, vídeos curtos, cinema em domínio público no
-              Archive.org e canais de TV abertos) são reproduzidos diretamente por meio de players oficiais incorporados
-              (<em>YouTube IFrame Player API</em>) ou links públicos abertos, sem hospedagem, pirataria ou comercialização de
-              arquivos protegidos de terceiros nos servidores do LENKYX.
+              Os conteúdos de busca global — incluindo clipes musicais, filmes, séries organizadas por temporadas,
+              animes e transmissões esportivas de Futebol e UFC/MMA — são indexados em tempo real a partir de fontes
+              públicas abertas e reproduzidos diretamente por players oficiais incorporados dentro do LENKYX, sem
+              hospedagem ou comercialização de arquivos protegidos de terceiros em nossos servidores.
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-purple-500/10 border border-purple-400/35 p-4 space-y-1.5">
+            <div className="font-black text-purple-200 flex items-center gap-1.5 text-sm">
+              <Lock className="w-4 h-4 text-purple-300" /> 3. Acesso Sem Cadastro & Privacidade Local
+            </div>
+            <p>
+              O LENKYX funciona <strong>100% sem cadastro e sem login</strong>. Não exigimos e-mail, senha ou dados
+              pessoais dos visitantes. Suas playlists personalizadas e downloads offline ficam armazenados apenas no
+              próprio aparelho ou navegador, e apenas uma contagem anônima de acessos simultâneos é exibida em tempo real.
             </p>
           </div>
 
           <div className="rounded-2xl bg-pink-500/10 border border-pink-400/35 p-4 space-y-1.5">
             <div className="font-black text-pink-300 flex items-center gap-1.5 text-sm">
-              <ShieldCheck className="w-4 h-4" /> 3. Conteúdo da Comunidade & Cláusula DMCA Safe Harbor
+              <QrCode className="w-4 h-4" /> 4. Plataforma Gratuita, Sem Anúncios & Apoio Exclusivo via PIX
             </div>
             <p>
-              Vídeos curtos, transmissões ao vivo, comentários e mensagens enviados por usuários são de responsabilidade
-              exclusiva de seus respectivos autores. Em conformidade com as normas internacionais de <strong>Safe Harbor
-              (DMCA / Marco Civil da Internet)</strong>, o portal mantém canal direto de atendimento para análise e
-              remoção imediata de qualquer conteúdo contestado por titulares legítimos, protegendo a continuidade
-              regular do aplicativo e do site no ar.
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-amber-500/10 border border-amber-400/35 p-4 space-y-1.5">
-            <div className="font-black text-amber-300 flex items-center gap-1.5 text-sm">
-              <ShieldCheck className="w-4 h-4" /> 4. Doações Voluntárias, Tokens & Taxa de 5% da Plataforma
-            </div>
-            <p>
-              O acesso às músicas, filmes, séries, canais abertos e redes do aplicativo é gratuito. Quaisquer valores
-              enviados via <strong>PIX / PicPay, cartão internacional, criptomoedas ou tokens de apoio</strong> têm
-              caráter de <strong>doação voluntária e lícita</strong> para incentivo artístico e infraestrutura. Em repasses
-              e transações processadas na plataforma, aplica-se a comissão mínima de <strong>5%</strong> destinada à
-              manutenção de servidores, bancos de dados e desenvolvimento do universo LENKYX.
+              O acesso a todas as seções do site e aplicativo é totalmente gratuito e livre de propagandas. O projeto
+              aceita <strong>exclusivamente doações voluntárias via PIX (PicPay)</strong> para custear servidores,
+              hospedagem e atualizações diárias, sem cobrança de assinatura, cartão, criptomoedas ou taxas ocultas.
             </p>
           </div>
 
           <div className="rounded-2xl bg-white/[0.05] border border-white/15 p-4 space-y-1.5">
             <div className="font-black text-white flex items-center gap-1.5 text-sm">
-              <Mail className="w-4 h-4 text-amber-300" /> 5. Canal Oficial para Notificações & Contato
+              <ShieldCheck className="w-4 h-4 text-amber-300" /> 5. Cláusula Safe Harbor (DMCA / Marco Civil) & Contato
             </div>
             <p>
-              Titulares de direitos autorais podem enviar notificação formal indicando a URL/título específico para
-              revisão prioritária em até 24 horas:
+              Em conformidade com as normas de Safe Harbor (DMCA e Marco Civil da Internet), titulares legítimos de
+              direitos autorais podem solicitar revisão ou remoção imediata de qualquer link indexado indicando o título
+              específico:
               <br />
-              <strong>Responsável:</strong> LENKYX Productions ·{' '}
-              <span className="text-cyan-300">{creatorEmail || 'Contato oficial via Painel Criador / App LENKYX'}</span>
+              <span className="inline-flex items-center gap-1 mt-1 text-cyan-300 font-bold">
+                <Mail className="w-3.5 h-3.5" /> {creatorEmail || 'Contato oficial via Portal LENKYX'}
+              </span>
             </p>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="px-5 py-3 border-t border-white/10 bg-[#070212] flex justify-end shrink-0">
           <button
             onClick={onClose}

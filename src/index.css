@@ -2,16 +2,23 @@
 
 @layer base {
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     background-color: #04010c;
-    color: #ffffff;
+    color: #f8fafc;
     min-height: 100vh;
     overflow-x: hidden;
+    letter-spacing: -0.005em;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
 .font-display {
-  font-family: 'Orbitron', 'Inter', sans-serif;
+  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.font-logo {
+  font-family: 'Orbitron', 'Space Grotesk', sans-serif;
 }
 
 .neon-text {
@@ -155,6 +162,41 @@ input[type='range'].dj-crossfader::-webkit-slider-thumb {
   border: 2px solid #ffffff;
   cursor: grab;
   box-shadow: 0 0 14px rgba(168, 85, 247, 0.85);
+}
+
+/* Smooth gentle logo float & aura pulse for LENKYX entry splash */
+@keyframes lenkyxLogoFloat {
+  0%, 100% {
+    transform: translate3d(0, 0px, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0) scale(1.035);
+  }
+}
+
+@keyframes lenkyxAuraOrbit {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.08);
+    opacity: 0.9;
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    opacity: 0.55;
+  }
+}
+
+.lenkyx-logo-float {
+  animation: lenkyxLogoFloat 4.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+.lenkyx-aura-orbit {
+  animation: lenkyxAuraOrbit 9s linear infinite;
+  will-change: transform, opacity;
 }
 
 /* GTA-5 style smooth Ken Burns motion for loading artwork */

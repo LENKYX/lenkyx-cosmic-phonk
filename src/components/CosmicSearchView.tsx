@@ -9,7 +9,6 @@ import {
   Clapperboard,
   Film,
   Play,
-  BookOpen,
   X,
   Trash2,
   Clock,
@@ -35,13 +34,6 @@ interface AiSummary {
   highlights: string[];
   imageUrl?: string;
   sourceUrl?: string;
-}
-
-interface ReaderPage {
-  url: string;
-  domain: string;
-  title: string;
-  paragraphs: { tag: string; text: string }[];
 }
 
 interface Props {
@@ -114,11 +106,6 @@ export const CosmicSearchView: React.FC<Props> = ({
     }
   });
 
-  const [readerOpen, setReaderOpen] = useState(false);
-  const [readerLoading, setReaderLoading] = useState(false);
-  const [readerPage, setReaderPage] = useState<ReaderPage | null>(null);
-  const [readerError, setReaderError] = useState('');
-
   const suggestTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -167,26 +154,6 @@ export const CosmicSearchView: React.FC<Props> = ({
     };
   }, [query]);
 
-  const openSiteInReader = async (url: string) => {
-    setReaderOpen(true);
-    setReaderLoading(true);
-    setReaderPage(null);
-    setReaderError('');
-    try {
-      const r = await fetch(`/api/web-reader?url=${encodeURIComponent(url)}`);
-      const data = await r.json();
-      if (data.ok && data.page) {
-        setReaderPage(data.page);
-      } else {
-        setReaderError(data.error || 'Não foi possível carregar o resumo desta página.');
-      }
-    } catch {
-      setReaderError('Não foi possível carregar o leitor interno agora.');
-    } finally {
-      setReaderLoading(false);
-    }
-  };
-
   const executeSearch = async (
     rawTerm: string,
     mode: 'ai' | 'web' = searchMode,
@@ -195,12 +162,6 @@ export const CosmicSearchView: React.FC<Props> = ({
   ) => {
     const clean = rawTerm.trim();
     if (!clean) return;
-
-    if (/^(https?:\/\/)?[a-z0-9-]+(\.[a-z]{2,})(\/.*)?$/i.test(clean) && !clean.includes(' ')) {
-      const normalized = clean.startsWith('http') ? clean : `https://${clean}`;
-      void openSiteInReader(normalized);
-      return;
-    }
 
     if (forcedCat) setActiveCat(forcedCat);
     setShowSuggest(false);
@@ -718,18 +679,22 @@ export const CosmicSearchView: React.FC<Props> = ({
             </div>
           )}
 
-          {/* 4. Safe Web Results (Opens inside LENKYX Reader, zero external competitor leaks) */}
+          {/* 4. Direct Topic Discovery inside LENKYX (No Article Reader / Zero External Redirects) */}
           {!loading && hasSearched && (activeCat === 'all' || activeCat === 'web') && webResults.length > 0 && (
             <div className="space-y-2.5">
               <h2 className="font-display text-sm font-black text-white flex items-center gap-2">
-                <Globe2 className="w-4 h-4 text-cyan-400" /> Sites & Artigos ({webResults.length})
+                <Globe2 className="w-4 h-4 text-cyan-400" /> Descobertas Relacionadas ({webResults.length})
               </h2>
               <div className="space-y-2">
                 {webResults.map((r, i) => (
-                  <div
+                  <button
                     key={`${r.url}-${i}`}
-                    onClick={() => void openSiteInReader(r.url)}
-                    className="p-3 rounded-2xl cosmic-card-3d flex items-center justify-between gap-3 cursor-pointer hover:bg-white/[0.06] transition"
+                    type="button"
+                    onClick={() => {
+                      setQuery(r.title);
+                      void executeSearch(r.title, searchMode, privateMode, 'music');
+                    }}
+                    className="w-full text-left p-3 rounded-2xl cosmic-card-3d flex items-center justify-between gap-3 hover:bg-white/[0.06] transition"
                   >
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <div className="text-[10px] font-bold text-emerald-300 truncate">{r.domain}</div>
@@ -737,59 +702,15 @@ export const CosmicSearchView: React.FC<Props> = ({
                       {r.snippet && <p className="text-[11px] text-slate-300/80 line-clamp-2">{r.snippet}</p>}
                     </div>
                     <span className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-100 text-[10px] font-black shrink-0 flex items-center gap-1">
-                      <BookOpen className="w-3 h-3" /> Ler
+                      <Play className="w-3 h-3" /> Ouvir / Ver
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           )}
         </section>
       </div>
-
-      {/* === SAFE IN-APP WEB SITE READER MODAL === */}
-      {readerOpen && (
-        <div className="fixed inset-0 z-[9995] bg-black/85 backdrop-blur-xl p-3 sm:p-6 flex items-center justify-center">
-          <div className="w-full max-w-3xl max-h-[88dvh] rounded-3xl glass-panel flex flex-col overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold text-emerald-300 truncate">
-                  {readerPage?.domain || 'Leitor LENKYX'}
-                </div>
-                <div className="text-sm font-black text-white truncate">
-                  {readerPage?.title || 'Carregando...'}
-                </div>
-              </div>
-              <button
-                onClick={() => setReaderOpen(false)}
-                className="p-2 rounded-full bg-white/10 hover:bg-red-500/80 text-white shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-3">
-              {readerLoading && (
-                <div className="py-12 text-center text-xs font-bold text-cyan-300">
-                  🌐 Carregando leitura limpa da página...
-                </div>
-              )}
-              {readerError && <p className="text-xs text-amber-200 text-center py-8">{readerError}</p>}
-              {readerPage?.paragraphs.map((p, idx) => (
-                <p
-                  key={idx}
-                  className={
-                    p.tag.startsWith('h')
-                      ? 'font-display text-sm sm:text-base font-black text-cyan-200 pt-2'
-                      : 'text-xs sm:text-sm text-slate-200 leading-relaxed'
-                  }
-                >
-                  {p.text}
-                </p>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

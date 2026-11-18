@@ -1,24 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles, FastForward, Music, Clapperboard, Film } from 'lucide-react';
+import { Sparkles, FastForward, Music, Clapperboard, Film, Trophy, QrCode, HeartHandshake, Share2 } from 'lucide-react';
 
-const GTA_COSMIC_SLIDES = [
+const INTRO_HIGHLIGHTS = [
   {
     img: '/covers/album-official.jpg',
-    title: 'LENKYX · MEU MUNDO',
-    sub: 'Músicas Completas, Clipes Oficiais & Cinema em HD',
-    tip: 'Sem cadastro, sem login — escolha seu perfil e curta no celular, PC ou TV.',
+    title: 'LENKYX · UNIVERSO LIVRE',
+    sub: 'Som Pesado, Clipes em HD, Cinema & Arena Ao Vivo',
+    tip: 'Sem cadastro, sem login e zero anúncios — som direto no celular, PC ou Smart TV.',
   },
   {
     img: '/covers/track-05.jpg',
-    title: 'CINEMA & SÉRIES HD',
-    sub: 'Filmes, Séries e Animes organizados para Celular, PC e TV',
-    tip: 'Deslize os carrosséis tipo Netflix ou toque nos pôsteres para assistir em tela cheia.',
+    title: 'CINEMA & SÉRIES POR TEMPORADA',
+    sub: 'Filmes, Séries organizadas em Temporadas & Animes em HD',
+    tip: 'Escolha a temporada, dê o play e aproveite a tela cheia sem interrupções.',
   },
   {
     img: '/covers/track-12.jpg',
-    title: 'MÚSICAS & ARTISTAS DO MUNDO',
-    sub: 'Pesquisa instantânea com Áudio, Clipes e Efeitos Visuais 3D',
-    tip: 'A barra de mídia aparece somente quando você dá Play em uma música.',
+    title: 'ARENA AO VIVO · FUTEBOL & UFC',
+    sub: 'Acompanhe Jogos ao Vivo, Cards do UFC e Lutas Exclusivas',
+    tip: 'Grave turbinado no player, busca inteligente e playlists livres no navegador.',
   },
 ];
 
@@ -27,30 +27,40 @@ interface Props {
   mode?: 'splash' | 'stage' | 'discreet_corner';
   statusText?: string;
   progress?: number;
+  dailyCollectedBrl?: number;
+  dailyGoalBrl?: number;
+  onlineCount?: number;
+  onOpenPix?: () => void;
+  onShareApp?: () => void;
   onSkip?: () => void;
 }
 
 export const CosmicGtaLoader: React.FC<Props> = ({
   open,
   mode = 'splash',
-  statusText = 'Preparando seu mundo & verificando atualizações...',
+  statusText = 'Preparando o som, cinema & arena ao vivo...',
   progress,
+  dailyCollectedBrl = 0,
+  dailyGoalBrl = 50,
+  onlineCount = 1,
+  onOpenPix,
+  onShareApp,
   onSkip,
 }) => {
   const [slideIdx, setSlideIdx] = useState(0);
-  const [autoPct, setAutoPct] = useState(18);
+  const [autoPct, setAutoPct] = useState(20);
   const [introPulse, setIntroPulse] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setIntroPulse(false);
-    const pulseT = window.setTimeout(() => setIntroPulse(true), 80);
+    const pulseT = window.setTimeout(() => setIntroPulse(true), 60);
     const t = window.setInterval(() => {
-      setSlideIdx((i) => (i + 1) % GTA_COSMIC_SLIDES.length);
+      setSlideIdx((i) => (i + 1) % INTRO_HIGHLIGHTS.length);
     }, 3400);
     const p = window.setInterval(() => {
-      setAutoPct((v) => (v >= 97 ? 97 : v + Math.max(4, Math.round((100 - v) * 0.2))));
-    }, 140);
+      setAutoPct((v) => (v >= 98 ? 98 : v + Math.max(3, Math.round((100 - v) * 0.16))));
+    }, 150);
     return () => {
       window.clearTimeout(pulseT);
       window.clearInterval(t);
@@ -61,12 +71,12 @@ export const CosmicGtaLoader: React.FC<Props> = ({
   if (!open) return null;
 
   const pct = typeof progress === 'number' ? Math.min(100, Math.max(0, Math.round(progress))) : autoPct;
-  const current = GTA_COSMIC_SLIDES[slideIdx % GTA_COSMIC_SLIDES.length];
+  const current = INTRO_HIGHLIGHTS[slideIdx % INTRO_HIGHLIGHTS.length];
+  const pixPct = dailyGoalBrl > 0 ? Math.min(100, Math.round((dailyCollectedBrl / dailyGoalBrl) * 100)) : 0;
 
-  // 1. Discreet Corner Floating Update Card
   if (mode === 'discreet_corner') {
     return (
-      <div className="fixed bottom-6 right-3 sm:right-5 z-[9980] w-72 rounded-2xl overflow-hidden border border-cyan-400/40 bg-[#070214]/92 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.85)] pointer-events-auto animate-fade-in">
+      <div className="fixed bottom-6 right-3 sm:right-5 z-[9980] w-72 rounded-2xl overflow-hidden border border-cyan-400/40 bg-[#070214]/92 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.85)] pointer-events-auto">
         <div className="px-3.5 py-3 flex items-center justify-between gap-2.5">
           <div className="min-w-0">
             <div className="text-[10px] font-black text-pink-300 flex items-center gap-1">
@@ -90,15 +100,14 @@ export const CosmicGtaLoader: React.FC<Props> = ({
     );
   }
 
-  // 2. Stage Card (MoviesView catalog hydration)
   if (mode === 'stage') {
     return (
-      <div className="relative rounded-[28px] overflow-hidden border border-white/15 bg-[#050110] min-h-[300px] sm:min-h-[360px] flex flex-col justify-between shadow-[0_24px_70px_rgba(0,0,0,0.8)]">
+      <div className="relative rounded-[28px] overflow-hidden border border-white/15 bg-[#050110] min-h-[290px] sm:min-h-[340px] flex flex-col justify-between shadow-[0_24px_70px_rgba(0,0,0,0.8)]">
         <img
           key={current.img}
           src={current.img}
           alt={current.title}
-          className="absolute inset-0 w-full h-full object-cover opacity-50 gta-ken-burns"
+          className="absolute inset-0 w-full h-full object-cover opacity-45 gta-ken-burns"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#04010c] via-[#04010c]/55 to-black/50" />
         <div className="relative z-10 p-5 flex items-center justify-between gap-2">
@@ -109,7 +118,7 @@ export const CosmicGtaLoader: React.FC<Props> = ({
         <div className="relative z-10 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div className="max-w-lg space-y-1">
             <div className="text-xs sm:text-sm font-black text-white">{current.sub}</div>
-            <div className="text-[11px] text-purple-200/85 bg-black/55 border border-white/10 rounded-xl px-3 py-2 inline-block">
+            <div className="text-[11px] text-slate-200/90 bg-black/55 border border-white/10 rounded-xl px-3 py-2 inline-block">
               ✦ {current.tip}
             </div>
           </div>
@@ -133,61 +142,63 @@ export const CosmicGtaLoader: React.FC<Props> = ({
     );
   }
 
-  // 3. Cinematic Intro Screen (Netflix + Music Visual Entrance with Auto-Update Sync)
+  // Entry Splash Screen — Gentle Moving Logo + Special Effects + Daily PIX Goal Appeal
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#030009] text-white overflow-hidden select-none flex flex-col justify-between">
-      {/* Sweeping Atmospheric Light Curtains */}
+    <div className="fixed inset-0 z-[9999] bg-[#030009] text-white overflow-y-auto select-none flex flex-col justify-between">
+      {/* Radiant Special Effects Backdrop */}
       <div
-        className="absolute inset-0 pointer-events-none transition-all duration-1000"
+        className="fixed inset-0 pointer-events-none transition-all duration-1000"
         style={{
           background:
-            'radial-gradient(ellipse 70% 55% at 50% 45%, rgba(236,72,153,0.22), transparent 65%), radial-gradient(ellipse 65% 50% at 30% 60%, rgba(34,211,238,0.16), transparent 65%)',
+            'radial-gradient(ellipse 72% 58% at 50% 40%, rgba(236,72,153,0.26), transparent 65%), radial-gradient(ellipse 65% 50% at 25% 68%, rgba(34,211,238,0.18), transparent 65%), radial-gradient(ellipse 55% 45% at 78% 72%, rgba(168,85,247,0.18), transparent 65%)',
         }}
       />
-      {/* Vertical Cinema Light Ribbons */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden opacity-45">
+
+      {/* Orbiting Luminous Halos */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
         <div
-          className={`w-[520px] h-[520px] rounded-full border border-pink-500/35 blur-[2px] transition-transform duration-1000 ${
-            introPulse ? 'scale-125 opacity-70' : 'scale-50 opacity-10'
-          }`}
+          className="w-[460px] h-[460px] sm:w-[580px] sm:h-[580px] rounded-full border border-pink-400/25 lenkyx-aura-orbit"
+          style={{
+            background:
+              'conic-gradient(from 0deg, rgba(236,72,153,0.12), transparent 30%, rgba(34,211,238,0.16) 60%, transparent 90%)',
+          }}
         />
-        <div
-          className={`absolute w-[340px] h-[340px] rounded-full border-2 border-cyan-400/40 transition-transform duration-1000 delay-100 ${
-            introPulse ? 'scale-110 opacity-80' : 'scale-50 opacity-10'
-          }`}
-        />
+        <div className="absolute w-[310px] h-[310px] sm:w-[390px] sm:h-[390px] rounded-full border border-cyan-400/30 animate-pulse" />
       </div>
 
-      {/* Top Subtle Skip */}
-      <div className="relative z-10 p-5 sm:p-8 flex items-center justify-between">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.06] border border-white/10 text-[10px] font-black tracking-widest uppercase text-cyan-200">
-          <Sparkles className="w-3 h-3 text-pink-400" /> Meu Mundo de Lazer
+      {/* Top Status + Skip */}
+      <div className="relative z-10 p-4 sm:p-7 flex items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.07] border border-white/15 text-[11px] font-bold text-emerald-300 backdrop-blur-md">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <span>{onlineCount} {onlineCount === 1 ? 'pessoa curtindo agora' : 'pessoas curtindo agora'}</span>
         </div>
         {onSkip && (
           <button
             onClick={onSkip}
-            className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-black text-white flex items-center gap-1.5 backdrop-blur-md transition"
+            className="px-4 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-xs font-black text-white flex items-center gap-1.5 backdrop-blur-md transition"
           >
-            <span>Entrar</span>
+            <span>Entrar no App</span>
             <FastForward className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
-      {/* Center Iconic Emblem Animation */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-6 text-center space-y-5">
+      {/* Center Gentle Floating Emblem + Daily PIX Support Prompt */}
+      <div className="relative z-10 flex flex-col items-center justify-center px-5 py-3 text-center space-y-4 my-auto">
         <div
           className={`relative transition-all duration-1000 ease-out ${
-            introPulse ? 'scale-100 opacity-100 translate-y-0' : 'scale-75 opacity-0 translate-y-4'
+            introPulse ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >
-          <div className="absolute -inset-6 rounded-full bg-gradient-to-r from-rose-600/45 via-pink-500/35 to-cyan-400/45 blur-3xl animate-pulse" />
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl p-1 bg-gradient-to-br from-rose-500 via-pink-500 to-cyan-400 shadow-[0_0_60px_rgba(236,72,153,0.65)]">
-            <img
-              src="/covers/avatar.jpg"
-              alt="LENKYX"
-              className="w-full h-full rounded-[1.35rem] object-cover"
-            />
+          <div className="lenkyx-logo-float relative">
+            <div className="absolute -inset-7 rounded-full bg-gradient-to-tr from-rose-500/45 via-fuchsia-500/35 to-cyan-400/45 blur-3xl animate-pulse" />
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-[2rem] p-[3px] bg-gradient-to-br from-rose-500 via-pink-500 to-cyan-400 shadow-[0_0_70px_rgba(236,72,153,0.65)]">
+              <img
+                src="/covers/avatar.jpg"
+                alt="LENKYX"
+                className="w-full h-full rounded-[1.85rem] object-cover"
+              />
+            </div>
           </div>
         </div>
 
@@ -196,21 +207,66 @@ export const CosmicGtaLoader: React.FC<Props> = ({
             introPulse ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >
-          <h1 className="font-display text-4xl sm:text-6xl font-black tracking-[0.22em] text-white drop-shadow-[0_6px_30px_rgba(236,72,153,0.5)]">
+          <h1 className="font-logo text-4xl sm:text-6xl font-black tracking-[0.22em] text-white drop-shadow-[0_6px_30px_rgba(236,72,153,0.55)]">
             LENKYX
           </h1>
-          <div className="flex items-center justify-center gap-3 text-xs sm:text-sm font-black tracking-widest uppercase text-cyan-200/90">
-            <span className="flex items-center gap-1"><Music className="w-3.5 h-3.5 text-pink-400" /> Músicas</span>
+          <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs sm:text-sm font-bold tracking-wider uppercase text-cyan-200">
+            <span className="flex items-center gap-1"><Music className="w-3.5 h-3.5 text-pink-400" /> Som</span>
             <span className="text-white/30">•</span>
             <span className="flex items-center gap-1"><Film className="w-3.5 h-3.5 text-cyan-300" /> Clipes</span>
             <span className="text-white/30">•</span>
             <span className="flex items-center gap-1"><Clapperboard className="w-3.5 h-3.5 text-rose-400" /> Cinema</span>
+            <span className="text-white/30">•</span>
+            <span className="flex items-center gap-1"><Trophy className="w-3.5 h-3.5 text-amber-300" /> Futebol & UFC</span>
+          </div>
+        </div>
+
+        {/* Daily PIX Goal Appeal Card right on Intro */}
+        <div className="w-full max-w-md rounded-3xl bg-white/[0.06] backdrop-blur-xl border border-pink-400/35 p-4 space-y-2.5 shadow-[0_18px_50px_rgba(0,0,0,0.6)]">
+          <div className="flex items-center justify-between gap-2 text-xs font-extrabold">
+            <span className="text-pink-200 flex items-center gap-1.5">
+              <HeartHandshake className="w-4 h-4 text-pink-400" />
+              Ajude a manter o LENKYX 100% Sem Anúncios!
+            </span>
+            <span className="font-mono text-cyan-300">
+              R$ {dailyCollectedBrl.toFixed(0)} / R$ {dailyGoalBrl.toFixed(0)}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-200/90 leading-relaxed text-left">
+            Este espaço é gratuito e livre de propagandas. Qualquer valor via <strong>PIX</strong> ajuda a bater nossa{' '}
+            <strong>meta diária</strong> para pagar servidores e trazer músicas, filmes, séries e lutas ao vivo todos os dias!
+          </p>
+          <div className="h-2 w-full rounded-full bg-black/50 overflow-hidden border border-white/10">
+            <div
+              style={{ width: `${pixPct}%` }}
+              className="h-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500 transition-all duration-500"
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            {onOpenPix && (
+              <button
+                type="button"
+                onClick={onOpenPix}
+                className="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black text-xs font-black flex items-center gap-1.5 shadow hover:brightness-110 transition"
+              >
+                <QrCode className="w-3.5 h-3.5" /> Apoiar Meta Diária (PIX)
+              </button>
+            )}
+            {onShareApp && (
+              <button
+                type="button"
+                onClick={onShareApp}
+                className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Share2 className="w-3.5 h-3.5 text-emerald-300" /> Indicar pra Galera
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Bottom Auto-Update Sync Bar */}
-      <div className="relative z-10 p-6 sm:p-8 flex flex-col items-center gap-3">
+      {/* Bottom Sync Progress */}
+      <div className="relative z-10 p-5 sm:p-7 flex flex-col items-center gap-2">
         <div className="w-full max-w-xs space-y-1.5">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
             <span>{statusText}</span>
@@ -228,7 +284,7 @@ export const CosmicGtaLoader: React.FC<Props> = ({
   );
 };
 
-/* === NETFLIX-STYLE PRE-ROLL VISUAL INTRO BEFORE CONTENT PLAYS === */
+/* === CINEMA & ARENA PRE-ROLL VISUAL INTRO BEFORE CONTENT PLAYS === */
 export const CinemaPrerollIntro: React.FC<{
   open: boolean;
   title?: string;
@@ -241,8 +297,8 @@ export const CinemaPrerollIntro: React.FC<{
     if (!open) return;
     setPhase('in');
     const t1 = window.setTimeout(() => setPhase('zoom'), 120);
-    const t2 = window.setTimeout(() => setPhase('out'), 1550);
-    const t3 = window.setTimeout(() => onFinish(), 1950);
+    const t2 = window.setTimeout(() => setPhase('out'), 1450);
+    const t3 = window.setTimeout(() => onFinish(), 1850);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
@@ -258,7 +314,6 @@ export const CinemaPrerollIntro: React.FC<{
         phase === 'out' ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
-      {/* Sweeping vertical cinema light spectrum (original Netflix-inspired ribbon feel) */}
       <div
         className={`absolute inset-0 transition-transform duration-1000 ease-out ${
           phase === 'zoom' || phase === 'out' ? 'scale-125 opacity-90' : 'scale-90 opacity-40'
@@ -269,7 +324,6 @@ export const CinemaPrerollIntro: React.FC<{
         }}
       />
 
-      {/* Light beam columns */}
       <div className="absolute inset-0 flex items-center justify-center gap-3 pointer-events-none opacity-60">
         <div
           className={`w-1.5 sm:w-2 h-[75%] rounded-full bg-gradient-to-b from-transparent via-rose-500 to-transparent blur-[1px] transition-all duration-1000 ${
@@ -288,7 +342,6 @@ export const CinemaPrerollIntro: React.FC<{
         />
       </div>
 
-      {/* Central Emblem + Wordmark Zoom */}
       <div
         className={`relative z-10 flex flex-col items-center text-center px-6 transition-all duration-700 ease-out ${
           phase === 'in'
@@ -304,7 +357,7 @@ export const CinemaPrerollIntro: React.FC<{
         <div className="text-[10px] sm:text-xs font-black tracking-[0.38em] uppercase text-rose-400 mb-1">
           {subtitle}
         </div>
-        <div className="font-display text-3xl sm:text-5xl font-black tracking-[0.26em] text-white drop-shadow-[0_6px_32px_rgba(244,63,94,0.6)]">
+        <div className="font-logo text-3xl sm:text-5xl font-black tracking-[0.26em] text-white drop-shadow-[0_6px_32px_rgba(244,63,94,0.6)]">
           LENKYX
         </div>
         {title && (

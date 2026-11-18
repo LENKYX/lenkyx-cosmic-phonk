@@ -205,6 +205,23 @@ async function fetchInstantKnowledge(query) {
   return null;
 }
 
+async function fetchPollinationsAiSummary(query) {
+  try {
+    const prompt = `Responda em português do Brasil em no máximo 2 frases objetivas e criativas sobre: "${query}". Se for música, artista, filme ou série, destaque estilo, gênero e recomendação parecida.`;
+    const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}?model=openai`;
+    const r = await fetch(url, {
+      headers: { 'User-Agent': UA },
+      signal: AbortSignal.timeout(4200),
+    });
+    if (!r.ok) return '';
+    const txt = (await r.text()).trim();
+    if (!txt || txt.length < 20 || txt.startsWith('<')) return '';
+    return txt.slice(0, 420);
+  } catch {
+    return '';
+  }
+}
+
 export async function runCosmicWebSearch(rawQuery = '', options = {}) {
   const q = String(rawQuery || '').trim();
   const isPrivate = Boolean(options.privateMode);
@@ -228,24 +245,26 @@ export async function runCosmicWebSearch(rawQuery = '', options = {}) {
     }
   }
 
-  const [ddgData, knowledge] = await Promise.all([
+  const [ddgData, knowledge, pollinationsAns] = await Promise.all([
     fetchDuckDuckGoWeb(q),
     fetchInstantKnowledge(q),
+    mode === 'ai' ? fetchPollinationsAiSummary(q) : Promise.resolve(''),
   ]);
   const webResults = ddgData.results || [];
   const playableMedia = ddgData.playableMedia || [];
 
   let aiSummary = null;
-  if (knowledge || webResults.length > 0 || playableMedia.length > 0) {
+  if (pollinationsAns || knowledge || webResults.length > 0 || playableMedia.length > 0) {
     const bullets = webResults
       .slice(0, 3)
       .map((r) => `• ${r.title}: ${r.snippet || r.domain}`)
       .filter(Boolean);
     aiSummary = {
-      headline: knowledge?.title || `Síntese IA sobre "${q}"`,
+      headline: knowledge?.title || `Radar Sônico IA · "${q}"`,
       answer:
+        pollinationsAns ||
         knowledge?.summary ||
-        `Encontrei ${webResults.length} páginas e ${playableMedia.length} mídias reproduzíveis no LENKYX para "${q}".`,
+        `Encontrei ${playableMedia.length} mídias reproduzíveis para "${q}" direto no LENKYX.`,
       highlights: bullets,
       imageUrl: knowledge?.imageUrl || '',
       sourceUrl: knowledge?.sourceUrl || webResults[0]?.url || '',

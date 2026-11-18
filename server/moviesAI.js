@@ -37,9 +37,16 @@ export const MOVIE_CATEGORIES = [
     query: 'filme completo parte 1 parte 2 saga sequencia dublado hd',
   },
   {
+    id: 'cat-series-temporadas',
+    title: 'Séries Completas por Temporadas (T1 · T2 · T3)',
+    emoji: '📺',
+    mediaType: 'series',
+    query: 'serie completa temporada 1 temporada 2 todos episodios dublado hd',
+  },
+  {
     id: 'cat-series',
     title: 'Séries Internacionais & Episódios Dublados (HD)',
-    emoji: '📺',
+    emoji: '🎞️',
     mediaType: 'series',
     query: 'serie internacional completa dublado portugues episodio hd',
   },
@@ -638,4 +645,260 @@ export async function getMoviesDirectory(forceRefresh = false) {
     directoryCache = { ts: Date.now(), payload };
   }
   return payload;
+}
+
+function extractPlaylistVideoRenderers(node, out = []) {
+  if (!node || typeof node !== 'object') return out;
+  if (Array.isArray(node)) {
+    for (const item of node) extractPlaylistVideoRenderers(item, out);
+    return out;
+  }
+  if (node.playlistVideoRenderer && node.playlistVideoRenderer.videoId) {
+    out.push(node.playlistVideoRenderer);
+  }
+  for (const k of Object.keys(node)) {
+    if (k !== 'playlistVideoRenderer') extractPlaylistVideoRenderers(node[k], out);
+  }
+  return out;
+}
+
+const seriesSeasonCache = new Map();
+
+function sanitizeSeriesSearchTitle(raw = '') {
+  return String(raw || '')
+    .replace(/\b(temporada|season|epis[oó]dio|ep\.?|completo|completa|dublado|legendado|full\s*hd|1080p|720p|4k|hd|pt-br|parte\s*\d+)\b/gi, ' ')
+    .replace(/[\[\]()|#–—-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .slice(0, 5)
+    .join(' ');
+}
+
+export async function getSeriesSeasonsAndEpisodes({
+  title = '',
+  season = 1,
+  playlistId = '',
+  mediaType = 'series',
+} = {}) {
+  const cleanTitle = sanitizeSeriesSearchTitle(title) || 'Série Dublada';
+  const targetSeason = Math.max(1, Math.min(20, Number(season) || 1));
+  const pid = String(playlistId || '').trim();
+  const key = `${cleanTitle.toLowerCase()}|${targetSeason}|${pid}|${mediaType}`;
+  const cached = seriesSeasonCache.get(key);
+  if (cached && Date.now() - cached.ts < 1000 * 60 * 20) return cached.data;
+
+  let seasons = [{ number: 1, name: 'Temporada 1', episodeCount: 0 }];
+  let showSummary = '';
+  let showPoster = '';
+  let tvmazeEpisodes = [];
+
+  // 1. Free TVMaze / Jikan Open Metadata API for official Seasons & Episode Titles
+  if (mediaType === 'anime') {
+    try {
+      const jr = await fetch(
+        `https://api.jikan.moe/v4/anime?q=${encodeURIComponent(cleanTitle)}&limit=1`,
+        { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(4000) }
+      );
+      if (jr.ok) {
+        const jj = await jr.json();
+        const item = jj?.data?.[0];
+        if (item) {
+          showPoster = item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || '';
+          showSummary = item.synopsis ? String(item.synopsis).slice(0, 220) : '';
+          const totalEps = Number(item.episodes) || 12;
+          const numSeasons = Math.max(1, Math.min(6, Math.ceil(totalEps / 24)));
+          seasons = Array.from({ length: numSeasons }, (_, i) => ({
+            number: i + 1,
+            name: `Temporada ${i + 1}`,
+            episodeCount: i === 0 ? Math.min(24, totalEps) : 24,
+          }));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  } else {
+    try {
+      const tr = await fetch(
+        `https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(cleanTitle)}&embed[]=seasons&embed[]=episodes`,
+        { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(4500) }
+      );
+      if (tr.ok) {
+        const tj = await tr.json();
+        showPoster = tj?.image?.medium || tj?.image?.original || '';
+        showSummary = tj?.summary ? String(tj.summary).replace(/<[^>]+>/g, '').slice(0, 220) : '';
+        const rawSeasons = tj?._embedded?.seasons;
+        if (Array.isArray(rawSeasons) && rawSeasons.length > 0) {
+          seasons = rawSeasons
+            .filter((s) => Number(s.number) > 0)
+            .slice(0, 12)
+            .map((s) => ({
+              number: Number(s.number),
+              name: `Temporada ${s.number}`,
+              episodeCount: Number(s.episodeOrder) || 0,
+            }));
+        }
+        const rawEps = tj?._embedded?.episodes;
+        if (Array.isArray(rawEps)) {
+          tvmazeEpisodes = rawEps.filter((e) => Number(e.season) === targetSeason);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Fetch real playable episodes (from Playlist on Season 1 or YouTube episode search for the requested season)
+  const episodes = [];
+  const seenVid = new Set();
+
+  if (pid && targetSeason === 1) {
+    try {
+      const plRes = await fetch(`https://www.youtube.com/playlist?list=${encodeURIComponent(pid)}`, {
+        headers: { 'User-Agent': UA, 'Accept-Language': 'pt-BR,pt;q=0.9' },
+        signal: AbortSignal.timeout(6500),
+      });
+      if (plRes.ok) {
+        const html = await plRes.text();
+        const marker = 'var ytInitialData = ';
+        const idx = html.indexOf(marker);
+        if (idx !== -1) {
+          const sub = html.slice(idx + marker.length);
+          const end = sub.indexOf(';</script>');
+          if (end !== -1) {
+            const data = JSON.parse(sub.slice(0, end));
+            const pvs = extractPlaylistVideoRenderers(data);
+            for (const pv of pvs.slice(0, 24)) {
+              const vid = pv.videoId;
+              if (!vid || seenVid.has(vid)) continue;
+              seenVid.add(vid);
+              const epTitle = (pv.title?.runs || []).map((r) => r.text).join('') || `Episódio ${episodes.length + 1}`;
+              const durText = pv.lengthText?.simpleText || 'Episódio HD';
+              episodes.push({
+                id: `ep-${vid}`,
+                episodeNumber: episodes.length + 1,
+                seasonNumber: targetSeason,
+                title: epTitle,
+                subtitle: `${cleanTitle} · T${targetSeason} E${episodes.length + 1}`,
+                durationLabel: durText,
+                posterUrl: pickBestThumbnail(pv, vid),
+                youtubeVideoId: vid,
+                isDubbed: /dublad/i.test(epTitle),
+                qualityLabel: 'HD 720p+',
+                mediaType,
+                sourceLabel: `T${targetSeason} · Ep ${episodes.length + 1}`,
+              });
+            }
+          }
+        }
+      }
+    } catch {
+      // fallback to search below
+    }
+  }
+
+  if (episodes.length === 0) {
+    const epQuery = `${cleanTitle} temporada ${targetSeason} episodio dublado`;
+    const found = await searchMovies(epQuery, `${cleanTitle} · T${targetSeason}`, false, mediaType, false);
+
+    // If search returned a complete season playlist, unpack its real episodes automatically
+    const plItem = found.find((x) => x.youtubePlaylistId);
+    if (plItem?.youtubePlaylistId) {
+      try {
+        const plRes = await fetch(`https://www.youtube.com/playlist?list=${encodeURIComponent(plItem.youtubePlaylistId)}`, {
+          headers: { 'User-Agent': UA, 'Accept-Language': 'pt-BR,pt;q=0.9' },
+          signal: AbortSignal.timeout(6000),
+        });
+        if (plRes.ok) {
+          const html = await plRes.text();
+          const marker = 'var ytInitialData = ';
+          const idx = html.indexOf(marker);
+          if (idx !== -1) {
+            const sub = html.slice(idx + marker.length);
+            const end = sub.indexOf(';</script>');
+            if (end !== -1) {
+              const data = JSON.parse(sub.slice(0, end));
+              const pvs = extractPlaylistVideoRenderers(data);
+              for (const pv of pvs.slice(0, 24)) {
+                const vid = pv.videoId;
+                if (!vid || seenVid.has(vid)) continue;
+                seenVid.add(vid);
+                const epMeta = tvmazeEpisodes[episodes.length];
+                const epTitle =
+                  epMeta?.name
+                    ? `Ep ${episodes.length + 1}: ${epMeta.name}`
+                    : (pv.title?.runs || []).map((r) => r.text).join('') || `Episódio ${episodes.length + 1}`;
+                episodes.push({
+                  id: `ep-${targetSeason}-${vid}`,
+                  episodeNumber: episodes.length + 1,
+                  seasonNumber: targetSeason,
+                  title: epTitle,
+                  subtitle: `${cleanTitle} · T${targetSeason} E${episodes.length + 1}`,
+                  durationLabel: pv.lengthText?.simpleText || 'Episódio HD',
+                  posterUrl: pickBestThumbnail(pv, vid) || epMeta?.image?.medium || showPoster,
+                  youtubeVideoId: vid,
+                  isDubbed: /dublad/i.test(epTitle),
+                  qualityLabel: 'HD 720p+',
+                  mediaType,
+                  sourceLabel: `T${targetSeason} · Ep ${episodes.length + 1}`,
+                });
+              }
+            }
+          }
+        }
+      } catch {
+        // fallback below
+      }
+    }
+
+    if (episodes.length === 0) {
+      let fallbackList = found;
+      if (!fallbackList.some((x) => x.youtubeVideoId)) {
+        fallbackList = await searchMovies(
+          `${cleanTitle} temporada ${targetSeason} episodio`,
+          `${cleanTitle} · T${targetSeason}`,
+          true,
+          'trailer',
+          false
+        );
+      }
+      for (const item of fallbackList.slice(0, 18)) {
+        const vid = item.youtubeVideoId;
+        if (!vid || seenVid.has(vid)) continue;
+        seenVid.add(vid);
+        const epMeta = tvmazeEpisodes[episodes.length];
+        episodes.push({
+          id: `ep-${targetSeason}-${vid}`,
+          episodeNumber: episodes.length + 1,
+          seasonNumber: targetSeason,
+          title: epMeta?.name ? `Ep ${episodes.length + 1}: ${epMeta.name}` : item.title,
+          subtitle: item.subtitle || `${cleanTitle} · Temporada ${targetSeason}`,
+          durationLabel: item.durationLabel || 'Episódio HD',
+          posterUrl: item.posterUrl || epMeta?.image?.medium || showPoster,
+          youtubeVideoId: vid,
+          isDubbed: item.isDubbed,
+          qualityLabel: item.qualityLabel || 'HD 720p+',
+          mediaType,
+          sourceLabel: `T${targetSeason} · Ep ${episodes.length + 1}`,
+        });
+      }
+    }
+  }
+
+  // Ensure at least Season 1 & 2 buttons exist cleanly when relevant
+  if (seasons.length === 0) {
+    seasons = [{ number: 1, name: 'Temporada 1', episodeCount: episodes.length }];
+  }
+
+  const result = {
+    seriesTitle: cleanTitle,
+    season: targetSeason,
+    showPoster,
+    showSummary,
+    seasons,
+    episodes,
+  };
+  seriesSeasonCache.set(key, { ts: Date.now(), data: result });
+  return result;
 }

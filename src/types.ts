@@ -93,8 +93,87 @@ export interface AppSettings {
 }
 
 export type AudioVersion = 'v1' | 'v2';
-export type TabId = 'catalog' | 'search' | 'explore' | 'movies' | 'playlists' | 'studio';
+export type TabId = 'catalog' | 'search' | 'explore' | 'movies' | 'sports' | 'playlists' | 'studio';
 export type AppMode = 'creator' | 'fan';
+
+export interface LiveStats {
+  onlineCount: number;
+  dateKey: string;
+  dailyGoalBrl: number;
+  dailyCollectedBrl: number;
+  dailyContributors: number;
+  recentSupporters?: { name: string; amount: number; at: string }[];
+}
+
+export interface SeriesSeasonInfo {
+  number: number;
+  name: string;
+  episodeCount: number;
+}
+
+export interface SeriesEpisodeItem {
+  id: string;
+  episodeNumber: number;
+  seasonNumber: number;
+  title: string;
+  subtitle: string;
+  durationLabel: string;
+  posterUrl: string;
+  youtubeVideoId?: string;
+  isDubbed?: boolean;
+  qualityLabel?: string;
+  mediaType?: 'movie' | 'series' | 'anime' | 'trailer';
+  sourceLabel?: string;
+}
+
+export interface SoccerScoreItem {
+  id: string;
+  sport: 'soccer';
+  league: string;
+  badge: string;
+  title: string;
+  homeName: string;
+  awayName: string;
+  homeLogo?: string;
+  awayLogo?: string;
+  homeScore: string;
+  awayScore: string;
+  isLive: boolean;
+  statusState: string;
+  statusText: string;
+  searchQuery: string;
+}
+
+export interface MmaScoreItem {
+  id: string;
+  sport: 'mma';
+  league: string;
+  badge: string;
+  title: string;
+  matchup: string;
+  fighter1: string;
+  fighter2: string;
+  venue?: string;
+  isLive: boolean;
+  statusState: string;
+  statusText: string;
+  bouts?: { id: string; fighters: string; weightClass: string; status: string; winner?: string }[];
+  searchQuery: string;
+}
+
+export interface SportStreamItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  category: string;
+  sport: 'soccer' | 'mma';
+  isLive: boolean;
+  durationLabel: string;
+  posterUrl: string;
+  youtubeVideoId?: string;
+  sourceLabel: string;
+  qualityLabel?: string;
+}
 
 export interface WorldProfile {
   id: string;

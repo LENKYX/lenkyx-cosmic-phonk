@@ -1,4 +1,13 @@
-import { LiveTvCategory, LiveTvChannel, MovieItem } from '../types';
+import {
+  LiveTvCategory,
+  LiveTvChannel,
+  MmaScoreItem,
+  MovieItem,
+  SeriesEpisodeItem,
+  SeriesSeasonInfo,
+  SoccerScoreItem,
+  SportStreamItem,
+} from '../types';
 import { isAndroidApk } from './androidBridge';
 
 const CLOUD_API_BASE = 'https://lenkyx-cosmic-phonk.onrender.com';
@@ -12,6 +21,32 @@ export interface MovieCategory {
   isArchiveOnly?: boolean;
   mediaType?: 'movie' | 'series' | 'anime' | 'trailer';
   movies: MovieItem[];
+}
+
+export interface SeriesSeasonsPayload {
+  seriesTitle: string;
+  season: number;
+  showPoster?: string;
+  showSummary?: string;
+  seasons: SeriesSeasonInfo[];
+  episodes: SeriesEpisodeItem[];
+}
+
+export interface SportsCategory {
+  id: string;
+  title: string;
+  emoji: string;
+  sport: 'soccer' | 'mma';
+  items: SportStreamItem[];
+}
+
+export interface SportsDirectoryPayload {
+  updatedAt: string;
+  scoreboard: {
+    soccer: SoccerScoreItem[];
+    mma: MmaScoreItem[];
+  };
+  categories: SportsCategory[];
 }
 
 function getApiTargets(): string[] {
@@ -80,4 +115,53 @@ export async function searchLiveTvCatalog(
     totalAvailable: data?.totalAvailable || 0,
     channels: data?.channels || [],
   };
+}
+
+export async function fetchSeriesSeasonsAndEpisodes(params: {
+  title: string;
+  season?: number;
+  playlistId?: string;
+  mediaType?: string;
+}): Promise<SeriesSeasonsPayload> {
+  const qs = new URLSearchParams({
+    title: params.title,
+    season: String(params.season || 1),
+    playlistId: params.playlistId || '',
+    mediaType: params.mediaType || 'series',
+  });
+  const data = await fetchJsonWithFallback<SeriesSeasonsPayload>(`/api/series-episodes?${qs.toString()}`, 18000);
+  return (
+    data || {
+      seriesTitle: params.title,
+      season: params.season || 1,
+      seasons: [{ number: 1, name: 'Temporada 1', episodeCount: 0 }],
+      episodes: [],
+    }
+  );
+}
+
+export async function fetchSportsDirectory(forceRefresh = false): Promise<SportsDirectoryPayload> {
+  const qs = forceRefresh ? '?refresh=1' : '';
+  const data = await fetchJsonWithFallback<SportsDirectoryPayload>(`/api/sports-directory${qs}`, 20000);
+  return (
+    data || {
+      updatedAt: new Date().toISOString(),
+      scoreboard: { soccer: [], mma: [] },
+      categories: [],
+    }
+  );
+}
+
+export async function searchSportsCatalog(
+  query: string,
+  sport: 'all' | 'soccer' | 'mma' = 'all',
+  liveOnly = false
+): Promise<SportStreamItem[]> {
+  const qs = new URLSearchParams({
+    q: query,
+    sport,
+    live: liveOnly ? '1' : '0',
+  });
+  const data = await fetchJsonWithFallback<{ items?: SportStreamItem[] }>(`/api/sports-search?${qs.toString()}`, 16000);
+  return data?.items || [];
 }

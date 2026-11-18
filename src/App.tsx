@@ -24,16 +24,19 @@ import {
   Scale,
   Shield,
   Share2,
+  Trophy,
+  Users,
+  Target,
 } from 'lucide-react';
 import {
   AppMode,
   AppSettings,
   AudioVersion,
+  LiveStats,
   MovieItem,
   TabId,
   Track,
   UserPlaylist,
-  WorldProfile,
 } from './types';
 import { isAndroidApk } from './utils/androidBridge';
 import { CatalogView } from './components/CatalogView';
@@ -41,20 +44,18 @@ import { WorldExploreView } from './components/WorldExploreView';
 import { PlaylistsView } from './components/PlaylistsView';
 import { CosmicSpaceBackdrop } from './components/CosmicSpaceBackdrop';
 const MoviesView = React.lazy(() => import('./components/MoviesView').then((m) => ({ default: m.MoviesView })));
+const SportsArenaView = React.lazy(() =>
+  import('./components/SportsArenaView').then((m) => ({ default: m.SportsArenaView }))
+);
 const StudioCreateView = React.lazy(() =>
   import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView }))
 );
 const CosmicSearchView = React.lazy(() =>
   import('./components/CosmicSearchView').then((m) => ({ default: m.CosmicSearchView }))
 );
-import { MiniPlayer } from './components/MiniPlayer';
+import { BassBoostLevel, MiniPlayer } from './components/MiniPlayer';
 import { LegalTermsModal } from './components/LegalTermsModal';
 import { CinemaPrerollIntro, CosmicGtaLoader } from './components/CosmicGtaLoader';
-import {
-  loadActiveWorldProfile,
-  ProfileGateModal,
-  saveActiveWorldProfile,
-} from './components/ProfileGateModal';
 import { PixModal } from './components/PixModal';
 import { ShareModal } from './components/ShareModal';
 import { UploadTrackModal } from './components/UploadTrackModal';
@@ -76,13 +77,13 @@ import {
 
 const DEFAULT_SETTINGS: AppSettings = {
   artistName: 'LENKYX',
-  brandSubtitle: 'MEU MUNDO',
-  tagline: 'Músicas Originais LENKYX · Clipes de Artistas · Cinema & Séries Sem Anúncios',
+  brandSubtitle: 'UNIVERSO LIVRE',
+  tagline: 'Som Pesado · Clipes HD · Cinema & Séries · Futebol & UFC Ao Vivo — Sem Anúncios',
   pixKey: '41651191808',
   pixKeyConfigured: true,
   pixName: 'LENKYX COSMIC PHONK',
   pixCity: 'CAMPO GRANDE',
-  pixMessage: '100% gratuito e sem anúncios! Sua doação via PicPay (PIX) ajuda na manutenção do site.',
+  pixMessage: '100% gratuito e sem anúncios! Sua doação exclusiva via PIX (PicPay) ajuda na manutenção diária do app.',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
   apkDownloadUrl: 'https://drive.google.com/uc?id=1SsBXDSKNWQxsPqURWWavVhcjvYUJgRFI&export=download',
   youtubeUrl: '',
@@ -99,6 +100,18 @@ const ACCENT_CYCLE = [
   'from-amber-400 to-orange-600',
 ];
 
+function getOrCreateSessionId(): string {
+  try {
+    const existing = sessionStorage.getItem('lenkyx_live_sid');
+    if (existing) return existing;
+    const created = 'sid-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    sessionStorage.setItem('lenkyx_live_sid', created);
+    return created;
+  } catch {
+    return 'sid-' + Date.now().toString(36);
+  }
+}
+
 export function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -106,11 +119,21 @@ export function App() {
   const [activeTab, setActiveTab] = useState<TabId>('catalog');
   const [tabHistory, setTabHistory] = useState<TabId[]>([]);
 
-  // Zero-Login Local Profile Gate
-  const [activeProfile, setActiveProfile] = useState<WorldProfile>(() => loadActiveWorldProfile());
-  const [profileGateOpen, setProfileGateOpen] = useState<boolean>(
-    () => !sessionStorage.getItem('lenkyx_profile_picked')
-  );
+  // Real-time online listeners & Daily PIX Goal
+  const [liveStats, setLiveStats] = useState<LiveStats>({
+    onlineCount: 1,
+    dateKey: '',
+    dailyGoalBrl: 50,
+    dailyCollectedBrl: 0,
+    dailyContributors: 0,
+  });
+  const liveSessionIdRef = useRef<string>(getOrCreateSessionId());
+
+  // Bass Boost Web Audio nodes (lazy-initialized only when enabled)
+  const [bassBoostLevel, setBassBoostLevel] = useState<BassBoostLevel>(0);
+  const bassAudioCtxRef = useRef<AudioContext | null>(null);
+  const bassLowShelfRef = useRef<BiquadFilterNode | null>(null);
+  const bassPeakRef = useRef<BiquadFilterNode | null>(null);
 
   // Cinematic Startup Intro + Auto-Update Check on Entry
   const [gtaLoaderOpen, setGtaLoaderOpen] = useState(() => !sessionStorage.getItem('lenkyx_splash_done'));
@@ -617,6 +640,86 @@ export function App() {
     ytPlayerRef.current?.pauseVideo?.();
   }, []);
 
+  // Real-time online listeners + daily PIX goal heartbeat
+  useEffect(() => {
+    let cancelled = false;
+    const ping = async () => {
+      try {
+        const r = await fetch('/api/live-stats/ping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: liveSessionIdRef.current,
+            activity: activeTab,
+          }),
+        });
+        if (r.ok && !cancelled) {
+          const data: LiveStats = await r.json();
+          setLiveStats(data);
+        }
+      } catch {
+        // ignore offline ping failure
+      }
+    };
+    void ping();
+    const t = window.setInterval(() => void ping(), 25000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [activeTab]);
+
+  // Apply Web Audio Bass Boost safely when enabled
+  const applyBassBoostGain = useCallback((level: BassBoostLevel) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (level > 0 && !bassAudioCtxRef.current) {
+      try {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          const source = ctx.createMediaElementSource(audio);
+          const lowShelf = ctx.createBiquadFilter();
+          lowShelf.type = 'lowshelf';
+          lowShelf.frequency.value = 90;
+          const peak = ctx.createBiquadFilter();
+          peak.type = 'peaking';
+          peak.frequency.value = 55;
+          peak.Q.value = 1.1;
+          source.connect(lowShelf);
+          lowShelf.connect(peak);
+          peak.connect(ctx.destination);
+          bassAudioCtxRef.current = ctx;
+          bassLowShelfRef.current = lowShelf;
+          bassPeakRef.current = peak;
+        }
+      } catch {
+        // Fallback if already attached or unsupported
+      }
+    }
+    if (bassAudioCtxRef.current?.state === 'suspended') {
+      void bassAudioCtxRef.current.resume().catch(() => {});
+    }
+    const shelfGains = [0, 4.5, 9, 14];
+    const peakGains = [0, 3, 6.5, 10];
+    if (bassLowShelfRef.current) bassLowShelfRef.current.gain.value = shelfGains[level] || 0;
+    if (bassPeakRef.current) bassPeakRef.current.gain.value = peakGains[level] || 0;
+  }, []);
+
+  const handleCycleBassBoost = useCallback(() => {
+    if (currentTrack?.youtubeVideoId && !currentTrack.audioUrl) {
+      showToast('O reforço de graves funciona nas faixas de áudio direto do catálogo LENKYX!');
+      return;
+    }
+    setBassBoostLevel((prev) => {
+      const next = ((prev + 1) % 4) as BassBoostLevel;
+      applyBassBoostGain(next);
+      const labels = ['Graves Normal', 'Graves Suave (+4dB)', 'Graves Pesado (+9dB)', 'Subwoofer Máximo (+14dB)'];
+      showToast(`🔊 ${labels[next]}`);
+      return next;
+    });
+  }, [currentTrack, applyBassBoostGain, showToast]);
+
   const handlePlayTrack = useCallback(
     async (track: Track, requestedVersion?: AudioVersion, customQueue?: Track[]) => {
       const audio = audioRef.current;
@@ -685,6 +788,9 @@ export function App() {
       audio.volume = muted ? 0 : volume;
       audio.muted = muted;
       audio.load();
+      if (bassBoostLevel > 0) {
+        applyBassBoostGain(bassBoostLevel);
+      }
       try {
         await audio.play();
         if (!track.source || track.source === 'lenkyx') {
@@ -1158,14 +1264,33 @@ export function App() {
   };
 
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'catalog', label: 'LENKYX Original', icon: <Music className="w-4 h-4" /> },
+    { id: 'catalog', label: 'Som LENKYX', icon: <Music className="w-4 h-4" /> },
     { id: 'explore', label: 'Artistas & Clipes', icon: <Globe2 className="w-4 h-4" /> },
     { id: 'movies', label: 'Cinema & Séries', icon: <Clapperboard className="w-4 h-4" /> },
-    { id: 'search', label: 'Pesquisa Rápida', icon: <Search className="w-4 h-4" /> },
+    { id: 'sports', label: 'Futebol & UFC', icon: <Trophy className="w-4 h-4" /> },
+    { id: 'search', label: 'Busca Rápida', icon: <Search className="w-4 h-4" /> },
     { id: 'playlists', label: 'Minhas Playlists', icon: <ListMusic className="w-4 h-4" /> },
   ];
 
-  const isPlayerAllowedTab = activeTab !== 'movies';
+  const clipSuggestions = useMemo(() => {
+    const pool = [...playQueue, ...allTracksPool].filter(
+      (t) => Boolean(t.youtubeVideoId) && t.id !== currentTrack?.id
+    );
+    const seen = new Set<string>();
+    const out: Track[] = [];
+    for (const t of pool) {
+      if (seen.has(t.id)) continue;
+      seen.add(t.id);
+      out.push(t);
+      if (out.length >= 12) break;
+    }
+    return out;
+  }, [playQueue, allTracksPool, currentTrack?.id]);
+
+  const isPlayerAllowedTab = activeTab !== 'movies' && activeTab !== 'sports';
+  const dailyPixPct = liveStats.dailyGoalBrl > 0
+    ? Math.min(100, Math.round((liveStats.dailyCollectedBrl / liveStats.dailyGoalBrl) * 100))
+    : 0;
 
   return (
     <div className="h-dvh overflow-hidden bg-[#05020d] text-white flex relative">
@@ -1279,13 +1404,13 @@ export function App() {
               }}
               className="py-1.5 px-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-slate-200 text-[10px] font-bold flex items-center justify-center gap-1 transition"
             >
-              <Share2 className="w-3 h-3 text-emerald-300" /> Indicar
+              <Share2 className="w-3 h-3 text-emerald-300" /> Convidar Amigos
             </button>
             <button
               onClick={() => setLegalOpen(true)}
               className="py-1.5 px-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-slate-300 text-[10px] font-bold flex items-center justify-center gap-1 transition"
             >
-              <Scale className="w-3 h-3 text-amber-300" /> DMCA
+              <Scale className="w-3 h-3 text-amber-300" /> Termos
             </button>
           </div>
 
@@ -1468,26 +1593,23 @@ export function App() {
                 setPixOpen(true);
               }}
               className="md:hidden px-2.5 py-1.5 rounded-full bg-pink-500/20 border border-pink-400/40 text-pink-100 text-[11px] font-black flex items-center gap-1"
-              title="Apoiar site sem anúncios via PicPay PIX"
+              title="Apoiar site sem anúncios via PIX"
             >
               <QrCode className="w-3.5 h-3.5 text-pink-300" />
               <span className="hidden xs:inline">PIX</span>
             </button>
 
-            {/* Local Profile Switcher Pill (Zero Login!) */}
+            {/* Quick Invite Friends Button */}
             <button
-              onClick={() => setProfileGateOpen(true)}
-              className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-white/[0.08] hover:bg-white/[0.15] border border-white/15 transition"
-              title="Trocar Perfil"
+              onClick={() => {
+                setShareTrack(null);
+                setShareOpen(true);
+              }}
+              className="px-2.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/35 hover:to-cyan-500/35 border border-emerald-400/40 text-emerald-100 text-[11px] font-black flex items-center gap-1 transition"
+              title="Compartilhe com amigos"
             >
-              <span
-                className={`w-6 h-6 rounded-full bg-gradient-to-br ${activeProfile.avatarColor} text-xs flex items-center justify-center`}
-              >
-                {activeProfile.avatarEmoji}
-              </span>
-              <span className="text-xs font-bold text-white max-w-[90px] truncate hidden sm:inline">
-                {activeProfile.name}
-              </span>
+              <Share2 className="w-3.5 h-3.5 text-emerald-300" />
+              <span className="hidden sm:inline">Compartilhar</span>
             </button>
 
             {mode === 'creator' && (
@@ -1505,7 +1627,56 @@ export function App() {
 
         {/* ACTIVE VIEW CONTAINER */}
         <main id="lenkyx-main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full">
-          <div className="w-full max-w-[1380px] mx-auto px-3 sm:px-5 pt-4">
+          <div className="w-full max-w-[1380px] mx-auto px-3 sm:px-5 pt-3">
+            {/* Real-Time Active Listeners + Daily PIX Goal + Voluntary Share Strip */}
+            <div className="mb-3 rounded-2xl cosmic-card-3d px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5 border border-white/10">
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <div className="inline-flex items-center gap-1.5 font-extrabold text-emerald-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <Users className="w-3.5 h-3.5" />
+                  <span>
+                    {liveStats.onlineCount}{' '}
+                    {liveStats.onlineCount === 1 ? 'pessoa curtindo agora' : 'pessoas curtindo agora'}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPixInitialTab('donate');
+                    setPixOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-pink-500/20 border border-pink-400/30 transition"
+                >
+                  <Target className="w-3.5 h-3.5 text-pink-400" />
+                  <span className="text-[11px] font-bold text-white">
+                    Meta PIX Hoje:{' '}
+                    <span className="font-mono text-cyan-300">
+                      R$ {liveStats.dailyCollectedBrl.toFixed(0)} / R$ {liveStats.dailyGoalBrl.toFixed(0)}
+                    </span>
+                  </span>
+                  <span className="w-12 h-1.5 rounded-full bg-black/50 overflow-hidden hidden sm:inline-block">
+                    <span
+                      style={{ width: `${dailyPixPct}%` }}
+                      className="block h-full bg-gradient-to-r from-emerald-400 to-pink-500"
+                    />
+                  </span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShareTrack(null);
+                  setShareOpen(true);
+                }}
+                className="text-[11px] font-bold text-cyan-200 hover:text-white flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500/15 to-emerald-500/15 hover:from-cyan-500/30 hover:to-emerald-500/30 border border-cyan-400/30 transition"
+              >
+                <Share2 className="w-3 h-3 text-emerald-300" />
+                <span>Curtiu o som e os vídeos sem anúncios? Manda pros amigos!</span>
+              </button>
+            </div>
+
             {appUpdateInfo && (
               <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
                 <div className="min-w-0">
@@ -1633,7 +1804,17 @@ export function App() {
                       onToggleMute={handleToggleMute}
                       initialMovie={pendingMovie}
                       onConsumeInitialMovie={() => setPendingMovie(null)}
-                      isKidsProfile={Boolean(activeProfile.isKids)}
+                    />
+                  )}
+
+                  {activeTab === 'sports' && (
+                    <SportsArenaView
+                      onPauseMusic={pauseCatalogPlayer}
+                      onSportsModalChange={setWatchingMovie}
+                      volume={volume}
+                      muted={muted}
+                      onVolume={handleVolume}
+                      onToggleMute={handleToggleMute}
                     />
                   )}
 
@@ -1684,6 +1865,9 @@ export function App() {
           duration={duration}
           volume={volume}
           muted={muted}
+          bassBoostLevel={bassBoostLevel}
+          bassBoostAvailable={!currentTrack.youtubeVideoId || Boolean(currentTrack.audioUrl)}
+          onCycleBassBoost={handleCycleBassBoost}
           onTogglePlay={() => void handleTogglePlay()}
           onSelectVersion={handleSelectVersion}
           onPrev={() => handlePrevNext(-1)}
@@ -1711,16 +1895,17 @@ export function App() {
         />
       )}
 
-      {/* MOBILE BOTTOM NAVIGATION BAR (5 Clean Focused Tabs) */}
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
       {!watchingMovie && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-5 px-1">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-6 px-0.5">
           {(
             [
-              { id: 'catalog' as TabId, label: 'LENKYX', icon: <Music className="w-4 h-4" /> },
-              { id: 'explore' as TabId, label: 'Artistas', icon: <Globe2 className="w-4 h-4" /> },
+              { id: 'catalog' as TabId, label: 'Som', icon: <Music className="w-4 h-4" /> },
+              { id: 'explore' as TabId, label: 'Clipes', icon: <Globe2 className="w-4 h-4" /> },
               { id: 'movies' as TabId, label: 'Cinema', icon: <Clapperboard className="w-4 h-4" /> },
+              { id: 'sports' as TabId, label: 'Ao Vivo', icon: <Trophy className="w-4 h-4" /> },
               { id: 'search' as TabId, label: 'Buscar', icon: <Search className="w-4 h-4" /> },
-              { id: 'playlists' as TabId, label: 'Playlists', icon: <ListMusic className="w-4 h-4" /> },
+              { id: 'playlists' as TabId, label: 'Listas', icon: <ListMusic className="w-4 h-4" /> },
             ] as { id: TabId; label: string; icon: React.ReactNode }[]
           ).map((item) => {
             const active = activeTab === item.id;
@@ -1733,7 +1918,7 @@ export function App() {
                 }`}
               >
                 {item.icon}
-                <span className="text-[10px] font-bold">{item.label}</span>
+                <span className="text-[9px] font-bold truncate max-w-full">{item.label}</span>
               </button>
             );
           })}
@@ -1747,6 +1932,8 @@ export function App() {
         initialTab={pixInitialTab}
         settings={settings}
         mode={mode}
+        liveStats={liveStats}
+        onLiveStatsUpdated={(st) => setLiveStats(st)}
         onSaveSettings={handleSaveSettings}
         onToast={showToast}
       />
@@ -1762,34 +1949,29 @@ export function App() {
       />
       <LegalTermsModal open={legalOpen} onClose={() => setLegalOpen(false)} />
 
-      {/* STARTUP CINEMATIC INTRO + AUTO-UPDATE CHECK */}
+      {/* STARTUP CINEMATIC INTRO + AUTO-UPDATE CHECK + PIX SUPPORT APPEAL */}
       <CosmicGtaLoader
         open={gtaLoaderOpen}
         mode="splash"
         statusText={introStatus}
+        dailyCollectedBrl={liveStats.dailyCollectedBrl}
+        dailyGoalBrl={liveStats.dailyGoalBrl}
+        onlineCount={liveStats.onlineCount}
+        onOpenPix={() => {
+          setGtaLoaderOpen(false);
+          sessionStorage.setItem('lenkyx_splash_done', '1');
+          setPixInitialTab('donate');
+          setPixOpen(true);
+        }}
+        onShareApp={() => {
+          setGtaLoaderOpen(false);
+          sessionStorage.setItem('lenkyx_splash_done', '1');
+          setShareTrack(null);
+          setShareOpen(true);
+        }}
         onSkip={() => {
           setGtaLoaderOpen(false);
           sessionStorage.setItem('lenkyx_splash_done', '1');
-        }}
-      />
-
-      {/* ZERO-LOGIN PROFILE SELECTOR ("Escolha um perfil") */}
-      <ProfileGateModal
-        open={!gtaLoaderOpen && profileGateOpen && mode !== 'creator'}
-        activeProfileId={activeProfile.id}
-        onSelectProfile={(prof, navigateToFocus) => {
-          setActiveProfile(prof);
-          saveActiveWorldProfile(prof.id);
-          sessionStorage.setItem('lenkyx_profile_picked', '1');
-          setProfileGateOpen(false);
-          if (navigateToFocus && prof.focusTab) {
-            navigateTab(prof.focusTab);
-          }
-          showToast(`${prof.avatarEmoji} Perfil "${prof.name}" ativo!`);
-        }}
-        onClose={() => {
-          sessionStorage.setItem('lenkyx_profile_picked', '1');
-          setProfileGateOpen(false);
         }}
       />
 
@@ -1902,24 +2084,20 @@ export function App() {
               />
             )}
 
-            {clipTheaterOpen && !clipPrerollActive && currentTrack?.youtubeVideoId && (
+            {clipTheaterOpen && !clipPrerollActive && currentTrack?.youtubeVideoId && !isPlaying && (
               <div
                 onClick={() => void handleTogglePlay()}
-                className={`absolute inset-0 z-10 cursor-pointer flex items-center justify-center transition ${
-                  !isPlaying ? 'bg-black/75 backdrop-blur-sm' : 'bg-transparent'
-                }`}
+                className="absolute inset-0 z-10 cursor-pointer flex items-center justify-center bg-black/70 backdrop-blur-sm transition"
               >
-                {!isPlaying && (
-                  <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-3xl bg-[#0b0618]/90 border border-white/15 shadow-2xl">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow-[0_0_30px_rgba(236,72,153,0.55)]">
-                      <Play className="w-7 h-7 fill-black ml-0.5" />
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs font-black text-white max-w-[260px] truncate">{currentTrack.title}</div>
-                      <div className="text-[10px] text-cyan-300 font-bold">Toque para continuar</div>
-                    </div>
+                <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-3xl bg-[#0b0618]/90 border border-white/15 shadow-2xl">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow-[0_0_30px_rgba(236,72,153,0.55)]">
+                    <Play className="w-7 h-7 fill-black ml-0.5" />
                   </div>
-                )}
+                  <div className="text-center">
+                    <div className="text-xs font-black text-white max-w-[260px] truncate">{currentTrack.title}</div>
+                    <div className="text-[10px] text-cyan-300 font-bold">Toque para continuar</div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -2002,6 +2180,43 @@ export function App() {
                   </button>
                 </div>
               </div>
+
+              {/* Clickable Clip Suggestions Strip */}
+              {clipFitMode !== 'fullscreen' && !isNativeFullscreen && clipSuggestions.length > 0 && (
+                <div className="pt-1.5 border-t border-white/10 space-y-1.5">
+                  <div className="text-[10px] font-black uppercase tracking-wider text-cyan-300">
+                    🎬 Sugestões para assistir a seguir ({clipSuggestions.length})
+                  </div>
+                  <div
+                    className="flex items-stretch gap-2 overflow-x-auto overscroll-x-contain pb-1"
+                    style={{ scrollbarWidth: 'none' }}
+                  >
+                    {clipSuggestions.map((sug) => (
+                      <button
+                        key={`clipsug-${sug.id}`}
+                        type="button"
+                        onClick={() => openClipWithIntro(sug, playQueue.length ? playQueue : clipSuggestions)}
+                        className="w-36 sm:w-44 shrink-0 text-left rounded-xl overflow-hidden border border-white/10 bg-white/[0.04] hover:bg-white/10 hover:border-cyan-400/50 transition group"
+                      >
+                        <div className="relative aspect-video bg-black">
+                          <img
+                            src={sug.coverUrl || '/covers/album-official.jpg'}
+                            alt={sug.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition"
+                          />
+                          <span className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                            <Play className="w-5 h-5 text-white fill-white" />
+                          </span>
+                        </div>
+                        <div className="p-1.5">
+                          <div className="text-[10px] font-bold text-white line-clamp-1">{sug.title}</div>
+                          <div className="text-[9px] text-slate-300/75 truncate">{sug.artist}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

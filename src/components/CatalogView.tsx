@@ -165,7 +165,7 @@ export const CatalogView: React.FC<Props> = ({
 
               <div className="min-w-0 space-y-1">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-pink-500/20 border border-pink-400/35 text-[10px] font-extrabold text-pink-200">
-                  <Sparkles className="w-2.5 h-2.5" /> ESPAÇO EXCLUSIVO LENKYX · {tracks.length} FAIXAS SEM ANÚNCIOS
+                  <Sparkles className="w-2.5 h-2.5" /> SOM AUTORAL LENKYX · {tracks.length} FAIXAS SEM ANÚNCIOS
                 </div>
                 <h1 className="font-display text-2xl sm:text-3xl font-black tracking-wide text-white truncate">
                   {settings.artistName} <span className="neon-text">{settings.brandSubtitle}</span>
@@ -233,13 +233,13 @@ export const CatalogView: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* SPOTIFY / YOUTUBE MUSIC ARTISTS ROW WITH TRANSLUCENT ◀▶ ARROWS */}
+      {/* WORLD ARTISTS ROW */}
       {spotArtists.length > 0 && onSearchWorld && (
         <CosmicScrollRow
           title={
             <>
               <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>Artistas Mundiais & Lançamentos IA</span>
+              <span>Artistas Mundiais & Novidades</span>
             </>
           }
           count={spotArtists.length}

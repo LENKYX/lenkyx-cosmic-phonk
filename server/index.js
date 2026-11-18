@@ -27,7 +27,8 @@ import {
   getWorldNewReleases,
   CURATED_PLAYLISTS,
 } from './musicAI.js';
-import { getMoviesDirectory, searchMovies } from './moviesAI.js';
+import { getMoviesDirectory, searchMovies, getSeriesSeasonsAndEpisodes } from './moviesAI.js';
+import { getSportsDirectory, searchSports } from './sportsAI.js';
 import { getLiveTvDirectory, searchLiveTv } from './tvAI.js';
 import {
   getSearchSuggestions,
@@ -751,6 +752,164 @@ app.get('/api/movies-search', async (req, res) => {
   } catch {
     res.json({ movies: [] });
   }
+});
+
+app.get('/api/series-episodes', async (req, res) => {
+  const title = String(req.query.title || '').trim();
+  const season = Number(req.query.season || 1);
+  const playlistId = String(req.query.playlistId || '').trim();
+  const mediaType = String(req.query.mediaType || 'series').trim();
+  try {
+    const payload = await getSeriesSeasonsAndEpisodes({ title, season, playlistId, mediaType });
+    res.json(payload);
+  } catch {
+    res.json({ seriesTitle: title, season: 1, seasons: [{ number: 1, name: 'Temporada 1', episodeCount: 0 }], episodes: [] });
+  }
+});
+
+// === LENKYX ARENA AO VIVO (FUTEBOL & UFC/MMA EM TEMPO REAL) ===
+app.use('/api/sports-', (_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+});
+
+app.get('/api/sports-directory', async (req, res) => {
+  try {
+    const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+    const payload = await getSportsDirectory(refresh);
+    res.json(payload);
+  } catch {
+    res.json({ scoreboard: { soccer: [], mma: [] }, categories: [] });
+  }
+});
+
+app.get('/api/sports-search', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const sport = String(req.query.sport || 'all').trim();
+  const liveOnly = req.query.live === '1' || req.query.live === 'true';
+  try {
+    const items = await searchSports(q, sport, liveOnly);
+    res.json({ items });
+  } catch {
+    res.json({ items: [] });
+  }
+});
+
+// === REAL-TIME ONLINE LISTENERS + DAILY PIX GOAL ===
+const LIVE_STATS_PATH = path.join(DATA_DIR, 'live-stats.json');
+const activeListenerSessions = new Map(); // sessionId -> { ts, activity }
+const LISTENER_TTL_MS = 180 * 1000; // 3 min heartbeat window
+
+function getTodayBrtKey() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+}
+
+function readLiveStatsStore() {
+  const today = getTodayBrtKey();
+  const defaults = {
+    dateKey: today,
+    dailyGoalBrl: 50,
+    dailyCollectedBrl: 0,
+    dailyContributors: 0,
+    recentSupporters: [],
+  };
+  try {
+    if (!fs.existsSync(LIVE_STATS_PATH)) {
+      fs.writeFileSync(LIVE_STATS_PATH, JSON.stringify(defaults, null, 2), 'utf-8');
+      return defaults;
+    }
+    const parsed = JSON.parse(fs.readFileSync(LIVE_STATS_PATH, 'utf-8'));
+    if (parsed.dateKey !== today) {
+      const rolled = {
+        dateKey: today,
+        dailyGoalBrl: Number(parsed.dailyGoalBrl) > 0 ? Number(parsed.dailyGoalBrl) : 50,
+        dailyCollectedBrl: 0,
+        dailyContributors: 0,
+        recentSupporters: [],
+      };
+      fs.writeFileSync(LIVE_STATS_PATH, JSON.stringify(rolled, null, 2), 'utf-8');
+      return rolled;
+    }
+    return { ...defaults, ...parsed };
+  } catch {
+    return defaults;
+  }
+}
+
+function writeLiveStatsStore(data) {
+  try {
+    fs.writeFileSync(LIVE_STATS_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  } catch {
+    // ignore
+  }
+}
+
+function pruneAndCountListeners() {
+  const now = Date.now();
+  for (const [sid, info] of activeListenerSessions.entries()) {
+    if (now - info.ts > LISTENER_TTL_MS) activeListenerSessions.delete(sid);
+  }
+  return Math.max(1, activeListenerSessions.size);
+}
+
+app.get('/api/live-stats', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const store = readLiveStatsStore();
+  res.json({
+    onlineCount: pruneAndCountListeners(),
+    ...store,
+  });
+});
+
+app.post('/api/live-stats/ping', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const sid = String(req.body?.sessionId || req.ip || 'anon').slice(0, 64);
+  const activity = String(req.body?.activity || 'music').slice(0, 32);
+  activeListenerSessions.set(sid, { ts: Date.now(), activity });
+  const store = readLiveStatsStore();
+  res.json({
+    onlineCount: pruneAndCountListeners(),
+    ...store,
+  });
+});
+
+app.post('/api/live-stats/pix-pledge', (req, res) => {
+  const amount = Math.round(Number(req.body?.amount || 0) * 100) / 100;
+  const donorName = String(req.body?.donorName || 'Fã LENKYX').trim().slice(0, 40) || 'Fã LENKYX';
+  if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
+    return res.status(400).json({ error: 'Informe um valor válido entre R$ 1 e R$ 10.000.' });
+  }
+  const store = readLiveStatsStore();
+  store.dailyCollectedBrl = Math.round((Number(store.dailyCollectedBrl || 0) + amount) * 100) / 100;
+  store.dailyContributors = Number(store.dailyContributors || 0) + 1;
+  store.recentSupporters = [
+    { name: donorName, amount, at: new Date().toISOString() },
+    ...(store.recentSupporters || []),
+  ].slice(0, 8);
+  writeLiveStatsStore(store);
+  res.json({
+    ok: true,
+    onlineCount: pruneAndCountListeners(),
+    ...store,
+  });
+});
+
+app.post('/api/live-stats/pix-goal', auth.requireCreator, (req, res) => {
+  const store = readLiveStatsStore();
+  if (req.body?.dailyGoalBrl !== undefined) {
+    const g = Number(req.body.dailyGoalBrl);
+    if (Number.isFinite(g) && g >= 5) store.dailyGoalBrl = Math.round(g * 100) / 100;
+  }
+  if (req.body?.dailyCollectedBrl !== undefined) {
+    const c = Number(req.body.dailyCollectedBrl);
+    if (Number.isFinite(c) && c >= 0) store.dailyCollectedBrl = Math.round(c * 100) / 100;
+  }
+  writeLiveStatsStore(store);
+  res.json({
+    ok: true,
+    onlineCount: pruneAndCountListeners(),
+    ...store,
+  });
 });
 
 // === GLOBAL FREE-TO-AIR LIVE TV CHANNELS (Brazil + World Top 7,200+ Streams) ===
@@ -1482,11 +1641,10 @@ async function boot() {
     console.log(
       `Storage mode: ${isSupabaseEnabled() ? 'Supabase Cloud PostgreSQL + local cache' : 'Local JSON'} | Data dir: ${DATA_DIR}`
     );
-    // Warm up 300+ movies, 100+ series, 50+ animes & 7,200+ Live TV caches in background
+    // Warm up movies, series, animes & live sports caches in background
     setTimeout(() => {
       void getMoviesDirectory().catch(() => {});
-      void getLiveTvDirectory().catch(() => {});
-      void getArcadeDirectory().catch(() => {});
+      void getSportsDirectory().catch(() => {});
     }, 2000);
   });
 }

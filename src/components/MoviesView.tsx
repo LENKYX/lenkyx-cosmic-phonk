@@ -17,9 +17,16 @@ import {
   VolumeX,
   LayoutGrid,
   RefreshCw,
+  Layers,
+  Loader2,
 } from 'lucide-react';
-import { MovieItem } from '../types';
-import { fetchMoviesDirectory, MovieCategory, searchMoviesCatalog } from '../utils/moviesApi';
+import { MovieItem, SeriesEpisodeItem, SeriesSeasonInfo } from '../types';
+import {
+  fetchMoviesDirectory,
+  fetchSeriesSeasonsAndEpisodes,
+  MovieCategory,
+  searchMoviesCatalog,
+} from '../utils/moviesApi';
 import { CinemaPrerollIntro, CosmicGtaLoader } from './CosmicGtaLoader';
 
 interface Props {
@@ -31,7 +38,6 @@ interface Props {
   onToggleMute?: () => void;
   initialMovie?: MovieItem | null;
   onConsumeInitialMovie?: () => void;
-  isKidsProfile?: boolean;
 }
 
 type CinemaFilter = 'all' | 'releases' | 'movie' | 'series' | 'anime' | 'archive' | 'dubbed' | 'uhd';
@@ -39,25 +45,11 @@ type CinemaFilter = 'all' | 'releases' | 'movie' | 'series' | 'anime' | 'archive
 const QUICK_SEARCH_CHIPS: Array<{ label: string; query: string; mediaType: 'movie' | 'series' | 'anime' | 'trailer' }> = [
   { label: `🍿 Lançamentos ${new Date().getFullYear()}`, query: `lancamentos cinema ${new Date().getFullYear()} trailer oficial dublado 4k`, mediaType: 'trailer' },
   { label: '🌍 Internacionais Dublados 1080p', query: 'melhores filmes internacionais completos dublados portugues 1080p', mediaType: 'movie' },
-  { label: '📺 Séries Dubladas', query: 'serie internacional completa dublado portugues episodio hd', mediaType: 'series' },
+  { label: '📺 Séries por Temporada', query: 'serie completa temporada 1 temporada 2 todos episodios dublado hd', mediaType: 'series' },
   { label: '⛩️ Animes Dublados', query: 'anime completo dublado portugues filme episodio full hd', mediaType: 'anime' },
   { label: '🚀 Ficção & Espaço 4K', query: 'filme ficcao cientifica espaco completo dublado hd', mediaType: 'movie' },
   { label: '💥 Ação & Drift', query: 'filme acao corrida drift completo dublado portugues 1080p', mediaType: 'movie' },
   { label: '🎨 Animação & Família', query: 'filme animacao aventura familia completo dublado portugues hd', mediaType: 'movie' },
-];
-
-const KIDS_BLOCK_WORDS = [
-  'terror',
-  'horror',
-  'sangue',
-  'gore',
-  'crime',
-  'assassino',
-  'slasher',
-  'proibido',
-  '+18',
-  '18+',
-  'zumbi',
 ];
 
 const NetflixScrollableRow: React.FC<{
@@ -182,7 +174,6 @@ export const MoviesView: React.FC<Props> = ({
   onToggleMute,
   initialMovie = null,
   onConsumeInitialMovie,
-  isKidsProfile = false,
 }) => {
   const [categories, setCategories] = useState<MovieCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,6 +192,13 @@ export const MoviesView: React.FC<Props> = ({
   const [prerollActive, setPrerollActive] = useState(false);
   const [cinemaQuality, setCinemaQuality] = useState<'auto' | 'large' | 'hd720' | 'hd1080' | 'hd2160'>('hd720');
   const [expandedView, setExpandedView] = useState(false);
+
+  // Series Seasons & Episodes state
+  const [seriesMetaTitle, setSeriesMetaTitle] = useState('');
+  const [seriesSeasons, setSeriesSeasons] = useState<SeriesSeasonInfo[]>([]);
+  const [selectedSeasonNum, setSelectedSeasonNum] = useState(1);
+  const [seriesEpisodes, setSeriesEpisodes] = useState<SeriesEpisodeItem[]>([]);
+  const [loadingEpisodes, setLoadingEpisodes] = useState(false);
 
   const playerBoxRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -297,14 +295,7 @@ export const MoviesView: React.FC<Props> = ({
     }
   };
 
-  const isKidSafe = (m: MovieItem): boolean => {
-    if (!isKidsProfile) return true;
-    const text = `${m.title} ${m.subtitle} ${m.category || ''}`.toLowerCase();
-    return !KIDS_BLOCK_WORDS.some((w) => text.includes(w));
-  };
-
   const matchesFilter = (m: MovieItem): boolean => {
-    if (!isKidSafe(m)) return false;
     if (activeFilter === 'all') return true;
     if (activeFilter === 'releases') {
       return (
@@ -330,12 +321,12 @@ export const MoviesView: React.FC<Props> = ({
     return categories
       .map((cat) => ({ ...cat, movies: (cat.movies || []).filter(matchesFilter) }))
       .filter((cat) => cat.movies.length > 0);
-  }, [categories, activeFilter, isKidsProfile]);
+  }, [categories, activeFilter]);
 
   const filteredSearchResults = useMemo(() => {
     if (searchResults === null) return null;
     return searchResults.filter(matchesFilter);
-  }, [searchResults, activeFilter, isKidsProfile]);
+  }, [searchResults, activeFilter]);
 
   const catalogStats = useMemo(() => {
     const ids = new Set<string>();
@@ -384,11 +375,37 @@ export const MoviesView: React.FC<Props> = ({
     setRowGridIds((prev) => ({ ...prev, [id]: !(prev[id] ?? globalTvGrid) }));
   };
 
+  const loadSeasonForSeries = async (baseTitle: string, seasonNum: number, playlistId = '', mediaType = 'series') => {
+    setLoadingEpisodes(true);
+    setSelectedSeasonNum(seasonNum);
+    try {
+      const data = await fetchSeriesSeasonsAndEpisodes({
+        title: baseTitle,
+        season: seasonNum,
+        playlistId,
+        mediaType,
+      });
+      setSeriesMetaTitle(data.seriesTitle || baseTitle);
+      setSeriesSeasons(data.seasons || [{ number: 1, name: 'Temporada 1', episodeCount: 0 }]);
+      setSeriesEpisodes(data.episodes || []);
+    } finally {
+      setLoadingEpisodes(false);
+    }
+  };
+
   const handleOpenMovie = (m: MovieItem, queueList: MovieItem[]) => {
     onPauseMusic();
     setMovieQueue(queueList.length ? queueList : [m]);
     setActiveMovie(m);
     setPrerollActive(true);
+    if (m.mediaType === 'series' || m.mediaType === 'anime') {
+      setSeriesSeasons([]);
+      setSeriesEpisodes([]);
+      void loadSeasonForSeries(m.title, 1, m.youtubePlaylistId || '', m.mediaType);
+    } else {
+      setSeriesSeasons([]);
+      setSeriesEpisodes([]);
+    }
   };
 
   const stepMovie = (dir: -1 | 1) => {
@@ -642,8 +659,102 @@ export const MoviesView: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Mobile & TV Next-in-Queue Strip */}
-          {!expandedView && movieQueue.length > 1 && (
+          {/* Series Seasons & Episodes Selector OR Mobile & TV Next-in-Queue Strip */}
+          {!expandedView && (activeMovie.mediaType === 'series' || activeMovie.mediaType === 'anime') && (
+            <div className="p-2.5 sm:p-3 border-t border-white/10 bg-[#080412] space-y-2 shrink-0 max-h-48 overflow-y-auto">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[10px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>{seriesMetaTitle || activeMovie.title} · Temporadas & Episódios</span>
+                </div>
+                <div className="flex items-center gap-1 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
+                  {(seriesSeasons.length > 0
+                    ? seriesSeasons
+                    : [
+                        { number: 1, name: 'Temporada 1', episodeCount: 0 },
+                        { number: 2, name: 'Temporada 2', episodeCount: 0 },
+                      ]
+                  ).map((s) => (
+                    <button
+                      key={s.number}
+                      onClick={() =>
+                        void loadSeasonForSeries(
+                          seriesMetaTitle || activeMovie.title,
+                          s.number,
+                          s.number === 1 ? activeMovie.youtubePlaylistId || '' : '',
+                          activeMovie.mediaType || 'series'
+                        )
+                      }
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-black whitespace-nowrap border transition ${
+                        selectedSeasonNum === s.number
+                          ? 'bg-gradient-to-r from-cyan-400 to-pink-500 text-black border-transparent shadow'
+                          : 'bg-white/[0.07] hover:bg-white/15 border-white/15 text-slate-200'
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {loadingEpisodes ? (
+                <div className="py-3 flex items-center justify-center gap-2 text-xs text-cyan-200 font-bold">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Carregando episódios da Temporada {selectedSeasonNum}...
+                </div>
+              ) : seriesEpisodes.length > 0 ? (
+                <div className="flex items-stretch gap-2.5 overflow-x-auto overscroll-x-contain pb-1" style={{ scrollbarWidth: 'none' }}>
+                  {seriesEpisodes.map((ep) => {
+                    const isCur = activeMovie.youtubeVideoId && activeMovie.youtubeVideoId === ep.youtubeVideoId;
+                    return (
+                      <button
+                        key={ep.id}
+                        onClick={() => {
+                          setActiveMovie({
+                            id: ep.id,
+                            title: ep.title,
+                            subtitle: ep.subtitle,
+                            category: `${seriesMetaTitle} · T${ep.seasonNumber}`,
+                            durationLabel: ep.durationLabel,
+                            posterUrl: ep.posterUrl,
+                            youtubeVideoId: ep.youtubeVideoId,
+                            sourceLabel: ep.sourceLabel || `T${ep.seasonNumber} E${ep.episodeNumber}`,
+                            qualityLabel: ep.qualityLabel,
+                            isDubbed: ep.isDubbed,
+                            mediaType: ep.mediaType || activeMovie.mediaType,
+                          });
+                          setPrerollActive(false);
+                        }}
+                        className={`w-40 sm:w-48 shrink-0 text-left rounded-xl overflow-hidden border transition ${
+                          isCur
+                            ? 'border-cyan-400 bg-cyan-500/20'
+                            : 'border-white/10 bg-white/[0.04] hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="relative aspect-video bg-black">
+                          <img src={ep.posterUrl} alt={ep.title} className="w-full h-full object-cover" />
+                          <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-cyan-400 text-black text-[9px] font-black">
+                            T{ep.seasonNumber} · Ep {ep.episodeNumber}
+                          </span>
+                          <span className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 text-[8px] font-mono text-white">
+                            {ep.durationLabel}
+                          </span>
+                        </div>
+                        <div className="p-1.5">
+                          <div className="text-[10px] font-bold text-white line-clamp-1">{ep.title}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-[11px] text-slate-300/75 py-1">
+                  Toque em outra temporada acima ou avance na lista abaixo.
+                </div>
+              )}
+            </div>
+          )}
+
+          {!expandedView && movieQueue.length > 1 && activeMovie.mediaType !== 'series' && activeMovie.mediaType !== 'anime' && (
             <div className="p-2.5 sm:p-3 border-t border-white/10 bg-[#080412] space-y-1.5 shrink-0">
               <div className="text-[10px] font-black uppercase tracking-wider text-rose-300">
                 🎞️ Na Sequência ({movieQueue.length} títulos — deslize para trocar)
@@ -691,7 +802,7 @@ export const MoviesView: React.FC<Props> = ({
         <div className="flex items-center gap-2">
           <div className="px-4 py-2 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 text-white text-xs font-black flex items-center gap-2 shadow-[0_0_24px_rgba(225,29,72,0.4)]">
             <Clapperboard className="w-4 h-4" />
-            <span>{isKidsProfile ? 'Cinema Infantil & Família' : 'Cinema, Séries & Animes'}</span>
+            <span>Cinema, Séries por Temporada & Animes</span>
           </div>
           {!loading && catalogStats.total > 0 && (
             <span className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full bg-white/[0.06] border border-white/10 text-[11px] font-bold text-slate-200">

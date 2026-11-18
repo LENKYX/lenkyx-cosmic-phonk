@@ -89,35 +89,37 @@ export const ShareModal: React.FC<Props> = ({
 
   const lines: string[] = [];
   if (track) {
-    lines.push(`🚀🔥 Ouça *${track.emoji} ${track.title}* — *${track.artist}* (${settings.brandSubtitle}) completo!`);
-    lines.push(`🎧 Ouça agora (online ou offline no celular): ${mainClickableLink}`);
+    lines.push(`🔊 Mano, olha esse som que tô curtindo no *LENKYX*: *${track.emoji} ${track.title}* — *${track.artist}*!`);
+    lines.push(`🎧 Dá o play direto (sem anúncio e sem cadastro): ${mainClickableLink}`);
   } else {
     lines.push(
-      `🌌🚀 Conheça o App Oficial *${settings.artistName} — ${settings.brandSubtitle}*! 20 faixas completas, modo offline no celular, playlists e Mesa de DJ!`
+      `🔥 Descobri o lugar mais completo e zero anúncios pra ouvir música com grave pesado, assistir clipes, filmes, séries por temporada e acompanhar Futebol & lutas do UFC/MMA ao vivo!`
     );
-    lines.push(`🎧 Acesse e ouça agora: ${mainClickableLink}`);
+    lines.push(`🚀 Entra direto sem precisar criar conta: ${mainClickableLink}`);
   }
   if (effectiveApkLink && !isLocalHostUrl(effectiveApkLink)) {
-    lines.push(`📲 Baixar App Android (APK): ${effectiveApkLink}`);
+    lines.push(`📲 App Android direto: ${effectiveApkLink}`);
   }
   if (includePixText) {
-    lines.push(`💜 Curtiu o som? Apoie o projeto rumo às ${settings.totalGoal} músicas dentro do app!`);
+    lines.push(`💜 Curtiu a experiência livre de propagandas? Você ainda pode fortalecer a meta diária via PIX dentro do app!`);
   }
-  lines.push(`🤝 Gostou? *Compartilhe com seus amigos também!* #LENKYX #CosmicPhonk #Phonk`);
+  lines.push(`😎 Se curtiu a vibe, manda pra quem merece conhecer o melhor espaço de som & vídeo! #LENKYX`);
 
   const message = lines.join('\n');
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mainClickableLink)}&text=${encodeURIComponent(message)}`;
   const xTwitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-    track ? `🚀 Ouça "${track.title}" de LENKYX — Cosmic Phonk completo!` : `🌌 Ouça o álbum oficial LENKYX — Cosmic Phonk (20 faixas completas)!`
-  )}&url=${encodeURIComponent(mainClickableLink)}&hashtags=LENKYX,CosmicPhonk,Phonk`;
+    track
+      ? `🔊 Curtindo "${track.title}" direto no LENKYX — som pesado, sem anúncios e sem cadastro!`
+      : `🔥 Som com grave turbinado, clipes HD, cinema, séries e Futebol + UFC ao vivo num só lugar sem anúncios: LENKYX!`
+  )}&url=${encodeURIComponent(mainClickableLink)}&hashtags=LENKYX`;
   const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(mainClickableLink)}`;
 
   const handleCopyMessage = async () => {
     const ok = await copyTextReliable(message);
     if (ok) {
       setCopied(true);
-      onToast('Mensagem de divulgação + link + hashtags copiados!');
+      onToast('Convite copiado! Mande pra sua galera curtir também.');
       setTimeout(() => setCopied(false), 2200);
     } else {
       onToast('Copie o texto acima.');
@@ -128,7 +130,7 @@ export const ShareModal: React.FC<Props> = ({
     const ok = await copyTextReliable(mainClickableLink);
     if (ok) {
       setCopiedBio(true);
-      onToast('Link oficial copiado para Instagram Bio / TikTok / YouTube!');
+      onToast('Link do LENKYX copiado!');
       setTimeout(() => setCopiedBio(false), 2200);
     }
   };
@@ -137,7 +139,7 @@ export const ShareModal: React.FC<Props> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: track ? `${track.title} — ${settings.artistName}` : `${settings.artistName} — Cosmic Phonk`,
+          title: track ? `${track.title} — LENKYX` : `LENKYX — Som, Clipes, Cinema & Arena Ao Vivo`,
           text: message,
           url: mainClickableLink,
         });
@@ -178,10 +180,10 @@ export const ShareModal: React.FC<Props> = ({
               </div>
               <div>
                 <h2 className="font-display text-sm sm:text-base font-black text-white">
-                  {track ? `DIVULGAR: ${track.title}` : 'PORTAL CÓSMICO DE DIVULGAÇÃO'}
+                  {track ? `DIVULGAR: ${track.title}` : 'PASSA A VISÃO PRA GALERA'}
                 </h2>
-                <p className="text-[11px] text-purple-200/80">
-                  Compartilhe na galáxia: WhatsApp, Instagram, TikTok, Telegram & QR
+                <p className="text-[11px] text-cyan-200/85">
+                  Curtiu a qualidade sem anúncios? Mande pros amigos curtirem com você!
                 </p>
               </div>
             </div>
