@@ -274,6 +274,14 @@ export function App() {
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
   const [spaceDownloadOpen, setSpaceDownloadOpen] = useState(false);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
+  const clipTheaterOpenRef = useRef(false);
+  useEffect(() => {
+    clipTheaterOpenRef.current = clipTheaterOpen;
+    if (clipTheaterOpen && currentTrackRef.current?.youtubeVideoId && clipQualityRef.current !== 'default') {
+      ytPlayerRef.current?.setPlaybackQuality?.(clipQualityRef.current);
+    }
+  }, [clipTheaterOpen]);
+  const clipStageRef = useRef<HTMLDivElement | null>(null);
   const [clipFitMode, setClipFitMode] = useState<'standard' | 'compact' | 'fullscreen'>('standard');
   const [clipQuality, setClipQuality] = useState<'medium' | 'large' | 'hd720' | 'default'>('hd720');
   const clipQualityRef = useRef<'medium' | 'large' | 'hd720' | 'default'>('hd720');
@@ -594,7 +602,14 @@ export function App() {
     audio.volume = volume;
     audioRef.current = audio;
 
-    const onTime = () => setCurrentTime(audio.currentTime || 0);
+    let lastAudioSec = -1;
+    const onTime = () => {
+      const sec = Math.floor(audio.currentTime || 0);
+      if (sec !== lastAudioSec) {
+        lastAudioSec = sec;
+        setCurrentTime(audio.currentTime || 0);
+      }
+    };
     const onLoaded = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
@@ -633,11 +648,13 @@ export function App() {
         window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
       const playerVars: Record<string, unknown> = {
         autoplay: 1,
-        controls: 1,
+        controls: 0,
+        disablekb: 1,
+        iv_load_policy: 3,
         playsinline: 1,
         rel: 0,
         modestbranding: 1,
-        fs: 1,
+        fs: 0,
       };
       if (!isLocalLoopback) {
         playerVars.origin = window.location.origin;
@@ -655,10 +672,9 @@ export function App() {
             if (ytPendingVideoRef.current) {
               const vid = ytPendingVideoRef.current;
               ytPendingVideoRef.current = null;
+              const q = clipTheaterOpenRef.current ? clipQualityRef.current : 'medium';
               ytPlayerRef.current?.loadVideoById?.(
-                clipQualityRef.current !== 'default'
-                  ? { videoId: vid, suggestedQuality: clipQualityRef.current }
-                  : vid
+                q !== 'default' ? { videoId: vid, suggestedQuality: q } : vid
               );
             }
           },
@@ -719,16 +735,21 @@ export function App() {
       }
     }
 
+    let lastYtSec = -1;
     const timer = window.setInterval(() => {
       if (!currentTrackRef.current?.youtubeVideoId || !ytPlayerRef.current) return;
       const st = ytPlayerRef.current.getPlayerState?.();
       if (st === 1) {
         const ct = ytPlayerRef.current.getCurrentTime?.() || 0;
-        const dt = ytPlayerRef.current.getDuration?.() || 0;
-        setCurrentTime(ct);
-        if (dt > 0) setDuration(dt);
+        const sec = Math.floor(ct);
+        if (sec !== lastYtSec) {
+          lastYtSec = sec;
+          const dt = ytPlayerRef.current.getDuration?.() || 0;
+          setCurrentTime(ct);
+          if (dt > 0) setDuration(dt);
+        }
       }
-    }, 350);
+    }, 900);
 
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -793,10 +814,9 @@ export function App() {
         setDuration(track.durationSec || 0);
         if (ytPlayerRef.current?.loadVideoById) {
           ytPlayerRef.current.setVolume?.(muted ? 0 : Math.round(volume * 100));
+          const q = clipTheaterOpenRef.current ? clipQualityRef.current : 'medium';
           ytPlayerRef.current.loadVideoById(
-            clipQualityRef.current !== 'default'
-              ? { videoId: track.youtubeVideoId, suggestedQuality: clipQualityRef.current }
-              : track.youtubeVideoId
+            q !== 'default' ? { videoId: track.youtubeVideoId, suggestedQuality: q } : track.youtubeVideoId
           );
           setIsPlaying(true);
         } else {
@@ -2393,7 +2413,7 @@ export function App() {
         user={userProfile}
       />
 
-      {/* Persistent Cinema Clip Theater (fits strictly inside viewport — Voltar, Ajustar Tela & Fechar ALWAYS visible!) */}
+      {/* Persistent Cinema Clip Theater (Pure LENKYX UI: zero "YouTube"/"Mais vídeos" + never throttled offscreen!) */}
       <div
         onClick={(e) => {
           if (clipTheaterOpen && e.target === e.currentTarget) setClipTheaterOpen(false);
@@ -2403,14 +2423,15 @@ export function App() {
             ? `fixed inset-0 z-[9995] bg-black flex items-center justify-center ${
                 clipFitMode === 'fullscreen' ? 'p-0' : 'p-2 sm:p-4'
               }`
-            : 'fixed -left-[9999px] -top-[9999px] w-[320px] h-[180px] opacity-0 pointer-events-none'
+            : 'fixed bottom-1 right-1 w-2 h-2 opacity-[0.01] pointer-events-none z-0 overflow-hidden'
         }
       >
         <div
+          ref={clipStageRef}
           className={
             clipTheaterOpen && currentTrack?.youtubeVideoId
               ? `w-full flex flex-col overflow-hidden bg-[#090418] border border-cyan-400/40 shadow-[0_0_70px_rgba(236,72,153,0.35)] ${
-                  clipFitMode === 'fullscreen'
+                  clipFitMode === 'fullscreen' || isNativeFullscreen
                     ? 'h-[100dvh] max-w-none rounded-none border-0'
                     : clipFitMode === 'compact'
                       ? 'max-w-2xl max-h-[85dvh] rounded-3xl'
@@ -2518,56 +2539,121 @@ export function App() {
           <div
             className={
               clipTheaterOpen
-                ? 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center'
-                : 'w-full h-full bg-black'
+                ? 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center relative overflow-hidden'
+                : 'w-full h-full bg-black relative'
             }
           >
             <div id="lenkyx-yt-audio-host" className="w-full h-full" />
+
+            {/* Pure LENKYX Click-to-Play/Pause & Pause Shield (Blocks YouTube "Mais vídeos" & external links!) */}
+            {clipTheaterOpen && currentTrack?.youtubeVideoId && (
+              <div
+                onClick={() => void handleTogglePlay()}
+                className={`absolute inset-0 z-10 cursor-pointer flex items-center justify-center transition ${
+                  !isPlaying
+                    ? 'bg-black/75 backdrop-blur-sm'
+                    : 'bg-transparent'
+                }`}
+                title={isPlaying ? 'Tocar para Pausar' : 'Tocar para Continuar'}
+              >
+                {!isPlaying && (
+                  <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-3xl bg-[#0b0618]/90 border border-white/15 shadow-2xl">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow-[0_0_30px_rgba(236,72,153,0.55)]">
+                      <Play className="w-7 h-7 fill-black ml-0.5" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xs font-black text-white max-w-[260px] truncate">{currentTrack.title}</div>
+                      <div className="text-[10px] text-cyan-300 font-bold">Toque para continuar no LENKYX</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {clipTheaterOpen && currentTrack?.youtubeVideoId && (
-            <div className="px-3 sm:px-4 py-2.5 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#090418] shrink-0">
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
-                <div className="text-[10px] text-cyan-300/80 flex items-center gap-2">
-                  <span>Próxima segue na sequência · Reproduzindo no LENKYX</span>
-                </div>
+            <div className="px-3 sm:px-4 py-2.5 border-t border-white/10 flex flex-col gap-2 bg-[#090418] shrink-0">
+              {/* Interactive LENKYX Seek Bar */}
+              <div className="flex items-center gap-2 text-[10px] font-mono text-purple-200/85">
+                <span className="w-9 text-right">
+                  {`${Math.floor(currentTime / 60)}:${String(Math.floor(currentTime % 60)).padStart(2, '0')}`}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || currentTrack.durationSec || 180}
+                  step={1}
+                  value={Math.min(currentTime, duration || currentTrack.durationSec || 180)}
+                  onChange={(e) => handleSeek(Number(e.target.value))}
+                  className="flex-1 h-1.5 accent-pink-500 cursor-pointer"
+                />
+                <span className="w-9">
+                  {`${Math.floor((duration || currentTrack.durationSec || 180) / 60)}:${String(
+                    Math.floor((duration || currentTrack.durationSec || 180) % 60)
+                  ).padStart(2, '0')}`}
+                </span>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10">
-                  <button onClick={handleToggleMute} className="text-cyan-300">
-                    {muted || volume === 0 ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
-                  </button>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.02}
-                    value={muted ? 0 : volume}
-                    onChange={(e) => handleVolume(Number(e.target.value))}
-                    className="w-16 accent-cyan-400 cursor-pointer"
-                  />
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
+                  <div className="text-[10px] text-cyan-300/80 flex items-center gap-2">
+                    <span>Próxima segue na sequência · Player 100% LENKYX</span>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handlePrevNext(-1)}
-                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                  title="Clipe Anterior"
-                >
-                  <SkipBack className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => void handleTogglePlay()}
-                  className="w-9 h-9 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow"
-                >
-                  {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black ml-0.5" />}
-                </button>
-                <button
-                  onClick={() => handlePrevNext(1)}
-                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                  title="Próximo Clipe"
-                >
-                  <SkipForward className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10">
+                    <button onClick={handleToggleMute} className="text-cyan-300">
+                      {muted || volume === 0 ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
+                    </button>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.02}
+                      value={muted ? 0 : volume}
+                      onChange={(e) => handleVolume(Number(e.target.value))}
+                      className="w-16 accent-cyan-400 cursor-pointer"
+                    />
+                  </div>
+                  <button
+                    onClick={() => handlePrevNext(-1)}
+                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                    title="Clipe Anterior"
+                  >
+                    <SkipBack className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => void handleTogglePlay()}
+                    className="w-9 h-9 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow"
+                  >
+                    {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black ml-0.5" />}
+                  </button>
+                  <button
+                    onClick={() => handlePrevNext(1)}
+                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                    title="Próximo Clipe"
+                  >
+                    <SkipForward className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        if (!document.fullscreenElement) {
+                          await clipStageRef.current?.requestFullscreen?.();
+                        } else {
+                          await document.exitFullscreen?.();
+                        }
+                      } catch {
+                        setClipFitMode((m) => (m === 'fullscreen' ? 'standard' : 'fullscreen'));
+                      }
+                    }}
+                    className="p-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-200"
+                    title={isNativeFullscreen ? 'Sair da Tela Cheia' : 'Tela Cheia no LENKYX'}
+                  >
+                    {isNativeFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             </div>
           )}

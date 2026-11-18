@@ -156,6 +156,8 @@ const YouTubeShortPlayer: React.FC<{
   onUnavailable: () => void;
 }> = ({ videoId, loopOne, onEnded, onUnavailable }) => {
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const playerRef = useRef<YTPlayerHandle | null>(null);
+  const [paused, setPaused] = useState(false);
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
   const onUnavailRef = useRef(onUnavailable);
@@ -166,6 +168,7 @@ const YouTubeShortPlayer: React.FC<{
   useEffect(() => {
     let destroyed = false;
     let player: YTPlayerHandle | null = null;
+    setPaused(false);
 
     loadYouTubeIframeApi().then(() => {
       if (destroyed || !hostRef.current) return;
@@ -192,12 +195,14 @@ const YouTubeShortPlayer: React.FC<{
           playsinline: 1,
           rel: 0,
           modestbranding: 1,
-          controls: 1,
-          fs: 1,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
           iv_load_policy: 3,
         },
         events: {
           onReady: (ev) => {
+            playerRef.current = ev.target;
             try {
               ev.target.playVideo?.();
             } catch {
@@ -205,7 +210,9 @@ const YouTubeShortPlayer: React.FC<{
             }
           },
           onStateChange: (ev) => {
-            if (ev.data === 0) {
+            if (ev.data === 1) setPaused(false);
+            else if (ev.data === 2) setPaused(true);
+            else if (ev.data === 0) {
               if (loopRef.current) {
                 ev.target.seekTo?.(0, true);
                 ev.target.playVideo?.();
@@ -219,10 +226,12 @@ const YouTubeShortPlayer: React.FC<{
           },
         },
       });
+      playerRef.current = player;
     });
 
     return () => {
       destroyed = true;
+      playerRef.current = null;
       try {
         player?.destroy?.();
       } catch {
@@ -231,7 +240,37 @@ const YouTubeShortPlayer: React.FC<{
     };
   }, [videoId]);
 
-  return <div ref={hostRef} className="w-full h-full bg-black" />;
+  const toggleShortPlay = () => {
+    const p = playerRef.current as (YTPlayerHandle & { pauseVideo?: () => void }) | null;
+    if (!p) return;
+    if (paused) {
+      p.playVideo?.();
+      setPaused(false);
+    } else {
+      p.pauseVideo?.();
+      setPaused(true);
+    }
+  };
+
+  return (
+    <div className="relative w-full h-full bg-black">
+      <div ref={hostRef} className="w-full h-full bg-black" />
+      <button
+        type="button"
+        onClick={toggleShortPlay}
+        aria-label={paused ? 'Continuar Reel' : 'Pausar Reel'}
+        className={`absolute inset-0 z-10 flex items-center justify-center transition ${
+          paused ? 'bg-black/55 backdrop-blur-sm' : 'bg-transparent'
+        }`}
+      >
+        {paused && (
+          <span className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow-[0_0_30px_rgba(236,72,153,0.65)]">
+            <Play className="w-7 h-7 fill-black ml-0.5" />
+          </span>
+        )}
+      </button>
+    </div>
+  );
 };
 
 function triggerLiveCosmicSfx(kind: 'ship' | 'sub808' | 'laser') {
