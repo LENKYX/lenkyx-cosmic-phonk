@@ -82,6 +82,43 @@ function fmtDur(sec?: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+const ArtistPortrait: React.FC<{
+  name: string;
+  photoUrl?: string;
+  className?: string;
+}> = ({ name, photoUrl, className = 'w-full h-full object-cover rounded-full bg-black' }) => {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+  }, [photoUrl]);
+
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || '')
+    .join('');
+
+  if (!photoUrl || failed) {
+    return (
+      <div className="w-full h-full rounded-full bg-gradient-to-br from-[#120b29] via-[#1c1338] to-[#0a1628] flex items-center justify-center font-display text-lg font-black tracking-wider text-cyan-200 select-none">
+        {initials || '★'}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={photoUrl}
+      alt={name}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className={className}
+    />
+  );
+};
+
 export const WorldExploreView: React.FC<Props> = ({
   initialQuery = '',
   searchNonce = 0,
@@ -262,20 +299,18 @@ export const WorldExploreView: React.FC<Props> = ({
       {/* SPOTIFY / YOUTUBE MUSIC OFFICIAL ARTIST HERO BANNER (when an artist is selected!) */}
       {artistProfile && (
         <section className="relative rounded-[28px] overflow-hidden border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.75)]">
-          <img
-            src={artistProfile.photoUrl || '/covers/album-official.jpg'}
-            alt={artistProfile.name}
-            className="absolute inset-0 w-full h-full object-cover opacity-35 blur-sm scale-105"
-          />
+          {artistProfile.photoUrl && (
+            <img
+              src={artistProfile.photoUrl}
+              alt={artistProfile.name}
+              className="absolute inset-0 w-full h-full object-cover opacity-35 blur-sm scale-105"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#05020f] via-[#070316]/75 to-transparent" />
 
           <div className="relative z-10 p-5 sm:p-7 flex flex-col sm:flex-row items-center sm:items-end gap-5">
             <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full p-[3px] bg-gradient-to-br from-emerald-400 via-cyan-400 to-pink-500 shrink-0 shadow-[0_0_35px_rgba(34,211,238,0.45)]">
-              <img
-                src={artistProfile.photoUrl || '/covers/album-official.jpg'}
-                alt={artistProfile.name}
-                className="w-full h-full object-cover rounded-full bg-black"
-              />
+              <ArtistPortrait name={artistProfile.name} photoUrl={artistProfile.photoUrl} />
               <span className="absolute bottom-0 right-0 px-2.5 py-0.5 rounded-full bg-emerald-400 text-black text-[9px] font-black flex items-center gap-0.5 shadow-lg">
                 <UserCheck className="w-3 h-3" /> VERIFICADO
               </span>
@@ -368,14 +403,8 @@ export const WorldExploreView: React.FC<Props> = ({
               onClick={() => void runSearch(art.name, `🎤 ${art.name}`)}
               className="group w-32 sm:w-36 shrink-0 rounded-2xl cosmic-card-3d p-3 flex flex-col items-center text-center gap-2 hover:bg-white/[0.09] transition"
             >
-              <div className="relative w-22 h-22 sm:w-24 sm:h-24 rounded-full p-[2.5px] bg-gradient-to-tr from-emerald-400 via-cyan-400 to-pink-500 group-hover:scale-105 transition shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
-                <img
-                  src={art.photoUrl || '/covers/album-official.jpg'}
-                  alt={art.name}
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-cover rounded-full bg-black"
-                />
+              <div className="relative w-22 h-22 sm:w-24 sm:h-24 rounded-full p-[2px] bg-gradient-to-tr from-cyan-400/70 via-white/25 to-pink-500/70 group-hover:scale-105 transition shadow-[0_12px_28px_rgba(0,0,0,0.65)]">
+                <ArtistPortrait name={art.name} photoUrl={art.photoUrl} />
                 <span className="opacity-0 group-hover:opacity-100 absolute bottom-0 right-0 w-8 h-8 rounded-full bg-emerald-400 text-black flex items-center justify-center shadow-lg transition">
                   <Play className="w-4 h-4 fill-black ml-0.5" />
                 </span>

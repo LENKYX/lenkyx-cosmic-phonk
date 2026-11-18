@@ -1294,24 +1294,26 @@ export function App() {
           screensaverOpen ? '-translate-x-10 scale-90 opacity-0 blur-sm pointer-events-none' : 'translate-x-0 scale-100 opacity-100'
         }`}
       >
-        {/* Brand Logo (tap 5x secretly for Creator access) */}
+        {/* Brand Monument (tap 5x secretly for Creator access) */}
         <div
           onClick={handleBrandTap}
-          className="h-14 px-4 flex items-center gap-2.5 border-b border-white/10 cursor-pointer hover:bg-white/[0.03] select-none"
+          className="h-16 px-4 flex items-center gap-3 border-b border-white/[0.08] cursor-pointer hover:bg-white/[0.03] select-none"
         >
-          <img
-            src="/covers/avatar.jpg"
-            alt="LENKYX"
-            className="w-8 h-8 rounded-full border border-pink-500 object-cover shadow-[0_0_12px_rgba(236,72,153,0.5)]"
-          />
+          <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-cyan-400 via-amber-300/70 to-pink-500 shadow-[0_0_18px_rgba(56,189,248,0.28)]">
+            <img
+              src="/covers/avatar.jpg"
+              alt="LENKYX"
+              className="w-9 h-9 rounded-full object-cover bg-black"
+            />
+          </div>
           <div className="leading-tight min-w-0">
-            <div className="font-display text-sm font-black tracking-wider text-white">LENKYX</div>
-            <div className="text-[9px] font-bold tracking-[0.18em] text-cyan-300 truncate">COSMIC PHONK</div>
+            <div className="font-display text-sm font-black tracking-[0.14em] text-white">LENKYX</div>
+            <div className="text-[9px] font-bold tracking-[0.26em] text-cyan-300/90 truncate">COSMIC PHONK</div>
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
+        {/* Architectural Primary Sector Navigation (All 7 Universe Sectors Immediately Visible) */}
+        <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-3">
           <nav className="space-y-1">
             {sidebarMain.map((tab) => {
               const active = activeTab === tab.id;
@@ -1319,14 +1321,14 @@ export function App() {
                 <button
                   key={tab.id}
                   onClick={() => navigateTab(tab.id)}
-                  className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
+                  className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all ${
                     active
-                      ? 'bg-gradient-to-r from-pink-500/25 to-cyan-500/20 text-white border border-pink-500/35'
-                      : 'text-purple-200/80 hover:text-white hover:bg-white/[0.06]'
+                      ? 'bg-gradient-to-r from-white/[0.12] via-cyan-500/15 to-transparent text-white border border-cyan-300/35 shadow-[inset_2px_0_0_#22d3ee]'
+                      : 'text-slate-300/80 hover:text-white hover:bg-white/[0.05] border border-transparent'
                   }`}
                 >
-                  <span className={active ? 'text-pink-400' : 'text-purple-300/75'}>{tab.icon}</span>
-                  <span>{tab.label}</span>
+                  <span className={active ? 'text-cyan-300' : 'text-slate-400'}>{tab.icon}</span>
+                  <span className="truncate tracking-wide">{tab.label}</span>
                 </button>
               );
             })}
@@ -1334,16 +1336,16 @@ export function App() {
 
           {/* Creator Tools (Visible when Creator unlocked) */}
           {mode === 'creator' && (
-            <div className="space-y-1 pt-2 border-t border-white/10">
-              <div className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-pink-300/80 mb-1">
+            <div className="space-y-1 pt-2 border-t border-white/[0.07]">
+              <div className="px-3 text-[9px] font-extrabold uppercase tracking-[0.2em] text-amber-300/80 mb-1">
                 Estúdio Criador
               </div>
               <button
                 onClick={() => navigateTab('studio')}
                 className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
                   activeTab === 'studio'
-                    ? 'bg-cyan-500/25 text-white border border-cyan-400/40'
-                    : 'text-purple-200/80 hover:text-white hover:bg-white/[0.06]'
+                    ? 'bg-cyan-500/20 text-white border border-cyan-400/40'
+                    : 'text-slate-300/80 hover:text-white hover:bg-white/[0.05]'
                 }`}
               >
                 <Wand2 className="w-4 h-4 text-cyan-300" />
@@ -1352,9 +1354,9 @@ export function App() {
             </div>
           )}
 
-          {/* Playlists Quick List (Spotify Style) */}
-          <div className="space-y-1 pt-2 border-t border-white/10">
-            <div className="px-3 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-purple-300/65 mb-1">
+          {/* Playlists Quick List */}
+          <div className="space-y-1 pt-2 border-t border-white/[0.07]">
+            <div className="px-3 flex items-center justify-between text-[9px] font-extrabold uppercase tracking-[0.2em] text-slate-400 mb-1">
               <span>Suas Playlists</span>
               <button
                 onClick={() => navigateTab('playlists')}
@@ -1363,86 +1365,104 @@ export function App() {
                 + Nova
               </button>
             </div>
-            {playlists.map((pl) => (
+            {playlists.slice(0, 4).map((pl) => (
               <button
                 key={pl.id}
                 onClick={() => navigateTab('playlists')}
-                className="w-full px-3 py-1.5 rounded-lg hover:bg-white/[0.06] text-left text-xs text-purple-200/85 hover:text-white flex items-center justify-between gap-2 transition"
+                className="w-full px-3 py-1.5 rounded-lg hover:bg-white/[0.05] text-left text-[11px] text-slate-300/85 hover:text-white flex items-center justify-between gap-2 transition"
               >
                 <span className="truncate">
                   {pl.emoji} {pl.name}
                 </span>
-                <span className="text-[10px] text-purple-300/55 shrink-0">{pl.trackIds.length}</span>
+                <span className="text-[10px] text-slate-500 shrink-0">{pl.trackIds.length}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Sidebar Footer: Community Chat + TV Cast + Space Download + Share + PIX + Legal */}
-        <div className="p-3 pb-4 border-t border-white/10 space-y-1.5">
-          <button
-            onClick={() => setChatOpen(true)}
-            className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-500/25 to-cyan-500/25 hover:from-purple-500/40 hover:to-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-xs font-extrabold flex items-center justify-center gap-1.5 transition"
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-cyan-300" /> Chat da Comunidade
-          </button>
-          <button
-            onClick={() => {
-              setTvCustomMedia(null);
-              setTvCastOpen(true);
-            }}
-            className="w-full py-2 px-3 rounded-xl bg-blue-500/20 hover:bg-blue-500/35 border border-cyan-400/45 text-cyan-100 text-xs font-extrabold flex items-center justify-center gap-1.5 transition"
-          >
-            <Tv className="w-3.5 h-3.5 text-cyan-300" /> Passar p/ TV & Bluetooth
-          </button>
-          {!isAndroidApk() && (
+        {/* Compact Architectural Utility Dock */}
+        <div className="p-2.5 border-t border-white/[0.08] bg-black/25 space-y-2">
+          <div className="grid grid-cols-3 gap-1.5">
             <button
-              onClick={() => setSpaceDownloadOpen(true)}
-              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500 hover:brightness-110 text-black text-xs font-black flex items-center justify-center gap-1.5 shadow-[0_0_20px_rgba(34,211,238,0.35)] transition"
+              onClick={() => setChatOpen(true)}
+              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-cyan-200 text-[10px] font-bold flex flex-col items-center gap-1 transition"
+              title="Chat da Comunidade"
             >
-              <Rocket className="w-3.5 h-3.5" /> Baixar App Espacial
+              <MessageSquare className="w-3.5 h-3.5 text-cyan-300" />
+              <span>Chat</span>
             </button>
-          )}
-          <button
-            onClick={() => {
-              setShareTrack(null);
-              setShareOpen(true);
-            }}
-            className="w-full py-2 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 text-xs font-extrabold flex items-center justify-center gap-1.5 transition"
-          >
-            <MessageCircle className="w-3.5 h-3.5" /> Indicar no WhatsApp
-          </button>
-          <button
-            onClick={() => {
-              setPixInitialTab('donate');
-              setPixOpen(true);
-            }}
-            className="w-full py-2 px-3 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/35 text-pink-200 text-xs font-bold flex items-center justify-center gap-1.5"
-          >
-            <QrCode className="w-3.5 h-3.5" /> Apoiar via PIX
-          </button>
-          <button
-            onClick={() => setLegalOpen(true)}
-            className="w-full py-1.5 px-2 rounded-xl bg-white/[0.04] hover:bg-white/10 border border-white/10 text-purple-200/80 text-[11px] font-bold flex items-center justify-center gap-1.5"
-          >
-            <Scale className="w-3.5 h-3.5 text-cyan-300" /> Direitos Autorais & DMCA
-          </button>
-          <button
-            onClick={() => setSocialDistOpen(true)}
-            className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-pink-500/20 to-purple-500/20 hover:from-pink-500/35 hover:to-purple-500/35 border border-pink-400/40 text-pink-100 text-xs font-extrabold flex items-center justify-center gap-1.5 transition"
-          >
-            <Share2 className="w-3.5 h-3.5 text-pink-300" /> Auto-Divulgar Redes
-          </button>
-          <button
-            onClick={() => setSafeExitOpen(true)}
-            className="w-full py-1.5 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-400/35 text-emerald-200 text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition"
-          >
-            <Power className="w-3.5 h-3.5" /> Sair com Segurança
-          </button>
+            <button
+              onClick={() => {
+                setTvCustomMedia(null);
+                setTvCastOpen(true);
+              }}
+              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-slate-200 text-[10px] font-bold flex flex-col items-center gap-1 transition"
+              title="Passar para Smart TV & Bluetooth"
+            >
+              <Tv className="w-3.5 h-3.5 text-cyan-300" />
+              <span>Smart TV</span>
+            </button>
+            <button
+              onClick={() => {
+                setShareTrack(null);
+                setShareOpen(true);
+              }}
+              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-emerald-200 text-[10px] font-bold flex flex-col items-center gap-1 transition"
+              title="Indicar no WhatsApp"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Indicar</span>
+            </button>
+            <button
+              onClick={() => setSocialDistOpen(true)}
+              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-pink-200 text-[10px] font-bold flex flex-col items-center gap-1 transition"
+              title="Auto-Divulgar Redes Sociais"
+            >
+              <Share2 className="w-3.5 h-3.5 text-pink-300" />
+              <span>Divulgar</span>
+            </button>
+            <button
+              onClick={() => setLegalOpen(true)}
+              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-slate-300 text-[10px] font-bold flex flex-col items-center gap-1 transition"
+              title="Direitos Autorais & DMCA"
+            >
+              <Scale className="w-3.5 h-3.5 text-amber-300" />
+              <span>DMCA</span>
+            </button>
+            <button
+              onClick={() => setSafeExitOpen(true)}
+              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-emerald-200 text-[10px] font-bold flex flex-col items-center gap-1 transition"
+              title="Sair com Segurança"
+            >
+              <Power className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Sair</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {!isAndroidApk() && (
+              <button
+                onClick={() => setSpaceDownloadOpen(true)}
+                className="flex-1 py-2 px-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black flex items-center justify-center gap-1 shadow transition"
+              >
+                <Rocket className="w-3.5 h-3.5" /> App APK
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setPixInitialTab('donate');
+                setPixOpen(true);
+              }}
+              className="flex-1 py-2 px-2.5 rounded-xl bg-white/[0.08] hover:bg-pink-500/25 border border-pink-400/35 text-pink-100 text-[11px] font-bold flex items-center justify-center gap-1 transition"
+            >
+              <QrCode className="w-3.5 h-3.5 text-pink-300" /> Apoiar
+            </button>
+          </div>
+
           {mode === 'creator' && (
             <button
               onClick={() => setCreatorModalOpen(true)}
-              className="w-full py-1.5 px-2 rounded-xl border bg-emerald-500/20 border-emerald-400/40 text-emerald-200 text-[11px] font-bold flex items-center justify-center gap-1"
+              className="w-full py-1.5 px-2 rounded-xl border bg-amber-500/15 border-amber-400/35 text-amber-200 text-[11px] font-bold flex items-center justify-center gap-1"
             >
               <Sparkles className="w-3.5 h-3.5" /> Painel Criador
             </button>

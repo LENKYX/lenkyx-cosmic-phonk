@@ -289,6 +289,23 @@ function interpretQueryWithAI(rawQuery) {
   return { raw: q, corrected, expanded, isCosmic, matchedArtist };
 }
 
+function isUsablePortraitUrl(url = '') {
+  const low = String(url || '').toLowerCase();
+  if (!low.startsWith('http')) return false;
+  if (low.includes('.svg') || low.includes('_sig') || low.includes('signature') || low.includes('flag_of')) {
+    return false;
+  }
+  return true;
+}
+
+function wrapArtistPhotoUrl(rawUrl = '') {
+  if (!rawUrl) return '';
+  if (rawUrl.includes('wikimedia.org') || rawUrl.includes('wikipedia.org')) {
+    return `/api/artist-photo?u=${encodeURIComponent(rawUrl)}`;
+  }
+  return rawUrl;
+}
+
 export async function fetchArtistPhotoAndBio(artistName, lang = 'pt', explicitWikiSlug = '') {
   const key = `${lang}:${explicitWikiSlug || artistName.toLowerCase()}`;
   if (wikiCache.has(key)) return wikiCache.get(key);
@@ -297,15 +314,16 @@ export async function fetchArtistPhotoAndBio(artistName, lang = 'pt', explicitWi
     try {
       const r = await fetch(`https://${l}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`, {
         headers: { 'User-Agent': UA },
-        signal: AbortSignal.timeout(3500),
+        signal: AbortSignal.timeout(5000),
       });
       if (!r.ok) return null;
       const d = await r.json();
-      const photo = d?.originalimage?.source || d?.thumbnail?.source || '';
-      if (!photo && !d?.extract) return null;
+      const thumb = isUsablePortraitUrl(d?.thumbnail?.source) ? d.thumbnail.source : '';
+      const orig = isUsablePortraitUrl(d?.originalimage?.source) ? d.originalimage.source : '';
+      const photo = thumb || orig;
       return {
         name: d.title || artistName,
-        photoUrl: photo,
+        photoUrl: photo ? wrapArtistPhotoUrl(photo) : '',
         bio: (d.extract || '').slice(0, 220),
         wikiUrl: d?.content_urls?.desktop?.page || '',
       };
@@ -314,35 +332,39 @@ export async function fetchArtistPhotoAndBio(artistName, lang = 'pt', explicitWi
     }
   };
 
+  let fallbackBio = '';
   if (explicitWikiSlug) {
     const direct = await tryWikiSummary(lang, explicitWikiSlug);
-    if (direct) {
+    if (direct?.photoUrl) {
       wikiCache.set(key, direct);
       return direct;
     }
+    if (direct?.bio) fallbackBio = direct.bio;
   }
 
-  for (const l of [lang, lang === 'pt' ? 'en' : 'pt']) {
-    try {
-      const sRes = await fetch(
-        `https://${l}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-          artistName + (l === 'pt' ? ' cantor OR cantora OR dupla OR banda' : ' musician OR band OR singer')
-        )}&format=json&srlimit=3`,
-        { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(3500) }
-      );
-      if (sRes.ok) {
-        const sj = await sRes.json();
-        const hits = sj?.query?.search || [];
-        for (const h of hits) {
-          const got = await tryWikiSummary(l, h.title.replace(/ /g, '_'));
-          if (got && got.photoUrl) {
-            wikiCache.set(key, got);
-            return got;
+  if (!fallbackBio) {
+    for (const l of [lang, lang === 'pt' ? 'en' : 'pt']) {
+      try {
+        const sRes = await fetch(
+          `https://${l}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+            artistName + (l === 'pt' ? ' cantor OR cantora OR dupla OR banda' : ' musician OR band OR singer')
+          )}&format=json&srlimit=3`,
+          { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(4500) }
+        );
+        if (sRes.ok) {
+          const sj = await sRes.json();
+          const hits = sj?.query?.search || [];
+          for (const h of hits) {
+            const got = await tryWikiSummary(l, h.title.replace(/ /g, '_'));
+            if (got && got.photoUrl) {
+              wikiCache.set(key, got);
+              return got;
+            }
           }
         }
+      } catch {
+        // continue
       }
-    } catch {
-      // continue
     }
   }
 
@@ -350,7 +372,7 @@ export async function fetchArtistPhotoAndBio(artistName, lang = 'pt', explicitWi
   try {
     const itRes = await fetch(
       `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=song&limit=1&country=${lang === 'pt' ? 'BR' : 'US'}`,
-      { signal: AbortSignal.timeout(3500) }
+      { signal: AbortSignal.timeout(5000) }
     );
     if (itRes.ok) {
       const itJson = await itRes.json();
@@ -358,8 +380,8 @@ export async function fetchArtistPhotoAndBio(artistName, lang = 'pt', explicitWi
       if (first?.artworkUrl100) {
         const resObj = {
           name: first.artistName || artistName,
-          photoUrl: first.artworkUrl100.replace('100x100bb', '600x600bb'),
-          bio: `${first.artistName || artistName} · ${first.primaryGenreName || 'Música'}`,
+          photoUrl: wrapArtistPhotoUrl(first.artworkUrl100.replace('100x100bb', '600x600bb')),
+          bio: fallbackBio || `${first.artistName || artistName} · ${first.primaryGenreName || 'Música'}`,
           wikiUrl: '',
         };
         wikiCache.set(key, resObj);
@@ -370,7 +392,7 @@ export async function fetchArtistPhotoAndBio(artistName, lang = 'pt', explicitWi
     // ignore
   }
 
-  wikiCache.set(key, null);
+  // Never cache failures permanently so transient rate limits recover cleanly
   return null;
 }
 
@@ -589,7 +611,7 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
     wikiArtist || ai.matchedArtist
       ? {
           name: wikiArtist?.name || ai.matchedArtist?.name || q,
-          photoUrl: wikiArtist?.photoUrl || ytTracks[0]?.coverUrl || '/covers/album-official.jpg',
+          photoUrl: wikiArtist?.photoUrl || ytTracks[0]?.coverUrl || '',
           bio: wikiArtist?.bio || '',
           genre: ai.matchedArtist?.genre || (ai.isCosmic ? 'Espaço & Galáxia' : 'Artista Mundial'),
           era: ai.matchedArtist?.era || '',
@@ -731,19 +753,31 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
 }
 
 export async function getFamousArtistsWithPhotos() {
-  if (cachedArtistsDirectory && Date.now() - cachedArtistsTs < 6 * 3600 * 1000) {
+  if (
+    cachedArtistsDirectory &&
+    cachedArtistsDirectory.every((a) => a.photoUrl && !a.photoUrl.includes('album-official.jpg')) &&
+    Date.now() - cachedArtistsTs < 6 * 3600 * 1000
+  ) {
     return cachedArtistsDirectory;
   }
-  const enriched = await Promise.all(
-    FAMOUS_ARTISTS_DIRECTORY.map(async (a) => {
-      const info = await fetchArtistPhotoAndBio(a.name, a.lang, a.wiki);
-      return {
-        ...a,
-        photoUrl: info?.photoUrl || '/covers/album-official.jpg',
-        bio: info?.bio || '',
-      };
-    })
-  );
+
+  // Throttled batches of 6 so Wikipedia/iTunes never rate-limit (429) on 40 parallel calls
+  const enriched = [];
+  const batchSize = 6;
+  for (let i = 0; i < FAMOUS_ARTISTS_DIRECTORY.length; i += batchSize) {
+    const chunk = FAMOUS_ARTISTS_DIRECTORY.slice(i, i + batchSize);
+    const resolved = await Promise.all(
+      chunk.map(async (a) => {
+        const info = await fetchArtistPhotoAndBio(a.name, a.lang, a.wiki);
+        return {
+          ...a,
+          photoUrl: info?.photoUrl || '',
+          bio: info?.bio || '',
+        };
+      })
+    );
+    enriched.push(...resolved);
+  }
   cachedArtistsDirectory = enriched;
   cachedArtistsTs = Date.now();
   return enriched;

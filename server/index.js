@@ -627,6 +627,46 @@ app.get('/api/world-trending', async (_req, res) => {
   }
 });
 
+const artistPhotoCache = new Map();
+
+app.get('/api/artist-photo', async (req, res) => {
+  const raw = String(req.query.u || '').trim();
+  if (!raw.startsWith('https://')) return res.status(400).end();
+  try {
+    const parsed = new URL(raw);
+    const allowed = ['upload.wikimedia.org', 'thumb.wikimedia.org', 'commons.wikimedia.org', 'is1-ssl.mzstatic.com', 'i.ytimg.com'];
+    if (!allowed.some((h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`))) {
+      return res.status(403).end();
+    }
+    const cached = artistPhotoCache.get(raw);
+    if (cached && Date.now() - cached.ts < 12 * 3600 * 1000) {
+      res.setHeader('Content-Type', cached.type);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(cached.buf);
+    }
+    const upstream = await fetch(raw, {
+      headers: {
+        'User-Agent': 'LENKYX-Cosmic-Phonk/2.0 (https://lenkyx-cosmic-phonk.onrender.com)',
+        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(7000),
+    });
+    if (!upstream.ok) return res.status(upstream.status).end();
+    const contentType = upstream.headers.get('content-type') || 'image/jpeg';
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    if (artistPhotoCache.size > 160) {
+      const firstKey = artistPhotoCache.keys().next().value;
+      if (firstKey) artistPhotoCache.delete(firstKey);
+    }
+    artistPhotoCache.set(raw, { ts: Date.now(), type: contentType, buf });
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.send(buf);
+  } catch {
+    return res.status(502).end();
+  }
+});
+
 app.get('/api/world-search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   const space = req.query.space === '1' || req.query.space === 'true';
