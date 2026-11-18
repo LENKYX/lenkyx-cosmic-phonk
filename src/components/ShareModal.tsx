@@ -49,9 +49,7 @@ export const ShareModal: React.FC<Props> = ({
   onOpenInstallApp,
   onToast,
 }) => {
-  const [includePixText, setIncludePixText] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const [copiedBio, setCopiedBio] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [showQr, setShowQr] = useState(true);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [customUrl, setCustomUrl] = useState(settings.publicUrl || '');
@@ -73,9 +71,10 @@ export const ShareModal: React.FC<Props> = ({
       ? currentOrigin.replace(/\/$/, '')
       : 'https://lenkyx-cosmic-phonk.onrender.com';
 
+  // Clean direct app link (opens instant download/install on PC, Smart TV, or ANY cell phone)
   const mainClickableLink = track
     ? `${effectiveSiteBase}/?track=${encodeURIComponent(track.id)}`
-    : effectiveSiteBase;
+    : `${effectiveSiteBase}/app`;
 
   useEffect(() => {
     if (!open || !showQr) return;
@@ -106,63 +105,33 @@ export const ShareModal: React.FC<Props> = ({
     }
   };
 
-  const lines: string[] = [];
-  if (track) {
-    lines.push(`🔊 Mano, olha esse som que tô curtindo no *LENKYX*: *${track.emoji} ${track.title}* — *${track.artist}*!`);
-    lines.push(`🎧 Dá o play direto (sem anúncio e sem cadastro): ${mainClickableLink}`);
-  } else {
-    lines.push(
-      `🔥 Descobri o app mais completo e zero anúncios pra ouvir música com grave pesado, assistir clipes, filmes, séries por temporada e acompanhar Futebol & lutas do UFC/MMA ao vivo!`
-    );
-    lines.push(`🚀 Entra direto sem precisar criar conta (instala no celular em 2s): ${mainClickableLink}`);
-  }
-  if (includePixText) {
-    lines.push(`💜 Curtiu a experiência livre de propagandas? Você ainda pode fortalecer a meta diária via PIX dentro do app!`);
-  }
-  lines.push(`😎 Manda pra geral conhecer! #LENKYX #CosmicPhonk #MusicaSemAnuncios`);
-
-  const message = lines.join('\n');
-  const shortInvite = track
-    ? `🔊 Ouça "${track.title}" direto no LENKYX — grave turbinado, zero anúncios e sem cadastro!`
-    : `🔥 Música com grave turbinado, clipes HD, cinema, séries e Futebol + UFC ao vivo sem anúncios e sem cadastro: LENKYX!`;
-
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mainClickableLink)}&text=${encodeURIComponent(message)}`;
-  const xTwitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shortInvite)}&url=${encodeURIComponent(mainClickableLink)}&hashtags=LENKYX,CosmicPhonk`;
-  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(mainClickableLink)}&quote=${encodeURIComponent(shortInvite)}`;
-  const threadsUrl = `https://www.threads.net/intent/post?text=${encodeURIComponent(`${shortInvite} ${mainClickableLink}`)}`;
+  // Send ONLY the clean app (zero cluttered text walls, zero hashtags)
+  const appTitle = track ? `${track.title} · LENKYX` : 'LENKYX';
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(mainClickableLink)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mainClickableLink)}&text=${encodeURIComponent(appTitle)}`;
+  const xTwitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(appTitle)}&url=${encodeURIComponent(mainClickableLink)}`;
+  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(mainClickableLink)}`;
+  const threadsUrl = `https://www.threads.net/intent/post?text=${encodeURIComponent(mainClickableLink)}`;
   const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(mainClickableLink)}`;
-  const redditUrl = `https://www.reddit.com/submit?url=${encodeURIComponent(mainClickableLink)}&title=${encodeURIComponent(shortInvite)}`;
-  const pinterestUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(mainClickableLink)}&description=${encodeURIComponent(shortInvite)}`;
-  const emailUrl = `mailto:?subject=${encodeURIComponent('🔥 Conheça o App LENKYX (Sem Anúncios e Sem Cadastro)')}&body=${encodeURIComponent(message)}`;
-  const smsUrl = `sms:?&body=${encodeURIComponent(`${shortInvite} ${mainClickableLink}`)}`;
-
-  const handleCopyMessage = async () => {
-    const ok = await copyTextReliable(message);
-    void trackSharePopularity('copy_invite');
-    if (ok) {
-      setCopied(true);
-      onToast('Convite copiado + Popularidade aumentada! 🚀');
-      setTimeout(() => setCopied(false), 2200);
-    } else {
-      onToast('Copie o texto acima.');
-    }
-  };
+  const redditUrl = `https://www.reddit.com/submit?url=${encodeURIComponent(mainClickableLink)}&title=${encodeURIComponent(appTitle)}`;
+  const pinterestUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(mainClickableLink)}&description=${encodeURIComponent(appTitle)}`;
+  const emailUrl = `mailto:?subject=${encodeURIComponent(appTitle)}&body=${encodeURIComponent(mainClickableLink)}`;
+  const smsUrl = `sms:?&body=${encodeURIComponent(mainClickableLink)}`;
 
   const handleCopyLinkOnly = async () => {
     const ok = await copyTextReliable(mainClickableLink);
     void trackSharePopularity('copy_link');
     if (ok) {
-      setCopiedBio(true);
-      onToast('Link oficial copiado + Popularidade +25 pts!');
-      setTimeout(() => setCopiedBio(false), 2200);
+      setCopiedLink(true);
+      onToast('Link direto do App copiado! 🚀');
+      setTimeout(() => setCopiedLink(false), 2200);
     }
   };
 
   const handleSocialLaunch = async (channel: string, url: string, copyFirst = false, notice?: string) => {
     void trackSharePopularity(channel);
     if (copyFirst) {
-      await copyTextReliable(message);
+      await copyTextReliable(mainClickableLink);
     }
     if (notice) onToast(notice);
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -173,11 +142,10 @@ export const ShareModal: React.FC<Props> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: track ? `${track.title} — LENKYX` : `LENKYX — Som, Clipes, Cinema & Arena Ao Vivo`,
-          text: message,
+          title: appTitle,
           url: mainClickableLink,
         });
-        onToast('Obrigado por divulgar! Popularidade do app subiu 🔥');
+        onToast('App enviado automaticamente! Popularidade subiu 🔥');
       } catch {
         // canceled
       }
@@ -202,8 +170,14 @@ export const ShareModal: React.FC<Props> = ({
   const pct = Math.min(100, Math.round((score / nextMilestone) * 100));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-lg p-3 overflow-y-auto">
-      <div className="relative w-full max-w-lg rounded-3xl border border-cyan-400/35 bg-[#080417] shadow-[0_0_70px_rgba(236,72,153,0.28)] overflow-hidden my-auto max-h-[92vh] overflow-y-auto">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-lg p-3 overflow-y-auto"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-lg rounded-3xl border border-cyan-400/35 bg-[#080417] shadow-[0_0_70px_rgba(236,72,153,0.28)] overflow-hidden my-auto max-h-[92vh] overflow-y-auto"
+      >
         <div
           className="absolute inset-0 pointer-events-none opacity-60"
           style={{
@@ -225,10 +199,10 @@ export const ShareModal: React.FC<Props> = ({
                   ✓ SITE OFICIAL · 100% SEGURO & VERIFICADO
                 </div>
                 <h2 className="font-display text-sm sm:text-base font-black text-white">
-                  {track ? `DIVULGAR: ${track.title}` : 'COMPARTILHAR & POPULARIDADE DO APP'}
+                  {track ? `ENVIAR: ${track.title}` : 'ENVIAR APP LENKYX (AUTOMÁTICO)'}
                 </h2>
                 <p className="text-[11px] text-cyan-200/85">
-                  Envie em todas as redes automaticamente e aumente a popularidade ao vivo!
+                  Envia somente o App limpo — baixa fácil em qualquer PC, TV ou celular!
                 </p>
               </div>
             </div>
@@ -242,7 +216,7 @@ export const ShareModal: React.FC<Props> = ({
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <Flame className="w-4 h-4 text-orange-400 animate-pulse" />
-                <span className="text-xs font-black text-white">Termômetro de Popularidade: {level}</span>
+                <span className="text-xs font-black text-white">Popularidade: {level}</span>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-orange-400/20 text-orange-200 text-[10px] font-black flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" /> {score.toLocaleString('pt-BR')} pts
@@ -255,24 +229,24 @@ export const ShareModal: React.FC<Props> = ({
               />
             </div>
             <div className="flex items-center justify-between text-[10px] text-purple-100/85 font-semibold">
-              <span>🚀 {shares.toLocaleString('pt-BR')} compartilhamentos</span>
+              <span>🚀 {shares.toLocaleString('pt-BR')} envios</span>
               <span>👀 {visits.toLocaleString('pt-BR')} acessos</span>
-              <span>Próx. nível: {nextMilestone.toLocaleString('pt-BR')} pts</span>
+              <span>Meta: {nextMilestone.toLocaleString('pt-BR')} pts</span>
             </div>
           </div>
 
-          {/* AUTO SHARE IN ALL APPS (MOBILE NATIVE) */}
+          {/* AUTOMATIC 1-CLICK APP SHARE */}
           <button
             onClick={handleNativeShare}
-            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-pink-500 via-purple-600 to-cyan-500 hover:brightness-110 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-[0_0_24px_rgba(236,72,153,0.45)] transition active:scale-[0.98]"
+            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-pink-500 via-purple-600 to-cyan-500 hover:brightness-110 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-[0_0_24px_rgba(236,72,153,0.45)] transition active:scale-[0.98]"
           >
-            <Share2 className="w-4 h-4" /> Compartilhar Automático em Tudo no Celular (+25 pts)
+            <Share2 className="w-4 h-4" /> Enviar Somente o App Agora (Automático)
           </button>
 
-          {/* ALL SOCIAL NETWORKS GRID */}
+          {/* ALL SOCIAL NETWORKS GRID — CLEAN LINK ONLY */}
           <div>
             <div className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-300 mb-1.5">
-              Redes Sociais & Mensageiros (1 Toque Automático)
+              Enviar Direto Sem Textos (1 Toque)
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
               <button
@@ -287,7 +261,7 @@ export const ShareModal: React.FC<Props> = ({
                     'instagram',
                     'https://www.instagram.com/',
                     true,
-                    'Texto + link copiados! Cole nos Stories, Reels ou Bio do Instagram 📸'
+                    'Link do App copiado! Cole no Direct ou Bio do Instagram 📸'
                   )
                 }
                 className="py-2 px-2 rounded-xl bg-gradient-to-r from-pink-500/25 to-amber-500/25 hover:brightness-125 border border-pink-400/40 text-pink-200 text-[11px] font-bold flex items-center justify-center gap-1"
@@ -300,7 +274,7 @@ export const ShareModal: React.FC<Props> = ({
                     'tiktok',
                     'https://www.tiktok.com/',
                     true,
-                    'Convite copiado! Cole na legenda ou comentário do TikTok 🎵'
+                    'Link do App copiado! Cole no TikTok 🎵'
                   )
                 }
                 className="py-2 px-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-200 text-[11px] font-bold flex items-center justify-center gap-1"
@@ -368,7 +342,7 @@ export const ShareModal: React.FC<Props> = ({
           <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-2.5">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-300">
-                Link Direto + QR Code
+                Link do App + QR Code
               </span>
               <button
                 onClick={() => setShowQr((v) => !v)}
@@ -388,8 +362,8 @@ export const ShareModal: React.FC<Props> = ({
                 onClick={handleCopyLinkOnly}
                 className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black shrink-0 flex items-center gap-1"
               >
-                {copiedBio ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedBio ? 'Copiado' : 'Link'}
+                {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedLink ? 'Copiado' : 'Copiar'}
               </button>
             </div>
             {showQr && qrDataUrl && (
@@ -398,7 +372,7 @@ export const ShareModal: React.FC<Props> = ({
                   <img src={qrDataUrl} alt="QR Code LENKYX" className="w-28 h-28 rounded-lg" />
                 </div>
                 <span className="text-[10px] text-cyan-200/80 font-semibold">
-                  ✨ Escaneie para abrir direto no celular sem cadastro!
+                  ✨ Aponte a câmera (PC, TV ou qualquer celular) — baixa sem restrições!
                 </span>
               </div>
             )}
@@ -412,37 +386,9 @@ export const ShareModal: React.FC<Props> = ({
               }}
               className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-500/25 via-cyan-500/25 to-purple-500/25 hover:brightness-110 border border-emerald-400/40 text-xs font-extrabold text-white flex items-center justify-center gap-2 transition"
             >
-              <Zap className="w-4 h-4 text-emerald-300" /> Site Oficial · Baixar App no PC ou Celular (Verificado ✓)
+              <Zap className="w-4 h-4 text-emerald-300" /> Baixar no PC, TV ou Qualquer Celular (Verificado ✓)
             </button>
           )}
-
-          {/* Unified Message Preview + Copy */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-semibold text-purple-200">Convite pronto com hashtags & link</span>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-1 text-[11px] text-cyan-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={includePixText}
-                    onChange={(e) => setIncludePixText(e.target.checked)}
-                    className="accent-pink-500"
-                  />
-                  PIX
-                </label>
-                <button
-                  onClick={handleCopyMessage}
-                  className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[11px] flex items-center gap-1"
-                >
-                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  {copied ? 'Copiado!' : 'Copiar Tudo'}
-                </button>
-              </div>
-            </div>
-            <div className="p-2.5 rounded-xl bg-[#0b1f17] border border-emerald-500/30 text-[11px] text-emerald-100 whitespace-pre-wrap leading-relaxed break-words max-h-28 overflow-y-auto">
-              {message}
-            </div>
-          </div>
 
           {mode === 'creator' && (
             <div className="pt-2 border-t border-white/10 space-y-2">

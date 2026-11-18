@@ -1610,7 +1610,7 @@ app.get(['/download/pc', '/download/pc/windows', '/download/pc/mac', '/pc'], (re
   return res.send(zipBuf);
 });
 
-app.get(['/site-oficial', '/oficial'], (_req, res) => {
+app.get(['/site-oficial', '/oficial', '/baixar', '/download'], (_req, res) => {
   res.redirect(302, '/?install=1');
 });
 
@@ -2058,7 +2058,7 @@ app.get('/tv/:code', (req, res) => {
 });
 
 app.get('/app', (_req, res) => {
-  res.redirect(302, '/download/apk');
+  res.redirect(302, '/?install=1');
 });
 
 // Serve built frontend with optimized mobile/desktop HTTP caching

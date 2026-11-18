@@ -157,16 +157,23 @@ export function App() {
   });
   const liveSessionIdRef = useRef<string>(getOrCreateSessionId());
 
-  // Instant 2-Second PWA Install & Official Site PC Download Modal
+  // Instant 2-Second PWA Install & Official Site PC/TV/Mobile Download Modal
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [installModalOpen, setInstallModalOpen] = useState(false);
   const [installPlatformTab, setInstallPlatformTab] = useState<'pc' | 'mobile' | 'tv'>(() => {
-    if (typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) {
-      return 'mobile';
+    if (typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent || '';
+      if (/SmartTV|Tizen|Web0S|WebOS|BRAVIA|Android TV|GoogleTV|AFT|Roku|CrKey/i.test(ua)) return 'tv';
+      if (/Android|iPhone|iPad|iPod|Mobile|HarmonyOS|EMUI|MIUI/i.test(ua)) return 'mobile';
     }
     return 'pc';
   });
+  const isInAppWebView =
+    typeof navigator !== 'undefined' &&
+    /FBAN|FBAV|Instagram|WhatsApp|Line|TikTok|Snapchat/i.test(navigator.userAgent || '');
+  const isAndroidDevice =
+    typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
 
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
@@ -2576,27 +2583,48 @@ export function App() {
                     <button
                       type="button"
                       onClick={() => void handleInstantInstall()}
-                      className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(52,211,153,0.45)]"
+                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(52,211,153,0.45)]"
                     >
-                      <Zap className="w-4 h-4" /> Instalar Agora em 1 Toque
+                      <Zap className="w-4 h-4" /> Baixar & Instalar Agora (Qualquer Celular)
                     </button>
                   )}
+
+                  {isInAppWebView && isAndroidDevice && (
+                    <a
+                      href={`intent://${officialSiteUrl.replace(/^https?:\/\//, '')}/?install=1#Intent;scheme=https;package=com.android.chrome;end`}
+                      className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 hover:brightness-110 text-black font-black text-xs flex items-center justify-center gap-2 shadow-lg"
+                    >
+                      <ExternalLink className="w-4 h-4" /> Abrir Direto no Chrome (Sem Restrições)
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInstallModalOpen(false);
+                      showToast('App LENKYX liberado direto no seu celular sem restrições! 🎧');
+                    }}
+                    className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-pink-500/25 to-cyan-500/25 hover:brightness-110 border border-cyan-400/40 text-white font-black text-xs flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-300" /> Abrir App Direto Aqui (Qualquer Celular · Zero Restrições)
+                  </button>
+
                   <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-1">
                     <div className="font-black text-cyan-300 flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5" /> No Android (Chrome / Edge / Samsung)
+                      <Smartphone className="w-3.5 h-3.5" /> Android (Samsung, Xiaomi, Motorola, Huawei, qualquer modelo)
                     </div>
                     <p className="text-[11px] text-slate-200 leading-relaxed">
-                      Toque nos <strong>3 pontinhos (⋮)</strong> no canto superior do navegador e toque em{' '}
+                      Toque no menu <strong>(⋮ ou ≡)</strong> e escolha{' '}
                       <strong className="text-emerald-300">"Instalar aplicativo"</strong> ou{' '}
-                      <strong className="text-emerald-300">"Adicionar à tela inicial"</strong>. Pronto em 2s!
+                      <strong className="text-emerald-300">"Adicionar à tela inicial"</strong>. Funciona em qualquer celular sem bloqueio!
                     </p>
                   </div>
                   <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-1">
                     <div className="font-black text-pink-300 flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5" /> No iPhone / iPad (Safari)
+                      <Smartphone className="w-3.5 h-3.5" /> iPhone / iPad (iOS Safari)
                     </div>
                     <p className="text-[11px] text-slate-200 leading-relaxed">
-                      Toque no botão <strong>Compartilhar (↑)</strong> na barra inferior e escolha{' '}
+                      Toque em <strong>Compartilhar (↑)</strong> →{' '}
                       <strong className="text-pink-300">"Adicionar à Tela de Início"</strong>.
                     </p>
                   </div>
@@ -2604,18 +2632,25 @@ export function App() {
               )}
 
               {installPlatformTab === 'tv' && (
-                <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3.5 space-y-2 text-[11px] text-slate-200 leading-relaxed">
+                <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3.5 space-y-2.5 text-[11px] text-slate-200 leading-relaxed">
                   <div className="font-black text-purple-300 flex items-center gap-1.5">
-                    <Tv className="w-4 h-4" /> Abrir na Smart TV (Tela Cheia)
+                    <Tv className="w-4 h-4" /> Qualquer Smart TV (LG, Samsung, Android TV, TV Box)
                   </div>
+                  <a
+                    href="/?tvMode=1"
+                    onClick={() => setInstallModalOpen(false)}
+                    className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 hover:brightness-110 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <Tv className="w-4 h-4" /> Abrir Modo Smart TV Tela Cheia Agora
+                  </a>
                   <p>
-                    No navegador da sua Smart TV (LG, Samsung, Android TV ou Google TV), acesse o Site Oficial:
+                    Ou abra no navegador da TV o endereço direto:
                   </p>
                   <div className="px-3 py-2 rounded-xl bg-black/60 border border-purple-400/35 font-mono text-cyan-200 text-xs select-all">
                     {officialSiteUrl}/tv
                   </div>
                   <p className="text-slate-300">
-                    Modo adaptado para controle remoto, filmes, séries por temporada e Futebol/UFC ao vivo sem anúncios.
+                    Funciona em qualquer Smart TV sem precisar baixar nada da loja — músicas, clipes, cinema e Arena ao vivo!
                   </p>
                 </div>
               )}
