@@ -211,7 +211,7 @@ export const CatalogView: React.FC<Props> = ({
                   onClick={onInstallApp}
                   className="px-4 py-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_18px_rgba(52,211,153,0.35)] transition active:scale-95"
                 >
-                  <Smartphone className="w-3.5 h-3.5" /> Site Oficial · App PC & Celular
+                  <Smartphone className="w-3.5 h-3.5" /> Baixar (Android · iPhone · PC)
                 </button>
               )}
               {mode === 'creator' && (

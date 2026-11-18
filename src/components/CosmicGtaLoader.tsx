@@ -22,6 +22,125 @@ const INTRO_HIGHLIGHTS = [
   },
 ];
 
+const MIRROR_SHARDS = [
+  { clip: 'polygon(0% 0%, 50% 0%, 26% 24%)', tx: '-74px', ty: '-68px', tz: '80px', rx: '32deg', ry: '-42deg', rz: '-26deg', delay: 0 },
+  { clip: 'polygon(50% 0%, 100% 0%, 74% 22%)', tx: '78px', ty: '-72px', tz: '65px', rx: '-28deg', ry: '44deg', rz: '24deg', delay: 40 },
+  { clip: 'polygon(50% 0%, 74% 22%, 50% 50%, 26% 24%)', tx: '6px', ty: '-86px', tz: '110px', rx: '45deg', ry: '10deg', rz: '-14deg', delay: 80 },
+  { clip: 'polygon(0% 0%, 26% 24%, 0% 50%)', tx: '-88px', ty: '-16px', tz: '55px', rx: '-22deg', ry: '-48deg', rz: '18deg', delay: 110 },
+  { clip: 'polygon(0% 50%, 26% 24%, 50% 50%, 22% 76%)', tx: '-64px', ty: '14px', tz: '95px', rx: '18deg', ry: '-36deg', rz: '-18deg', delay: 145 },
+  { clip: 'polygon(0% 50%, 22% 76%, 0% 100%)', tx: '-82px', ty: '68px', tz: '70px', rx: '-36deg', ry: '-34deg', rz: '28deg', delay: 180 },
+  { clip: 'polygon(100% 0%, 100% 50%, 74% 22%)', tx: '92px', ty: '-22px', tz: '65px', rx: '26deg', ry: '48deg', rz: '-22deg', delay: 215 },
+  { clip: 'polygon(74% 22%, 100% 50%, 78% 74%, 50% 50%)', tx: '66px', ty: '18px', tz: '105px', rx: '-24deg', ry: '38deg', rz: '16deg', delay: 250 },
+  { clip: 'polygon(100% 50%, 100% 100%, 78% 74%)', tx: '84px', ty: '72px', tz: '60px', rx: '34deg', ry: '38deg', rz: '-30deg', delay: 285 },
+  { clip: 'polygon(0% 100%, 22% 76%, 50% 100%)', tx: '-46px', ty: '88px', tz: '75px', rx: '-40deg', ry: '-22deg', rz: '20deg', delay: 320 },
+  { clip: 'polygon(22% 76%, 50% 50%, 78% 74%, 50% 100%)', tx: '4px', ty: '92px', tz: '115px', rx: '-44deg', ry: '12deg', rz: '14deg', delay: 355 },
+  { clip: 'polygon(78% 74%, 100% 100%, 50% 100%)', tx: '54px', ty: '84px', tz: '70px', rx: '36deg', ry: '26deg', rz: '-24deg', delay: 390 },
+];
+
+const ShatteredMirrorLogo: React.FC<{ sizeClass?: string }> = ({
+  sizeClass = 'w-32 h-32 sm:w-36 sm:h-36',
+}) => {
+  const [mirrorPhase, setMirrorPhase] = useState<'shattered' | 'healing' | 'radiant'>('shattered');
+
+  useEffect(() => {
+    setMirrorPhase('shattered');
+    const t1 = window.setTimeout(() => setMirrorPhase('healing'), 220);
+    const t2 = window.setTimeout(() => setMirrorPhase('radiant'), 1580);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, []);
+
+  return (
+    <div className="lenkyx-logo-float relative flex items-center justify-center" style={{ perspective: '900px' }}>
+      {/* Realistic Iridescent Prism Aura */}
+      <div
+        className={`absolute -inset-9 rounded-full blur-3xl transition-all duration-1000 ${
+          mirrorPhase === 'radiant'
+            ? 'opacity-100 scale-110 bg-gradient-to-tr from-cyan-400/55 via-fuchsia-500/45 to-amber-300/45'
+            : mirrorPhase === 'healing'
+              ? 'opacity-80 scale-100 bg-gradient-to-tr from-cyan-400/40 via-purple-500/35 to-pink-500/40'
+              : 'opacity-40 scale-90 bg-gradient-to-tr from-sky-400/25 via-white/20 to-pink-400/25'
+        }`}
+      />
+
+      <div className={`relative ${sizeClass}`} style={{ transformStyle: 'preserve-3d' }}>
+        {/* 12 Shattered Crystal Mirror Shards Regenerating Together */}
+        {MIRROR_SHARDS.map((s, idx) => {
+          const isAssembled = mirrorPhase !== 'shattered';
+          return (
+            <div
+              key={idx}
+              className="absolute inset-0 will-change-transform"
+              style={{
+                clipPath: s.clip,
+                transform: isAssembled
+                  ? 'translate3d(0px, 0px, 0px) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1)'
+                  : `translate3d(${s.tx}, ${s.ty}, ${s.tz}) rotateX(${s.rx}) rotateY(${s.ry}) rotateZ(${s.rz}) scale(0.76)`,
+                opacity: mirrorPhase === 'radiant' ? 0 : isAssembled ? 1 : 0.88,
+                transition: `transform 980ms cubic-bezier(0.16, 1, 0.3, 1) ${s.delay}ms, opacity 420ms ease ${mirrorPhase === 'radiant' ? '0ms' : `${s.delay}ms`}`,
+                filter:
+                  mirrorPhase === 'healing'
+                    ? 'drop-shadow(0 0 8px rgba(103, 232, 249, 0.85)) brightness(1.18)'
+                    : 'drop-shadow(0 6px 14px rgba(255, 255, 255, 0.35)) contrast(1.12)',
+              }}
+            >
+              <img
+                src="/covers/icon-512.png"
+                alt=""
+                aria-hidden="true"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          );
+        })}
+
+        {/* Healing Luminous Crack Veins Overlay */}
+        <svg
+          viewBox="0 0 100 100"
+          className={`absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 ${
+            mirrorPhase === 'healing' ? 'opacity-90' : 'opacity-0'
+          }`}
+        >
+          <g stroke="url(#mirrorCrackGrad)" strokeWidth="0.9" fill="none" strokeLinecap="round">
+            <path d="M50 0 L26 24 L0 50 M50 0 L74 22 L100 50 M26 24 L50 50 L74 22" />
+            <path d="M0 50 L22 76 L50 100 M100 50 L78 74 L50 100 M22 76 L50 50 L78 74" />
+            <path d="M0 0 L26 24 M100 0 L74 22 M0 100 L22 76 M100 100 L78 74" />
+          </g>
+          <defs>
+            <linearGradient id="mirrorCrackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#67e8f9" />
+              <stop offset="50%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#f472b6" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        {/* Final Unified Radiant 3D Mirror Logo + Realistic Specular Reflection Sweep */}
+        <div
+          className={`relative w-full h-full rounded-[26%] overflow-hidden transition-all duration-500 ${
+            mirrorPhase === 'radiant' ? 'opacity-100 scale-100 prism-glow-radiant' : 'opacity-0 scale-95'
+          }`}
+        >
+          <img
+            src="/covers/icon-512.png"
+            alt="LENKYX Logo 3D"
+            className="w-full h-full object-contain lenkyx-logo-3d"
+          />
+          <div
+            className="absolute inset-y-0 w-1/2 pointer-events-none mirror-sheen-sweep"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 48%, rgba(103,232,249,0.45) 65%, transparent 100%)',
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface Props {
   open: boolean;
   mode?: 'splash' | 'stage' | 'discreet_corner';
@@ -183,21 +302,14 @@ export const CosmicGtaLoader: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Center Gentle Floating Emblem + Daily PIX Support Prompt */}
+      {/* Center Shattered-Mirror Self-Regenerating 3D Logo + Daily PIX Support Prompt */}
       <div className="relative z-10 flex flex-col items-center justify-center px-5 py-3 text-center space-y-4 my-auto">
         <div
-          className={`relative transition-all duration-1000 ease-out ${
+          className={`relative transition-all duration-700 ease-out ${
             introPulse ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >
-          <div className="lenkyx-logo-float relative">
-            <div className="absolute -inset-7 rounded-full bg-gradient-to-tr from-rose-500/40 via-fuchsia-500/30 to-cyan-400/40 blur-3xl animate-pulse" />
-            <img
-              src="/covers/icon-512.png"
-              alt="LENKYX Logo 3D"
-              className="relative w-28 h-28 sm:w-32 sm:h-32 object-contain lenkyx-logo-3d"
-            />
-          </div>
+          <ShatteredMirrorLogo sizeClass="w-32 h-32 sm:w-36 sm:h-36" />
         </div>
 
         <div
@@ -208,8 +320,10 @@ export const CosmicGtaLoader: React.FC<Props> = ({
           <h1 className="font-logo text-4xl sm:text-6xl font-black tracking-[0.22em] text-white drop-shadow-[0_6px_30px_rgba(236,72,153,0.55)]">
             LENKYX
           </h1>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] sm:text-[11px] font-black tracking-wider uppercase text-emerald-300">
-            ✓ Site & App Oficial · 100% Seguro e Verificado
+          <div className="inline-flex flex-wrap items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] sm:text-[11px] font-black tracking-wider uppercase text-emerald-300">
+            <span>✓ Oficial · 100% Seguro & Verificado</span>
+            <span className="text-white/40">•</span>
+            <span className="text-cyan-200">Android · iPhone · PC · TV</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs sm:text-sm font-bold tracking-wider uppercase text-cyan-200">
             <span className="flex items-center gap-1"><Music className="w-3.5 h-3.5 text-pink-400" /> Som</span>
@@ -352,11 +466,9 @@ export const CinemaPrerollIntro: React.FC<{
               : 'scale-125 opacity-0'
         }`}
       >
-        <img
-          src="/covers/icon-512.png"
-          alt="LENKYX"
-          className="w-20 h-20 sm:w-24 sm:h-24 object-contain lenkyx-logo-3d mb-4"
-        />
+        <div className="mb-4">
+          <ShatteredMirrorLogo sizeClass="w-24 h-24 sm:w-28 sm:h-28" />
+        </div>
         <div className="text-[10px] sm:text-xs font-black tracking-[0.26em] uppercase text-emerald-300 mb-1">
           ✓ OFICIAL · 100% SEGURO & VERIFICADO · {subtitle}
         </div>

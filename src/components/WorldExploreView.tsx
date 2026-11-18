@@ -83,11 +83,18 @@ const ArtistPortrait: React.FC<{
   name: string;
   photoUrl?: string;
   className?: string;
-}> = ({ name, photoUrl, className = 'w-full h-full object-cover' }) => {
+}> = ({ name, photoUrl, className = 'w-full h-full object-cover object-top' }) => {
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     setFailed(false);
   }, [photoUrl]);
+
+  const isLenkyx = name.trim().toLowerCase() === 'lenkyx';
+  const resolvedUrl = isLenkyx
+    ? '/covers/icon-512.png'
+    : photoUrl && !photoUrl.includes('album-official.jpg')
+    ? photoUrl
+    : '';
 
   const initials = name
     .split(/\s+/)
@@ -96,9 +103,9 @@ const ArtistPortrait: React.FC<{
     .map((w) => w[0]?.toUpperCase() || '')
     .join('');
 
-  if (!photoUrl || failed) {
+  if (!resolvedUrl || failed) {
     return (
-      <div className="w-full h-full bg-gradient-to-br from-[#120b29] via-[#1c1338] to-[#0a1628] flex items-center justify-center font-display text-xl font-black tracking-wider text-cyan-200 select-none">
+      <div className="w-full h-full bg-gradient-to-br from-[#120b29] via-[#1c1338] to-[#0a1628] flex items-center justify-center font-display text-2xl font-black tracking-wider text-cyan-200 select-none">
         {initials || '★'}
       </div>
     );
@@ -106,12 +113,16 @@ const ArtistPortrait: React.FC<{
 
   return (
     <img
-      src={photoUrl}
+      src={resolvedUrl}
       alt={name}
       loading="lazy"
       decoding="async"
       onError={() => setFailed(true)}
-      className={className}
+      className={
+        isLenkyx
+          ? 'w-full h-full object-contain p-4 bg-[#070316] lenkyx-logo-3d'
+          : className
+      }
     />
   );
 };
@@ -391,39 +402,61 @@ export const WorldExploreView: React.FC<Props> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {topArtists.slice(0, 5).map((art) => {
+              const dirMatch = famousArtists.find(
+                (f) => f.name.toLowerCase() === art.name.trim().toLowerCase()
+              );
+              const bestPhoto =
+                art.name.trim().toLowerCase() === 'lenkyx'
+                  ? '/covers/icon-512.png'
+                  : (art.photoUrl && !art.photoUrl.includes('album-official.jpg') ? art.photoUrl : '') ||
+                    dirMatch?.photoUrl ||
+                    '';
               const medal =
                 art.rank === 1
-                  ? 'from-amber-400 to-yellow-500 text-black'
+                  ? 'from-amber-300 via-amber-400 to-yellow-500 text-black shadow-[0_0_16px_rgba(251,191,36,0.7)]'
                   : art.rank === 2
-                  ? 'from-slate-200 to-slate-400 text-black'
+                  ? 'from-slate-100 to-slate-400 text-black'
                   : art.rank === 3
-                  ? 'from-amber-600 to-orange-500 text-white'
-                  : 'from-cyan-500/80 to-purple-500/80 text-white';
+                  ? 'from-amber-500 to-orange-500 text-white'
+                  : 'from-cyan-400 to-purple-500 text-white';
               return (
                 <button
                   key={art.name}
                   onClick={() => void runSearch(art.name, `🏆 #${art.rank} ${art.name}`)}
-                  className="group relative rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-amber-400/50 p-3 text-left transition flex flex-col gap-2"
+                  className={`group relative rounded-3xl overflow-hidden bg-[#0a0619] text-left transition duration-300 hover:-translate-y-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.65)] ${
+                    art.rank === 1
+                      ? 'border-2 border-amber-400/80 shadow-[0_0_34px_rgba(251,191,36,0.28)]'
+                      : 'border border-white/15 hover:border-amber-400/60'
+                  }`}
                 >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className={`px-2 py-0.5 rounded-full bg-gradient-to-r ${medal} text-[10px] font-black`}>
+                  <div className="relative aspect-[4/4.7] w-full overflow-hidden bg-black">
+                    <ArtistPortrait
+                      name={art.name}
+                      photoUrl={bestPhoto}
+                      className="w-full h-full object-cover object-top group-hover:scale-108 transition duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#05020f] via-[#05020f]/35 to-black/20" />
+                    <span
+                      className={`absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-gradient-to-r ${medal} text-[10px] font-black`}
+                    >
                       TOP #{art.rank}
                     </span>
-                    <span className="text-[10px] font-mono text-emerald-300 font-bold">
+                    <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-emerald-400/35 text-[10px] font-mono text-emerald-300 font-bold">
                       {art.count} plays
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-black shrink-0 border border-white/15">
-                      <ArtistPortrait name={art.name} photoUrl={art.photoUrl} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-black text-white truncate group-hover:text-amber-300 transition">
-                        {art.name}
+                    <span className="opacity-0 group-hover:opacity-100 absolute bottom-14 right-3 w-10 h-10 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-[0_0_24px_rgba(251,191,36,0.75)] transition">
+                      <Play className="w-4 h-4 fill-black ml-0.5" />
+                    </span>
+                    <div className="absolute inset-x-0 bottom-0 p-3 space-y-0.5">
+                      <div className="text-sm sm:text-base font-black text-white truncate flex items-center gap-1 group-hover:text-amber-300 transition">
+                        <span className="truncate">{art.name}</span>
+                        <BadgeCheck className="w-4 h-4 text-amber-400 shrink-0" />
                       </div>
-                      <div className="text-[10px] text-slate-300/80 truncate">{art.genre || 'Destaque'}</div>
+                      <div className="text-[11px] font-semibold text-amber-100/80 truncate">
+                        {art.genre || dirMatch?.genre || 'Destaque'}
+                      </div>
                     </div>
                   </div>
                 </button>
@@ -432,18 +465,20 @@ export const WorldExploreView: React.FC<Props> = ({
           </div>
 
           {(topVideos.length > 0 || clipTracks.length > 0) && (
-            <div className="pt-2 border-t border-white/10 space-y-2">
+            <div className="pt-3 border-t border-white/10 space-y-2.5">
               <div className="text-xs font-black text-cyan-200 flex items-center gap-1.5">
                 <Film className="w-3.5 h-3.5 text-pink-400" />
                 <span>Top 1 ao 5 · Melhores Clipes & Vídeos Recomendados</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
                 {(topVideos.length > 0
                   ? topVideos.slice(0, 5).map((v) => ({
                       id: v.id,
                       title: v.title,
                       artist: v.artist,
-                      coverUrl: v.coverUrl || '/covers/album-official.jpg',
+                      coverUrl:
+                        (v.coverUrl && !v.coverUrl.includes('album-official.jpg') ? v.coverUrl : '') ||
+                        (v.youtubeVideoId ? `https://i.ytimg.com/vi/${v.youtubeVideoId}/hqdefault.jpg` : '/covers/banner.jpg'),
                       youtubeVideoId: v.youtubeVideoId,
                       audioUrl: v.audioUrl,
                       durationSec: v.durationSec || 180,
@@ -454,7 +489,9 @@ export const WorldExploreView: React.FC<Props> = ({
                       id: t.id,
                       title: t.title,
                       artist: t.artist,
-                      coverUrl: t.coverUrl,
+                      coverUrl:
+                        t.coverUrl ||
+                        (t.youtubeVideoId ? `https://i.ytimg.com/vi/${t.youtubeVideoId}/hqdefault.jpg` : '/covers/banner.jpg'),
                       youtubeVideoId: t.youtubeVideoId,
                       audioUrl: t.audioUrl,
                       durationSec: t.durationSec || 180,
@@ -490,14 +527,30 @@ export const WorldExploreView: React.FC<Props> = ({
                       };
                       handlePlayRow(trackObj, [trackObj, ...results]);
                     }}
-                    className="group flex items-center gap-2 p-2 rounded-xl bg-black/40 hover:bg-pink-500/20 border border-white/10 hover:border-pink-400/50 text-left transition"
+                    className="group rounded-2xl overflow-hidden bg-black/50 hover:bg-pink-500/15 border border-white/12 hover:border-pink-400/60 text-left transition flex flex-col"
                   >
-                    <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
-                      #{vid.rank}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[11px] font-bold text-white truncate">{vid.title}</div>
-                      <div className="text-[9px] text-cyan-300/80 truncate">
+                    <div className="relative aspect-video w-full overflow-hidden bg-black">
+                      <img
+                        src={vid.coverUrl}
+                        alt={vid.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+                      <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-gradient-to-r from-pink-500 to-purple-600 text-white text-[10px] font-black shadow">
+                        #{vid.rank}
+                      </span>
+                      <span className="opacity-0 group-hover:opacity-100 absolute inset-0 flex items-center justify-center transition">
+                        <span className="w-9 h-9 rounded-full bg-pink-500 text-white flex items-center justify-center shadow-lg">
+                          <Play className="w-4 h-4 fill-white ml-0.5" />
+                        </span>
+                      </span>
+                    </div>
+                    <div className="p-2 min-w-0">
+                      <div className="text-[11px] font-bold text-white truncate group-hover:text-pink-300">
+                        {vid.title}
+                      </div>
+                      <div className="text-[9px] text-cyan-300/85 truncate">
                         {vid.artist} · {vid.count} views
                       </div>
                     </div>
@@ -593,13 +646,13 @@ export const WorldExploreView: React.FC<Props> = ({
             <button
               key={art.name}
               onClick={() => void runSearch(art.name, `🎤 ${art.name}`)}
-              className="group w-40 sm:w-44 shrink-0 rounded-3xl overflow-hidden bg-gradient-to-b from-white/[0.09] to-black/55 backdrop-blur-xl border border-white/12 hover:border-cyan-400/50 text-left snap-start transition duration-300 hover:-translate-y-1 shadow-[0_14px_34px_rgba(0,0,0,0.55)]"
+              className="group w-44 sm:w-52 shrink-0 rounded-3xl overflow-hidden bg-gradient-to-b from-white/[0.10] to-black/60 backdrop-blur-xl border border-white/15 hover:border-cyan-400/65 text-left snap-start transition duration-300 hover:-translate-y-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.65)]"
             >
-              <div className="relative aspect-[4/4.2] w-full overflow-hidden bg-black">
+              <div className="relative aspect-[4/4.5] w-full overflow-hidden bg-black">
                 <ArtistPortrait
                   name={art.name}
                   photoUrl={art.photoUrl}
-                  className="w-full h-full object-cover group-hover:scale-108 transition duration-500"
+                  className="w-full h-full object-cover object-top group-hover:scale-108 transition duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
                 <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-[9px] font-black text-cyan-200">

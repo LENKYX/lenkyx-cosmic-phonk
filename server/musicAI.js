@@ -41,6 +41,7 @@ export const FAMOUS_ARTISTS_DIRECTORY = [
   { name: 'Zé Neto & Cristiano', genre: 'Sertanejo', era: 'Brasil Top', wiki: 'Zé_Neto_&_Cristiano', lang: 'pt', query: 'Ze Neto e Cristiano oficial' },
   { name: 'Simone Mendes', genre: 'Sertanejo', era: 'Brasil Top', wiki: 'Simone_Mendes', lang: 'pt', query: 'Simone Mendes oficial' },
   { name: 'Matuê', genre: 'Trap Nacional', era: 'Brasil Top', wiki: 'Matuê', lang: 'pt', query: 'Matue oficial audio' },
+  { name: 'MC Ryan SP', genre: 'Funk Brasil', era: 'Brasil Top', wiki: 'MC_Ryan_SP', lang: 'pt', query: 'MC Ryan SP oficial' },
   { name: 'MC Hariel', genre: 'Funk Consciente', era: 'Brasil Top', wiki: 'MC_Hariel', lang: 'pt', query: 'MC Hariel oficial' },
   { name: 'Shakira', genre: 'Pop Latino', era: 'Global Top', wiki: 'Shakira', lang: 'en', query: 'Shakira official music' },
   { name: 'Karol G', genre: 'Reggaeton / Pop', era: 'Global Top', wiki: 'Karol_G', lang: 'en', query: 'Karol G official audio' },

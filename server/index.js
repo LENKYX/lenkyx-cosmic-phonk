@@ -24,6 +24,8 @@ import {
   runSmartWorldSearch,
   searchWorldShorts,
   getFamousArtistsWithPhotos,
+  fetchArtistPhotoAndBio,
+  FAMOUS_ARTISTS_DIRECTORY,
   getWorldNewReleases,
   resolveBackgroundAudioStream,
   getSunoDiscoverHub,
@@ -892,12 +894,50 @@ function getSortedLeaderboard(supporters = []) {
 }
 
 const DEFAULT_ARTIST_PLAYS = {
-  lenkyx: { name: 'LENKYX', count: 142, photoUrl: '/covers/avatar.jpg', genre: 'Cosmic Phonk' },
-  alok: { name: 'Alok', count: 96, photoUrl: '/covers/album-official.jpg', genre: 'Eletrônica / Bass' },
-  'ana castela': { name: 'Ana Castela', count: 84, photoUrl: '/covers/album-official.jpg', genre: 'Sertanejo' },
-  'mc ryan sp': { name: 'MC Ryan SP', count: 78, photoUrl: '/covers/album-official.jpg', genre: 'Funk Brasil' },
-  matue: { name: 'Matuê', count: 71, photoUrl: '/covers/album-official.jpg', genre: 'Trap Brasil' },
+  lenkyx: { name: 'LENKYX', count: 142, photoUrl: '/covers/icon-512.png', genre: 'Cosmic Phonk' },
+  alok: { name: 'Alok', count: 96, photoUrl: '', genre: 'Eletrônica / Bass' },
+  'ana castela': { name: 'Ana Castela', count: 84, photoUrl: '', genre: 'Sertanejo' },
+  'mc ryan sp': { name: 'MC Ryan SP', count: 78, photoUrl: '', genre: 'Funk Brasil' },
+  matue: { name: 'Matuê', count: 71, photoUrl: '', genre: 'Trap Brasil' },
 };
+
+function needsArtistPhotoRefresh(name, photoUrl) {
+  const n = String(name || '').trim().toLowerCase();
+  const p = String(photoUrl || '').trim();
+  if (!p) return true;
+  if (n === 'lenkyx') return p !== '/covers/icon-512.png';
+  return p.includes('album-official.jpg') || p.includes('avatar.jpg');
+}
+
+async function enrichTopArtistsWithPhotos(store) {
+  const ranked = Object.entries(store.artistPlays || {})
+    .sort((a, b) => Number(b[1]?.count || 0) - Number(a[1]?.count || 0))
+    .slice(0, 5);
+  let dirty = false;
+  await Promise.all(
+    ranked.map(async ([key, art]) => {
+      if (!art || !needsArtistPhotoRefresh(art.name, art.photoUrl)) return;
+      if (String(art.name || '').trim().toLowerCase() === 'lenkyx') {
+        store.artistPlays[key] = { ...art, photoUrl: '/covers/icon-512.png' };
+        dirty = true;
+        return;
+      }
+      const dirMatch = FAMOUS_ARTISTS_DIRECTORY.find(
+        (d) => d.name.toLowerCase() === String(art.name || '').trim().toLowerCase()
+      );
+      const info = await fetchArtistPhotoAndBio(
+        art.name,
+        dirMatch?.lang || 'pt',
+        dirMatch?.wiki || ''
+      ).catch(() => null);
+      if (info?.photoUrl) {
+        store.artistPlays[key] = { ...art, photoUrl: info.photoUrl };
+        dirty = true;
+      }
+    })
+  );
+  if (dirty) writeLiveStatsStore(store);
+}
 
 function readLiveStatsStore() {
   const today = getTodayBrtKey();
@@ -1022,9 +1062,10 @@ app.post('/api/live-stats/ping', (req, res) => {
   });
 });
 
-app.get('/api/rankings', (_req, res) => {
+app.get('/api/rankings', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const store = readLiveStatsStore();
+  await enrichTopArtistsWithPhotos(store).catch(() => {});
   res.json(buildTop5Rankings(store));
 });
 
@@ -1038,10 +1079,17 @@ app.post('/api/rankings/hit', (req, res) => {
     if (rawName) {
       const key = rawName.toLowerCase();
       const prev = store.artistPlays[key] || { name: rawName, count: 0 };
+      const incomingPhoto = String(req.body?.photoUrl || '').trim();
+      const safeIncoming =
+        incomingPhoto && !incomingPhoto.includes('album-official.jpg') ? incomingPhoto : '';
+      const resolvedPhoto =
+        key === 'lenkyx'
+          ? '/covers/icon-512.png'
+          : safeIncoming || (prev.photoUrl && !String(prev.photoUrl).includes('album-official.jpg') ? prev.photoUrl : '');
       store.artistPlays[key] = {
         name: rawName,
         count: Number(prev.count || 0) + 1,
-        photoUrl: String(req.body?.photoUrl || prev.photoUrl || ''),
+        photoUrl: resolvedPhoto,
         genre: String(req.body?.genre || prev.genre || ''),
         lastPlayedAt: new Date().toISOString(),
       };

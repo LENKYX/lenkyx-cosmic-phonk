@@ -78,6 +78,7 @@ const OfflineTravelView = React.lazy(() =>
 );
 import { BassBoostLevel, MiniPlayer } from './components/MiniPlayer';
 import { LegalTermsModal } from './components/LegalTermsModal';
+import { MobileIosSearchModal } from './components/MobileIosSearchModal';
 import { CosmicGtaLoader } from './components/CosmicGtaLoader';
 import { PlayerQueueStrip } from './components/PlayerQueueStrip';
 import { PixModal } from './components/PixModal';
@@ -253,6 +254,7 @@ export function App() {
 
   // Global search bar state
   const [globalSearch, setGlobalSearch] = useState('');
+  const [mobileIosSearchOpen, setMobileIosSearchOpen] = useState(false);
   const [worldTriggerQuery, setWorldTriggerQuery] = useState('');
   const [worldSearchNonce, setWorldSearchNonce] = useState(0);
   const [pendingMovie, setPendingMovie] = useState<MovieItem | null>(null);
@@ -1827,10 +1829,27 @@ export function App() {
               <input
                 type="text"
                 value={globalSearch}
-                onFocus={() => setOmniboxOpen(true)}
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    setMobileIosSearchOpen(true);
+                  }
+                }}
+                onFocus={(e) => {
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    e.currentTarget.blur();
+                    setOmniboxOpen(false);
+                    setMobileIosSearchOpen(true);
+                  } else {
+                    setOmniboxOpen(true);
+                  }
+                }}
                 onChange={(e) => {
                   setGlobalSearch(e.target.value);
-                  setOmniboxOpen(true);
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    setMobileIosSearchOpen(true);
+                  } else {
+                    setOmniboxOpen(true);
+                  }
                 }}
                 placeholder="Buscar músicas, artistas, clipes, filmes..."
                 className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none"
@@ -2406,6 +2425,17 @@ export function App() {
         onToast={showToast}
       />
       <LegalTermsModal open={legalOpen} onClose={() => setLegalOpen(false)} />
+      <MobileIosSearchModal
+        open={mobileIosSearchOpen}
+        query={globalSearch}
+        isPrivate={searchViewPrivate}
+        suggestions={omniboxSuggestions}
+        onChangeQuery={setGlobalSearch}
+        onClose={() => setMobileIosSearchOpen(false)}
+        onSubmitAll={(q, priv) => openWebSearch(q, priv)}
+        onSubmitMusic={(q) => triggerWorldSearchDirect(q)}
+        onTogglePrivate={() => setSearchViewPrivate((v) => !v)}
+      />
 
       {/* OFFICIAL SITE, VERIFIED SECURITY BADGE & PC / MOBILE APP DOWNLOAD MODAL */}
       {installModalOpen && (
@@ -2435,7 +2465,7 @@ export function App() {
                       Site Oficial & App LENKYX
                     </h3>
                     <p className="text-[11px] text-cyan-200/85 font-semibold">
-                      Download para PC, Celular e Smart TV · Sem Vírus e Sem Cadastro
+                      Disponível para Android, iPhone (iOS), PC & Smart TV
                     </p>
                   </div>
                 </div>
@@ -2444,6 +2474,42 @@ export function App() {
                   className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-purple-200 shrink-0"
                 >
                   <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 4-Platform Availability Strip (Android + iPhone + PC + TV) */}
+              <div className="grid grid-cols-4 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setInstallPlatformTab('mobile')}
+                  className="py-1.5 px-2 rounded-xl bg-emerald-500/15 border border-emerald-400/35 text-center"
+                >
+                  <div className="text-xs">🤖</div>
+                  <div className="text-[10px] font-black text-emerald-200">Android</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstallPlatformTab('mobile')}
+                  className="py-1.5 px-2 rounded-xl bg-pink-500/15 border border-pink-400/35 text-center"
+                >
+                  <div className="text-xs">🍎</div>
+                  <div className="text-[10px] font-black text-pink-200">iPhone iOS</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstallPlatformTab('pc')}
+                  className="py-1.5 px-2 rounded-xl bg-cyan-500/15 border border-cyan-400/35 text-center"
+                >
+                  <div className="text-xs">💻</div>
+                  <div className="text-[10px] font-black text-cyan-200">PC / Mac</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstallPlatformTab('tv')}
+                  className="py-1.5 px-2 rounded-xl bg-purple-500/15 border border-purple-400/35 text-center"
+                >
+                  <div className="text-xs">📺</div>
+                  <div className="text-[10px] font-black text-purple-200">Smart TV</div>
                 </button>
               </div>
 
