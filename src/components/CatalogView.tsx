@@ -244,7 +244,7 @@ export const CatalogView: React.FC<Props> = ({
           title={
             <>
               <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>Artistas Mundiais & Lançamentos IA (Estilo Spotify)</span>
+              <span>Artistas Mundiais & Lançamentos IA</span>
             </>
           }
           count={spotArtists.length}

@@ -159,7 +159,7 @@ export const SpaceDownloadModal: React.FC<Props> = ({
                 <Music2 className="w-4 h-4" /> 100% Completas
               </div>
               <p className="text-[11px] text-purple-100/75 leading-snug">
-                Zero prévias de 30s — faixas e playlists inteiras estilo Spotify gratuito.
+                Zero prévias de 30s — faixas e playlists 100% completas e grátis.
               </p>
             </div>
           </div>

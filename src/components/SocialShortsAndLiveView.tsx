@@ -81,7 +81,7 @@ type LiveEffectId = 'studio_hd' | 'cosmic_aurora' | 'cyber_glitch' | 'jbl_pulse'
 
 const SHORT_CATEGORIES: { id: string; label: string }[] = [
   { id: 'all', label: '🌍 Mundo Inteiro' },
-  { id: 'live', label: '🔴 Ao Vivo (YouTube Live)' },
+  { id: 'live', label: '🔴 Ao Vivo Agora (HD)' },
   { id: 'phonk', label: '🔥 Phonk & Drift' },
   { id: 'brazil', label: '🇧🇷 Brasil' },
   { id: 'djs', label: '🎧 DJs & Beats' },
@@ -1625,7 +1625,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   title={
                     <>
                       <Tv className="w-3.5 h-3.5 text-red-400" />
-                      <span className="text-red-300">Lives do YouTube Ao Vivo Agora</span>
+                      <span className="text-red-300">Transmissões Ao Vivo Agora</span>
                     </>
                   }
                   count={ytLives.length}

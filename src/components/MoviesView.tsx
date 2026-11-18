@@ -371,7 +371,7 @@ export const MoviesView: React.FC<Props> = ({
     // Channel uses direct 24h YouTube Live stream
     if (!activeChannel.streamUrl && activeChannel.youtubeLiveId) {
       setUseYtFallback(true);
-      setTvStatusMsg('AO VIVO · 24h YouTube HD');
+      setTvStatusMsg('AO VIVO · 24h Stream HD');
       return;
     }
     if (!video) return;
@@ -1128,7 +1128,7 @@ export const MoviesView: React.FC<Props> = ({
             }`}
           >
             <Clapperboard className="w-4 h-4" />
-            🎬 Netflix+ ({catalogStats.total > 0 ? `${catalogStats.movies} Filmes · ${catalogStats.series} Séries · ${catalogStats.animes} Animes` : '300+ Filmes, Séries & Animes'})
+            🎬 Cinema & Séries ({catalogStats.total > 0 ? `${catalogStats.movies} Filmes · ${catalogStats.series} Séries · ${catalogStats.animes} Animes` : '300+ Filmes, Séries & Animes'})
           </button>
 
           <button
@@ -1165,7 +1165,7 @@ export const MoviesView: React.FC<Props> = ({
             title="Modo Grade TV: exibe tudo em grade sem precisar arrastar para o lado"
           >
             <LayoutGrid className="w-3.5 h-3.5" />
-            <span>{globalTvGrid ? 'Modo Netflix ◀▶' : 'Grade TV Completa'}</span>
+            <span>{globalTvGrid ? 'Modo Carrossel ◀▶' : 'Grade TV Completa'}</span>
           </button>
 
           <button

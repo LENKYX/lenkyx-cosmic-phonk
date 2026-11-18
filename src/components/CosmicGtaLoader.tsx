@@ -10,7 +10,7 @@ const GTA_COSMIC_SLIDES = [
   },
   {
     img: '/covers/track-05.jpg',
-    title: 'CINEMA & SÉRIES NETFLIX+',
+    title: 'CINEMA & SÉRIES HD',
     sub: '300+ Filmes, 100+ Séries, 50+ Animes & TV ao Vivo',
     tip: 'Dica na TV: Use ◀ ▶ ou as setas do controle para navegar sem precisar arrastar!',
   },

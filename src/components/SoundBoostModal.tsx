@@ -168,7 +168,7 @@ export const SoundBoostModal: React.FC<Props> = ({
 
           {isYoutubeStream && (
             <div className="text-[10px] text-cyan-200/85 bg-black/30 rounded-xl px-2.5 py-1.5 border border-white/10">
-              💡 Em faixas do Catálogo LENKYX, Offline e Audius MP3 o ganho extra até 220% e o EQ agem direto no áudio; em clipes do YouTube o navegador limita o iframe em 100%.
+              💡 Em faixas do Catálogo LENKYX, Offline e Áudio MP3 direto o ganho extra até 220% e o EQ agem direto no som; em clipes de vídeo incorporados o navegador mantém o volume padrão em 100%.
             </div>
           )}
         </div>

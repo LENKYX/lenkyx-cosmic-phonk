@@ -373,7 +373,7 @@ export const WorldExploreView: React.FC<Props> = ({
           title={
             <>
               <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>Artistas em Alta — Estilo Spotify & YouTube Music</span>
+              <span>Artistas em Alta — Catálogo Mundial LENKYX</span>
             </>
           }
           subtitle="Clique em um artista para abrir o perfil oficial, músicas completas e novos lançamentos"

@@ -63,7 +63,7 @@ export const SocialDistributionModal: React.FC<Props> = ({
 
   const viralCaption = track
     ? `🔥 NOVO SOM NO AR! Ouça "${track.title}" de ${track.artist} completo e grátis no App Oficial LENKYX (Celular, PC e Smart TV): ${targetUrl}\n\n📲 Baixe o App: ${baseUrl}/app\n#LENKYX #CosmicPhonk #Phonk #MusicaBrasileira #Viral #Reels #TikTok #Shorts`
-    : `🌌🚀 Chegou o Super App Mundial ${settings.artistName} — ${settings.brandSubtitle}! Músicas estilo Spotify/YT Music, 300+ Filmes & Séries estilo Netflix+, TV ao vivo, Vídeos Curtos & Galáxia 3D para qualquer celular do mundo!\n\n🎧 Acesse agora: ${baseUrl}\n📲 App Android: ${baseUrl}/app\n📺 Smart TV: ${baseUrl}/tv\n#LENKYX #CosmicPhonk #Streaming #Musica #Cinema #Phonk #Brasil #Global`;
+    : `🌌🚀 Chegou o Super App Mundial ${settings.artistName} — ${settings.brandSubtitle}! Músicas Completas Mundiais, 300+ Filmes & Séries HD, TV ao vivo, Vídeos Curtos, Pesquisa Web IA & Galáxia 3D para qualquer celular do mundo!\n\n🎧 Acesse agora: ${baseUrl}\n📲 App Android: ${baseUrl}/app\n📺 Smart TV: ${baseUrl}/tv\n#LENKYX #CosmicPhonk #Streaming #Musica #Cinema #Phonk #Brasil #Global`;
 
   const copyItem = async (text: string, key: string, msg: string) => {
     const ok = await copyTextReliable(text);

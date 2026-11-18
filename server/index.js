@@ -30,6 +30,11 @@ import {
 import { getMoviesDirectory, searchMovies } from './moviesAI.js';
 import { getLiveTvDirectory, searchLiveTv } from './tvAI.js';
 import {
+  getSearchSuggestions,
+  runCosmicWebSearch,
+  readSafeWebPage,
+} from './webSearchAI.js';
+import {
   getChatMessages,
   postChatMessage,
   getCommentsForTarget,
@@ -675,6 +680,43 @@ app.get('/api/world-search', async (req, res) => {
     res.json(payload);
   } catch {
     res.json({ tracks: [], playlists: CURATED_PLAYLISTS, artistProfile: null, aiInsight: null });
+  }
+});
+
+// === LENKYX COSMIC GOOGLE+AI OMNIBOX SEARCH & PRIVATE WEB READER ===
+app.get('/api/search-suggest', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  try {
+    const suggestions = await getSearchSuggestions(q);
+    res.json({ query: q, suggestions });
+  } catch {
+    res.json({ query: q, suggestions: [] });
+  }
+});
+
+app.get('/api/web-search', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const mode = String(req.query.mode || 'ai') === 'web' ? 'web' : 'ai';
+  const privateMode = req.query.private === '1' || req.query.private === 'true';
+  if (privateMode) {
+    res.setHeader('Cache-Control', 'no-store');
+  }
+  try {
+    const payload = await runCosmicWebSearch(q, { mode, privateMode });
+    res.json(payload);
+  } catch {
+    res.json({ query: q, mode, privateMode, aiSummary: null, webResults: [] });
+  }
+});
+
+app.get('/api/web-reader', async (req, res) => {
+  const u = String(req.query.url || '').trim();
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const page = await readSafeWebPage(u);
+    res.json({ ok: true, page });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err?.message || 'Não foi possível carregar o site.' });
   }
 });
 
