@@ -28,6 +28,7 @@ import {
   searchMoviesCatalog,
 } from '../utils/moviesApi';
 import { CinemaPrerollIntro, CosmicGtaLoader } from './CosmicGtaLoader';
+import { PlayerQueueStrip } from './PlayerQueueStrip';
 
 interface Props {
   onPauseMusic: () => void;
@@ -661,134 +662,105 @@ export const MoviesView: React.FC<Props> = ({
 
           {/* Series Seasons & Episodes Selector OR Mobile & TV Next-in-Queue Strip */}
           {!expandedView && (activeMovie.mediaType === 'series' || activeMovie.mediaType === 'anime') && (
-            <div className="p-2.5 sm:p-3 border-t border-white/10 bg-[#080412] space-y-2 shrink-0 max-h-48 overflow-y-auto">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-[10px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>{seriesMetaTitle || activeMovie.title} · Temporadas & Episódios</span>
-                </div>
-                <div className="flex items-center gap-1 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
-                  {(seriesSeasons.length > 0
-                    ? seriesSeasons
-                    : [
-                        { number: 1, name: 'Temporada 1', episodeCount: 0 },
-                        { number: 2, name: 'Temporada 2', episodeCount: 0 },
-                      ]
-                  ).map((s) => (
-                    <button
-                      key={s.number}
-                      onClick={() =>
-                        void loadSeasonForSeries(
-                          seriesMetaTitle || activeMovie.title,
-                          s.number,
-                          s.number === 1 ? activeMovie.youtubePlaylistId || '' : '',
-                          activeMovie.mediaType || 'series'
-                        )
-                      }
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-black whitespace-nowrap border transition ${
-                        selectedSeasonNum === s.number
-                          ? 'bg-gradient-to-r from-cyan-400 to-pink-500 text-black border-transparent shadow'
-                          : 'bg-white/[0.07] hover:bg-white/15 border-white/15 text-slate-200'
-                      }`}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </div>
+            loadingEpisodes ? (
+              <div className="p-3 border-t border-white/10 bg-[#080412] flex items-center justify-center gap-2 text-xs text-cyan-200 font-bold shrink-0">
+                <Loader2 className="w-4 h-4 animate-spin" /> Carregando episódios da Temporada {selectedSeasonNum}...
               </div>
-
-              {loadingEpisodes ? (
-                <div className="py-3 flex items-center justify-center gap-2 text-xs text-cyan-200 font-bold">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Carregando episódios da Temporada {selectedSeasonNum}...
-                </div>
-              ) : seriesEpisodes.length > 0 ? (
-                <div className="flex items-stretch gap-2.5 overflow-x-auto overscroll-x-contain pb-1" style={{ scrollbarWidth: 'none' }}>
-                  {seriesEpisodes.map((ep) => {
-                    const isCur = activeMovie.youtubeVideoId && activeMovie.youtubeVideoId === ep.youtubeVideoId;
-                    return (
+            ) : (
+              <PlayerQueueStrip
+                title={
+                  <>
+                    <Layers className="w-3.5 h-3.5 inline mr-1" />
+                    {seriesMetaTitle || activeMovie.title} · T{selectedSeasonNum}
+                  </>
+                }
+                accent="cyan"
+                emptyText="Toque em outra temporada acima ou avance na lista."
+                headerRight={
+                  <div className="flex items-center gap-1 overflow-x-auto max-w-[260px] sm:max-w-md" style={{ scrollbarWidth: 'none' }}>
+                    {(seriesSeasons.length > 0
+                      ? seriesSeasons
+                      : [
+                          { number: 1, name: 'Temporada 1', episodeCount: 0 },
+                          { number: 2, name: 'Temporada 2', episodeCount: 0 },
+                        ]
+                    ).map((s) => (
                       <button
-                        key={ep.id}
-                        onClick={() => {
-                          setActiveMovie({
-                            id: ep.id,
-                            title: ep.title,
-                            subtitle: ep.subtitle,
-                            category: `${seriesMetaTitle} · T${ep.seasonNumber}`,
-                            durationLabel: ep.durationLabel,
-                            posterUrl: ep.posterUrl,
-                            youtubeVideoId: ep.youtubeVideoId,
-                            sourceLabel: ep.sourceLabel || `T${ep.seasonNumber} E${ep.episodeNumber}`,
-                            qualityLabel: ep.qualityLabel,
-                            isDubbed: ep.isDubbed,
-                            mediaType: ep.mediaType || activeMovie.mediaType,
-                          });
-                          setPrerollActive(false);
-                        }}
-                        className={`w-40 sm:w-48 shrink-0 text-left rounded-xl overflow-hidden border transition ${
-                          isCur
-                            ? 'border-cyan-400 bg-cyan-500/20'
-                            : 'border-white/10 bg-white/[0.04] hover:bg-white/10'
+                        key={s.number}
+                        type="button"
+                        onClick={() =>
+                          void loadSeasonForSeries(
+                            seriesMetaTitle || activeMovie.title,
+                            s.number,
+                            s.number === 1 ? activeMovie.youtubePlaylistId || '' : '',
+                            activeMovie.mediaType || 'series'
+                          )
+                        }
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-black whitespace-nowrap border transition ${
+                          selectedSeasonNum === s.number
+                            ? 'bg-gradient-to-r from-cyan-400 to-pink-500 text-black border-transparent shadow'
+                            : 'bg-white/[0.07] hover:bg-white/15 border-white/15 text-slate-200'
                         }`}
                       >
-                        <div className="relative aspect-video bg-black">
-                          <img src={ep.posterUrl} alt={ep.title} className="w-full h-full object-cover" />
-                          <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-cyan-400 text-black text-[9px] font-black">
-                            T{ep.seasonNumber} · Ep {ep.episodeNumber}
-                          </span>
-                          <span className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/80 text-[8px] font-mono text-white">
-                            {ep.durationLabel}
-                          </span>
-                        </div>
-                        <div className="p-1.5">
-                          <div className="text-[10px] font-bold text-white line-clamp-1">{ep.title}</div>
-                        </div>
+                        {s.name}
                       </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-[11px] text-slate-300/75 py-1">
-                  Toque em outra temporada acima ou avance na lista abaixo.
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                }
+                items={seriesEpisodes.map((ep) => ({
+                  id: ep.id,
+                  title: ep.title,
+                  subtitle: ep.subtitle,
+                  imageUrl: ep.posterUrl,
+                  badge: `T${ep.seasonNumber} · Ep ${ep.episodeNumber}`,
+                  badgeTone: 'accent',
+                  durationLabel: ep.durationLabel,
+                  active: Boolean(activeMovie.youtubeVideoId && activeMovie.youtubeVideoId === ep.youtubeVideoId),
+                }))}
+                onSelect={(id) => {
+                  const ep = seriesEpisodes.find((x) => x.id === id);
+                  if (!ep) return;
+                  setActiveMovie({
+                    id: ep.id,
+                    title: ep.title,
+                    subtitle: ep.subtitle,
+                    category: `${seriesMetaTitle} · T${ep.seasonNumber}`,
+                    durationLabel: ep.durationLabel,
+                    posterUrl: ep.posterUrl,
+                    youtubeVideoId: ep.youtubeVideoId,
+                    sourceLabel: ep.sourceLabel || `T${ep.seasonNumber} E${ep.episodeNumber}`,
+                    qualityLabel: ep.qualityLabel,
+                    isDubbed: ep.isDubbed,
+                    mediaType: ep.mediaType || activeMovie.mediaType,
+                  });
+                  setPrerollActive(false);
+                }}
+              />
+            )
           )}
 
           {!expandedView && movieQueue.length > 1 && activeMovie.mediaType !== 'series' && activeMovie.mediaType !== 'anime' && (
-            <div className="p-2.5 sm:p-3 border-t border-white/10 bg-[#080412] space-y-1.5 shrink-0">
-              <div className="text-[10px] font-black uppercase tracking-wider text-rose-300">
-                🎞️ Na Sequência ({movieQueue.length} títulos — deslize para trocar)
-              </div>
-              <div className="flex items-stretch gap-2.5 overflow-x-auto overscroll-x-contain pb-1" style={{ scrollbarWidth: 'none' }}>
-                {movieQueue.map((item, idx) => {
-                  const isCur = item.id === activeMovie.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setActiveMovie(item);
-                        setPrerollActive(true);
-                      }}
-                      className={`w-36 sm:w-44 shrink-0 text-left rounded-xl overflow-hidden border transition ${
-                        isCur
-                          ? 'border-rose-500 bg-rose-500/15'
-                          : 'border-white/10 bg-white/[0.04] hover:bg-white/10'
-                      }`}
-                    >
-                      <div className="relative aspect-video bg-black">
-                        <img src={item.posterUrl} alt={item.title} className="w-full h-full object-cover" />
-                        <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-white">
-                          #{idx + 1}
-                        </span>
-                      </div>
-                      <div className="p-1.5">
-                        <div className="text-[10px] font-bold text-white line-clamp-1">{item.title}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <PlayerQueueStrip
+              title="🎞️ Na Sequência"
+              accent="rose"
+              items={movieQueue.map((item, idx) => ({
+                id: item.id,
+                title: item.title,
+                subtitle: item.subtitle,
+                imageUrl: item.posterUrl,
+                badge: `#${idx + 1}`,
+                badgeTone: 'neutral',
+                durationLabel: item.durationLabel,
+                active: item.id === activeMovie.id,
+              }))}
+              onSelect={(id) => {
+                const picked = movieQueue.find((x) => x.id === id);
+                if (picked) {
+                  setActiveMovie(picked);
+                  setPrerollActive(true);
+                }
+              }}
+            />
           )}
         </div>
       </div>,

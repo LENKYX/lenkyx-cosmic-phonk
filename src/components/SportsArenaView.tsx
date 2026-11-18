@@ -24,6 +24,7 @@ import {
   SportsCategory,
 } from '../utils/moviesApi';
 import { CinemaPrerollIntro, CosmicGtaLoader } from './CosmicGtaLoader';
+import { PlayerQueueStrip } from './PlayerQueueStrip';
 
 interface Props {
   onPauseMusic: () => void;
@@ -336,39 +337,27 @@ export const SportsArenaView: React.FC<Props> = ({
           </div>
 
           {!expandedView && streamQueue.length > 1 && (
-            <div className="p-2.5 sm:p-3 border-t border-white/10 bg-[#080412] space-y-1.5 shrink-0">
-              <div className="text-[10px] font-black uppercase tracking-wider text-emerald-300">
-                ⚡ Outros Jogos & Lutas na Fila ({streamQueue.length})
-              </div>
-              <div className="flex items-stretch gap-2.5 overflow-x-auto overscroll-x-contain pb-1" style={{ scrollbarWidth: 'none' }}>
-                {streamQueue.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveStream(item);
-                      setPrerollActive(false);
-                    }}
-                    className={`w-40 sm:w-48 shrink-0 text-left rounded-xl overflow-hidden border transition ${
-                      item.id === activeStream.id
-                        ? 'border-emerald-400 bg-emerald-500/15'
-                        : 'border-white/10 bg-white/[0.04] hover:bg-white/10'
-                    }`}
-                  >
-                    <div className="relative aspect-video bg-black">
-                      <img src={item.posterUrl} alt={item.title} className="w-full h-full object-cover" />
-                      {item.isLive && (
-                        <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-red-600 text-[8px] font-black text-white">
-                          AO VIVO
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-1.5">
-                      <div className="text-[10px] font-bold text-white line-clamp-1">{item.title}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <PlayerQueueStrip
+              title="⚡ Outros Jogos & Lutas na Fila"
+              accent="emerald"
+              items={streamQueue.map((item) => ({
+                id: item.id,
+                title: item.title,
+                subtitle: item.subtitle,
+                imageUrl: item.posterUrl,
+                badge: item.isLive ? 'AO VIVO' : item.sport === 'mma' ? 'UFC/MMA' : 'FUTEBOL',
+                badgeTone: item.isLive ? 'live' : 'neutral',
+                durationLabel: item.durationLabel,
+                active: item.id === activeStream.id,
+              }))}
+              onSelect={(id) => {
+                const picked = streamQueue.find((x) => x.id === id);
+                if (picked) {
+                  setActiveStream(picked);
+                  setPrerollActive(false);
+                }
+              }}
+            />
           )}
         </div>
       </div>,

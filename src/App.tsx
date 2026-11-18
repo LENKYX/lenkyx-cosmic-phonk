@@ -56,6 +56,7 @@ const CosmicSearchView = React.lazy(() =>
 import { BassBoostLevel, MiniPlayer } from './components/MiniPlayer';
 import { LegalTermsModal } from './components/LegalTermsModal';
 import { CinemaPrerollIntro, CosmicGtaLoader } from './components/CosmicGtaLoader';
+import { PlayerQueueStrip } from './components/PlayerQueueStrip';
 import { PixModal } from './components/PixModal';
 import { ShareModal } from './components/ShareModal';
 import { UploadTrackModal } from './components/UploadTrackModal';
@@ -2181,40 +2182,25 @@ export function App() {
                 </div>
               </div>
 
-              {/* Clickable Clip Suggestions Strip */}
+              {/* Clickable Clip Suggestions Strip (Auto-Fading Arrows + Interactive Grid + Closable) */}
               {clipFitMode !== 'fullscreen' && !isNativeFullscreen && clipSuggestions.length > 0 && (
-                <div className="pt-1.5 border-t border-white/10 space-y-1.5">
-                  <div className="text-[10px] font-black uppercase tracking-wider text-cyan-300">
-                    🎬 Sugestões para assistir a seguir ({clipSuggestions.length})
-                  </div>
-                  <div
-                    className="flex items-stretch gap-2 overflow-x-auto overscroll-x-contain pb-1"
-                    style={{ scrollbarWidth: 'none' }}
-                  >
-                    {clipSuggestions.map((sug) => (
-                      <button
-                        key={`clipsug-${sug.id}`}
-                        type="button"
-                        onClick={() => openClipWithIntro(sug, playQueue.length ? playQueue : clipSuggestions)}
-                        className="w-36 sm:w-44 shrink-0 text-left rounded-xl overflow-hidden border border-white/10 bg-white/[0.04] hover:bg-white/10 hover:border-cyan-400/50 transition group"
-                      >
-                        <div className="relative aspect-video bg-black">
-                          <img
-                            src={sug.coverUrl || '/covers/album-official.jpg'}
-                            alt={sug.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition"
-                          />
-                          <span className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                            <Play className="w-5 h-5 text-white fill-white" />
-                          </span>
-                        </div>
-                        <div className="p-1.5">
-                          <div className="text-[10px] font-bold text-white line-clamp-1">{sug.title}</div>
-                          <div className="text-[9px] text-slate-300/75 truncate">{sug.artist}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                <div className="-mx-3 sm:-mx-4 -mb-2.5 mt-1">
+                  <PlayerQueueStrip
+                    title="🎬 Sugestões para assistir a seguir"
+                    accent="cyan"
+                    items={clipSuggestions.map((sug) => ({
+                      id: sug.id,
+                      title: sug.title,
+                      subtitle: sug.artist,
+                      imageUrl: sug.coverUrl || '/covers/album-official.jpg',
+                    }))}
+                    onSelect={(id) => {
+                      const picked = clipSuggestions.find((x) => x.id === id);
+                      if (picked) {
+                        openClipWithIntro(picked, playQueue.length ? playQueue : clipSuggestions);
+                      }
+                    }}
+                  />
                 </div>
               )}
             </div>
