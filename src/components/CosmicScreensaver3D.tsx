@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Track } from '../types';
 import { lenkyxAudioEngine } from '../utils/audioBoostEngine';
+import { QuantumGalaxyWebGL } from './QuantumGalaxyWebGL';
 
 interface GenreVisualProfile {
   label: string;
@@ -111,7 +112,13 @@ function detectGenreVisualProfile(track: Track | null): GenreVisualProfile {
 }
 
 export type ExperienceMode = 'audio' | 'screensaver' | 'video';
-export type VisualizerStyle = 'waves3d' | 'cosmic_portal' | 'jbl_spectrum' | 'gallery_waves';
+export type VisualizerStyle =
+  | 'shader_galaxy'
+  | 'shader_nebula'
+  | 'waves3d'
+  | 'cosmic_portal'
+  | 'jbl_spectrum'
+  | 'gallery_waves';
 
 export interface CustomScreensaverImage {
   id: string;
@@ -147,8 +154,8 @@ interface ScreensaverPrefs {
 const DEFAULT_PREFS: ScreensaverPrefs = {
   imageSource: 'current_cover',
   enabledPresetIds: ['preset-album', 'preset-01', 'preset-05', 'preset-12'],
-  style: 'waves3d',
-  imageOpacity: 0.42,
+  style: 'shader_galaxy',
+  imageOpacity: 0.36,
   slideSeconds: 10,
 };
 
@@ -266,6 +273,7 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
   const [hudVisible, setHudVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [liveFps, setLiveFps] = useState(60);
   const hudTimerRef = useRef<number | null>(null);
 
   // Persist prefs & custom images
@@ -360,9 +368,9 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
     }
   };
 
-  // === 60 FPS 3D NEON SOUNDWAVE + MIRROR REFLECTION + COSMIC PARTICLES CANVAS ===
+  // === 60-144 FPS 3D NEON SOUNDWAVE + MIRROR REFLECTION + COSMIC PARTICLES CANVAS (skipped when WebGL2 GPU mode active) ===
   useEffect(() => {
-    if (!open) return;
+    if (!open || prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -371,6 +379,8 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
     let raf = 0;
     let phase = 0;
     const bpm = genreProfile.defaultBpm;
+    let fpsFrames = 0;
+    let fpsStart = performance.now();
 
     // Cosmic star particles
     const stars = Array.from({ length: 130 }, () => ({
@@ -416,6 +426,13 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
     };
 
     const draw = () => {
+      const nowTs = performance.now();
+      fpsFrames++;
+      if (nowTs - fpsStart >= 600) {
+        setLiveFps(Math.round((fpsFrames * 1000) / (nowTs - fpsStart)));
+        fpsFrames = 0;
+        fpsStart = nowTs;
+      }
       const w = canvas.width;
       const h = canvas.height;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -673,8 +690,25 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
         />
       )}
 
-      {/* 3D NEON SOUNDWAVE + COSMIC PARTICLES CANVAS */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
+      {/* WEBGL2 GPU INTERACTIVE QUANTUM GALAXY / PLANET SHADER (Up to 120+ FPS Native VSync) */}
+      <QuantumGalaxyWebGL
+        active={prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula'}
+        mode={prefs.style === 'shader_nebula' ? 'shader_nebula' : 'shader_galaxy'}
+        isPlaying={isPlaying}
+        bpm={genreProfile.defaultBpm}
+        sharpness={genreProfile.sharpness}
+        kickPower={genreProfile.kickPower}
+        c1Hex={genreProfile.palette[0].c1}
+        c2Hex={genreProfile.palette[1].c1}
+        c3Hex={genreProfile.palette[3]?.c1 || '#fbbf24'}
+        hasBackgroundImage={Boolean(currentImg)}
+        onFps={setLiveFps}
+      />
+
+      {/* 2D/3D CANVAS NEON SOUNDWAVE + COSMIC PARTICLES */}
+      {prefs.style !== 'shader_galaxy' && prefs.style !== 'shader_nebula' && (
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
+      )}
 
       {/* FLOATING MINIMAL SONG BADGE (ALWAYS SUBTLY VISIBLE EVEN WHEN HUD HIDES) */}
       <div
@@ -722,11 +756,19 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
             <div className="text-sm sm:text-base font-black text-white truncate max-w-[220px] sm:max-w-md">
               {track?.title || 'Escolha uma música para tocar'}
             </div>
-            <div className="text-[11px] text-purple-200/80 truncate flex items-center gap-2">
+            <div className="text-[11px] text-purple-200/80 truncate flex items-center gap-2 flex-wrap">
               <span className="truncate">{track?.artist || 'LENKYX'}</span>
               <span className="px-2 py-0.5 rounded-full bg-white/10 border border-cyan-400/35 text-[9px] font-bold text-cyan-200 shrink-0">
                 ⚡ {genreProfile.label} · {genreProfile.defaultBpm} BPM
               </span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[9px] font-black text-emerald-200 shrink-0">
+                {liveFps} FPS · {lenkyxAudioEngine.getSampleRateKhz().toFixed(1)} kHz GPU
+              </span>
+              {(prefs.style === 'shader_galaxy' || prefs.style === 'shader_nebula') && (
+                <span className="text-[9px] text-pink-300/90 font-semibold hidden md:inline">
+                  ✨ Arraste ou clique na galáxia para criar vórtices e supernovas!
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -803,10 +845,12 @@ export const CosmicScreensaver3D: React.FC<Props> = ({
             <div className="grid grid-cols-2 gap-1.5">
               {(
                 [
-                  { id: 'waves3d', label: '🌊 Ondas Neon 3D' },
-                  { id: 'cosmic_portal', label: '🪐 Portal Espacial' },
+                  { id: 'shader_galaxy', label: '🌌 Galáxia Quântica GPU (Interativa)' },
+                  { id: 'shader_nebula', label: '🪐 Planeta & Anéis GPU (Interativo)' },
+                  { id: 'waves3d', label: '🌊 Ondas Neon 3D + Reflexo' },
+                  { id: 'cosmic_portal', label: '🛸 Portal Espacial 3D' },
                   { id: 'jbl_spectrum', label: '🔊 Espectro JBL 3D' },
-                  { id: 'gallery_waves', label: '🖼️ Fotos + Ondas' },
+                  { id: 'gallery_waves', label: '🖼️ Fotos + Ondas Sutis' },
                 ] as { id: VisualizerStyle; label: string }[]
               ).map((st) => (
                 <button

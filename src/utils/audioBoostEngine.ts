@@ -161,6 +161,10 @@ class LenkyxAudioEngine {
     return Boolean(this.analyserNode && this.freqBuf && this.canUseWebAudioForCurrentSrc);
   }
 
+  public getSampleRateKhz(): number {
+    return this.ctx?.sampleRate ? Math.round((this.ctx.sampleRate / 1000) * 10) / 10 : 48.0;
+  }
+
   public sampleBands(): { bass: number; mid: number; treble: number; spectrum: Uint8Array | null } {
     if (!this.analyserNode || !this.freqBuf || !this.canUseWebAudioForCurrentSrc) {
       return { bass: 0, mid: 0, treble: 0, spectrum: null };

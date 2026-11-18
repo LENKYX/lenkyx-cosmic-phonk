@@ -26,6 +26,8 @@ import {
   Zap,
   Waves,
   MessageSquare,
+  Maximize2,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   AppMode,
@@ -196,6 +198,7 @@ export function App() {
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
   const [spaceDownloadOpen, setSpaceDownloadOpen] = useState(false);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
+  const [clipFitMode, setClipFitMode] = useState<'standard' | 'compact' | 'fullscreen'>('standard');
   const [appUpdateInfo, setAppUpdateInfo] = useState<{
     latestVersionName: string;
     apkUrl: string;
@@ -1763,101 +1766,169 @@ export function App() {
         user={userProfile}
       />
 
-      {/* Persistent Cinema Clip Theater (hidden offscreen unless user chooses Vídeo — zero unwanted mini-box!) */}
-      {clipTheaterOpen && currentTrack?.youtubeVideoId && (
-        <div
-          onClick={() => setClipTheaterOpen(false)}
-          className="fixed inset-0 z-[9990] bg-black/85 backdrop-blur-lg"
-        />
-      )}
+      {/* Persistent Cinema Clip Theater (fits strictly inside viewport — Voltar, Ajustar Tela & Fechar ALWAYS visible!) */}
       <div
+        onClick={(e) => {
+          if (clipTheaterOpen && e.target === e.currentTarget) setClipTheaterOpen(false);
+        }}
         className={
           clipTheaterOpen && currentTrack?.youtubeVideoId
-            ? 'fixed z-[9995] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-4xl rounded-3xl overflow-hidden border border-cyan-400/40 bg-[#090418] shadow-[0_0_70px_rgba(236,72,153,0.35)]'
+            ? `fixed inset-0 z-[9995] bg-black/92 backdrop-blur-xl flex items-center justify-center ${
+                clipFitMode === 'fullscreen' ? 'p-0' : 'p-2 sm:p-4'
+              }`
             : 'fixed -left-[9999px] -top-[9999px] w-[320px] h-[180px] opacity-0 pointer-events-none'
         }
       >
-        {clipTheaterOpen && currentTrack?.youtubeVideoId && (
-          <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e]">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-8 h-8 rounded-xl bg-rose-500/25 border border-rose-400/40 flex items-center justify-center shrink-0">
-                <Film className="w-4 h-4 text-rose-300" />
-              </span>
+        <div
+          className={
+            clipTheaterOpen && currentTrack?.youtubeVideoId
+              ? `w-full flex flex-col overflow-hidden bg-[#090418] border border-cyan-400/40 shadow-[0_0_70px_rgba(236,72,153,0.35)] ${
+                  clipFitMode === 'fullscreen'
+                    ? 'h-[100dvh] max-w-none rounded-none border-0'
+                    : clipFitMode === 'compact'
+                      ? 'max-w-2xl max-h-[85dvh] rounded-3xl'
+                      : 'max-w-5xl h-[92dvh] max-h-[92dvh] rounded-3xl'
+                }`
+              : 'w-full h-full'
+          }
+        >
+          {clipTheaterOpen && currentTrack?.youtubeVideoId && (
+            <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e] shrink-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <button
+                  onClick={() => setClipTheaterOpen(false)}
+                  className="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1 shrink-0"
+                  title="Voltar para o App"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Voltar</span>
+                </button>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-cyan-300 truncate">
+                    Clipe Oficial · Modo Cinema
+                  </div>
+                  <div className="text-xs sm:text-sm font-black text-white truncate">
+                    {currentTrack.title}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                <button
+                  onClick={() =>
+                    setClipFitMode((m) =>
+                      m === 'standard' ? 'fullscreen' : m === 'fullscreen' ? 'compact' : 'standard'
+                    )
+                  }
+                  className="px-2.5 py-1.5 rounded-xl bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-[11px] font-black flex items-center gap-1"
+                  title="Ajustar tamanho da tela (Padrão / Tela Cheia / Compacto)"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>
+                    {clipFitMode === 'fullscreen'
+                      ? 'Tela Cheia'
+                      : clipFitMode === 'compact'
+                        ? 'Compacto'
+                        : 'Ajustar Tela'}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    setClipTheaterOpen(false);
+                    setScreensaverOpen(true);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-pink-500/25 hover:bg-pink-500/40 border border-pink-400/45 text-pink-100 text-[11px] font-bold flex items-center gap-1"
+                  title="Abrir Galáxia / Efeito 3D"
+                >
+                  <Waves className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Efeito 3D</span>
+                </button>
+                <button
+                  onClick={() => setClipTheaterOpen(false)}
+                  className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-bold text-purple-100 flex items-center gap-1"
+                  title="Continuar ouvindo somente o som"
+                >
+                  <Minimize2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Só Som</span>
+                </button>
+                <button
+                  onClick={() => setClipTheaterOpen(false)}
+                  className="px-2.5 py-1.5 rounded-full bg-red-600/85 hover:bg-red-500 text-white text-xs font-black flex items-center gap-1"
+                  title="Fechar Vídeo"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Fechar</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div
+            className={
+              clipTheaterOpen
+                ? 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center'
+                : 'w-full h-full bg-black'
+            }
+          >
+            <div id="lenkyx-yt-audio-host" className="w-full h-full" />
+          </div>
+
+          {clipTheaterOpen && currentTrack?.youtubeVideoId && (
+            <div className="px-3 sm:px-4 py-2.5 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#090418] shrink-0">
               <div className="min-w-0">
-                <div className="text-[10px] font-black uppercase tracking-widest text-cyan-300">
-                  Clipe Oficial Completo · Modo Cinema
-                </div>
-                <div className="text-xs sm:text-sm font-black text-white truncate">
-                  {currentTrack.title}
+                <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
+                <div className="text-[10px] text-cyan-300/80 flex items-center gap-2">
+                  <span>Próxima segue na sequência</span>
+                  {currentTrack.externalUrl && (
+                    <a
+                      href={currentTrack.externalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-pink-300 font-bold"
+                    >
+                      Abrir no YouTube
+                    </a>
+                  )}
                 </div>
               </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10">
+                  <button onClick={handleToggleMute} className="text-cyan-300">
+                    {muted || volume === 0 ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.02}
+                    value={muted ? 0 : volume}
+                    onChange={(e) => handleVolume(Number(e.target.value))}
+                    className="w-16 accent-cyan-400 cursor-pointer"
+                  />
+                </div>
+                <button
+                  onClick={() => handlePrevNext(-1)}
+                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                  title="Clipe Anterior"
+                >
+                  <SkipBack className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => void handleTogglePlay()}
+                  className="w-9 h-9 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow"
+                >
+                  {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black ml-0.5" />}
+                </button>
+                <button
+                  onClick={() => handlePrevNext(1)}
+                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                  title="Próximo Clipe"
+                >
+                  <SkipForward className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                onClick={() => setClipTheaterOpen(false)}
-                className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-bold text-purple-100 flex items-center gap-1"
-                title="Continuar ouvindo em segundo plano"
-              >
-                <Minimize2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Só Áudio</span>
-              </button>
-              <button
-                onClick={() => setClipTheaterOpen(false)}
-                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                title="Fechar janela do vídeo"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className={clipTheaterOpen ? 'w-full aspect-video bg-black' : 'w-full h-full bg-black'}>
-          <div id="lenkyx-yt-audio-host" className="w-full h-full" />
+          )}
         </div>
-
-        {clipTheaterOpen && currentTrack?.youtubeVideoId && (
-          <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between gap-3 bg-[#090418]">
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
-              <div className="text-[10px] text-cyan-300/80 flex items-center gap-2">
-                <span>Próxima segue na sequência da lista</span>
-                {currentTrack.externalUrl && (
-                  <a
-                    href={currentTrack.externalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline text-pink-300 font-bold"
-                  >
-                    Abrir no YouTube
-                  </a>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => handlePrevNext(-1)}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                title="Clipe Anterior"
-              >
-                <SkipBack className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => void handleTogglePlay()}
-                className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow"
-              >
-                {isPlaying ? <Pause className="w-5 h-5 fill-black" /> : <Play className="w-5 h-5 fill-black ml-0.5" />}
-              </button>
-              <button
-                onClick={() => handlePrevNext(1)}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                title="Próximo Clipe"
-              >
-                <SkipForward className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
       <UploadTrackModal
         open={uploadModalOpen}
