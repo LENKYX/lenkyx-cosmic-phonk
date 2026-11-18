@@ -142,7 +142,7 @@ public class WorldMusicBridge {
                         item.put("era", a[2]);
                         item.put("query", a[5]);
                         JSONObject info = fetchArtistPhotoAndBio(a[0], a[4], a[3]);
-                        item.put("photoUrl", info != null ? info.optString("photoUrl", "/covers/album-official.jpg") : "/covers/album-official.jpg");
+                        item.put("photoUrl", info != null ? info.optString("photoUrl", "") : "");
                         item.put("bio", info != null ? info.optString("bio", "") : "");
                     } catch (Exception ignored) {
                     }
@@ -981,7 +981,7 @@ public class WorldMusicBridge {
         try {
             res.put("installedVersionCode", installedVersionCode);
             res.put("latestVersionCode", installedVersionCode);
-            res.put("latestVersionName", "2.1.0");
+            res.put("latestVersionName", "2.2.0-GenZ");
             res.put("updateAvailable", false);
             res.put("apkUrl", "https://lenkyx-cosmic-phonk.onrender.com/download/apk");
             res.put("releaseNotes", "");

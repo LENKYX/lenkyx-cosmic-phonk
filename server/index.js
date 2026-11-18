@@ -966,7 +966,7 @@ app.get('/download/apk', (_req, res) => {
   const db = readDb();
   const redirectUrl =
     (db.settings?.apkDownloadUrl || '').trim() ||
-    'https://drive.google.com/uc?id=1CqwpvAgNKH_ULB5msJzVXwYz-voJ-Hjk&export=download';
+    'https://drive.google.com/uc?id=1SsBXDSKNWQxsPqURWWavVhcjvYUJgRFI&export=download';
   return res.redirect(302, redirectUrl);
 });
 
@@ -1020,12 +1020,12 @@ app.get('/api/app-update', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const db = readDb();
   const fallback = {
-    latestVersionCode: 17,
-    latestVersionName: '2.1.3',
+    latestVersionCode: 22,
+    latestVersionName: '2.2.0-GenZ',
     apkUrl:
       (db.settings?.apkDownloadUrl || '').trim() ||
-      'https://drive.google.com/uc?id=1CqwpvAgNKH_ULB5msJzVXwYz-voJ-Hjk&export=download',
-    releaseNotes: 'App 100% otimizado, busca IA, clipes HD, modo offline e auto-atualização.',
+      'https://drive.google.com/uc?id=1SsBXDSKNWQxsPqURWWavVhcjvYUJgRFI&export=download',
+    releaseNotes: 'LENKYX Cosmic Phonk Geração Z (v2.2.0-GenZ): Design Arquitetônico Cosmic Obsidian, Fotos reais dos 40 artistas, Fliperama Grátis & Novo Mundo RPG.',
     updateAvailable: false,
   };
   try {
@@ -1039,10 +1039,10 @@ app.get('/api/app-update', async (_req, res) => {
     });
     if (r.ok) {
       const rows = await r.json();
-      if (Array.isArray(rows) && rows[0]) {
+      if (Array.isArray(rows) && rows[0] && Number(rows[0].version_code) >= fallback.latestVersionCode) {
         return res.json({
-          latestVersionCode: Number(rows[0].version_code) || 11,
-          latestVersionName: rows[0].version_name || '2.0.7',
+          latestVersionCode: Number(rows[0].version_code),
+          latestVersionName: rows[0].version_name || fallback.latestVersionName,
           apkUrl: rows[0].apk_url || fallback.apkUrl,
           releaseNotes: rows[0].release_notes || fallback.releaseNotes,
           updateAvailable: false,
