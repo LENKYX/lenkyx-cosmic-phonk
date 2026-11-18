@@ -123,7 +123,7 @@ export const CosmicScrollRow: React.FC<Props> = ({
 
             <div
               ref={rowRef}
-              className="flex items-stretch gap-3 overflow-x-auto pb-2 px-10 sm:px-12 scroll-smooth"
+              className="flex items-stretch gap-3 overflow-x-auto overscroll-x-contain pb-2 px-10 sm:px-12 scroll-smooth"
               style={{ scrollbarWidth: 'thin' }}
             >
               {children}

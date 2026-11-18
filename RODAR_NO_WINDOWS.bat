@@ -1,8 +1,8 @@
 @echo off
 cd /d "%~dp0"
-title LENKYX - Cosmic Phonk App
+title LENKYX Cosmic Phonk Gen Z (v2.2.0-GenZ)
 echo ==================================================
-echo    LENKYX COSMIC PHONK - INICIANDO SEU APP...
+echo    LENKYX COSMIC PHONK GEN Z - INICIANDO APP...
 echo ==================================================
 echo.
 

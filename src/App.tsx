@@ -135,6 +135,9 @@ export function App() {
       setTabHistory((h) => [...h.slice(-15), prev]);
       return next;
     });
+    window.requestAnimationFrame(() => {
+      document.getElementById('lenkyx-main-scroll')?.scrollTo({ top: 0, behavior: 'auto' });
+    });
   }, []);
 
   const goBackTab = useCallback(() => {
@@ -1276,7 +1279,7 @@ export function App() {
     clipTheaterOpen || watchingMovie;
 
   return (
-    <div className="min-h-screen bg-[#04010c] text-white flex relative">
+    <div className="h-dvh overflow-hidden bg-[#04010c] text-white flex relative">
       {/* === 3D DEEP SPACE PARALLAX STARFIELD & FLOATING PLANETS === */}
       <CosmicSpaceBackdrop />
 
@@ -1313,7 +1316,7 @@ export function App() {
         </div>
 
         {/* Architectural Primary Sector Navigation (All 7 Universe Sectors Immediately Visible) */}
-        <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-3">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-2.5 py-3 space-y-3">
           <nav className="space-y-1">
             {sidebarMain.map((tab) => {
               const active = activeTab === tab.id;
@@ -1470,14 +1473,14 @@ export function App() {
         </div>
       </aside>
 
-      {/* === MAIN CONTENT SHELL (Spatial transition out during 3D Screensaver) === */}
+      {/* === MAIN CONTENT SHELL (Isolated Architectural Scrollport — zero overlap & zero scroll bleeding) === */}
       <div
-        className={`relative z-10 flex-1 md:pl-60 lg:pl-64 min-w-0 flex flex-col min-h-screen transition-all duration-700 ease-out ${
+        className={`relative z-10 flex-1 md:pl-60 lg:pl-64 min-w-0 h-full overflow-hidden flex flex-col transition-all duration-700 ease-out ${
           screensaverOpen ? 'scale-90 opacity-0 blur-sm pointer-events-none' : 'scale-100 opacity-100'
         }`}
       >
-        {/* SLIM FLOATING GLASS TOP HEADER */}
-        <header className="sticky top-2 z-30 mx-3 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-2.5 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-2">
+        {/* ARCHITECTURAL TOP HEADER (Dedicated non-overlapping header bar) */}
+        <header className="shrink-0 z-30 mx-3 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-2.5 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-2">
           {/* Universal Back (←) + Close (X) Navigation across ALL menus */}
           <div className="flex items-center gap-1 shrink-0">
             {(tabHistory.length > 0 || activeTab !== 'catalog') && (
@@ -1727,8 +1730,12 @@ export function App() {
           </div>
         </header>
 
-        {/* ACTIVE VIEW CONTAINER (clean Spotify proportions) */}
-        <main className="flex-1 w-full max-w-[1380px] mx-auto px-3 sm:px-5 pt-4">
+        {/* ACTIVE VIEW CONTAINER (Isolated vertical scrollport below header) */}
+        <main
+          id="lenkyx-main-scroll"
+          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full"
+        >
+          <div className="w-full max-w-[1380px] mx-auto px-3 sm:px-5 pt-4">
           {appUpdateInfo && (
             <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
               <div className="min-w-0">
@@ -1927,6 +1934,7 @@ export function App() {
               </Suspense>
             </>
           )}
+          </div>
         </main>
       </div>
 

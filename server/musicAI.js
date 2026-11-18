@@ -637,14 +637,14 @@ let cachedArtistsTs = 0;
 const worldShortsCache = new Map();
 
 const WORLD_SHORTS_QUERIES = {
-  all: 'cosmic phonk drift car edits dj live dance shorts #shorts',
-  live: 'ao vivo brasil musica dj phonk games tv live stream',
-  phonk: 'phonk drift edits brazilian phonk car bass #shorts',
-  brazil: 'funk sertanejo brasil music dance festival #shorts',
-  djs: 'dj live set electronic edm club festival #shorts',
-  space: 'nasa space galaxy stars planets cosmic #shorts',
-  dance: 'viral dance music challenge hip hop global #shorts',
-  rock: 'electric guitar solo rock metal live stage #shorts',
+  all: 'cosmic phonk drift edits dance music shorts',
+  live: 'music radio dj phonk lofi chill live 24/7 ao vivo',
+  phonk: 'phonk drift edits brazilian phonk shorts',
+  brazil: 'funk sertanejo brasil music dance shorts',
+  djs: 'dj live set electronic club festival shorts',
+  space: 'nasa space galaxy stars planets cosmic shorts',
+  dance: 'viral dance music challenge hip hop shorts',
+  rock: 'electric guitar solo rock metal live shorts',
 };
 
 export async function searchWorldShorts(category = 'all', customQuery = '') {
@@ -662,9 +662,9 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
   }
 
   try {
-    const spParam = isLiveMode ? 'EgJAAQ%253D%253D' : 'EgIQAQ%253D%253D';
+    const spParam = isLiveMode ? '&sp=EgJAAQ%253D%253D' : '';
     const r = await fetch(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=${spParam}`,
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}${spParam}`,
       { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) }
     );
     if (!r.ok) return [];
@@ -695,11 +695,11 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
             title: String(title).slice(0, 110),
             creator_name: 'Criador Global',
             creator_color: 'from-cyan-400 to-pink-500',
-            description: `Vídeo curto mundial (${cat.toUpperCase()}) · Arraste para o lado ⬅️➡️`,
+            description: `Toque para assistir em tela cheia estilo YouTube Shorts · ⬆️⬇️`,
             media_type: 'youtube_short',
             video_url: '',
             youtube_id: vid,
-            poster_url: `https://i.ytimg.com/vi/${vid}/oar2.jpg`,
+            poster_url: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
             audio_title: 'Mundo Inteiro · Shorts',
             category: cat,
             likes: 120 + items.length * 17,
@@ -745,8 +745,43 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
     };
     walk(data);
 
-    worldShortsCache.set(key, { ts: Date.now(), items });
-    return items;
+    // Filter out YouTube videos/lives that disable third-party embedding ("Vídeo indisponível")
+    const embeddable = [];
+    for (let i = 0; i < items.length; i += 8) {
+      const batch = items.slice(i, i + 8);
+      const checked = await Promise.all(
+        batch.map(async (it) => {
+          if (!it.youtube_id) return it;
+          try {
+            const oe = await fetch(
+              `https://www.youtube.com/oembed?url=${encodeURIComponent(
+                `https://www.youtube.com/watch?v=${it.youtube_id}`
+              )}&format=json`,
+              { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(3500) }
+            );
+            if (!oe.ok) return null;
+            const info = await oe.json().catch(() => null);
+            return {
+              ...it,
+              creator_name:
+                it.creator_name === 'Criador Global' && info?.author_name
+                  ? String(info.author_name).slice(0, 36)
+                  : it.creator_name,
+              poster_url: info?.thumbnail_url || it.poster_url,
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+      for (const x of checked) {
+        if (x) embeddable.push(x);
+      }
+    }
+
+    const finalList = embeddable.length > 0 ? embeddable : items.slice(0, 12);
+    worldShortsCache.set(key, { ts: Date.now(), items: finalList });
+    return finalList;
   } catch {
     return [];
   }

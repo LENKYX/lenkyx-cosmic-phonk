@@ -3,7 +3,7 @@ set -e
 cd "$(dirname "$0")"
 
 echo "=================================================="
-echo "   LENKYX COSMIC PHONK - INICIANDO SEU APP..."
+echo "   LENKYX COSMIC PHONK GEN Z - INICIANDO APP..."
 echo "=================================================="
 
 if ! command -v node >/dev/null 2>&1; then
