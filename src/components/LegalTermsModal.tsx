@@ -79,9 +79,22 @@ export const LegalTermsModal: React.FC<Props> = ({ open, onClose, creatorEmail }
             </p>
           </div>
 
+          <div className="rounded-2xl bg-amber-500/10 border border-amber-400/35 p-4 space-y-1.5">
+            <div className="font-black text-amber-300 flex items-center gap-1.5 text-sm">
+              <ShieldCheck className="w-4 h-4" /> 4. Doações Voluntárias, Tokens & Taxa de 5% da Plataforma
+            </div>
+            <p>
+              O acesso às músicas, filmes, séries, canais abertos e redes do aplicativo é gratuito. Quaisquer valores
+              enviados via <strong>PIX / PicPay, cartão internacional, criptomoedas ou tokens de apoio</strong> têm
+              caráter de <strong>doação voluntária e lícita</strong> para incentivo artístico e infraestrutura. Em repasses
+              e transações processadas na plataforma, aplica-se a comissão mínima de <strong>5%</strong> destinada à
+              manutenção de servidores, bancos de dados e desenvolvimento do universo LENKYX.
+            </p>
+          </div>
+
           <div className="rounded-2xl bg-white/[0.05] border border-white/15 p-4 space-y-1.5">
             <div className="font-black text-white flex items-center gap-1.5 text-sm">
-              <Mail className="w-4 h-4 text-amber-300" /> 4. Canal Oficial para Notificações & Contato
+              <Mail className="w-4 h-4 text-amber-300" /> 5. Canal Oficial para Notificações & Contato
             </div>
             <p>
               Titulares de direitos autorais podem enviar notificação formal indicando a URL/título específico para

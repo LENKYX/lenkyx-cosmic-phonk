@@ -24,6 +24,7 @@ import {
   VolumeX,
   LayoutGrid,
   RefreshCw,
+  Heart,
 } from 'lucide-react';
 import { LiveTvCategory, LiveTvChannel, MovieItem } from '../types';
 import {
@@ -51,6 +52,7 @@ interface Props {
     streamUrl?: string;
     coverUrl?: string;
   }) => void;
+  onOpenPix?: () => void;
 }
 
 type SectionMode = 'cinema' | 'livetv';
@@ -200,6 +202,7 @@ export const MoviesView: React.FC<Props> = ({
   onVolume,
   onToggleMute,
   onOpenTvCast,
+  onOpenPix,
 }) => {
   const [sectionMode, setSectionMode] = useState<SectionMode>('cinema');
 
@@ -822,6 +825,17 @@ export const MoviesView: React.FC<Props> = ({
                 </button>
               )}
 
+              {onOpenPix && (
+                <button
+                  onClick={onOpenPix}
+                  className="px-2.5 py-1.5 rounded-xl bg-pink-500/25 hover:bg-pink-500/45 border border-pink-400/45 text-pink-100 text-[11px] font-black flex items-center gap-1"
+                  title="Apoiar gratuitamente o app via PIX, PicPay, Cripto ou Cartão"
+                >
+                  <Heart className="w-3.5 h-3.5 text-pink-300" />
+                  <span className="hidden sm:inline">Apoiar</span>
+                </button>
+              )}
+
               <button
                 onClick={() => void toggleExpandPlayer()}
                 className="px-2.5 py-1.5 rounded-xl bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-[11px] font-black flex items-center gap-1"
@@ -1131,6 +1145,16 @@ export const MoviesView: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
+          {onOpenPix && (
+            <button
+              onClick={onOpenPix}
+              className="px-3 py-2 rounded-xl bg-gradient-to-r from-pink-500/25 to-amber-500/25 hover:from-pink-500/40 hover:to-amber-500/40 border border-pink-400/45 text-[11px] font-black text-pink-100 flex items-center gap-1.5 transition"
+              title="Ajudar com doação voluntária (PIX / PicPay / Cripto / Cartão)"
+            >
+              <Heart className="w-3.5 h-3.5 text-pink-400" />
+              <span>Apoiar App</span>
+            </button>
+          )}
           <button
             onClick={() => setGlobalTvGrid((v) => !v)}
             className={`px-3 py-2 rounded-xl text-[11px] font-black border flex items-center gap-1.5 transition ${

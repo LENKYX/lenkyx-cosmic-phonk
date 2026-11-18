@@ -621,6 +621,9 @@ export const UserAuthModal: React.FC<Props> = ({
                     <p>
                       <strong>3. Privacidade, Conteúdo da Comunidade & Canal DMCA (Safe Harbor):</strong> Dados de login servem apenas para sua conta e recuperação por WhatsApp/SMS/e-mail. Vídeos curtos e chats enviados por usuários são de responsabilidade dos autores, com canal rápido de revisão/remoção DMCA para proteger o site e os criadores.
                     </p>
+                    <p>
+                      <strong>4. Acesso Gratuito, Doações Voluntárias & Taxa de 5%:</strong> A entrada e o uso do aplicativo são gratuitos. Qualquer apoio financeiro via PIX/PicPay, cartão, criptomoedas ou tokens é uma doação 100% voluntária dentro da lei, sujeita à taxa mínima de 5% da plataforma destinada a servidores, banco de dados e evolução contínua do projeto.
+                    </p>
                   </div>
                 )}
 

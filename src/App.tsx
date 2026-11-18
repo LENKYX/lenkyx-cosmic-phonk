@@ -1817,6 +1817,10 @@ export function App() {
                       setTvCustomMedia(m);
                       setTvCastOpen(true);
                     }}
+                    onOpenPix={() => {
+                      setPixInitialTab('donate');
+                      setPixOpen(true);
+                    }}
                   />
                 )}
 
