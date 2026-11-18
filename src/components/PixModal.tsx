@@ -253,7 +253,7 @@ export const PixModal: React.FC<Props> = ({
 
               <p className="text-xs text-purple-100/90 text-center leading-relaxed">
                 {settings.pixMessage ||
-                  'Todo acesso é grátis! Sua doação voluntária ajuda a manter os servidores, o banco de dados e novas músicas, filmes e TV ao vivo.'}
+                  '100% gratuito e sem anúncios! Sua doação voluntária via PicPay (PIX) ajuda na manutenção do site e dos servidores.'}
               </p>
 
               {/* PIX / PicPay OR Tokens QR */}

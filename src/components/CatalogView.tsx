@@ -44,8 +44,8 @@ interface Props {
   onPlayTrack: (track: Track, version?: AudioVersion) => void;
   onLikeTrack: (track: Track) => void;
   onShareTrack: (track: Track | null) => void;
-  onOpenPix: () => void;
-  onSendToVideo: (track: Track) => void;
+  onOpenPix?: () => void;
+  onSendToVideo?: (track: Track) => void;
   onAddToPlaylist: (playlistId: string, track: Track) => void;
   onToggleOffline: (track: Track) => void;
   onDownloadAllOffline: () => void;
@@ -155,12 +155,7 @@ export const CatalogView: React.FC<Props> = ({
 
           <div className="relative z-10 p-5 sm:p-7 flex flex-col lg:flex-row lg:items-end justify-between gap-5">
             <div className="flex items-center gap-4 sm:gap-5">
-              {/* Floating 3D Album Emblem */}
-              <div className="relative shrink-0 cosmic-float-slow">
-                <div
-                  className="absolute -inset-2.5 rounded-full border border-cyan-400/35 pointer-events-none"
-                  style={{ transform: 'rotateX(70deg) rotateY(-12deg)' }}
-                />
+              <div className="relative shrink-0">
                 <img
                   src="/covers/album-official.jpg"
                   alt="LENKYX Cosmic Phonk"
@@ -170,7 +165,7 @@ export const CatalogView: React.FC<Props> = ({
 
               <div className="min-w-0 space-y-1">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-pink-500/20 border border-pink-400/35 text-[10px] font-extrabold text-pink-200">
-                  <Sparkles className="w-2.5 h-2.5" /> ÁLBUM OFICIAL · {tracks.length} FAIXAS COMPLETAS
+                  <Sparkles className="w-2.5 h-2.5" /> ESPAÇO EXCLUSIVO LENKYX · {tracks.length} FAIXAS SEM ANÚNCIOS
                 </div>
                 <h1 className="font-display text-2xl sm:text-3xl font-black tracking-wide text-white truncate">
                   {settings.artistName} <span className="neon-text">{settings.brandSubtitle}</span>
@@ -516,13 +511,15 @@ export const CatalogView: React.FC<Props> = ({
                   >
                     <ListPlus className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    onClick={() => onSendToVideo(track)}
-                    className="p-1.5 rounded-lg hover:bg-cyan-500/20 text-cyan-300 transition"
-                    title="Criar Vídeo (Reels / TikTok / YouTube)"
-                  >
-                    <Video className="w-3.5 h-3.5" />
-                  </button>
+                  {onSendToVideo && (
+                    <button
+                      onClick={() => onSendToVideo(track)}
+                      className="p-1.5 rounded-lg hover:bg-cyan-500/20 text-cyan-300 transition"
+                      title="Criar Vídeo"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => onSetLyricsTrack(track)}
                     className="p-1.5 rounded-lg hover:bg-white/10 text-purple-200 transition"
@@ -637,13 +634,15 @@ export const CatalogView: React.FC<Props> = ({
                           <DownloadCloud className="w-3 h-3" />
                         )}
                       </button>
-                      <button
-                        onClick={() => onSendToVideo(track)}
-                        className="p-1 rounded bg-white/5 hover:bg-cyan-500/25 text-cyan-300"
-                        title="Criar Vídeo"
-                      >
-                        <Video className="w-3 h-3" />
-                      </button>
+                      {onSendToVideo && (
+                        <button
+                          onClick={() => onSendToVideo(track)}
+                          className="p-1 rounded bg-white/5 hover:bg-cyan-500/25 text-cyan-300"
+                          title="Criar Vídeo"
+                        >
+                          <Video className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

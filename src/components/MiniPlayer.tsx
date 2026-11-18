@@ -16,9 +16,6 @@ import {
   Loader2,
   WifiOff,
   Film,
-  Speaker,
-  Video,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { AudioVersion, Track } from '../types';
@@ -34,8 +31,6 @@ interface Props {
   duration: number;
   volume: number;
   muted: boolean;
-  jblLightsEnabled: boolean;
-  onToggleJblLights: () => void;
   onTogglePlay: () => void;
   onSelectVersion: (ver: AudioVersion) => void;
   onPrev: () => void;
@@ -43,9 +38,7 @@ interface Props {
   onSeek: (time: number) => void;
   onVolume: (v: number) => void;
   onToggleMute: () => void;
-  onOpenScreensaver: () => void;
   onShare: (track: Track) => void;
-  onSendToVideo: (track: Track) => void;
   onOpenLyrics: (track: Track) => void;
   onLike: (track: Track) => void;
   onToggleOffline: (track: Track) => void;
@@ -70,17 +63,13 @@ export const MiniPlayer: React.FC<Props> = ({
   duration,
   volume,
   muted,
-  jblLightsEnabled,
-  onToggleJblLights,
   onTogglePlay,
   onPrev,
   onNext,
   onSeek,
   onVolume,
   onToggleMute,
-  onOpenScreensaver,
   onShare,
-  onSendToVideo,
   onOpenLyrics,
   onLike,
   onToggleOffline,
@@ -173,10 +162,7 @@ export const MiniPlayer: React.FC<Props> = ({
 
             <div className="flex flex-col items-center gap-4 my-auto">
               <div className="relative w-64 h-64 sm:w-72 sm:h-72">
-                {jblLightsEnabled && isPlaying && (
-                  <div className="absolute -inset-3 rounded-3xl border-2 border-cyan-400/50 blur-[1px] animate-pulse pointer-events-none shadow-[0_0_45px_rgba(236,72,153,0.55)]" />
-                )}
-                <div className="w-full h-full rounded-3xl overflow-hidden border border-white/20 shadow-[0_24px_70px_rgba(236,72,153,0.42)]">
+                <div className="w-full h-full rounded-3xl overflow-hidden border border-white/20 shadow-[0_24px_70px_rgba(236,72,153,0.32)]">
                   <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
                   {isPlayingFromOffline && (
                     <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-black/75 border border-emerald-400/50 text-[10px] font-extrabold text-emerald-300 flex items-center gap-1">
@@ -237,17 +223,7 @@ export const MiniPlayer: React.FC<Props> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 pb-2">
-              <button
-                onClick={onToggleJblLights}
-                className={`py-2.5 px-2 rounded-xl text-[11px] font-extrabold flex flex-col items-center justify-center gap-1 border transition ${
-                  jblLightsEnabled
-                    ? 'bg-pink-500/25 border-pink-400/50 text-pink-200'
-                    : 'bg-white/10 border-white/15 text-purple-200'
-                }`}
-              >
-                <Speaker className="w-4 h-4" /> Luzes JBL
-              </button>
+            <div className="grid grid-cols-3 gap-2 pb-2">
               <button
                 onClick={() => onToggleOffline(track)}
                 disabled={isDownloadingOffline}
@@ -276,37 +252,23 @@ export const MiniPlayer: React.FC<Props> = ({
                 <FileText className="w-4 h-4" /> Letra
               </button>
               <button
-                onClick={() => {
-                  setExpanded(false);
-                  onSendToVideo(track);
-                }}
+                onClick={() => onShare(track)}
                 className="py-2.5 px-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/35 text-[11px] font-bold text-cyan-200 flex flex-col items-center justify-center gap-1"
               >
-                <Video className="w-4 h-4" /> Vídeo
+                <MessageCircle className="w-4 h-4" /> Enviar
               </button>
             </div>
-            <div className="flex items-center gap-2">
+            {track.youtubeVideoId && onWatchClip && (
               <button
                 onClick={() => {
                   setExpanded(false);
-                  onOpenScreensaver();
+                  onWatchClip();
                 }}
-                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-white text-xs font-black flex items-center justify-center gap-2 shadow-lg hover:brightness-110 transition"
+                className="w-full py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black flex items-center justify-center gap-2 shadow-lg transition"
               >
-                <Sparkles className="w-4 h-4" /> PROTETOR DE TELA 3D
+                <Film className="w-4 h-4" /> Assistir Clipe em Tela Cheia
               </button>
-              {track.youtubeVideoId && onWatchClip && (
-                <button
-                  onClick={() => {
-                    setExpanded(false);
-                    onWatchClip();
-                  }}
-                  className="px-4 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black flex items-center justify-center gap-1.5 shadow-lg transition"
-                >
-                  <Film className="w-4 h-4" /> Vídeo
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -382,37 +344,18 @@ export const MiniPlayer: React.FC<Props> = ({
             </button>
           </div>
 
-          {/* Right: 3D Screensaver, Clip, JBL Lights, Offline, Video & Volume */}
-          <div className="flex items-center gap-1 justify-end md:w-80">
-            <button
-              onClick={onOpenScreensaver}
-              className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-500/30 to-pink-500/30 hover:from-cyan-500/50 hover:to-pink-500/50 border border-cyan-400/50 text-cyan-100 text-[10px] font-black flex items-center gap-1 shrink-0 transition"
-              title="Abrir Protetor de Tela 3D com Ondas Neon e suas Imagens"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
-              <span className="hidden sm:inline">Efeito 3D</span>
-            </button>
+          {/* Right: Clip, Offline & Volume */}
+          <div className="flex items-center gap-1 justify-end md:w-72">
             {track.youtubeVideoId && onWatchClip && (
               <button
                 onClick={onWatchClip}
-                className="px-2 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 text-[10px] font-extrabold flex items-center gap-1 shrink-0 transition"
-                title="Mostrar Vídeo / Clipe Oficial (opcional)"
+                className="px-2.5 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 text-[10px] font-extrabold flex items-center gap-1 shrink-0 transition"
+                title="Assistir Clipe Oficial"
               >
                 <Film className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Vídeo</span>
+                <span className="hidden sm:inline">Clipe</span>
               </button>
             )}
-            <button
-              onClick={onToggleJblLights}
-              className={`hidden sm:inline-flex p-1.5 rounded-lg transition border ${
-                jblLightsEnabled
-                  ? 'bg-pink-500/25 border-pink-400/50 text-pink-300'
-                  : 'border-transparent text-purple-300/75 hover:text-white'
-              }`}
-              title={jblLightsEnabled ? 'Luzes JBL Ligadas' : 'Ligar Luzes JBL'}
-            >
-              <Speaker className="w-4 h-4" />
-            </button>
             <button
               onClick={() => onToggleOffline(track)}
               disabled={isDownloadingOffline}
@@ -439,13 +382,6 @@ export const MiniPlayer: React.FC<Props> = ({
                 title="Curtir"
               >
                 <Heart className={`w-4 h-4 ${track.favorite ? 'fill-pink-500' : ''}`} />
-              </button>
-              <button
-                onClick={() => onSendToVideo(track)}
-                className="p-1.5 rounded-lg text-cyan-300 hover:bg-cyan-500/20 transition"
-                title="Criar Vídeo com esta Música"
-              >
-                <Video className="w-4 h-4" />
               </button>
               <div className="flex items-center gap-1 pl-1 w-24">
                 <button

@@ -93,8 +93,20 @@ export interface AppSettings {
 }
 
 export type AudioVersion = 'v1' | 'v2';
-export type TabId = 'catalog' | 'search' | 'explore' | 'movies' | 'playlists' | 'video' | 'arcade' | 'community_hub' | 'studio';
+export type TabId = 'catalog' | 'search' | 'explore' | 'movies' | 'playlists' | 'studio';
 export type AppMode = 'creator' | 'fan';
+
+export interface WorldProfile {
+  id: string;
+  name: string;
+  avatarEmoji: string;
+  avatarColor: string;
+  subtitle: string;
+  tags: string[];
+  isKids?: boolean;
+  heroImg: string;
+  focusTab: TabId;
+}
 
 export interface MovieItem {
   id: string;

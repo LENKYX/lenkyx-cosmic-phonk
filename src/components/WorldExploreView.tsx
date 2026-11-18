@@ -5,17 +5,15 @@ import {
   ListPlus,
   Loader2,
   Flame,
-  ExternalLink,
   Music2,
   Sparkles,
   ListMusic,
   UserCheck,
   Film,
-  Video,
   RefreshCw,
   ArrowLeft,
-  Tv,
   Disc3,
+  BadgeCheck,
 } from 'lucide-react';
 import {
   Track,
@@ -33,7 +31,6 @@ import {
 } from '../utils/worldMusic';
 import { getSmartDiscoveryQueries, recordPlayTaste, recordSearchTaste } from '../utils/tasteProfile';
 import { CosmicScrollRow } from './CosmicScrollRow';
-import { CosmicGtaLoader } from './CosmicGtaLoader';
 
 interface Props {
   initialQuery?: string;
@@ -43,26 +40,17 @@ interface Props {
   playlists: UserPlaylist[];
   onPlayTrack: (track: Track, queue: Track[], queueLabel?: string) => void;
   onWatchClip?: (track: Track, queue: Track[]) => void;
-  onSendToVideo: (track: Track) => void;
   onAddToPlaylist: (playlistId: string, track: Track) => void;
-  onOpenTvCast?: (media: {
-    title: string;
-    artist?: string;
-    mode?: 'galaxy' | 'video' | 'shorts' | 'tv';
-    youtubeVideoId?: string;
-    audioUrl?: string;
-    coverUrl?: string;
-  }) => void;
 }
 
 const GENRE_CHIPS = [
   { label: '🔥 Em Alta', q: '', space: false },
-  { label: '🚀 Lançamentos IA', q: `lancamentos musicas novas brasil global ${new Date().getFullYear()}`, space: false },
+  { label: '🚀 Lançamentos', q: `lancamentos musicas novas brasil global ${new Date().getFullYear()}`, space: false },
   { label: '🌎 Internacionais', q: 'The Weeknd Taylor Swift Bruno Mars Dua Lipa Billie Eilish official', space: false },
   { label: '🎬 Clipes HD', q: 'Henrique e Juliano The Weeknd Queen Michael Jackson clipe oficial', space: false },
   { label: '🤠 Sertanejo', q: 'Henrique e Juliano Marilia Mendonca Gusttavo Lima Ana Castela', space: false },
   { label: '⚡ Phonk', q: 'brazilian phonk Kordhell DVRST', space: false },
-  { label: '🛸 Espaço & E.T.', q: 'espaco galaxia NASA voyager cosmic synthwave', space: true },
+  { label: '🛸 Espaço & Synth', q: 'espaco galaxia NASA voyager cosmic synthwave', space: true },
 ];
 
 const ARTIST_REGION_FILTERS = [
@@ -86,7 +74,7 @@ const ArtistPortrait: React.FC<{
   name: string;
   photoUrl?: string;
   className?: string;
-}> = ({ name, photoUrl, className = 'w-full h-full object-cover rounded-full bg-black' }) => {
+}> = ({ name, photoUrl, className = 'w-full h-full object-cover' }) => {
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     setFailed(false);
@@ -101,7 +89,7 @@ const ArtistPortrait: React.FC<{
 
   if (!photoUrl || failed) {
     return (
-      <div className="w-full h-full rounded-full bg-gradient-to-br from-[#120b29] via-[#1c1338] to-[#0a1628] flex items-center justify-center font-display text-lg font-black tracking-wider text-cyan-200 select-none">
+      <div className="w-full h-full bg-gradient-to-br from-[#120b29] via-[#1c1338] to-[#0a1628] flex items-center justify-center font-display text-xl font-black tracking-wider text-cyan-200 select-none">
         {initials || '★'}
       </div>
     );
@@ -127,9 +115,7 @@ export const WorldExploreView: React.FC<Props> = ({
   playlists,
   onPlayTrack,
   onWatchClip,
-  onSendToVideo,
   onAddToPlaylist,
-  onOpenTvCast,
 }) => {
   const [results, setResults] = useState<Track[]>([]);
   const [newReleases, setNewReleases] = useState<Track[]>([]);
@@ -140,13 +126,13 @@ export const WorldExploreView: React.FC<Props> = ({
   const [artistRegion, setArtistRegion] = useState<string>('all');
   const [loading, setLoading] = useState(false);
   const [refreshingReleases, setRefreshingReleases] = useState(false);
-  const [lastUpdatedLabel, setLastUpdatedLabel] = useState('IA Ativa');
+  const [lastUpdatedLabel, setLastUpdatedLabel] = useState('Atualizado');
   const [activeLabel, setActiveLabel] = useState('🔥 Em Alta');
   const [pickerTrackId, setPickerTrackId] = useState<string | null>(null);
 
   const runSearch = async (term: string, label?: string, includeArchiveSpace = false) => {
     setLoading(true);
-    setActiveLabel(label || (term ? `Busca: "${term}"` : '🔥 Em Alta'));
+    setActiveLabel(label || (term ? `Artista: ${term}` : '🔥 Em Alta'));
     if (term.trim()) {
       recordSearchTaste(term);
       setSmartPicks(getSmartDiscoveryQueries());
@@ -171,7 +157,7 @@ export const WorldExploreView: React.FC<Props> = ({
       const rel = await getWorldNewReleases(force);
       if (rel.tracks?.length) setNewReleases(rel.tracks);
       setLastUpdatedLabel(
-        `IA · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+        `Atualizado · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
       );
     } finally {
       setRefreshingReleases(false);
@@ -185,12 +171,11 @@ export const WorldExploreView: React.FC<Props> = ({
         if (dir.playlists?.length) setCuratedPlaylists(dir.playlists);
         if (dir.newReleases?.length) setNewReleases(dir.newReleases);
         setLastUpdatedLabel(
-          `IA · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+          `Atualizado · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
         );
       })
       .catch(() => {});
 
-    // Auto-refresh new music releases by AI every 25 minutes automatically!
     const autoTimer = window.setInterval(() => {
       void refreshNewReleasesAI(true);
     }, 25 * 60 * 1000);
@@ -230,17 +215,10 @@ export const WorldExploreView: React.FC<Props> = ({
   };
 
   return (
-    <div className="space-y-5 pb-36 md:pb-28">
-      <CosmicGtaLoader
-        open={refreshingReleases}
-        mode="discreet_corner"
-        statusText="IA buscando músicas novas..."
-        onSkip={() => setRefreshingReleases(false)}
-      />
-
-      {/* SPOTIFY / YOUTUBE MUSIC GENRE CHIPS + AUTO-REFRESH AI */}
+    <div className="space-y-6 pb-32 md:pb-24">
+      {/* === MODERN GENRE CHIPS + QUICK MIX CONTROLS === */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           {GENRE_CHIPS.map((chip) => (
             <button
               key={chip.label}
@@ -261,7 +239,6 @@ export const WorldExploreView: React.FC<Props> = ({
             onClick={() => void refreshNewReleasesAI(true)}
             disabled={refreshingReleases}
             className="px-3 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/15 border border-white/15 text-[11px] font-bold text-emerald-300 flex items-center gap-1.5 transition"
-            title="Atualizar lançamentos musicais automaticamente com IA agora"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshingReleases ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{lastUpdatedLabel}</span>
@@ -272,17 +249,17 @@ export const WorldExploreView: React.FC<Props> = ({
               onClick={() => handlePlayRow(results[0])}
               className="px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-xs font-black flex items-center gap-1.5 shadow hover:brightness-110 transition"
             >
-              <Play className="w-3.5 h-3.5 fill-current" /> Tocar Sequência
+              <Play className="w-3.5 h-3.5 fill-current" /> Tocar Mix
             </button>
           )}
         </div>
       </div>
 
-      {/* AI Continuous Discovery Chips */}
+      {/* Personalized Discovery Chips */}
       {smartPicks.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
           <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1 shrink-0 pr-1">
-            <Sparkles className="w-3 h-3 text-pink-400" /> IA Para Você:
+            <Sparkles className="w-3 h-3 text-pink-400" /> Para Você:
           </span>
           {smartPicks.map((p) => (
             <button
@@ -296,23 +273,25 @@ export const WorldExploreView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* SPOTIFY / YOUTUBE MUSIC OFFICIAL ARTIST HERO BANNER (when an artist is selected!) */}
+      {/* === MODERN GLASSMORPHIC ARTIST SPOTLIGHT HERO (when selected) === */}
       {artistProfile && (
-        <section className="relative rounded-[28px] overflow-hidden border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.75)]">
+        <section className="relative rounded-[30px] overflow-hidden border border-white/15 shadow-[0_24px_70px_rgba(0,0,0,0.85)]">
           {artistProfile.photoUrl && (
             <img
               src={artistProfile.photoUrl}
               alt={artistProfile.name}
-              className="absolute inset-0 w-full h-full object-cover opacity-35 blur-sm scale-105"
+              className="absolute inset-0 w-full h-full object-cover opacity-40 blur-md scale-110"
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#05020f] via-[#070316]/75 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#04010c] via-[#070316]/75 to-transparent" />
 
-          <div className="relative z-10 p-5 sm:p-7 flex flex-col sm:flex-row items-center sm:items-end gap-5">
-            <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full p-[3px] bg-gradient-to-br from-emerald-400 via-cyan-400 to-pink-500 shrink-0 shadow-[0_0_35px_rgba(34,211,238,0.45)]">
-              <ArtistPortrait name={artistProfile.name} photoUrl={artistProfile.photoUrl} />
-              <span className="absolute bottom-0 right-0 px-2.5 py-0.5 rounded-full bg-emerald-400 text-black text-[9px] font-black flex items-center gap-0.5 shadow-lg">
-                <UserCheck className="w-3 h-3" /> VERIFICADO
+          <div className="relative z-10 p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-end gap-5">
+            <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-3xl p-[2px] bg-gradient-to-br from-emerald-400 via-cyan-400 to-pink-500 shrink-0 shadow-[0_0_40px_rgba(34,211,238,0.45)] overflow-hidden">
+              <div className="w-full h-full rounded-[22px] overflow-hidden bg-black">
+                <ArtistPortrait name={artistProfile.name} photoUrl={artistProfile.photoUrl} />
+              </div>
+              <span className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-full bg-emerald-400 text-black text-[9px] font-black flex items-center gap-0.5 shadow-lg">
+                <BadgeCheck className="w-3 h-3" /> OFICIAL
               </span>
             </div>
 
@@ -342,7 +321,7 @@ export const WorldExploreView: React.FC<Props> = ({
                 {results.length > 0 && (
                   <button
                     onClick={() => handlePlayRow(results[0])}
-                    className="px-5 py-2 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-black flex items-center gap-1.5 shadow-lg transition active:scale-95"
+                    className="px-5 py-2.5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-black flex items-center gap-1.5 shadow-lg transition active:scale-95"
                   >
                     <Play className="w-3.5 h-3.5 fill-black" /> Tocar Mix do Artista
                   </button>
@@ -350,14 +329,14 @@ export const WorldExploreView: React.FC<Props> = ({
                 {clipTracks[0] && onWatchClip && (
                   <button
                     onClick={() => onWatchClip(clipTracks[0], clipTracks)}
-                    className="px-4 py-2 rounded-full bg-rose-600/85 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1.5 transition"
+                    className="px-4 py-2.5 rounded-full bg-rose-600/85 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1.5 transition"
                   >
                     <Film className="w-3.5 h-3.5" /> Assistir Clipes
                   </button>
                 )}
                 <button
                   onClick={() => void runSearch('', '🔥 Em Alta')}
-                  className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white flex items-center gap-1 transition"
+                  className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white flex items-center gap-1 transition"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" /> Todos os Artistas
                 </button>
@@ -367,16 +346,16 @@ export const WorldExploreView: React.FC<Props> = ({
         </section>
       )}
 
-      {/* === SECTION 1: ARTISTAS EM ALTA — SPOTIFY / YOUTUBE MUSIC STYLE WITH TRANSLUCENT ◀▶ ARROWS === */}
+      {/* === SECTION 1: MODERN GLASSMORPHIC ARTIST CARDS SHOWCASE === */}
       {famousArtists.length > 0 && (
         <CosmicScrollRow
           title={
             <>
               <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>Artistas em Alta — Catálogo Mundial LENKYX</span>
+              <span>Artistas em Destaque</span>
             </>
           }
-          subtitle="Clique em um artista para abrir o perfil oficial, músicas completas e novos lançamentos"
+          subtitle="Toque em um artista para abrir perfil, músicas completas e clipes"
           count={filteredArtists.length}
           collapsible
           rightActions={
@@ -401,35 +380,44 @@ export const WorldExploreView: React.FC<Props> = ({
             <button
               key={art.name}
               onClick={() => void runSearch(art.name, `🎤 ${art.name}`)}
-              className="group w-32 sm:w-36 shrink-0 rounded-2xl cosmic-card-3d p-3 flex flex-col items-center text-center gap-2 hover:bg-white/[0.09] transition"
+              className="group w-40 sm:w-44 shrink-0 rounded-3xl overflow-hidden bg-gradient-to-b from-white/[0.09] to-black/55 backdrop-blur-xl border border-white/12 hover:border-cyan-400/50 text-left snap-start transition duration-300 hover:-translate-y-1 shadow-[0_14px_34px_rgba(0,0,0,0.55)]"
             >
-              <div className="relative w-22 h-22 sm:w-24 sm:h-24 rounded-full p-[2px] bg-gradient-to-tr from-cyan-400/70 via-white/25 to-pink-500/70 group-hover:scale-105 transition shadow-[0_12px_28px_rgba(0,0,0,0.65)]">
-                <ArtistPortrait name={art.name} photoUrl={art.photoUrl} />
-                <span className="opacity-0 group-hover:opacity-100 absolute bottom-0 right-0 w-8 h-8 rounded-full bg-emerald-400 text-black flex items-center justify-center shadow-lg transition">
+              <div className="relative aspect-[4/4.2] w-full overflow-hidden bg-black">
+                <ArtistPortrait
+                  name={art.name}
+                  photoUrl={art.photoUrl}
+                  className="w-full h-full object-cover group-hover:scale-108 transition duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+                <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-[9px] font-black text-cyan-200">
+                  {art.era || 'Destaque'}
+                </span>
+                <span className="opacity-0 group-hover:opacity-100 absolute bottom-3 right-3 w-9 h-9 rounded-full bg-emerald-400 text-black flex items-center justify-center shadow-[0_0_20px_rgba(52,211,153,0.7)] transition">
                   <Play className="w-4 h-4 fill-black ml-0.5" />
                 </span>
               </div>
-              <div className="min-w-0 w-full">
-                <div className="text-xs font-black text-white truncate group-hover:text-emerald-300 transition">
-                  {art.name}
+              <div className="p-3 space-y-0.5">
+                <div className="text-xs sm:text-sm font-black text-white truncate flex items-center gap-1 group-hover:text-cyan-300 transition">
+                  <span className="truncate">{art.name}</span>
+                  <BadgeCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 </div>
-                <div className="text-[10px] text-cyan-300/85 truncate">{art.genre}</div>
+                <div className="text-[10px] font-semibold text-slate-300/80 truncate">{art.genre}</div>
               </div>
             </button>
           ))}
         </CosmicScrollRow>
       )}
 
-      {/* === SECTION 2: NOVOS LANÇAMENTOS AUTO-ATUALIZÁVEIS POR IA (◀▶ ARROWS) === */}
+      {/* === SECTION 2: NOVOS LANÇAMENTOS === */}
       {newReleases.length > 0 && (
         <CosmicScrollRow
           title={
             <>
               <Disc3 className="w-4 h-4 text-pink-400 animate-spin" style={{ animationDuration: '6s' }} />
-              <span>Lançamentos Novos {new Date().getFullYear()} · Atualizado por IA</span>
+              <span>Lançamentos {new Date().getFullYear()}</span>
             </>
           }
-          subtitle="Músicas novas assim que os artistas lançam, atualizadas automaticamente em tempo real"
+          subtitle="Músicas novas atualizadas automaticamente"
           count={newReleases.length}
           collapsible
         >
@@ -438,7 +426,7 @@ export const WorldExploreView: React.FC<Props> = ({
             return (
               <div
                 key={t.id}
-                className={`group w-40 sm:w-44 shrink-0 rounded-2xl cosmic-card-3d p-2.5 flex flex-col gap-2 transition ${
+                className={`group w-40 sm:w-44 shrink-0 rounded-2xl cosmic-card-3d p-2.5 flex flex-col gap-2 snap-start transition ${
                   active ? 'border-emerald-400 bg-emerald-500/15' : 'hover:bg-white/[0.08]'
                 }`}
               >
@@ -478,12 +466,12 @@ export const WorldExploreView: React.FC<Props> = ({
         </CosmicScrollRow>
       )}
 
-      {/* === SECTION 3: PLAYLISTS POR ESTILO & GERAÇÃO (◀▶ ARROWS) === */}
+      {/* === SECTION 3: PLAYLISTS POR ESTILO === */}
       <CosmicScrollRow
         title={
           <>
             <ListMusic className="w-4 h-4 text-cyan-400" />
-            <span>Playlists & Mixes por Estilo</span>
+            <span>Mixes por Estilo</span>
           </>
         }
         count={curatedPlaylists.length}
@@ -495,7 +483,7 @@ export const WorldExploreView: React.FC<Props> = ({
             onClick={() =>
               void runSearch(pl.searchQuery, `${pl.emoji} ${pl.title}`, Boolean(pl.includeArchiveSpace))
             }
-            className={`w-64 shrink-0 text-left rounded-2xl p-3.5 bg-gradient-to-br ${pl.gradient} cosmic-card-3d flex items-start gap-3 hover:scale-[1.02] transition`}
+            className={`w-60 sm:w-64 shrink-0 text-left rounded-2xl p-3.5 bg-gradient-to-br ${pl.gradient} cosmic-card-3d flex items-start gap-3 snap-start hover:scale-[1.02] transition`}
           >
             <div className="w-11 h-11 rounded-xl bg-black/45 border border-white/15 flex items-center justify-center text-xl shrink-0">
               {pl.emoji}
@@ -509,7 +497,7 @@ export const WorldExploreView: React.FC<Props> = ({
         ))}
       </CosmicScrollRow>
 
-      {/* === SECTION 4: CLIPES OFICIAIS HD EM CARROSSEL (◀▶ ARROWS) === */}
+      {/* === SECTION 4: CLIPES OFICIAIS HD === */}
       {clipTracks.length > 0 && onWatchClip && (
         <CosmicScrollRow
           title={
@@ -525,7 +513,7 @@ export const WorldExploreView: React.FC<Props> = ({
             <div
               key={`clip-${t.id}`}
               onClick={() => onWatchClip(t, clipTracks)}
-              className="group w-56 sm:w-64 shrink-0 rounded-2xl cosmic-card-3d overflow-hidden cursor-pointer hover:border-rose-400/50 transition"
+              className="group w-52 sm:w-60 shrink-0 rounded-2xl cosmic-card-3d overflow-hidden snap-start cursor-pointer hover:border-rose-400/50 transition"
             >
               <div className="relative aspect-video bg-black">
                 <img
@@ -559,16 +547,16 @@ export const WorldExploreView: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Track List (Spotify / YT Music Clean Rows) */}
+      {/* Clean Modern Track List */}
       {loading ? (
         <div className="py-14 flex flex-col items-center justify-center gap-2 text-purple-300">
           <Loader2 className="w-7 h-7 animate-spin text-cyan-400" />
-          <span className="text-xs font-semibold">IA buscando músicas, artistas e clipes completos...</span>
+          <span className="text-xs font-semibold">Carregando músicas, artistas e clipes completos...</span>
         </div>
       ) : results.length === 0 ? (
         <div className="py-12 text-center rounded-2xl cosmic-card-3d text-purple-300 text-xs space-y-2">
           <Music2 className="w-8 h-8 mx-auto opacity-60" />
-          <div>Nenhuma faixa encontrada agora. Toque em um artista famoso acima!</div>
+          <div>Nenhuma faixa encontrada agora. Toque em um artista acima!</div>
         </div>
       ) : (
         <div className="rounded-3xl cosmic-card-3d divide-y divide-white/[0.06] overflow-visible">
@@ -626,41 +614,13 @@ export const WorldExploreView: React.FC<Props> = ({
                   {t.youtubeVideoId && onWatchClip && (
                     <button
                       onClick={() => onWatchClip(t, results)}
-                      className="px-2 py-1.5 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 text-[10px] font-extrabold flex items-center gap-1"
-                      title="Assistir Clipe Oficial"
+                      className="px-2.5 py-1.5 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/40 text-rose-200 text-[10px] font-extrabold flex items-center gap-1"
+                      title="Assistir Clipe"
                     >
                       <Film className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Clipe</span>
                     </button>
                   )}
-
-                  {onOpenTvCast && (
-                    <button
-                      onClick={() =>
-                        onOpenTvCast({
-                          title: t.title,
-                          artist: t.artist,
-                          mode: t.youtubeVideoId ? 'video' : 'galaxy',
-                          youtubeVideoId: t.youtubeVideoId,
-                          audioUrl: t.audioUrl,
-                          coverUrl: t.coverUrl,
-                        })
-                      }
-                      className="p-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/35 border border-cyan-400/35 text-cyan-200"
-                      title="Passar música/clipe para Smart TV"
-                    >
-                      <Tv className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => onSendToVideo(t)}
-                    className="px-2 py-1.5 rounded-lg bg-pink-500/20 hover:bg-pink-500/35 border border-pink-400/35 text-pink-200 text-[10px] font-bold flex items-center gap-1"
-                    title="Criar Vídeo para TikTok/Reels/YouTube"
-                  >
-                    <Video className="w-3.5 h-3.5" />
-                    <span className="hidden md:inline">Vídeo</span>
-                  </button>
 
                   <button
                     onClick={() => setPickerTrackId(pickerTrackId === t.id ? null : t.id)}
@@ -669,18 +629,6 @@ export const WorldExploreView: React.FC<Props> = ({
                   >
                     <ListPlus className="w-3.5 h-3.5" />
                   </button>
-
-                  {t.externalUrl && (
-                    <a
-                      href={t.externalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-purple-300"
-                      title="Abrir fonte oficial"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
 
                   {pickerTrackId === t.id && (
                     <div className="absolute right-0 top-9 z-30 w-52 rounded-xl bg-[#13092b] border border-purple-400/40 shadow-2xl p-1.5 space-y-1">

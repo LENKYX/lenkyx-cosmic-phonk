@@ -1,14 +1,11 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Music,
-  Video,
   Wand2,
   QrCode,
-  MessageCircle,
   Globe2,
   ListMusic,
   Search,
-  UserCircle2,
   Sparkles,
   LogOut,
   Rocket,
@@ -20,77 +17,55 @@ import {
   Pause,
   Minimize2,
   Clapperboard,
-  Speaker,
   Volume2,
   VolumeX,
-  Zap,
-  Waves,
-  MessageSquare,
   Maximize2,
   ArrowLeft,
-  Tv,
   Scale,
-  Download,
-  Power,
-  Share2,
-  Gift,
-  Gamepad2,
   Shield,
+  Share2,
 } from 'lucide-react';
 import {
   AppMode,
   AppSettings,
   AudioVersion,
+  MovieItem,
   TabId,
   Track,
   UserPlaylist,
-  UserProfile,
+  WorldProfile,
 } from './types';
 import { isAndroidApk } from './utils/androidBridge';
-import { saveDeviceAccount } from './utils/fanAuth';
 import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
 import { PlaylistsView } from './components/PlaylistsView';
 import { CosmicSpaceBackdrop } from './components/CosmicSpaceBackdrop';
-import { JblLightShowOverlay, JblLightTheme } from './components/JblLightShowOverlay';
 const MoviesView = React.lazy(() => import('./components/MoviesView').then((m) => ({ default: m.MoviesView })));
-const SocialShortsAndLiveView = React.lazy(() =>
-  import('./components/SocialShortsAndLiveView').then((m) => ({ default: m.SocialShortsAndLiveView }))
+const StudioCreateView = React.lazy(() =>
+  import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView }))
 );
-const StudioCreateView = React.lazy(() => import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView })));
-const CosmicHubView = React.lazy(() => import('./components/CosmicHubView').then((m) => ({ default: m.CosmicHubView })));
-const ArcadeView = React.lazy(() => import('./components/ArcadeView').then((m) => ({ default: m.ArcadeView })));
-const CosmicSearchView = React.lazy(() => import('./components/CosmicSearchView').then((m) => ({ default: m.CosmicSearchView })));
+const CosmicSearchView = React.lazy(() =>
+  import('./components/CosmicSearchView').then((m) => ({ default: m.CosmicSearchView }))
+);
 import { MiniPlayer } from './components/MiniPlayer';
-import { CosmicScreensaver3D, ExperienceMode } from './components/CosmicScreensaver3D';
-import { SoundBoostModal } from './components/SoundBoostModal';
-import { CommunityChatModal, TargetCommentsModal } from './components/CommunityChatModal';
-import { TvCastModal } from './components/TvCastModal';
 import { LegalTermsModal } from './components/LegalTermsModal';
-import { CosmicGtaLoader } from './components/CosmicGtaLoader';
-import { SafeExitModal } from './components/SafeExitModal';
-import { SocialDistributionModal } from './components/SocialDistributionModal';
-import { fetchTvHandoff } from './utils/communityApi';
-import { PixModal } from './components/PixModal';
+import { CinemaPrerollIntro, CosmicGtaLoader } from './components/CosmicGtaLoader';
 import {
-  AudioSoundProfile,
-  lenkyxAudioEngine,
-  loadSoundProfile,
-} from './utils/audioBoostEngine';
+  loadActiveWorldProfile,
+  ProfileGateModal,
+  saveActiveWorldProfile,
+} from './components/ProfileGateModal';
+import { PixModal } from './components/PixModal';
 import { ShareModal } from './components/ShareModal';
-import { SpaceDownloadModal } from './components/SpaceDownloadModal';
 import { UploadTrackModal } from './components/UploadTrackModal';
 import { CreatorModal } from './components/CreatorModal';
-import { UserAuthModal } from './components/UserAuthModal';
 import { authFetch, setAuthToken } from './utils/api';
 import {
   addUserLocalTrack,
   deleteUserLocalTrack,
   loadUserPlaylists,
-  loadUserProfile,
   loadUserTracks,
   saveUserPlaylists,
-  saveUserProfile,
 } from './utils/userVault';
 import {
   downloadTrackOffline,
@@ -101,13 +76,13 @@ import {
 
 const DEFAULT_SETTINGS: AppSettings = {
   artistName: 'LENKYX',
-  brandSubtitle: 'COSMIC PHONK',
-  tagline: 'Música Futurista · Cosmic Phonk & Funk Melody · Rumo às 1.000 Faixas',
+  brandSubtitle: 'MEU MUNDO',
+  tagline: 'Músicas Originais LENKYX · Clipes de Artistas · Cinema & Séries Sem Anúncios',
   pixKey: '41651191808',
   pixKeyConfigured: true,
   pixName: 'LENKYX COSMIC PHONK',
   pixCity: 'CAMPO GRANDE',
-  pixMessage: 'Apoio LENKYX Cosmic Phonk',
+  pixMessage: '100% gratuito e sem anúncios! Sua doação via PicPay (PIX) ajuda na manutenção do site.',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
   apkDownloadUrl: 'https://drive.google.com/uc?id=1SsBXDSKNWQxsPqURWWavVhcjvYUJgRFI&export=download',
   youtubeUrl: '',
@@ -130,6 +105,16 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('catalog');
   const [tabHistory, setTabHistory] = useState<TabId[]>([]);
+
+  // Zero-Login Local Profile Gate
+  const [activeProfile, setActiveProfile] = useState<WorldProfile>(() => loadActiveWorldProfile());
+  const [profileGateOpen, setProfileGateOpen] = useState<boolean>(
+    () => !sessionStorage.getItem('lenkyx_profile_picked')
+  );
+
+  // Cinematic Startup Intro + Auto-Update Check on Entry
+  const [gtaLoaderOpen, setGtaLoaderOpen] = useState(() => !sessionStorage.getItem('lenkyx_splash_done'));
+  const [introStatus, setIntroStatus] = useState('Sincronizando catálogo & verificando atualizações...');
 
   const navigateTab = useCallback((next: TabId) => {
     setActiveTab((prev) => {
@@ -154,24 +139,23 @@ export function App() {
     });
   }, []);
 
-  // Global search bar state (Spotify / YouTube Music top bar)
+  // Global search bar state
   const [globalSearch, setGlobalSearch] = useState('');
   const [worldTriggerQuery, setWorldTriggerQuery] = useState('');
   const [worldSearchNonce, setWorldSearchNonce] = useState(0);
+  const [pendingMovie, setPendingMovie] = useState<MovieItem | null>(null);
 
-  // Creator auth state (default = Fan mode)
+  // Creator auth state (default = Fan mode, hidden unless 5 logo taps)
   const [mode, setMode] = useState<AppMode>('fan');
   const [hasCustomPassword, setHasCustomPassword] = useState(false);
   const [creatorModalOpen, setCreatorModalOpen] = useState(false);
 
-  // Fan / Open User Profile, Playlists & Personal Uploaded Tracks (IndexedDB)
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => loadUserProfile());
-  const [userAuthOpen, setUserAuthOpen] = useState(false);
+  // Playlists & Personal Uploaded Tracks (IndexedDB)
   const [playlists, setPlaylists] = useState<UserPlaylist[]>(() => loadUserPlaylists());
   const [userTracks, setUserTracks] = useState<Track[]>([]);
   const [worldCacheTracks, setWorldCacheTracks] = useState<Track[]>([]);
 
-  // Global Player state (HTML5 <audio> + YouTube Full-Track Audio Engine)
+  // Global Player state (On-Demand: starts closed until user plays a song!)
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytPlayerRef = useRef<{
     loadVideoById?: (arg: string | { videoId: string; suggestedQuality?: string }) => void;
@@ -194,18 +178,7 @@ export function App() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.88);
   const [muted, setMuted] = useState(false);
-  const [soundProfile, setSoundProfile] = useState<AudioSoundProfile>(() => loadSoundProfile());
-  const [soundBoostOpen, setSoundBoostOpen] = useState(false);
-  const [screensaverOpen, setScreensaverOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [commentTarget, setCommentTarget] = useState<{ id: string; title: string } | null>(null);
-  const [autoScreensaverOnPlay, setAutoScreensaverOnPlay] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('lenkyx_auto_screensaver_v1') === '1';
-    } catch {
-      return false;
-    }
-  });
+
   const [playQueue, setPlayQueue] = useState<Track[]>([]);
   const playQueueRef = useRef<Track[]>([]);
   const currentTrackRef = useRef<Track | null>(null);
@@ -219,13 +192,9 @@ export function App() {
     currentTrackRef.current = currentTrack;
   }, [currentTrack]);
 
-  // Cross-tab context & JBL Light Show + Cinema Movie mode
-  const [videoTrack, setVideoTrack] = useState<Track | null>(null);
-  const [jblLightsEnabled, setJblLightsEnabled] = useState(true);
-  const [jblTheme, setJblTheme] = useState<JblLightTheme>('partybox');
   const [watchingMovie, setWatchingMovie] = useState(false);
 
-  // Google + AI Omnibox & Private Search states
+  // Omnibox & Search states
   const [searchViewQuery, setSearchViewQuery] = useState('');
   const [searchViewPrivate, setSearchViewPrivate] = useState(false);
   const [omniboxOpen, setOmniboxOpen] = useState(false);
@@ -272,8 +241,8 @@ export function App() {
   const [pixInitialTab, setPixInitialTab] = useState<'donate' | 'config'>('donate');
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
-  const [spaceDownloadOpen, setSpaceDownloadOpen] = useState(false);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
+  const [clipPrerollActive, setClipPrerollActive] = useState(false);
   const clipTheaterOpenRef = useRef(false);
   useEffect(() => {
     clipTheaterOpenRef.current = clipTheaterOpen;
@@ -307,45 +276,8 @@ export function App() {
     document.addEventListener('fullscreenchange', onFs);
     return () => document.removeEventListener('fullscreenchange', onFs);
   }, []);
+
   const [legalOpen, setLegalOpen] = useState(false);
-  const [safeExitOpen, setSafeExitOpen] = useState(false);
-  const [socialDistOpen, setSocialDistOpen] = useState(false);
-  const [tvCastOpen, setTvCastOpen] = useState(false);
-  const [tvCustomMedia, setTvCustomMedia] = useState<{
-    title: string;
-    artist?: string;
-    mode?: 'galaxy' | 'video' | 'shorts' | 'tv';
-    youtubeVideoId?: string;
-    audioUrl?: string;
-    coverUrl?: string;
-  } | null>(null);
-  const [tvModeBanner, setTvModeBanner] = useState<string | null>(null);
-  const [tvPinInput, setTvPinInput] = useState('');
-  const [gtaLoaderOpen, setGtaLoaderOpen] = useState(() => !sessionStorage.getItem('lenkyx_splash_done'));
-  const [gtaUpdateCorner, setGtaUpdateCorner] = useState(false);
-
-  // Brief discreet GTA-5 style cosmic splash on first visit (2.2s, skippable anytime) + SW update listener
-  useEffect(() => {
-    if (gtaLoaderOpen) {
-      const t = window.setTimeout(() => {
-        setGtaLoaderOpen(false);
-        sessionStorage.setItem('lenkyx_splash_done', '1');
-      }, 2200);
-      return () => window.clearTimeout(t);
-    }
-  }, [gtaLoaderOpen]);
-
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.ready
-      .then((reg) => {
-        reg.addEventListener('updatefound', () => {
-          setGtaUpdateCorner(true);
-          setTimeout(() => setGtaUpdateCorner(false), 6000);
-        });
-      })
-      .catch(() => {});
-  }, []);
   const [appUpdateInfo, setAppUpdateInfo] = useState<{
     latestVersionName: string;
     apkUrl: string;
@@ -363,6 +295,37 @@ export function App() {
     toastTimerRef.current = window.setTimeout(() => setToast(null), 3500);
   }, []);
 
+  // Entry Cinematic Intro + Automatic Service Worker Update Check
+  useEffect(() => {
+    if (!gtaLoaderOpen) return;
+
+    let cancelled = false;
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .getRegistration()
+        .then(async (reg) => {
+          if (!reg || cancelled) return;
+          await reg.update().catch(() => {});
+          if (reg.waiting) {
+            setIntroStatus('Aplicando nova atualização automaticamente...');
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        })
+        .catch(() => {});
+    }
+
+    const t = window.setTimeout(() => {
+      if (!cancelled) {
+        setGtaLoaderOpen(false);
+        sessionStorage.setItem('lenkyx_splash_done', '1');
+      }
+    }, 2000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [gtaLoaderOpen]);
+
   const handleBrandTap = useCallback(() => {
     setActiveTab('catalog');
     const now = Date.now();
@@ -377,7 +340,6 @@ export function App() {
     }
   }, []);
 
-  // Combined tracks pool for DJ Mixer & Playlists lookup (LENKYX + User Uploads + Discovered World tracks)
   const allTracksPool = useMemo(() => {
     const map = new Map<string, Track>();
     tracks.forEach((t) => map.set(t.id, t));
@@ -395,98 +357,11 @@ export function App() {
     return Array.from(map.values());
   }, [tracks, userTracks, worldCacheTracks, playlists]);
 
-  // Load persisted User Uploaded Tracks from IndexedDB
   useEffect(() => {
     void loadUserTracks().then((loaded: Track[]) => setUserTracks(loaded));
   }, []);
 
-  // Smart TV Independent Handoff (?tv=LNX-XXX or ?tvMode=1)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tvCode = params.get('tv') || '';
-    const tvMode = params.get('tvMode') === '1';
-    if (!tvCode && !tvMode) return;
-
-    if (tvCode) {
-      void fetchTvHandoff(tvCode, true).then((session) => {
-        if (!session) {
-          setTvModeBanner('📺 Modo Smart TV ativo! Escolha uma música, filme ou TV ao vivo.');
-          return;
-        }
-        setTvModeBanner(`📺 Smart TV Conectada (${session.code}) · Modo Independente`);
-        const tvTrack: Track = {
-          id: session.trackId || `tv-${session.code}`,
-          number: 1,
-          title: session.title,
-          artist: session.artist || 'LENKYX',
-          album: 'Smart TV Handoff',
-          emoji: '📺',
-          bpm: 132,
-          key: 'Fm',
-          audioUrl: session.audioUrl || '',
-          youtubeVideoId: session.youtubeVideoId || undefined,
-          coverUrl: session.coverUrl || '/covers/album-official.jpg',
-          plays: 0,
-          likes: 0,
-          favorite: false,
-          releaseBatch: 1,
-          status: { suno: true, cover: true, app: true, youtube: Boolean(session.youtubeVideoId), distrokid: true },
-          sunoPrompt: '',
-          lyrics: '',
-          createdAt: new Date().toISOString(),
-        };
-        setCurrentTrack(tvTrack);
-        setIsPlaying(true);
-        if (session.youtubeVideoId) {
-          setClipTheaterOpen(true);
-        } else {
-          setScreensaverOpen(true);
-        }
-      });
-    } else if (tvMode) {
-      setTvModeBanner('📺 Modo Smart TV Ativo! Digite o código de 3 números do celular ou navegue livremente.');
-    }
-  }, []);
-
-  const handleClaimTvPin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = tvPinInput.trim();
-    if (!clean) return;
-    const session = await fetchTvHandoff(clean, true);
-    if (!session) {
-      showToast('Código não encontrado. Gere um novo no botão TV do celular!');
-      return;
-    }
-    setTvModeBanner(`📺 Conectado à TV (${session.code}) · Celular já pode ser desconectado!`);
-    setTvPinInput('');
-    const tvTrack: Track = {
-      id: session.trackId || `tv-${session.code}`,
-      number: 1,
-      title: session.title,
-      artist: session.artist || 'LENKYX',
-      album: 'Smart TV Handoff',
-      emoji: '📺',
-      bpm: 132,
-      key: 'Fm',
-      audioUrl: session.audioUrl || '',
-      youtubeVideoId: session.youtubeVideoId || undefined,
-      coverUrl: session.coverUrl || '/covers/album-official.jpg',
-      plays: 0,
-      likes: 0,
-      favorite: false,
-      releaseBatch: 1,
-      status: { suno: true, cover: true, app: true, youtube: Boolean(session.youtubeVideoId), distrokid: true },
-      sunoPrompt: '',
-      lyrics: '',
-      createdAt: new Date().toISOString(),
-    };
-    setCurrentTrack(tvTrack);
-    setIsPlaying(true);
-    if (session.youtubeVideoId) setClipTheaterOpen(true);
-    else setScreensaverOpen(true);
-  };
-
-  // Silent Auto-Update check (Android APK checks Supabase manifest via LocalAssetServer)
+  // Silent Auto-Update check for Android APK
   useEffect(() => {
     if (!isAndroidApk()) return;
     fetch('/api/app-update')
@@ -503,27 +378,7 @@ export function App() {
       .catch(() => {});
   }, []);
 
-  // Silent Cloud Sync for Fan Profile + Playlists (Supabase when online!)
-  useEffect(() => {
-    if (!userProfile || isAndroidApk()) return;
-    const t = window.setTimeout(() => {
-      void fetch('/api/fans/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: userProfile.id,
-          name: userProfile.name,
-          email: userProfile.email || '',
-          avatarColor: userProfile.avatarColor,
-          acceptedTermsAt: userProfile.acceptedTermsAt || '',
-          playlists,
-        }),
-      }).catch(() => {});
-    }, 600);
-    return () => window.clearTimeout(t);
-  }, [userProfile, playlists]);
-
-  // Secret URL trigger (#criador or ?studio=1) + hashchange listener
+  // Secret URL trigger (#criador or ?studio=1)
   useEffect(() => {
     const checkSecretTrigger = () => {
       const p = new URLSearchParams(window.location.search);
@@ -536,7 +391,7 @@ export function App() {
     return () => window.removeEventListener('hashchange', checkSecretTrigger);
   }, []);
 
-  // Fetch initial catalog + check creator session (with seamless offline seed-data fallback)
+  // Fetch initial catalog + check creator session
   useEffect(() => {
     (async () => {
       try {
@@ -555,7 +410,7 @@ export function App() {
             setHasCustomPassword(Boolean(authData.hasCustomPassword));
           }
         } catch {
-          // offline: try cached seed-data.json below
+          // offline fallback below
         }
 
         if (!data || !Array.isArray(data.tracks) || data.tracks.length === 0) {
@@ -572,20 +427,22 @@ export function App() {
           setSettings((prev) => ({
             ...prev,
             ...data!.settings,
+            pixKey: '41651191808',
+            pixKeyConfigured: true,
             apkDownloadUrl: (data!.settings?.apkDownloadUrl || '').trim() || prev.apkDownloadUrl,
           }));
         }
 
+        // Only open MiniPlayer automatically if arriving from a shared ?track= link!
         const params = new URLSearchParams(window.location.search);
         const deepId = params.get('track');
         if (deepId && loadedTracks.length) {
           const found = loadedTracks.find((t: Track) => t.id === deepId);
           if (found) {
             setCurrentTrack(found);
+            setMusicMenuOpen(true);
             showToast(`🎵 Faixa compartilhada: ${found.emoji} ${found.title}`);
           }
-        } else if (loadedTracks.length) {
-          setCurrentTrack(loadedTracks[0]);
         }
       } catch {
         showToast('Modo offline ativo — toque nas faixas baixadas para ouvir.');
@@ -628,7 +485,7 @@ export function App() {
     };
   }, []);
 
-  // Setup YouTube IFrame Full-Length Audio Engine (zero 30s previews — plays complete official songs!)
+  // Setup YouTube IFrame Full-Length Audio & Clip Engine
   useEffect(() => {
     const win = window as unknown as {
       YT?: {
@@ -680,7 +537,7 @@ export function App() {
           },
           onError: () => {
             if (!currentTrackRef.current?.youtubeVideoId) return;
-            showToast('Este clipe bloqueou player embutido — pulando para o próximo da lista...');
+            showToast('Este clipe bloqueou player embutido — pulando para o próximo...');
             const list = playQueueRef.current.length ? playQueueRef.current : tracks;
             const cur = currentTrackRef.current;
             if (cur && list.length > 1) {
@@ -778,7 +635,6 @@ export function App() {
         requestedVersion || (currentTrack?.id === track.id ? activeVersion : 'v1');
       const finalVersion: AudioVersion = targetVersion === 'v2' && track.audioUrlV2 ? 'v2' : 'v1';
 
-      // Toggle play/pause if tapping the already active track without changing version
       if (currentTrack?.id === track.id && activeVersion === finalVersion && !requestedVersion) {
         if (track.youtubeVideoId && !track.audioUrl) {
           const st = ytPlayerRef.current?.getPlayerState?.();
@@ -801,11 +657,6 @@ export function App() {
       currentTrackRef.current = track;
       setActiveVersion(finalVersion);
 
-      if (autoScreensaverOnPlay && !watchingMovie && !clipTheaterOpen) {
-        setScreensaverOpen(true);
-      }
-
-      // Play full-length YouTube audio track when track is backed by youtubeVideoId
       if (track.youtubeVideoId && !track.audioUrl) {
         audio.pause();
         audio.removeAttribute('src');
@@ -825,7 +676,6 @@ export function App() {
         return;
       }
 
-      // Stop any active YouTube playback when switching to direct MP3/MP4/Offline stream
       ytPlayerRef.current?.pauseVideo?.();
       setClipTheaterOpen(false);
 
@@ -835,9 +685,6 @@ export function App() {
       audio.volume = muted ? 0 : volume;
       audio.muted = muted;
       audio.load();
-      lenkyxAudioEngine.attachAudioElement(audio);
-      lenkyxAudioEngine.resume();
-      lenkyxAudioEngine.applyProfile(soundProfile);
       try {
         await audio.play();
         if (!track.source || track.source === 'lenkyx') {
@@ -858,28 +705,26 @@ export function App() {
         );
       }
     },
-    [
-      currentTrack?.id,
-      activeVersion,
-      volume,
-      muted,
-      autoScreensaverOnPlay,
-      watchingMovie,
-      clipTheaterOpen,
-      soundProfile,
-      showToast,
-    ]
+    [currentTrack?.id, activeVersion, volume, muted, showToast]
   );
 
   useEffect(() => {
     handlePlayTrackRef.current = handlePlayTrack;
   }, [handlePlayTrack]);
 
-  // Offline download toggle (single track) & Download All
+  const openClipWithIntro = useCallback(
+    (track: Track, queue?: Track[]) => {
+      setClipPrerollActive(true);
+      setClipTheaterOpen(true);
+      void handlePlayTrack(track, 'v1', queue);
+    },
+    [handlePlayTrack]
+  );
+
   const handleToggleOffline = useCallback(
     async (track: Track) => {
       if (track.youtubeVideoId && !track.audioUrl) {
-        showToast('Faixas do YouTube são reproduzidas online; use as faixas LENKYX/Audius/Espaço para salvar offline!');
+        showToast('Use as faixas LENKYX para baixar e ouvir sem internet!');
         return;
       }
       if (offlineTrackIds.has(track.id)) {
@@ -910,7 +755,7 @@ export function App() {
   const handleDownloadAllOffline = useCallback(async () => {
     const missing = tracks.filter((t) => !offlineTrackIds.has(t.id));
     if (missing.length === 0) {
-      showToast('✅ Todas as músicas já estão salvas offline no aparelho!');
+      showToast('✅ Todas as músicas já estão salvas offline!');
       return;
     }
     setDownloadingAll(true);
@@ -922,7 +767,7 @@ export function App() {
         okCount++;
         setOfflineTrackIds(getOfflineTrackIds());
       } catch {
-        // continue remaining tracks
+        // continue
       } finally {
         setDownloadingIds((prev) => {
           const next = new Set(prev);
@@ -932,18 +777,18 @@ export function App() {
       }
     }
     setDownloadingAll(false);
-    showToast(`📱 ${okCount} músicas baixadas no aparelho! Agora tocam mesmo sem internet.`);
+    showToast(`📱 ${okCount} músicas salvas offline no aparelho!`);
   }, [tracks, offlineTrackIds, showToast]);
 
-  // Auto-next when HTML5 song ends (strictly follows active playQueue!)
+  // Auto-advance to next track
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const onEnded = () => {
       const list = playQueueRef.current.length ? playQueueRef.current : tracks;
-      if (!currentTrack || list.length === 0) return;
+      if (!currentTrack || !list.length) return;
       const idx = list.findIndex((t) => t.id === currentTrack.id);
-      const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
+      const next = list[(idx + 1) % list.length];
       if (next) void handlePlayTrack(next, 'v1', list);
     };
     audio.addEventListener('ended', onEnded);
@@ -992,11 +837,9 @@ export function App() {
     [tracks, currentTrack, handlePlayTrack]
   );
 
-  // Lock-Screen MediaSession (Chrome/Safari/PWA) + Native Android Lock-Screen Foreground Service Bridge
+  // MediaSession + Android Bridge
   useEffect(() => {
     if (!currentTrack) return;
-
-    // 1. Native Android APK Media Notification + WakeLock
     try {
       window.AndroidBridge?.updateMediaState?.(
         `${currentTrack.emoji ? currentTrack.emoji + ' ' : ''}${currentTrack.title}`,
@@ -1007,8 +850,6 @@ export function App() {
     } catch {
       // ignore
     }
-
-    // 2. Web MediaSession API (Lock Screen cover + controls on Chrome/iOS/Android)
     if ('mediaSession' in navigator) {
       try {
         const absCover = new URL(currentTrack.coverUrl || '/covers/album-official.jpg', window.location.origin).href;
@@ -1026,26 +867,17 @@ export function App() {
         navigator.mediaSession.setActionHandler('pause', () => void handleTogglePlay());
         navigator.mediaSession.setActionHandler('previoustrack', () => handlePrevNext(-1));
         navigator.mediaSession.setActionHandler('nexttrack', () => handlePrevNext(1));
-        navigator.mediaSession.setActionHandler('seekto', (details) => {
-          if (typeof details.seekTime === 'number' && audioRef.current) {
-            audioRef.current.currentTime = details.seekTime;
-            setCurrentTime(details.seekTime);
-          }
-        });
       } catch {
-        // ignore MediaSession unsupported fields
+        // ignore
       }
     }
   }, [currentTrack, isPlaying, handlePrevNext]);
 
-  // Android Lock-Screen Notification Action Callback
   useEffect(() => {
     window.__lenkyxMediaAction = (action) => {
-      if (action === 'prev') {
-        handlePrevNext(-1);
-      } else if (action === 'next') {
-        handlePrevNext(1);
-      } else if (action === 'play') {
+      if (action === 'prev') handlePrevNext(-1);
+      else if (action === 'next') handlePrevNext(1);
+      else if (action === 'play') {
         if (currentTrackRef.current?.youtubeVideoId && !currentTrackRef.current.audioUrl) {
           ytPlayerRef.current?.playVideo?.();
         } else if (audioRef.current?.paused) {
@@ -1098,42 +930,6 @@ export function App() {
       ytPlayerRef.current?.setVolume?.(Math.round(eff * 100));
       return next;
     });
-  };
-
-  const handleChangeSoundProfile = (next: AudioSoundProfile) => {
-    setSoundProfile(next);
-    lenkyxAudioEngine.attachAudioElement(audioRef.current);
-    lenkyxAudioEngine.applyProfile(next);
-  };
-
-  const handleToggleAutoScreensaver = () => {
-    setAutoScreensaverOnPlay((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('lenkyx_auto_screensaver_v1', next ? '1' : '0');
-      } catch {
-        // ignore
-      }
-      showToast(
-        next
-          ? '🌌 Protetor 3D Automático ligado! Ao tocar música os menus dão lugar ao efeito 3D.'
-          : 'Protetor 3D Automático desligado.'
-      );
-      return next;
-    });
-  };
-
-  const handleExperienceMode = (exp: ExperienceMode) => {
-    if (exp === 'audio') {
-      setScreensaverOpen(false);
-      setClipTheaterOpen(false);
-    } else if (exp === 'screensaver') {
-      setClipTheaterOpen(false);
-      setScreensaverOpen(true);
-    } else if (exp === 'video') {
-      setScreensaverOpen(false);
-      if (currentTrack?.youtubeVideoId) setClipTheaterOpen(true);
-    }
   };
 
   // Playlist mutations
@@ -1281,9 +1077,7 @@ export function App() {
       const st: { tracks?: Track[] } = await stateRes.json();
       setTracks(st.tracks || []);
     }
-    showToast(
-      `✅ Suno sincronizado! +${data.added || 0} novas, ${data.updated || 0} atualizadas (capas LENKYX mantidas!).`
-    );
+    showToast(`✅ Suno sincronizado! +${data.added || 0} novas, ${data.updated || 0} atualizadas.`);
   };
 
   const handleTrackSaved = (saved: Track) => {
@@ -1299,6 +1093,7 @@ export function App() {
     if (currentTrack?.id === id) {
       audioRef.current?.pause();
       setCurrentTrack(null);
+      setMusicMenuOpen(false);
     }
   };
 
@@ -1325,16 +1120,7 @@ export function App() {
     setAuthToken(null);
     setMode('fan');
     if (activeTab === 'studio') setActiveTab('catalog');
-    showToast('Modo Fã ativado.');
-  };
-
-  const handleSendToVideo = (track: Track) => {
-    if (track.source === 'world_full' || track.source === 'world_preview') {
-      setWorldCacheTracks((prev) => (prev.some((x) => x.id === track.id) ? prev : [track, ...prev].slice(0, 60)));
-    }
-    setVideoTrack(track);
-    setActiveTab('video');
-    showToast(`🎬 "${track.title}" pronta no Estúdio de Vídeos!`);
+    showToast('Modo Ouvinte ativado.');
   };
 
   const openWebSearch = (q: string, isPrivate = false) => {
@@ -1352,7 +1138,7 @@ export function App() {
     const q = globalSearch.trim();
     if (!q) return;
     setOmniboxOpen(false);
-    if (activeTab === 'explore' || activeTab === 'catalog') {
+    if (activeTab === 'explore') {
       setWorldTriggerQuery(q);
       setWorldSearchNonce((n) => n + 1);
       navigateTab('explore');
@@ -1372,47 +1158,27 @@ export function App() {
   };
 
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'catalog', label: 'Início · LENKYX', icon: <Music className="w-4 h-4" /> },
-    { id: 'search', label: 'Pesquisa Web & IA', icon: <Search className="w-4 h-4" /> },
-    { id: 'explore', label: 'Artistas & Mundo', icon: <Globe2 className="w-4 h-4" /> },
-    { id: 'movies', label: 'Cinema, Séries & TV', icon: <Clapperboard className="w-4 h-4" /> },
-    { id: 'video', label: 'Reels, Live & Vídeos', icon: <Video className="w-4 h-4" /> },
-    { id: 'arcade', label: 'Fliperama & Jogos', icon: <Gamepad2 className="w-4 h-4" /> },
-    { id: 'community_hub', label: 'Prêmios & Metas', icon: <Gift className="w-4 h-4" /> },
+    { id: 'catalog', label: 'LENKYX Original', icon: <Music className="w-4 h-4" /> },
+    { id: 'explore', label: 'Artistas & Clipes', icon: <Globe2 className="w-4 h-4" /> },
+    { id: 'movies', label: 'Cinema & Séries', icon: <Clapperboard className="w-4 h-4" /> },
+    { id: 'search', label: 'Pesquisa Rápida', icon: <Search className="w-4 h-4" /> },
     { id: 'playlists', label: 'Minhas Playlists', icon: <ListMusic className="w-4 h-4" /> },
   ];
 
-  const isMusicSection =
-    activeTab === 'catalog' || activeTab === 'explore' || activeTab === 'playlists';
-
-  const isWatchingVideoOrMovie =
-    clipTheaterOpen || watchingMovie;
+  const isPlayerAllowedTab = activeTab !== 'movies';
 
   return (
-    <div className="h-dvh overflow-hidden bg-[#04010c] text-white flex relative">
-      {/* === 3D DEEP SPACE PARALLAX STARFIELD & FLOATING PLANETS (Auto-pauses during Video/Fullscreen!) === */}
-      <CosmicSpaceBackdrop paused={isWatchingVideoOrMovie || activeTab === 'video' || isNativeFullscreen} />
+    <div className="h-dvh overflow-hidden bg-[#05020d] text-white flex relative">
+      <CosmicSpaceBackdrop />
 
-      {/* === JBL PARTYBOX REACTIVE LIGHT SHOW (dims automatically for Videos & Movies!) === */}
-      <JblLightShowOverlay
-        enabled={jblLightsEnabled}
-        isPlaying={isPlaying}
-        dimForVideo={isWatchingVideoOrMovie}
-        theme={jblTheme}
-      />
-
-      {/* === DESKTOP FLOATING GLASS LEFT SIDEBAR (Spatial transition out during 3D Screensaver) === */}
-      <aside
-        className={`hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden transition-all duration-700 ease-out ${
-          screensaverOpen ? '-translate-x-10 scale-90 opacity-0 blur-sm pointer-events-none' : 'translate-x-0 scale-100 opacity-100'
-        }`}
-      >
+      {/* === DESKTOP & SMART TV LEFT SIDEBAR === */}
+      <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
         {/* Brand Monument (tap 5x secretly for Creator access) */}
         <div
           onClick={handleBrandTap}
           className="h-16 px-4 flex items-center gap-3 border-b border-white/[0.08] cursor-pointer hover:bg-white/[0.03] select-none"
         >
-          <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-cyan-400 via-amber-300/70 to-pink-500 shadow-[0_0_18px_rgba(56,189,248,0.28)]">
+          <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-cyan-400 via-pink-500 to-rose-500">
             <img
               src="/covers/avatar.jpg"
               alt="LENKYX"
@@ -1421,11 +1187,11 @@ export function App() {
           </div>
           <div className="leading-tight min-w-0">
             <div className="font-display text-sm font-black tracking-[0.14em] text-white">LENKYX</div>
-            <div className="text-[9px] font-bold tracking-[0.26em] text-cyan-300/90 truncate">COSMIC PHONK</div>
+            <div className="text-[9px] font-bold tracking-[0.22em] text-cyan-300/90 truncate">SEM ANÚNCIOS</div>
           </div>
         </div>
 
-        {/* Architectural Primary Sector Navigation (All 7 Universe Sectors Immediately Visible) */}
+        {/* 5 Clean Focused Tabs */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-2.5 py-3 space-y-3">
           <nav className="space-y-1">
             {sidebarMain.map((tab) => {
@@ -1434,7 +1200,7 @@ export function App() {
                 <button
                   key={tab.id}
                   onClick={() => navigateTab(tab.id)}
-                  className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all ${
+                  className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all ${
                     active
                       ? 'bg-gradient-to-r from-white/[0.12] via-cyan-500/15 to-transparent text-white border border-cyan-300/35 shadow-[inset_2px_0_0_#22d3ee]'
                       : 'text-slate-300/80 hover:text-white hover:bg-white/[0.05] border border-transparent'
@@ -1447,7 +1213,6 @@ export function App() {
             })}
           </nav>
 
-          {/* Creator Tools (Visible when Creator unlocked) */}
           {mode === 'creator' && (
             <div className="space-y-1 pt-2 border-t border-white/[0.07]">
               <div className="px-3 text-[9px] font-extrabold uppercase tracking-[0.2em] text-amber-300/80 mb-1">
@@ -1493,84 +1258,47 @@ export function App() {
           </div>
         </div>
 
-        {/* Compact Architectural Utility Dock */}
+        {/* Clean Utility Dock (Site Maintenance PicPay PIX + Share + Legal) */}
         <div className="p-2.5 border-t border-white/[0.08] bg-black/25 space-y-2">
-          <div className="grid grid-cols-3 gap-1.5">
-            <button
-              onClick={() => setChatOpen(true)}
-              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-cyan-200 text-[10px] font-bold flex flex-col items-center gap-1 transition"
-              title="Chat da Comunidade"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-cyan-300" />
-              <span>Chat</span>
-            </button>
-            <button
-              onClick={() => {
-                setTvCustomMedia(null);
-                setTvCastOpen(true);
-              }}
-              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-slate-200 text-[10px] font-bold flex flex-col items-center gap-1 transition"
-              title="Passar para Smart TV & Bluetooth"
-            >
-              <Tv className="w-3.5 h-3.5 text-cyan-300" />
-              <span>Smart TV</span>
-            </button>
+          <button
+            onClick={() => {
+              setPixInitialTab('donate');
+              setPixOpen(true);
+            }}
+            className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-pink-500/20 to-cyan-500/20 hover:from-pink-500/35 hover:to-cyan-500/35 border border-pink-400/40 text-pink-100 text-xs font-black flex items-center justify-center gap-1.5 transition"
+            title="Apoiar manutenção do site sem anúncios via PicPay PIX"
+          >
+            <QrCode className="w-4 h-4 text-pink-300" /> Apoiar Site (PIX)
+          </button>
+
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => {
                 setShareTrack(null);
                 setShareOpen(true);
               }}
-              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-emerald-200 text-[10px] font-bold flex flex-col items-center gap-1 transition"
-              title="Indicar no WhatsApp"
+              className="py-1.5 px-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-slate-200 text-[10px] font-bold flex items-center justify-center gap-1 transition"
             >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Indicar</span>
-            </button>
-            <button
-              onClick={() => setSocialDistOpen(true)}
-              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-pink-200 text-[10px] font-bold flex flex-col items-center gap-1 transition"
-              title="Auto-Divulgar Redes Sociais"
-            >
-              <Share2 className="w-3.5 h-3.5 text-pink-300" />
-              <span>Divulgar</span>
+              <Share2 className="w-3 h-3 text-emerald-300" /> Indicar
             </button>
             <button
               onClick={() => setLegalOpen(true)}
-              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-slate-300 text-[10px] font-bold flex flex-col items-center gap-1 transition"
-              title="Direitos Autorais & DMCA"
+              className="py-1.5 px-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-slate-300 text-[10px] font-bold flex items-center justify-center gap-1 transition"
             >
-              <Scale className="w-3.5 h-3.5 text-amber-300" />
-              <span>DMCA</span>
-            </button>
-            <button
-              onClick={() => setSafeExitOpen(true)}
-              className="py-2 px-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-emerald-200 text-[10px] font-bold flex flex-col items-center gap-1 transition"
-              title="Sair com Segurança"
-            >
-              <Power className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Sair</span>
+              <Scale className="w-3 h-3 text-amber-300" /> DMCA
             </button>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {!isAndroidApk() && (
-              <button
-                onClick={() => setSpaceDownloadOpen(true)}
-                className="flex-1 py-2 px-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black flex items-center justify-center gap-1 shadow transition"
-              >
-                <Rocket className="w-3.5 h-3.5" /> App APK
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setPixInitialTab('donate');
-                setPixOpen(true);
-              }}
-              className="flex-1 py-2 px-2.5 rounded-xl bg-white/[0.08] hover:bg-pink-500/25 border border-pink-400/35 text-pink-100 text-[11px] font-bold flex items-center justify-center gap-1 transition"
+          {!isAndroidApk() && (
+            <a
+              href={settings.apkDownloadUrl || '/download/apk'}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-2 px-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black flex items-center justify-center gap-1 shadow transition"
             >
-              <QrCode className="w-3.5 h-3.5 text-pink-300" /> Apoiar
-            </button>
-          </div>
+              <Rocket className="w-3.5 h-3.5" /> Baixar App Android
+            </a>
+          )}
 
           {mode === 'creator' && (
             <button
@@ -1583,36 +1311,21 @@ export function App() {
         </div>
       </aside>
 
-      {/* === MAIN CONTENT SHELL (Isolated Architectural Scrollport — zero overlap & zero scroll bleeding) === */}
-      <div
-        className={`relative z-10 flex-1 md:pl-60 lg:pl-64 min-w-0 h-full overflow-hidden flex flex-col transition-all duration-700 ease-out ${
-          screensaverOpen ? 'scale-90 opacity-0 blur-sm pointer-events-none' : 'scale-100 opacity-100'
-        }`}
-      >
-        {/* ARCHITECTURAL TOP HEADER (Dedicated non-overlapping header bar) */}
+      {/* === MAIN CONTENT SHELL === */}
+      <div className="relative z-10 flex-1 md:pl-60 lg:pl-64 min-w-0 h-full overflow-hidden flex flex-col">
+        {/* TOP HEADER */}
         <header className="shrink-0 z-30 mx-3 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-2.5 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-2">
-          {/* Universal Back (←) + Close (X) Navigation across ALL menus */}
           <div className="flex items-center gap-1 shrink-0">
             {(tabHistory.length > 0 || activeTab !== 'catalog') && (
-              <>
-                <button
-                  onClick={goBackTab}
-                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition"
-                  title="Voltar para a tela anterior"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => navigateTab('catalog')}
-                  className="hidden sm:flex p-2 rounded-xl bg-white/10 hover:bg-red-500/80 border border-white/15 text-white transition"
-                  title="Fechar seção e voltar ao Início"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </>
+              <button
+                onClick={goBackTab}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition"
+                title="Voltar"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
             )}
 
-            {/* Mobile Brand Mini (tap 5x secretly for Creator access) */}
             <div
               onClick={handleBrandTap}
               className="flex md:hidden items-center gap-1.5 shrink-0 cursor-pointer select-none"
@@ -1622,7 +1335,7 @@ export function App() {
             </div>
           </div>
 
-          {/* ADAPTIVE GOOGLE + AI OMNIBOX SEARCH (Full Room, Clear Letters on Mobile, PC & TV) */}
+          {/* SEARCH OMNIBOX */}
           <div ref={omniboxWrapRef} className="flex-1 min-w-0 max-w-2xl relative flex items-center gap-2">
             <form
               onSubmit={handleGlobalSearchSubmit}
@@ -1637,7 +1350,7 @@ export function App() {
                   setGlobalSearch(e.target.value);
                   setOmniboxOpen(true);
                 }}
-                placeholder="Pesquisar na Web, IA, Músicas, Filmes..."
+                placeholder="Buscar músicas, artistas, clipes, filmes..."
                 className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none"
               />
               {globalSearch && (
@@ -1648,33 +1361,31 @@ export function App() {
                     setOmniboxOpen(true);
                   }}
                   className="p-1 rounded-full hover:bg-white/15 text-slate-300 hover:text-white shrink-0"
-                  title="Limpar busca"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
               <button
                 type="button"
-                onClick={() => openWebSearch(globalSearch || 'LENKYX Cosmic Phonk', true)}
+                onClick={() => openWebSearch(globalSearch || 'LENKYX', true)}
                 className={`p-1.5 rounded-full border shrink-0 transition ${
                   searchViewPrivate
                     ? 'bg-purple-500/35 border-purple-400 text-purple-100'
                     : 'bg-white/[0.06] hover:bg-purple-500/25 border-white/10 text-slate-300'
                 }`}
-                title="Pesquisar em Modo Privado (sem salvar histórico)"
+                title="Pesquisa Privada"
               >
                 <Shield className="w-3.5 h-3.5" />
               </button>
               <button
                 type="submit"
                 className="px-2.5 sm:px-3.5 py-1 rounded-full bg-gradient-to-r from-cyan-400 to-pink-500 text-black text-[11px] font-black hover:brightness-110 shrink-0 transition"
-                title="Buscar com IA na Internet e no Catálogo"
               >
-                Buscar
+                Ir
               </button>
             </form>
 
-            {isMusicSection && currentTrack && !musicMenuOpen && (
+            {isPlayerAllowedTab && currentTrack && !musicMenuOpen && (
               <button
                 onClick={() => setMusicMenuOpen(true)}
                 className="hidden sm:flex px-2.5 py-1.5 rounded-full bg-pink-500/25 hover:bg-pink-500/40 border border-pink-400/45 text-pink-100 text-[11px] font-black items-center gap-1 shrink-0 transition"
@@ -1685,7 +1396,6 @@ export function App() {
               </button>
             )}
 
-            {/* GOOGLE + AI INSTANT OMNIBOX DROPDOWN */}
             {omniboxOpen && (
               <div className="absolute left-0 right-0 top-full mt-2 z-[60] rounded-2xl bg-[#090616]/98 backdrop-blur-2xl border border-cyan-400/30 shadow-[0_24px_60px_rgba(0,0,0,0.9)] overflow-hidden">
                 {globalSearch.trim() && (
@@ -1695,26 +1405,19 @@ export function App() {
                       onClick={() => openWebSearch(globalSearch, false)}
                       className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-black text-xs font-black flex items-center gap-1.5"
                     >
-                      <Sparkles className="w-3.5 h-3.5" /> Modo IA & Web: "{globalSearch.trim().slice(0, 26)}"
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openWebSearch(globalSearch, true)}
-                      className="px-3 py-1.5 rounded-xl bg-purple-600/30 border border-purple-400/40 text-purple-100 text-xs font-black flex items-center gap-1.5"
-                    >
-                      <Shield className="w-3.5 h-3.5" /> Modo Privado
+                      <Sparkles className="w-3.5 h-3.5" /> Buscar Tudo: "{globalSearch.trim().slice(0, 24)}"
                     </button>
                     <button
                       type="button"
                       onClick={() => triggerWorldSearchDirect(globalSearch)}
                       className="px-3 py-1.5 rounded-xl bg-pink-500/25 border border-pink-400/40 text-pink-100 text-xs font-black flex items-center gap-1.5"
                     >
-                      <Music className="w-3.5 h-3.5" /> Músicas
+                      <Music className="w-3.5 h-3.5" /> Artistas & Clipes
                     </button>
                   </div>
                 )}
-                <div className="max-h-64 overflow-y-auto overscroll-contain divide-y divide-white/[0.04]">
-                  {omniboxSuggestions.slice(0, 7).map((sug) => (
+                <div className="max-h-60 overflow-y-auto overscroll-contain divide-y divide-white/[0.04]">
+                  {omniboxSuggestions.slice(0, 6).map((sug) => (
                     <button
                       key={sug}
                       type="button"
@@ -1725,7 +1428,7 @@ export function App() {
                         <Search className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                         <span className="truncate">{sug}</span>
                       </span>
-                      <span className="text-[10px] text-cyan-300/75 shrink-0">Web & IA</span>
+                      <span className="text-[10px] text-cyan-300/75 shrink-0">Buscar</span>
                     </button>
                   ))}
                 </div>
@@ -1733,10 +1436,9 @@ export function App() {
             )}
           </div>
 
-          {/* Right Compact Controls (Clean architectural spacing so Search Bar stays wide!) */}
+          {/* Right Compact Controls */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Master Volume Control Visible in ALL Menus */}
-            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.07] border border-white/10">
+            <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.07] border border-white/10">
               <button
                 onClick={handleToggleMute}
                 className="text-cyan-300 hover:text-white transition"
@@ -1756,357 +1458,232 @@ export function App() {
                 value={muted ? 0 : volume}
                 onChange={(e) => handleVolume(Number(e.target.value))}
                 className="hidden lg:block w-16 accent-cyan-400 cursor-pointer"
-                title={`Volume: ${Math.round((muted ? 0 : volume) * 100)}%`}
               />
-              <button
-                onClick={() => setSoundBoostOpen(true)}
-                className={`px-1.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-0.5 transition ${
-                  soundProfile.turboEnabled
-                    ? 'bg-gradient-to-r from-amber-400 to-pink-500 text-black shadow'
-                    : 'bg-white/10 hover:bg-white/20 text-amber-200'
-                }`}
-                title="Volume Máximo Limpo & Equalizador (Opcional)"
-              >
-                <Zap className="w-3 h-3" />
-                <span className="hidden xl:inline">{soundProfile.turboEnabled ? 'Máx ON' : 'EQ'}</span>
-              </button>
             </div>
 
-            {/* Smart TV Handoff & Bluetooth Button */}
+            {/* Mobile PIX Maintenance Button */}
             <button
               onClick={() => {
-                setTvCustomMedia(null);
-                setTvCastOpen(true);
+                setPixInitialTab('donate');
+                setPixOpen(true);
               }}
-              className="px-2 py-1.5 rounded-full bg-blue-500/20 hover:bg-blue-500/35 border border-cyan-400/45 text-cyan-100 text-[11px] font-extrabold flex items-center gap-1 transition"
-              title="Enviar para Smart TV & Som Bluetooth"
+              className="md:hidden px-2.5 py-1.5 rounded-full bg-pink-500/20 border border-pink-400/40 text-pink-100 text-[11px] font-black flex items-center gap-1"
+              title="Apoiar site sem anúncios via PicPay PIX"
             >
-              <Tv className="w-3.5 h-3.5 text-cyan-300" />
-              <span className="hidden xl:inline">TV</span>
+              <QrCode className="w-3.5 h-3.5 text-pink-300" />
+              <span className="hidden xs:inline">PIX</span>
             </button>
 
-            {/* 3D Cosmic Screensaver Toggle Button (Ligar / Desligar) */}
+            {/* Local Profile Switcher Pill (Zero Login!) */}
             <button
-              onClick={() => setScreensaverOpen((v) => !v)}
-              className={`hidden sm:flex px-2.5 py-1.5 rounded-full border text-[11px] font-black items-center gap-1 transition ${
-                screensaverOpen
-                  ? 'bg-gradient-to-r from-cyan-400 to-pink-500 border-white/40 text-black shadow-[0_0_16px_rgba(34,211,238,0.45)]'
-                  : 'bg-gradient-to-r from-cyan-500/20 to-pink-500/20 hover:from-cyan-500/40 hover:to-pink-500/40 border-cyan-400/50 text-cyan-100'
-              }`}
-              title={screensaverOpen ? 'Desligar Efeito 3D' : 'Ligar Efeito 3D'}
+              onClick={() => setProfileGateOpen(true)}
+              className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-white/[0.08] hover:bg-white/[0.15] border border-white/15 transition"
+              title="Trocar Perfil"
             >
-              <Waves className="w-3.5 h-3.5" />
-              <span className="hidden 2xl:inline">{screensaverOpen ? 'Efeito 3D ON' : 'Efeito 3D'}</span>
+              <span
+                className={`w-6 h-6 rounded-full bg-gradient-to-br ${activeProfile.avatarColor} text-xs flex items-center justify-center`}
+              >
+                {activeProfile.avatarEmoji}
+              </span>
+              <span className="text-xs font-bold text-white max-w-[90px] truncate hidden sm:inline">
+                {activeProfile.name}
+              </span>
             </button>
-
-            <button
-              onClick={() => {
-                if (!jblLightsEnabled) {
-                  setJblLightsEnabled(true);
-                  setJblTheme('partybox');
-                  showToast('🔊 Luzes JBL PartyBox Ligadas!');
-                } else if (jblTheme === 'partybox') {
-                  setJblTheme('aurora');
-                  showToast('✨ Tema JBL Aurora Ativado!');
-                } else if (jblTheme === 'aurora') {
-                  setJblTheme('cosmic');
-                  showToast('🌌 Tema JBL Cósmico Ativado!');
-                } else {
-                  setJblLightsEnabled(false);
-                  showToast('Luzes JBL Desligadas.');
-                }
-              }}
-              className={`hidden sm:flex p-2 rounded-full border transition ${
-                jblLightsEnabled
-                  ? 'bg-pink-500/25 border-pink-400/50 text-pink-200'
-                  : 'bg-white/[0.06] border-white/10 text-purple-200/75'
-              }`}
-              title="Trocar Tema das Luzes JBL (PartyBox / Aurora / Cósmico / Off)"
-            >
-              <Speaker className="w-3.5 h-3.5" />
-            </button>
-
-            {!isAndroidApk() && (
-              <button
-                onClick={() => setSpaceDownloadOpen(true)}
-                className="md:hidden px-2.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500 text-black text-[11px] font-black flex items-center gap-1 shadow"
-                title="Baixar App Android (APK)"
-              >
-                <Rocket className="w-3.5 h-3.5" /> App
-              </button>
-            )}
-
-            {userProfile ? (
-              <button
-                onClick={() => setUserAuthOpen(true)}
-                className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/15 transition"
-              >
-                <span
-                  className={`w-6 h-6 rounded-full bg-gradient-to-br ${userProfile.avatarColor} text-[11px] font-black text-white flex items-center justify-center`}
-                >
-                  {userProfile.name.slice(0, 1).toUpperCase()}
-                </span>
-                <span className="text-xs font-bold text-white max-w-[80px] truncate hidden lg:inline">
-                  {userProfile.name}
-                </span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setUserAuthOpen(true)}
-                className="px-2.5 py-1.5 rounded-full bg-white hover:bg-purple-100 text-black text-xs font-extrabold flex items-center gap-1 shadow transition"
-              >
-                <UserCircle2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Entrar</span>
-              </button>
-            )}
 
             {mode === 'creator' && (
               <button
                 onClick={() => void handleCreatorLogout()}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-[10px] font-bold text-emerald-200 hover:bg-emerald-500/25"
-                title="Voltar ao Modo Fã"
+                title="Voltar ao Modo Ouvinte"
               >
-                <Sparkles className="w-3 h-3" /> <span className="hidden lg:inline">CRIADOR</span>
-                <LogOut className="w-3 h-3 ml-0.5 opacity-75" />
+                <Sparkles className="w-3 h-3" />
+                <LogOut className="w-3 h-3 opacity-75" />
               </button>
             )}
           </div>
         </header>
 
-        {/* ACTIVE VIEW CONTAINER (Isolated vertical scrollport below header) */}
-        <main
-          id="lenkyx-main-scroll"
-          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full"
-        >
+        {/* ACTIVE VIEW CONTAINER */}
+        <main id="lenkyx-main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full">
           <div className="w-full max-w-[1380px] mx-auto px-3 sm:px-5 pt-4">
-          {appUpdateInfo && (
-            <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
-              <div className="min-w-0">
-                <div className="text-xs font-black text-white flex items-center gap-1.5">
-                  <Rocket className="w-4 h-4 text-cyan-300" />
-                  Nova atualização v{appUpdateInfo.latestVersionName} disponível automaticamente!
-                </div>
-                {appUpdateInfo.releaseNotes && (
-                  <p className="text-[11px] text-cyan-100/80 truncate">{appUpdateInfo.releaseNotes}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => {
-                    if (window.AndroidBridge?.openExternalUrl) {
-                      window.AndroidBridge.openExternalUrl(appUpdateInfo.apkUrl);
-                    } else {
-                      window.open(appUpdateInfo.apkUrl, '_blank', 'noopener,noreferrer');
-                    }
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-xs font-black hover:brightness-110 transition"
-                >
-                  Atualizar Agora 🚀
-                </button>
-                <button
-                  onClick={() => setAppUpdateInfo(null)}
-                  className="p-1 rounded-lg bg-white/10 text-purple-200 hover:text-white"
-                  title="Fechar aviso"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
-          {loading ? (
-            <div className="py-24 text-center space-y-3">
-              <div className="w-12 h-12 mx-auto rounded-full border-4 border-pink-500 border-t-cyan-400 animate-spin" />
-              <div className="font-display text-xs tracking-widest text-purple-300">CARREGANDO LENKYX COSMIC PHONK...</div>
-            </div>
-          ) : (
-            <>
-              {activeTab === 'catalog' && (
-                <CatalogView
-                  tracks={tracks}
-                  settings={settings}
-                  mode={mode}
-                  searchQuery={globalSearch}
-                  playlists={playlists}
-                  currentTrack={currentTrack}
-                  activeVersion={activeVersion}
-                  isPlaying={isPlaying}
-                  offlineTrackIds={offlineTrackIds}
-                  downloadingIds={downloadingIds}
-                  downloadingAll={downloadingAll}
-                  onPlayTrack={(t, ver) => void handlePlayTrack(t, ver, tracks)}
-                  onLikeTrack={(t) => void handleLikeTrack(t)}
-                  onShareTrack={(t) => {
-                    setShareTrack(t);
-                    setShareOpen(true);
-                  }}
-                  onOpenPix={() => {
-                    setPixInitialTab('donate');
-                    setPixOpen(true);
-                  }}
-                  onSendToVideo={handleSendToVideo}
-                  onAddToPlaylist={addTrackToPlaylist}
-                  onToggleOffline={(t) => void handleToggleOffline(t)}
-                  onDownloadAllOffline={() => void handleDownloadAllOffline()}
-                  onEditTrack={(t) => {
-                    setEditingTrack(t);
-                    setUploadModalOpen(true);
-                  }}
-                  onAddTrack={() => {
-                    setEditingTrack(null);
-                    setUploadModalOpen(true);
-                  }}
-                  lyricsTrack={lyricsTrack}
-                  onSetLyricsTrack={setLyricsTrack}
-                  onCommentTrack={(t) => setCommentTarget({ id: `track:${t.id}`, title: `${t.title} — ${t.artist}` })}
-                  onSearchWorld={triggerWorldSearchDirect}
-                  onToast={showToast}
-                />
-              )}
-
-              {activeTab === 'explore' && (
-                <WorldExploreView
-                  initialQuery={worldTriggerQuery || globalSearch}
-                  searchNonce={worldSearchNonce}
-                  currentTrack={currentTrack}
-                  isPlaying={isPlaying}
-                  playlists={playlists}
-                  onPlayTrack={(t, queue) => void handlePlayTrack(t, 'v1', queue)}
-                  onWatchClip={(t, queue) => {
-                    void handlePlayTrack(t, 'v1', queue);
-                    setClipTheaterOpen(true);
-                  }}
-                  onAddToPlaylist={addTrackToPlaylist}
-                  onSendToVideo={handleSendToVideo}
-                  onOpenTvCast={(m) => {
-                    setTvCustomMedia(m);
-                    setTvCastOpen(true);
-                  }}
-                />
-              )}
-
-              {activeTab === 'playlists' && (
-                <PlaylistsView
-                  user={userProfile}
-                  playlists={playlists}
-                  allCatalogTracks={allTracksPool}
-                  userTracks={userTracks}
-                  currentTrack={currentTrack}
-                  isPlaying={isPlaying}
-                  onPlayTrack={(t, queue) => void handlePlayTrack(t, 'v1', queue)}
-                  onCreatePlaylist={handleCreatePlaylist}
-                  onDeletePlaylist={handleDeletePlaylist}
-                  onRemoveFromPlaylist={handleRemoveFromPlaylist}
-                  onUploadUserTrack={handleUploadUserTrack}
-                  onDeleteUserTrack={handleDeleteUserTrack}
-                  onSendToVideo={handleSendToVideo}
-                  onOpenUserAuth={() => setUserAuthOpen(true)}
-                />
-              )}
-
-              <Suspense
-                fallback={
-                  <div className="py-16 text-center text-xs text-purple-300 font-semibold">
-                    Carregando módulo...
+            {appUpdateInfo && (
+              <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-white flex items-center gap-1.5">
+                    <Rocket className="w-4 h-4 text-cyan-300" />
+                    Nova atualização v{appUpdateInfo.latestVersionName} disponível!
                   </div>
-                }
-              >
-                {activeTab === 'movies' && (
-                  <MoviesView
-                    onPauseMusic={pauseCatalogPlayer}
-                    onMovieModalChange={setWatchingMovie}
-                    volume={volume}
-                    muted={muted}
-                    onVolume={handleVolume}
-                    onToggleMute={handleToggleMute}
-                    onOpenTvCast={(m) => {
-                      setTvCustomMedia(m);
-                      setTvCastOpen(true);
+                  {appUpdateInfo.releaseNotes && (
+                    <p className="text-[11px] text-cyan-100/80 truncate">{appUpdateInfo.releaseNotes}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => {
+                      if (window.AndroidBridge?.openExternalUrl) {
+                        window.AndroidBridge.openExternalUrl(appUpdateInfo.apkUrl);
+                      } else {
+                        window.open(appUpdateInfo.apkUrl, '_blank', 'noopener,noreferrer');
+                      }
                     }}
-                    onOpenPix={() => {
-                      setPixInitialTab('donate');
-                      setPixOpen(true);
-                    }}
-                  />
-                )}
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-xs font-black"
+                  >
+                    Atualizar Agora
+                  </button>
+                  <button
+                    onClick={() => setAppUpdateInfo(null)}
+                    className="p-1 rounded-lg bg-white/10 text-purple-200 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
 
-                {activeTab === 'video' && (
-                  <SocialShortsAndLiveView
-                    tracks={allTracksPool}
-                    initialTrack={videoTrack || currentTrack}
-                    user={userProfile}
-                    onPlayTrack={(t) => void handlePlayTrack(t, 'v1', allTracksPool)}
-                    onPauseCatalogPlayer={pauseCatalogPlayer}
-                    onOpenUserAuth={() => setUserAuthOpen(true)}
-                    onOpenTvCast={(m) => {
-                      setTvCustomMedia(m);
-                      setTvCastOpen(true);
-                    }}
-                    onToast={showToast}
-                  />
-                )}
-
-                {activeTab === 'arcade' && (
-                  <ArcadeView user={userProfile} onToast={showToast} />
-                )}
-
-                {activeTab === 'search' && (
-                  <CosmicSearchView
-                    initialQuery={searchViewQuery}
-                    initialPrivate={searchViewPrivate}
-                    localTracks={allTracksPool}
-                    onPlayTrack={(t, q) => void handlePlayTrack(t, 'v1', q)}
-                    onNavigateTab={(tab) => navigateTab(tab)}
-                    onToast={showToast}
-                  />
-                )}
-
-                {activeTab === 'community_hub' && (
-                  <CosmicHubView
-                    user={userProfile}
-                    mode={mode}
-                    settings={settings}
-                    onOpenUserAuth={() => setUserAuthOpen(true)}
-                    onOpenPix={() => {
-                      setPixInitialTab('donate');
-                      setPixOpen(true);
-                    }}
-                    onToast={showToast}
-                  />
-                )}
-
-                {activeTab === 'studio' && mode === 'creator' && (
-                  <StudioCreateView
+            {loading ? (
+              <div className="py-24 text-center space-y-3">
+                <div className="w-10 h-10 mx-auto rounded-full border-3 border-pink-500 border-t-cyan-400 animate-spin" />
+                <div className="font-display text-xs tracking-widest text-purple-300">CARREGANDO LENKYX...</div>
+              </div>
+            ) : (
+              <>
+                {activeTab === 'catalog' && (
+                  <CatalogView
                     tracks={tracks}
                     settings={settings}
-                    onTrackCreated={handleTrackSaved}
-                    onToggleTrackStatus={handleToggleStatus}
-                    onPauseCatalogPlayer={pauseCatalogPlayer}
-                    onSyncSuno={handleSyncSuno}
+                    mode={mode}
+                    searchQuery={globalSearch}
+                    playlists={playlists}
+                    currentTrack={currentTrack}
+                    activeVersion={activeVersion}
+                    isPlaying={isPlaying}
+                    offlineTrackIds={offlineTrackIds}
+                    downloadingIds={downloadingIds}
+                    downloadingAll={downloadingAll}
+                    onPlayTrack={(t, ver) => void handlePlayTrack(t, ver, tracks)}
+                    onLikeTrack={(t) => void handleLikeTrack(t)}
+                    onShareTrack={(t) => {
+                      setShareTrack(t);
+                      setShareOpen(true);
+                    }}
+                    onOpenPix={() => {
+                      setPixInitialTab('donate');
+                      setPixOpen(true);
+                    }}
+                    onAddToPlaylist={addTrackToPlaylist}
+                    onToggleOffline={(t) => void handleToggleOffline(t)}
+                    onDownloadAllOffline={() => void handleDownloadAllOffline()}
+                    onEditTrack={(t) => {
+                      setEditingTrack(t);
+                      setUploadModalOpen(true);
+                    }}
+                    onAddTrack={() => {
+                      setEditingTrack(null);
+                      setUploadModalOpen(true);
+                    }}
+                    lyricsTrack={lyricsTrack}
+                    onSetLyricsTrack={setLyricsTrack}
+                    onSearchWorld={triggerWorldSearchDirect}
                     onToast={showToast}
                   />
                 )}
-              </Suspense>
-            </>
-          )}
+
+                {activeTab === 'explore' && (
+                  <WorldExploreView
+                    initialQuery={worldTriggerQuery || globalSearch}
+                    searchNonce={worldSearchNonce}
+                    currentTrack={currentTrack}
+                    isPlaying={isPlaying}
+                    playlists={playlists}
+                    onPlayTrack={(t, queue) => void handlePlayTrack(t, 'v1', queue)}
+                    onWatchClip={openClipWithIntro}
+                    onAddToPlaylist={addTrackToPlaylist}
+                  />
+                )}
+
+                {activeTab === 'playlists' && (
+                  <PlaylistsView
+                    user={null}
+                    playlists={playlists}
+                    allCatalogTracks={allTracksPool}
+                    userTracks={userTracks}
+                    currentTrack={currentTrack}
+                    isPlaying={isPlaying}
+                    onPlayTrack={(t, queue) => void handlePlayTrack(t, 'v1', queue)}
+                    onCreatePlaylist={handleCreatePlaylist}
+                    onDeletePlaylist={handleDeletePlaylist}
+                    onRemoveFromPlaylist={handleRemoveFromPlaylist}
+                    onUploadUserTrack={handleUploadUserTrack}
+                    onDeleteUserTrack={handleDeleteUserTrack}
+                  />
+                )}
+
+                <Suspense
+                  fallback={
+                    <div className="py-16 text-center text-xs text-purple-300 font-semibold">Carregando...</div>
+                  }
+                >
+                  {activeTab === 'movies' && (
+                    <MoviesView
+                      onPauseMusic={pauseCatalogPlayer}
+                      onMovieModalChange={setWatchingMovie}
+                      volume={volume}
+                      muted={muted}
+                      onVolume={handleVolume}
+                      onToggleMute={handleToggleMute}
+                      initialMovie={pendingMovie}
+                      onConsumeInitialMovie={() => setPendingMovie(null)}
+                      isKidsProfile={Boolean(activeProfile.isKids)}
+                    />
+                  )}
+
+                  {activeTab === 'search' && (
+                    <CosmicSearchView
+                      initialQuery={searchViewQuery}
+                      initialPrivate={searchViewPrivate}
+                      localTracks={allTracksPool}
+                      onPlayTrack={(t, q) => void handlePlayTrack(t, 'v1', q)}
+                      onWatchClip={openClipWithIntro}
+                      onOpenMovie={(m) => {
+                        setPendingMovie(m);
+                        navigateTab('movies');
+                      }}
+                      onNavigateTab={(tab) => navigateTab(tab)}
+                      onToast={showToast}
+                    />
+                  )}
+
+                  {activeTab === 'studio' && mode === 'creator' && (
+                    <StudioCreateView
+                      tracks={tracks}
+                      settings={settings}
+                      onTrackCreated={handleTrackSaved}
+                      onToggleTrackStatus={handleToggleStatus}
+                      onPauseCatalogPlayer={pauseCatalogPlayer}
+                      onSyncSuno={handleSyncSuno}
+                      onToast={showToast}
+                    />
+                  )}
+                </Suspense>
+              </>
+            )}
           </div>
         </main>
       </div>
 
-      {/* MUSIC PLAYER BAR: ONLY appears inside Music sections when user opens a song (never blocks Videos, Movies, Games or Images!) */}
-      {!watchingMovie && !screensaverOpen && isMusicSection && musicMenuOpen && (
+      {/* ON-DEMAND MUSIC PLAYER BAR: Shown ONLY when actively playing/using music! */}
+      {!watchingMovie && isPlayerAllowedTab && currentTrack && musicMenuOpen && (
         <MiniPlayer
           track={currentTrack}
           activeVersion={activeVersion}
           isPlaying={isPlaying}
           isPlayingFromOffline={isPlayingFromOffline}
-          isCurrentTrackOffline={currentTrack ? offlineTrackIds.has(currentTrack.id) : false}
-          isDownloadingOffline={currentTrack ? downloadingIds.has(currentTrack.id) : false}
+          isCurrentTrackOffline={offlineTrackIds.has(currentTrack.id)}
+          isDownloadingOffline={downloadingIds.has(currentTrack.id)}
           currentTime={currentTime}
           duration={duration}
           volume={volume}
           muted={muted}
-          jblLightsEnabled={jblLightsEnabled}
-          onToggleJblLights={() => setJblLightsEnabled((v) => !v)}
           onTogglePlay={() => void handleTogglePlay()}
           onSelectVersion={handleSelectVersion}
           onPrev={() => handlePrevNext(-1)}
@@ -2114,12 +1691,10 @@ export function App() {
           onSeek={handleSeek}
           onVolume={handleVolume}
           onToggleMute={handleToggleMute}
-          onOpenScreensaver={() => setScreensaverOpen(true)}
           onShare={(t) => {
             setShareTrack(t);
             setShareOpen(true);
           }}
-          onSendToVideo={handleSendToVideo}
           onOpenLyrics={(t) => {
             setActiveTab('catalog');
             setLyricsTrack(t);
@@ -2127,51 +1702,45 @@ export function App() {
           onLike={(t) => void handleLikeTrack(t)}
           onToggleOffline={(t) => void handleToggleOffline(t)}
           onWatchClip={() => {
-            if (currentTrack?.youtubeVideoId) setClipTheaterOpen(true);
+            if (currentTrack?.youtubeVideoId) {
+              setClipPrerollActive(true);
+              setClipTheaterOpen(true);
+            }
           }}
           onCloseMenu={() => setMusicMenuOpen(false)}
         />
       )}
 
-      {/* MOBILE BOTTOM NAVIGATION BAR (Scrollable across all 7 sections cleanly!) */}
-      {!watchingMovie && !screensaverOpen && (
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 flex items-center justify-around overflow-x-auto px-1">
-        {(
-          [
-            { id: 'catalog' as TabId, label: 'Músicas', icon: <Music className="w-4 h-4" /> },
-            { id: 'explore' as TabId, label: 'Artistas', icon: <Globe2 className="w-4 h-4" /> },
-            { id: 'movies' as TabId, label: 'Cinema', icon: <Clapperboard className="w-4 h-4" /> },
-            { id: 'video' as TabId, label: 'Reels', icon: <Video className="w-4 h-4" /> },
-            { id: 'arcade' as TabId, label: 'Jogos', icon: <Gamepad2 className="w-4 h-4" /> },
-            { id: 'community_hub' as TabId, label: 'Prêmios', icon: <Gift className="w-4 h-4" /> },
-            { id: 'playlists' as TabId, label: 'Playlists', icon: <ListMusic className="w-4 h-4" /> },
-          ] as { id: TabId; label: string; icon: React.ReactNode; isPix?: boolean }[]
-        ).map((item) => {
-          const active = !item.isPix && activeTab === item.id;
-          return (
-            <button
-              key={item.label}
-              onClick={() => {
-                if (item.isPix) {
-                  setPixInitialTab('donate');
-                  setPixOpen(true);
-                } else {
-                  navigateTab(item.id);
-                }
-              }}
-              className={`min-w-[50px] shrink-0 flex flex-col items-center justify-center gap-0.5 py-1 px-1 transition ${
-                active ? 'text-pink-400' : 'text-purple-300/75'
-              }`}
-            >
-              {item.icon}
-              <span className="text-[10px] font-bold">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* MOBILE BOTTOM NAVIGATION BAR (5 Clean Focused Tabs) */}
+      {!watchingMovie && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-5 px-1">
+          {(
+            [
+              { id: 'catalog' as TabId, label: 'LENKYX', icon: <Music className="w-4 h-4" /> },
+              { id: 'explore' as TabId, label: 'Artistas', icon: <Globe2 className="w-4 h-4" /> },
+              { id: 'movies' as TabId, label: 'Cinema', icon: <Clapperboard className="w-4 h-4" /> },
+              { id: 'search' as TabId, label: 'Buscar', icon: <Search className="w-4 h-4" /> },
+              { id: 'playlists' as TabId, label: 'Playlists', icon: <ListMusic className="w-4 h-4" /> },
+            ] as { id: TabId; label: string; icon: React.ReactNode }[]
+          ).map((item) => {
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => navigateTab(item.id)}
+                className={`flex flex-col items-center justify-center gap-0.5 py-1 transition ${
+                  active ? 'text-cyan-300' : 'text-slate-300/75'
+                }`}
+              >
+                {item.icon}
+                <span className="text-[10px] font-bold">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       )}
 
-      {/* MODALS */}
+      {/* === MODALS === */}
       <PixModal
         open={pixOpen}
         onClose={() => setPixOpen(false)}
@@ -2188,232 +1757,43 @@ export function App() {
         settings={settings}
         mode={mode}
         onSaveSettings={handleSaveSettings}
-        onOpenSpaceDownload={() => setSpaceDownloadOpen(true)}
+        onOpenSpaceDownload={() => {}}
         onToast={showToast}
       />
-      <SpaceDownloadModal
-        open={spaceDownloadOpen}
-        onClose={() => setSpaceDownloadOpen(false)}
-        settings={settings}
-        onOpenShare={() => {
-          setShareTrack(null);
-          setShareOpen(true);
-        }}
-        onToast={showToast}
-      />
-      {/* FULLSCREEN 3D SOUNDWAVE SCREENSAVER + CUSTOM IMAGE SLIDESHOW */}
-      <CosmicScreensaver3D
-        open={screensaverOpen}
-        track={currentTrack}
-        isPlaying={isPlaying}
-        currentTime={currentTime}
-        duration={duration}
-        volume={volume}
-        muted={muted}
-        autoOnPlay={autoScreensaverOnPlay}
-        turboEnabled={soundProfile.turboEnabled}
-        audioElement={audioRef.current}
-        hasVideo={Boolean(currentTrack?.youtubeVideoId)}
-        onToggleAutoOnPlay={handleToggleAutoScreensaver}
-        onOpenSoundBoost={() => setSoundBoostOpen(true)}
-        onTogglePlay={() => void handleTogglePlay()}
-        onPrev={() => handlePrevNext(-1)}
-        onNext={() => handlePrevNext(1)}
-        onSeek={handleSeek}
-        onVolume={handleVolume}
-        onToggleMute={handleToggleMute}
-        onSelectMode={handleExperienceMode}
-        onClose={() => setScreensaverOpen(false)}
-      />
+      <LegalTermsModal open={legalOpen} onClose={() => setLegalOpen(false)} />
 
-      {/* OPTIONAL MAX VOLUME + STUDIO LIMITER + 3-BAND EQ MODAL */}
-      <SoundBoostModal
-        open={soundBoostOpen}
-        onClose={() => setSoundBoostOpen(false)}
-        volume={volume}
-        muted={muted}
-        profile={soundProfile}
-        isYoutubeStream={Boolean(currentTrack?.youtubeVideoId && !currentTrack?.audioUrl)}
-        onVolume={handleVolume}
-        onToggleMute={handleToggleMute}
-        onChangeProfile={handleChangeSoundProfile}
-      />
-
-      {/* SMART TV INDEPENDENT MODE BANNER (When opened on a Smart TV via /tv or /tv/413) */}
-      {tvModeBanner && (
-        <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[9994] w-[96vw] max-w-5xl rounded-2xl bg-[#090418]/95 border-2 border-cyan-400/70 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-[0_0_40px_rgba(34,211,238,0.45)]">
-          <div className="flex items-center gap-2 text-xs sm:text-sm font-black text-white">
-            <Tv className="w-4 h-4 text-cyan-300 shrink-0" />
-            <span>{tvModeBanner}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <form onSubmit={(e) => void handleClaimTvPin(e)} className="flex items-center gap-1">
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={8}
-                value={tvPinInput}
-                onChange={(e) => setTvPinInput(e.target.value)}
-                placeholder="Código (ex: 413)"
-                className="w-28 px-2.5 py-1 rounded-xl bg-black/60 border border-cyan-400/50 text-xs font-mono font-bold text-white focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="px-2.5 py-1 rounded-xl bg-cyan-400 text-black text-xs font-black"
-              >
-                OK
-              </button>
-            </form>
-            <button
-              onClick={() => {
-                setActiveTab('movies');
-                setTvModeBanner(null);
-              }}
-              className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-black"
-            >
-              🎬 Filmes & Séries TV
-            </button>
-            <button
-              onClick={() => setScreensaverOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-cyan-400 text-black text-xs font-black"
-            >
-              🌌 Galáxia 3D
-            </button>
-            {settings.apkDownloadUrl && (
-              <a
-                href={settings.apkDownloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-xl bg-emerald-400 text-black text-xs font-black flex items-center gap-1"
-              >
-                <Download className="w-3.5 h-3.5" /> Baixar App na TV
-              </a>
-            )}
-            <button
-              onClick={() => setTvModeBanner(null)}
-              className="p-1.5 rounded-full bg-white/10 text-white"
-              title="Ocultar aviso"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* SMART TV INDEPENDENT HANDOFF & BLUETOOTH MODAL */}
-      <TvCastModal
-        open={tvCastOpen}
-        onClose={() => setTvCastOpen(false)}
-        currentMedia={
-          tvCustomMedia || {
-            title: currentTrack?.title || 'LENKYX Cosmic Phonk',
-            artist: currentTrack?.artist || 'LENKYX',
-            mode: currentTrack?.youtubeVideoId ? 'video' : 'galaxy',
-            youtubeVideoId: currentTrack?.youtubeVideoId,
-            audioUrl: currentTrack?.audioUrl,
-            coverUrl: currentTrack?.coverUrl || '/covers/album-official.jpg',
-            trackId: currentTrack?.id,
-          }
-        }
-        apkDownloadUrl={settings.apkDownloadUrl}
-        onDetachPhone={() => {
-          pauseCatalogPlayer();
-          setClipTheaterOpen(false);
-          setScreensaverOpen(false);
-        }}
-        onToast={showToast}
-      />
-
-      {/* DISCREET GTA-5 STYLE COSMIC LOADING / UPDATE SCREEN */}
+      {/* STARTUP CINEMATIC INTRO + AUTO-UPDATE CHECK */}
       <CosmicGtaLoader
         open={gtaLoaderOpen}
         mode="splash"
-        statusText="Sincronizando Universo LENKYX..."
+        statusText={introStatus}
         onSkip={() => {
           setGtaLoaderOpen(false);
           sessionStorage.setItem('lenkyx_splash_done', '1');
         }}
       />
-      <CosmicGtaLoader
-        open={!gtaLoaderOpen && gtaUpdateCorner}
-        mode="discreet_corner"
-        statusText="Nova atualização cósmica aplicada!"
-        onSkip={() => setGtaUpdateCorner(false)}
-      />
 
-      {/* REAL COPYRIGHT / DMCA SAFE HARBOR LEGAL TERMS MODAL */}
-      <LegalTermsModal
-        open={legalOpen}
-        onClose={() => setLegalOpen(false)}
-        creatorEmail={userProfile?.email || undefined}
-      />
-
-      {/* SAFE EXIT MODAL (Saves Cloud, Playlists & Offline Data before exiting) */}
-      <SafeExitModal
-        open={safeExitOpen}
-        onClose={() => setSafeExitOpen(false)}
-        user={userProfile}
-        playlists={playlists}
-        userTracks={userTracks}
-        offlineCount={offlineTrackIds.size}
-        onSyncCloud={async () => {
-          if (userProfile) {
-            await authFetch('/api/fans/sync', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                id: userProfile.id,
-                name: userProfile.name,
-                email: userProfile.email,
-                avatarColor: userProfile.avatarColor,
-                playlists,
-              }),
-            }).catch(() => {});
+      {/* ZERO-LOGIN PROFILE SELECTOR ("Escolha um perfil") */}
+      <ProfileGateModal
+        open={!gtaLoaderOpen && profileGateOpen && mode !== 'creator'}
+        activeProfileId={activeProfile.id}
+        onSelectProfile={(prof, navigateToFocus) => {
+          setActiveProfile(prof);
+          saveActiveWorldProfile(prof.id);
+          sessionStorage.setItem('lenkyx_profile_picked', '1');
+          setProfileGateOpen(false);
+          if (navigateToFocus && prof.focusTab) {
+            navigateTab(prof.focusTab);
           }
+          showToast(`${prof.avatarEmoji} Perfil "${prof.name}" ativo!`);
         }}
-        onLogoutUser={() => {
-          setUserProfile(null);
-          saveUserProfile(null);
-          showToast('Sessão encerrada com segurança — suas playlists e offline continuam salvos!');
+        onClose={() => {
+          sessionStorage.setItem('lenkyx_profile_picked', '1');
+          setProfileGateOpen(false);
         }}
-        onPauseAllMedia={() => {
-          pauseCatalogPlayer();
-          setClipTheaterOpen(false);
-          setScreensaverOpen(false);
-        }}
-        onToast={showToast}
       />
 
-      {/* OFFICIAL GLOBAL SOCIAL DISTRIBUTION & AUTO-PUBLISH MODAL */}
-      <SocialDistributionModal
-        open={socialDistOpen}
-        onClose={() => setSocialDistOpen(false)}
-        track={currentTrack}
-        settings={settings}
-        mode={mode}
-        onSaveSettings={handleSaveSettings}
-        onToast={showToast}
-      />
-
-      {/* COMMUNITY GLOBAL CHAT & TRACK COMMENTS */}
-      <CommunityChatModal
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        user={userProfile}
-        onOpenAuth={() => {
-          setChatOpen(false);
-          setUserAuthOpen(true);
-        }}
-      />
-      <TargetCommentsModal
-        open={Boolean(commentTarget)}
-        onClose={() => setCommentTarget(null)}
-        targetId={commentTarget?.id || ''}
-        targetTitle={commentTarget?.title || ''}
-        user={userProfile}
-      />
-
-      {/* Persistent Cinema Clip Theater (Pure LENKYX UI: zero "YouTube"/"Mais vídeos" + never throttled offscreen!) */}
+      {/* CLIP THEATER (with Netflix-style pre-roll intro before clip rolls, 100% pure LENKYX) */}
       <div
         onClick={(e) => {
           if (clipTheaterOpen && e.target === e.currentTarget) setClipTheaterOpen(false);
@@ -2421,7 +1801,7 @@ export function App() {
         className={
           clipTheaterOpen && currentTrack?.youtubeVideoId
             ? `fixed inset-0 z-[9995] bg-black flex items-center justify-center ${
-                clipFitMode === 'fullscreen' ? 'p-0' : 'p-2 sm:p-4'
+                clipFitMode === 'fullscreen' ? 'p-0' : 'p-0 sm:p-4'
               }`
             : 'fixed bottom-1 right-1 w-2 h-2 opacity-[0.01] pointer-events-none z-0 overflow-hidden'
         }
@@ -2430,12 +1810,12 @@ export function App() {
           ref={clipStageRef}
           className={
             clipTheaterOpen && currentTrack?.youtubeVideoId
-              ? `w-full flex flex-col overflow-hidden bg-[#090418] border border-cyan-400/40 shadow-[0_0_70px_rgba(236,72,153,0.35)] ${
+              ? `w-full flex flex-col overflow-hidden bg-[#090418] border border-cyan-400/40 shadow-[0_0_70px_rgba(236,72,153,0.35)] relative ${
                   clipFitMode === 'fullscreen' || isNativeFullscreen
                     ? 'h-[100dvh] max-w-none rounded-none border-0'
                     : clipFitMode === 'compact'
                       ? 'max-w-2xl max-h-[85dvh] rounded-3xl'
-                      : 'max-w-5xl h-[92dvh] max-h-[92dvh] rounded-3xl'
+                      : 'max-w-5xl h-[100dvh] sm:h-[92dvh] sm:rounded-3xl'
                 }`
               : 'w-full h-full'
           }
@@ -2446,18 +1826,15 @@ export function App() {
                 <button
                   onClick={() => setClipTheaterOpen(false)}
                   className="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1 shrink-0"
-                  title="Voltar para o App"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Voltar</span>
                 </button>
                 <div className="min-w-0">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-cyan-300 truncate">
-                    Clipe Oficial · Modo Cinema
+                  <div className="text-[10px] font-black uppercase tracking-widest text-cyan-300 truncate flex items-center gap-1">
+                    <Film className="w-3 h-3" /> Clipe Oficial · LENKYX
                   </div>
-                  <div className="text-xs sm:text-sm font-black text-white truncate">
-                    {currentTrack.title}
-                  </div>
+                  <div className="text-xs sm:text-sm font-black text-white truncate">{currentTrack.title}</div>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap shrink-0">
@@ -2466,21 +1843,9 @@ export function App() {
                   onChange={(e) => {
                     const q = e.target.value as typeof clipQuality;
                     setClipQuality(q);
-                    if (q !== 'default') {
-                      ytPlayerRef.current?.setPlaybackQuality?.(q);
-                    }
-                    showToast(
-                      q === 'medium'
-                        ? '⚡ Qualidade 360p (Ultra Leve · Zero Travamento)'
-                        : q === 'large'
-                          ? '⚡ Qualidade 480p (Leve & Rápido)'
-                          : q === 'hd720'
-                            ? '🎬 Qualidade 720p HD (Estável em Tela Cheia)'
-                            : '🎬 Qualidade Automática'
-                    );
+                    if (q !== 'default') ytPlayerRef.current?.setPlaybackQuality?.(q);
                   }}
                   className="px-2 py-1.5 rounded-xl bg-white/10 border border-cyan-400/35 text-cyan-100 text-[11px] font-black focus:outline-none cursor-pointer"
-                  title="Escolher qualidade para evitar travamentos em Tela Cheia"
                 >
                   <option value="hd720" className="bg-[#090418]">720p HD</option>
                   <option value="large" className="bg-[#090418]">480p Leve</option>
@@ -2494,40 +1859,23 @@ export function App() {
                     )
                   }
                   className="px-2.5 py-1.5 rounded-xl bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-[11px] font-black flex items-center gap-1"
-                  title="Ajustar tamanho da tela (Padrão / Tela Cheia / Compacto)"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
-                  <span>
-                    {clipFitMode === 'fullscreen'
-                      ? 'Tela Cheia'
-                      : clipFitMode === 'compact'
-                        ? 'Compacto'
-                        : 'Ajustar Tela'}
+                  <span className="hidden xs:inline">
+                    {clipFitMode === 'fullscreen' ? 'Tela Cheia' : clipFitMode === 'compact' ? 'Compacto' : 'Ajustar'}
                   </span>
-                </button>
-                <button
-                  onClick={() => {
-                    setClipTheaterOpen(false);
-                    setScreensaverOpen(true);
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-pink-500/25 hover:bg-pink-500/40 border border-pink-400/45 text-pink-100 text-[11px] font-bold flex items-center gap-1"
-                  title="Abrir Galáxia / Efeito 3D"
-                >
-                  <Waves className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Efeito 3D</span>
                 </button>
                 <button
                   onClick={() => setClipTheaterOpen(false)}
                   className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-bold text-purple-100 flex items-center gap-1"
-                  title="Continuar ouvindo somente o som"
+                  title="Ouvir em segundo plano"
                 >
                   <Minimize2 className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Só Som</span>
                 </button>
                 <button
                   onClick={() => setClipTheaterOpen(false)}
-                  className="px-2.5 py-1.5 rounded-full bg-red-600/85 hover:bg-red-500 text-white text-xs font-black flex items-center gap-1"
-                  title="Fechar Vídeo"
+                  className="px-2.5 py-1.5 rounded-full bg-rose-600/85 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1"
                 >
                   <X className="w-3.5 h-3.5" />
                   <span>Fechar</span>
@@ -2545,16 +1893,21 @@ export function App() {
           >
             <div id="lenkyx-yt-audio-host" className="w-full h-full" />
 
-            {/* Pure LENKYX Click-to-Play/Pause & Pause Shield (Blocks YouTube "Mais vídeos" & external links!) */}
-            {clipTheaterOpen && currentTrack?.youtubeVideoId && (
+            {clipTheaterOpen && clipPrerollActive && currentTrack?.youtubeVideoId && (
+              <CinemaPrerollIntro
+                open={clipPrerollActive}
+                title={currentTrack.title}
+                subtitle="LENKYX CLIPES"
+                onFinish={() => setClipPrerollActive(false)}
+              />
+            )}
+
+            {clipTheaterOpen && !clipPrerollActive && currentTrack?.youtubeVideoId && (
               <div
                 onClick={() => void handleTogglePlay()}
                 className={`absolute inset-0 z-10 cursor-pointer flex items-center justify-center transition ${
-                  !isPlaying
-                    ? 'bg-black/75 backdrop-blur-sm'
-                    : 'bg-transparent'
+                  !isPlaying ? 'bg-black/75 backdrop-blur-sm' : 'bg-transparent'
                 }`}
-                title={isPlaying ? 'Tocar para Pausar' : 'Tocar para Continuar'}
               >
                 {!isPlaying && (
                   <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-3xl bg-[#0b0618]/90 border border-white/15 shadow-2xl">
@@ -2563,7 +1916,7 @@ export function App() {
                     </div>
                     <div className="text-center">
                       <div className="text-xs font-black text-white max-w-[260px] truncate">{currentTrack.title}</div>
-                      <div className="text-[10px] text-cyan-300 font-bold">Toque para continuar no LENKYX</div>
+                      <div className="text-[10px] text-cyan-300 font-bold">Toque para continuar</div>
                     </div>
                   </div>
                 )}
@@ -2573,7 +1926,6 @@ export function App() {
 
           {clipTheaterOpen && currentTrack?.youtubeVideoId && (
             <div className="px-3 sm:px-4 py-2.5 border-t border-white/10 flex flex-col gap-2 bg-[#090418] shrink-0">
-              {/* Interactive LENKYX Seek Bar */}
               <div className="flex items-center gap-2 text-[10px] font-mono text-purple-200/85">
                 <span className="w-9 text-right">
                   {`${Math.floor(currentTime / 60)}:${String(Math.floor(currentTime % 60)).padStart(2, '0')}`}
@@ -2597,9 +1949,7 @@ export function App() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
-                  <div className="text-[10px] text-cyan-300/80 flex items-center gap-2">
-                    <span>Próxima segue na sequência · Player 100% LENKYX</span>
-                  </div>
+                  <div className="text-[10px] text-cyan-300/80">Reprodução contínua sem anúncios</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10">
@@ -2619,7 +1969,6 @@ export function App() {
                   <button
                     onClick={() => handlePrevNext(-1)}
                     className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                    title="Clipe Anterior"
                   >
                     <SkipBack className="w-4 h-4" />
                   </button>
@@ -2632,7 +1981,6 @@ export function App() {
                   <button
                     onClick={() => handlePrevNext(1)}
                     className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                    title="Próximo Clipe"
                   >
                     <SkipForward className="w-4 h-4" />
                   </button>
@@ -2649,7 +1997,6 @@ export function App() {
                       }
                     }}
                     className="p-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-200"
-                    title={isNativeFullscreen ? 'Sair da Tela Cheia' : 'Tela Cheia no LENKYX'}
                   >
                     {isNativeFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                   </button>
@@ -2659,6 +2006,7 @@ export function App() {
           )}
         </div>
       </div>
+
       <UploadTrackModal
         open={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
@@ -2691,33 +2039,9 @@ export function App() {
         onSyncedTracks={(synced) => setTracks(synced)}
         onToast={showToast}
       />
-      <UserAuthModal
-        open={userAuthOpen}
-        requireGate={!loading && !userProfile && mode !== 'creator'}
-        onClose={() => setUserAuthOpen(false)}
-        user={userProfile}
-        onSaveUser={(u) => {
-          setUserProfile(u);
-          saveUserProfile(u);
-          saveDeviceAccount(u);
-        }}
-        onLogoutUser={() => {
-          setUserProfile(null);
-          saveUserProfile(null);
-          showToast('Sessão encerrada.');
-        }}
-        onOpenShare={() => {
-          setUserAuthOpen(false);
-          setShareTrack(null);
-          setShareOpen(true);
-        }}
-        onBrandTap={handleBrandTap}
-        onToast={showToast}
-      />
 
-      {/* TOAST */}
       {toast && (
-        <div className="fixed top-16 right-4 z-50 max-w-sm px-4 py-2.5 rounded-xl bg-[#140a2c]/95 border border-pink-500/50 text-xs font-bold text-white shadow-2xl">
+        <div className="fixed top-16 right-4 z-50 max-w-sm px-4 py-2.5 rounded-xl bg-[#140a2c]/95 border border-cyan-400/45 text-xs font-bold text-white shadow-2xl">
           {toast}
         </div>
       )}

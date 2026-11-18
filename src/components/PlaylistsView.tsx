@@ -23,7 +23,7 @@ interface Props {
   currentTrack: Track | null;
   isPlaying: boolean;
   onPlayTrack: (track: Track, queue?: Track[]) => void;
-  onSendToVideo: (track: Track) => void;
+  onSendToVideo?: (track: Track) => void;
   onCreatePlaylist: (name: string, description: string, emoji: string) => void;
   onDeletePlaylist: (id: string) => void;
   onRemoveFromPlaylist: (playlistId: string, trackId: string) => void;
@@ -36,7 +36,7 @@ interface Props {
     targetPlaylistId?: string;
   }) => Promise<void>;
   onDeleteUserTrack: (id: string) => void;
-  onOpenUserAuth: () => void;
+  onOpenUserAuth?: () => void;
 }
 
 const EMOJIS = ['🚀', '🔥', '🎧', '💜', '🌌', '⚡', '🚗', '🌙'];
@@ -140,7 +140,7 @@ export const PlaylistsView: React.FC<Props> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {!user && (
+          {!user && onOpenUserAuth && (
             <button
               onClick={onOpenUserAuth}
               className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white flex items-center gap-1.5"
@@ -310,13 +310,15 @@ export const PlaylistsView: React.FC<Props> = ({
                         {t.artist} · {t.album}
                       </div>
                     </div>
-                    <button
-                      onClick={() => onSendToVideo(t)}
-                      className="p-2 rounded-lg bg-white/5 hover:bg-cyan-500/25 text-cyan-300"
-                      title="Criar Vídeo com esta Música"
-                    >
-                      <Video className="w-4 h-4" />
-                    </button>
+                    {onSendToVideo && (
+                      <button
+                        onClick={() => onSendToVideo(t)}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-cyan-500/25 text-cyan-300"
+                        title="Criar Vídeo com esta Música"
+                      >
+                        <Video className="w-4 h-4" />
+                      </button>
+                    )}
                     {selectedId === 'USER_UPLOADS' && (
                       <button
                         onClick={() => onDeleteUserTrack(t.id)}

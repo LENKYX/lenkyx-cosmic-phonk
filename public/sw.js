@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lenkyx-cosmic-phonk-v27';
+const CACHE_NAME = 'lenkyx-cosmic-phonk-v28';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -79,4 +79,10 @@ self.addEventListener('fetch', (event) => {
         return new Response('Offline', { status: 503 });
       })
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
