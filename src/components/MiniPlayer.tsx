@@ -21,6 +21,8 @@ import {
   QrCode,
   Repeat,
   Gauge,
+  ShieldOff,
+  BatteryCharging,
 } from 'lucide-react';
 import { AudioVersion, Track } from '../types';
 
@@ -40,6 +42,9 @@ interface Props {
   bassBoostLevel?: BassBoostLevel;
   playbackSpeed?: number;
   loopTrack?: boolean;
+  backgroundMode?: boolean;
+  onToggleBackgroundMode?: () => void;
+  onEmergencyStop?: () => void;
   onCycleBassBoost?: () => void;
   onSetBassBoostLevel?: (level: BassBoostLevel) => void;
   onCycleSpeed?: () => void;
@@ -80,6 +85,9 @@ export const MiniPlayer: React.FC<Props> = ({
   bassBoostLevel = 0,
   playbackSpeed = 1,
   loopTrack = false,
+  backgroundMode = true,
+  onToggleBackgroundMode,
+  onEmergencyStop,
   onCycleBassBoost,
   onSetBassBoostLevel,
   onCycleSpeed,
@@ -188,6 +196,32 @@ export const MiniPlayer: React.FC<Props> = ({
                 <div className="text-xs font-bold text-purple-200/80 truncate max-w-[240px]">{track.album}</div>
               </div>
               <div className="flex items-center gap-1.5">
+                {onToggleBackgroundMode && (
+                  <button
+                    onClick={onToggleBackgroundMode}
+                    className={`px-2.5 py-1.5 rounded-full border text-[10px] font-black flex items-center gap-1 transition ${
+                      backgroundMode
+                        ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
+                        : 'bg-white/10 border-white/15 text-slate-300'
+                    }`}
+                    title="Continuar tocando com o celular bloqueado ou minimizado"
+                  >
+                    <BatteryCharging className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Tela Apagada: {backgroundMode ? 'ON' : 'OFF'}</span>
+                  </button>
+                )}
+                {onEmergencyStop && (
+                  <button
+                    onClick={() => {
+                      setExpanded(false);
+                      onEmergencyStop();
+                    }}
+                    className="px-2.5 py-1.5 rounded-full bg-rose-500/25 hover:bg-rose-500/45 border border-rose-400/50 text-rose-100 text-[10px] font-black flex items-center gap-1"
+                    title="Botão de Segurança: Parar tudo e encerrar segundo plano"
+                  >
+                    <ShieldOff className="w-3.5 h-3.5" /> Parar
+                  </button>
+                )}
                 {onOpenPix && (
                   <button
                     onClick={() => {
@@ -583,11 +617,35 @@ export const MiniPlayer: React.FC<Props> = ({
                 />
               </div>
             </div>
+            {onToggleBackgroundMode && (
+              <button
+                onClick={onToggleBackgroundMode}
+                className={`hidden lg:flex px-2 py-1 rounded-xl border text-[10px] font-black items-center gap-1 shrink-0 transition ${
+                  backgroundMode
+                    ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200'
+                    : 'bg-white/10 border-white/15 text-slate-300'
+                }`}
+                title="Continuar tocando com tela bloqueada ou minimizada (economiza bateria)"
+              >
+                <BatteryCharging className="w-3.5 h-3.5" />
+                <span>{backgroundMode ? '2º Plano ON' : '2º Plano OFF'}</span>
+              </button>
+            )}
+            {onEmergencyStop && (
+              <button
+                onClick={onEmergencyStop}
+                className="px-2 py-1 rounded-xl bg-rose-500/25 hover:bg-rose-500/45 border border-rose-400/50 text-rose-100 text-[10px] font-black flex items-center gap-1 shrink-0 transition"
+                title="Botão de Segurança: Parar som, vídeo e segundo plano"
+              >
+                <ShieldOff className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline">Parar Tudo</span>
+              </button>
+            )}
             {onCloseMenu && (
               <button
                 onClick={onCloseMenu}
                 className="p-1.5 rounded-lg bg-white/10 hover:bg-red-500/80 text-white/85 hover:text-white transition shrink-0"
-                title="Fechar menu de música"
+                title="Minimizar barra do player (música continua)"
               >
                 <X className="w-4 h-4" />
               </button>

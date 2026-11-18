@@ -20,6 +20,8 @@ import {
   Layers,
   Loader2,
   QrCode,
+  ShieldOff,
+  Crown,
 } from 'lucide-react';
 import { MovieItem, SeriesEpisodeItem, SeriesSeasonInfo } from '../types';
 import {
@@ -28,6 +30,8 @@ import {
   MovieCategory,
   searchMoviesCatalog,
 } from '../utils/moviesApi';
+import { fetchTop5Rankings, RankedMovieEntry, recordRankingHit } from '../utils/rankingsApi';
+import { clearBackgroundMediaSession, syncBackgroundMediaSession } from '../utils/backgroundAudioGuard';
 import { CosmicGtaLoader } from './CosmicGtaLoader';
 import { PlayerQueueStrip } from './PlayerQueueStrip';
 
@@ -39,6 +43,7 @@ interface Props {
   onVolume?: (v: number) => void;
   onToggleMute?: () => void;
   onOpenPix?: () => void;
+  onEmergencyStop?: () => void;
   initialMovie?: MovieItem | null;
   onConsumeInitialMovie?: () => void;
 }
@@ -176,6 +181,7 @@ export const MoviesView: React.FC<Props> = ({
   onVolume,
   onToggleMute,
   onOpenPix,
+  onEmergencyStop,
   initialMovie = null,
   onConsumeInitialMovie,
 }) => {
@@ -191,6 +197,7 @@ export const MoviesView: React.FC<Props> = ({
   const [rowGridIds, setRowGridIds] = useState<Record<string, boolean>>({});
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
   const [heroIdx, setHeroIdx] = useState(0);
+  const [topMovies, setTopMovies] = useState<RankedMovieEntry[]>([]);
   const [activeMovie, setActiveMovie] = useState<MovieItem | null>(null);
   const [movieQueue, setMovieQueue] = useState<MovieItem[]>([]);
   const [, setPrerollActive] = useState(false);
@@ -205,8 +212,42 @@ export const MoviesView: React.FC<Props> = ({
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
 
   const playerBoxRef = useRef<HTMLDivElement | null>(null);
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const heroTouchStartX = useRef<number | null>(null);
+
+  // Keep cinema audio/video active when minimizing or locking screen
+  useEffect(() => {
+    if (!activeMovie) return;
+    syncBackgroundMediaSession(
+      {
+        title: activeMovie.title,
+        artist: activeMovie.subtitle || 'LENKYX Cinema',
+        album: 'LENKYX Cinema & Séries',
+        artworkUrl: activeMovie.posterUrl,
+        isPlaying: true,
+      },
+      {
+        onPlay: () => void videoElRef.current?.play().catch(() => {}),
+        onPause: () => videoElRef.current?.pause(),
+        onPrev: () => stepMovie(-1),
+        onNext: () => stepMovie(1),
+        onStop: () => {
+          setActiveMovie(null);
+          onEmergencyStop?.();
+        },
+      }
+    );
+    const onVis = () => {
+      if (document.visibilityState === 'hidden' && videoElRef.current && videoElRef.current.paused) {
+        void videoElRef.current.play().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [activeMovie]);
 
   const loadCinemaCatalog = async (force = false, silent = false) => {
     if (!silent) setLoading(true);
@@ -225,6 +266,11 @@ export const MoviesView: React.FC<Props> = ({
 
   useEffect(() => {
     void loadCinemaCatalog(false, false);
+    fetchTop5Rankings()
+      .then((rk) => {
+        if (rk.topMovies?.length) setTopMovies(rk.topMovies);
+      })
+      .catch(() => {});
     const autoTimer = window.setInterval(() => {
       void loadCinemaCatalog(true, true);
     }, 25 * 60 * 1000);
@@ -402,6 +448,18 @@ export const MoviesView: React.FC<Props> = ({
     setMovieQueue(queueList.length ? queueList : [m]);
     setActiveMovie(m);
     setPrerollActive(true);
+    void recordRankingHit({
+      kind: 'movie',
+      id: m.id,
+      title: m.title,
+      subtitle: m.subtitle,
+      posterUrl: m.posterUrl,
+      youtubeVideoId: m.youtubeVideoId,
+      youtubePlaylistId: m.youtubePlaylistId,
+      mediaType: m.mediaType,
+    }).then((rk) => {
+      if (rk?.topMovies?.length) setTopMovies(rk.topMovies);
+    });
     if (m.mediaType === 'series' || m.mediaType === 'anime') {
       setSeriesSeasons([]);
       setSeriesEpisodes([]);
@@ -618,6 +676,21 @@ export const MoviesView: React.FC<Props> = ({
                 </button>
               )}
 
+              {onEmergencyStop && (
+                <button
+                  onClick={() => {
+                    setActiveMovie(null);
+                    clearBackgroundMediaSession();
+                    onEmergencyStop();
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/45 border border-rose-400/50 text-rose-100 text-[11px] font-black flex items-center gap-1"
+                  title="Botão de Segurança: Parar vídeo, áudio e segundo plano"
+                >
+                  <ShieldOff className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Parar Tudo</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setActiveMovie(null)}
                 className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-rose-600 text-white text-xs font-black flex items-center gap-1"
@@ -632,6 +705,7 @@ export const MoviesView: React.FC<Props> = ({
           <div className="relative w-full bg-black flex-1 min-h-[220px] sm:aspect-video flex items-center justify-center overflow-hidden">
             {activeMovie.videoStreamUrl && !activeMovie.youtubeVideoId && !activeMovie.youtubePlaylistId ? (
               <video
+                ref={videoElRef}
                 key={activeMovie.id}
                 src={activeMovie.videoStreamUrl}
                 controls
@@ -890,6 +964,110 @@ export const MoviesView: React.FC<Props> = ({
           </div>
         </section>
       ) : null}
+
+      {/* === TOP 1 AO 5 FILMES & SÉRIES MAIS ASSISTIDOS & RECOMENDADOS === */}
+      {!loading && (topMovies.length > 0 || heroItems.length > 0) && (
+        <section className="rounded-3xl bg-gradient-to-br from-rose-500/10 via-[#0d061b] to-amber-500/10 border border-rose-400/25 p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="font-display text-sm sm:text-base font-black text-white flex items-center gap-2">
+                <Crown className="w-4 h-4 text-amber-400" />
+                <span>Top 1 ao 5 · Filmes & Séries Mais Assistidos e Recomendados</span>
+              </h2>
+              <p className="text-[11px] text-rose-100/75">
+                Os 5 melhores filmes, séries e animes mais assistidos agora no LENKYX
+              </p>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-rose-500/20 border border-rose-400/40 text-rose-200 text-[10px] font-black">
+              🍿 RECOMENDADOS HOJE
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            {(topMovies.length >= 5
+              ? topMovies.slice(0, 5)
+              : [
+                  ...topMovies,
+                  ...heroItems
+                    .filter((h) => !topMovies.some((tm) => tm.id === h.id))
+                    .slice(0, Math.max(0, 5 - topMovies.length))
+                    .map((h, i) => ({
+                      rank: topMovies.length + i + 1,
+                      id: h.id,
+                      title: h.title,
+                      subtitle: h.subtitle,
+                      posterUrl: h.posterUrl,
+                      youtubeVideoId: h.youtubeVideoId,
+                      youtubePlaylistId: h.youtubePlaylistId,
+                      mediaType: h.mediaType,
+                      count: 45 - i * 6,
+                    })),
+                ]
+            )
+              .slice(0, 5)
+              .map((m, idx) => {
+                const rank = idx + 1;
+                const badgeCls =
+                  rank === 1
+                    ? 'from-amber-400 to-yellow-500 text-black'
+                    : rank === 2
+                    ? 'from-slate-200 to-slate-400 text-black'
+                    : rank === 3
+                    ? 'from-amber-600 to-orange-500 text-white'
+                    : 'from-rose-500 to-pink-600 text-white';
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() =>
+                      handleOpenMovie(
+                        {
+                          id: m.id,
+                          title: m.title,
+                          subtitle: m.subtitle || 'Top Recomendado',
+                          category: 'Recomendados',
+                          durationLabel: 'HD',
+                          sourceLabel: 'LENKYX Top 5',
+                          posterUrl: m.posterUrl || '/covers/album-official.jpg',
+                          youtubeVideoId: m.youtubeVideoId,
+                          youtubePlaylistId: m.youtubePlaylistId,
+                          mediaType: m.mediaType || 'movie',
+                        },
+                        featuredQueue
+                      )
+                    }
+                    className="group relative rounded-2xl overflow-hidden bg-black/45 hover:bg-white/[0.08] border border-white/15 hover:border-amber-400/50 text-left transition flex flex-col"
+                  >
+                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-black">
+                      <img
+                        src={m.posterUrl || '/covers/album-official.jpg'}
+                        alt={m.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
+                      <span
+                        className={`absolute top-2 left-2 px-2 py-0.5 rounded-full bg-gradient-to-r ${badgeCls} text-[10px] font-black shadow`}
+                      >
+                        TOP #{rank}
+                      </span>
+                      <span className="absolute bottom-1.5 right-2 text-[9px] font-mono font-bold text-emerald-300">
+                        {m.count} views
+                      </span>
+                    </div>
+                    <div className="p-2.5 min-w-0">
+                      <div className="text-xs font-black text-white truncate group-hover:text-amber-300">
+                        {m.title}
+                      </div>
+                      <div className="text-[10px] text-slate-300/75 truncate">
+                        {m.subtitle || 'Cinema LENKYX'}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+          </div>
+        </section>
+      )}
 
       {/* === NETFLIX CATEGORY FILTER PILLS === */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>

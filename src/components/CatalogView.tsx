@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Play,
   Pause,
@@ -22,12 +22,9 @@ import {
   CheckCircle2,
   Loader2,
   WifiOff,
-  UserCheck,
 } from 'lucide-react';
-import { AppMode, AppSettings, AudioVersion, Track, UserPlaylist, WorldArtistDirectoryItem } from '../types';
+import { AppMode, AppSettings, AudioVersion, Track, UserPlaylist } from '../types';
 import { copyTextReliable, isAndroidApk } from '../utils/androidBridge';
-import { getWorldDirectory } from '../utils/worldMusic';
-import { CosmicScrollRow } from './CosmicScrollRow';
 
 interface Props {
   tracks: Track[];
@@ -45,6 +42,7 @@ interface Props {
   onLikeTrack: (track: Track) => void;
   onShareTrack: (track: Track | null) => void;
   onOpenPix?: () => void;
+  onInstallApp?: () => void;
   onSendToVideo?: (track: Track) => void;
   onAddToPlaylist: (playlistId: string, track: Track) => void;
   onToggleOffline: (track: Track) => void;
@@ -79,6 +77,7 @@ export const CatalogView: React.FC<Props> = ({
   onPlayTrack,
   onLikeTrack,
   onShareTrack,
+  onInstallApp,
   onSendToVideo,
   onAddToPlaylist,
   onToggleOffline,
@@ -95,15 +94,6 @@ export const CatalogView: React.FC<Props> = ({
   const [viewLayout, setViewLayout] = useState<'list' | 'grid'>('list');
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [pickerTrackId, setPickerTrackId] = useState<string | null>(null);
-  const [spotArtists, setSpotArtists] = useState<WorldArtistDirectoryItem[]>([]);
-
-  useEffect(() => {
-    getWorldDirectory(false)
-      .then((d) => {
-        if (d.artists?.length) setSpotArtists(d.artists);
-      })
-      .catch(() => {});
-  }, []);
 
   const albums = useMemo(() => {
     const set = new Set<string>();
@@ -210,15 +200,14 @@ export const CatalogView: React.FC<Props> = ({
                   ? 'Todas Offline'
                   : 'Baixar Offline'}
               </button>
-              {!isAndroidApk() && (
-                <a
-                  href={settings.apkDownloadUrl || '/download/apk'}
-                  target="_blank"
-                  rel="noreferrer"
+              {!isAndroidApk() && onInstallApp && (
+                <button
+                  type="button"
+                  onClick={onInstallApp}
                   className="px-4 py-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_18px_rgba(52,211,153,0.35)] transition active:scale-95"
                 >
-                  <Smartphone className="w-3.5 h-3.5" /> App Android
-                </a>
+                  <Smartphone className="w-3.5 h-3.5" /> Instalar App
+                </button>
               )}
               {mode === 'creator' && (
                 <button
@@ -232,45 +221,6 @@ export const CatalogView: React.FC<Props> = ({
           </div>
         </div>
       </section>
-
-      {/* WORLD ARTISTS ROW */}
-      {spotArtists.length > 0 && onSearchWorld && (
-        <CosmicScrollRow
-          title={
-            <>
-              <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>Artistas Mundiais & Novidades</span>
-            </>
-          }
-          count={spotArtists.length}
-          collapsible
-          gridToggleable={false}
-        >
-          {spotArtists.map((art) => (
-            <button
-              key={art.name}
-              onClick={() => onSearchWorld(art.name)}
-              className="group w-28 sm:w-32 shrink-0 rounded-2xl cosmic-card-3d p-2.5 flex flex-col items-center text-center gap-1.5 hover:bg-white/[0.09] transition"
-            >
-              <div className="relative w-18 h-18 sm:w-20 sm:h-20 rounded-full p-[2px] bg-gradient-to-tr from-emerald-400 via-cyan-400 to-pink-500 group-hover:scale-105 transition">
-                <img
-                  src={art.photoUrl || '/covers/album-official.jpg'}
-                  alt={art.name}
-                  loading="lazy"
-                  className="w-full h-full object-cover rounded-full bg-black"
-                />
-                <span className="opacity-0 group-hover:opacity-100 absolute bottom-0 right-0 w-7 h-7 rounded-full bg-emerald-400 text-black flex items-center justify-center shadow transition">
-                  <Play className="w-3.5 h-3.5 fill-black ml-0.5" />
-                </span>
-              </div>
-              <div className="min-w-0 w-full">
-                <div className="text-[11px] font-black text-white truncate">{art.name}</div>
-                <div className="text-[9px] text-cyan-300/85 truncate">{art.genre}</div>
-              </div>
-            </button>
-          ))}
-        </CosmicScrollRow>
-      )}
 
       {/* FILTER PILLS + VIEW TOGGLE */}
       <div className="flex items-center justify-between gap-2 flex-wrap">

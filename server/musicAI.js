@@ -869,3 +869,459 @@ export async function getWorldNewReleases(forceRefresh = false) {
   };
 }
 
+const bgAudioCache = new Map();
+
+export async function resolveBackgroundAudioStream(rawTitle = '', rawArtist = '') {
+  const cleanTitle = String(rawTitle || '')
+    .replace(/\[.*?\]|\(.*?\)/g, ' ')
+    .replace(/official\s*(music\s*)?video|clipe\s*oficial|ao\s*vivo|lyrics?|hd|4k|audio/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const cleanArtist = String(rawArtist || '').replace(/ - Topic$/i, '').trim();
+  const query = [cleanArtist, cleanTitle].filter(Boolean).join(' ').trim();
+  if (!query) return { audioUrl: '', title: '', artist: '' };
+
+  const key = query.toLowerCase();
+  const cached = bgAudioCache.get(key);
+  if (cached && Date.now() - cached.ts < 30 * 60 * 1000) return cached.data;
+
+  try {
+    const audius = await searchAudiusFull(query, 4);
+    const best = audius.find((t) => t.audioUrl);
+    if (best) {
+      const data = { audioUrl: best.audioUrl, title: best.title, artist: best.artist, source: 'audius' };
+      bgAudioCache.set(key, { ts: Date.now(), data });
+      return data;
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const r = await fetch(
+      `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=3&country=BR`,
+      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(4500) }
+    );
+    if (r.ok) {
+      const j = await r.json();
+      const hit = (j.results || []).find((x) => x.previewUrl);
+      if (hit?.previewUrl) {
+        const data = {
+          audioUrl: hit.previewUrl,
+          title: hit.trackName || cleanTitle,
+          artist: hit.artistName || cleanArtist,
+          source: 'itunes',
+        };
+        bgAudioCache.set(key, { ts: Date.now(), data });
+        return data;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return { audioUrl: '', title: cleanTitle, artist: cleanArtist };
+}
+
+let sunoDiscoverCache = { ts: 0, data: null };
+
+export async function getSunoDiscoverHub(forceRefresh = false) {
+  if (!forceRefresh && sunoDiscoverCache.data && Date.now() - sunoDiscoverCache.ts < 20 * 60 * 1000) {
+    return sunoDiscoverCache.data;
+  }
+  try {
+    const r = await fetch('https://studio-api.prod.suno.com/api/discover/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': UA,
+      },
+      body: JSON.stringify({ page: 0, page_size: 25 }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+
+    const rawClips = [];
+    const seenClipIds = new Set();
+    for (const sec of j.sections || []) {
+      const items = Array.isArray(sec.items) ? sec.items : [];
+      for (const it of items) {
+        const clip = it?.clip || it;
+        if (!clip?.id || !clip?.title || seenClipIds.has(clip.id)) continue;
+        if (!clip.display_name && !clip.handle) continue;
+        seenClipIds.add(clip.id);
+        rawClips.push(clip);
+      }
+      if (Array.isArray(sec.items)) {
+        for (const pl of sec.items) {
+          for (const pc of pl?.playlist_clips || []) {
+            const clip = pc?.clip;
+            if (!clip?.id || !clip?.title || seenClipIds.has(clip.id)) continue;
+            seenClipIds.add(clip.id);
+            rawClips.push(clip);
+          }
+        }
+      }
+    }
+
+    const tracks = [];
+    const artistMap = new Map();
+
+    for (const clip of rawClips) {
+      const id = String(clip.id);
+      const artistName = String(clip.display_name || clip.handle || 'Suno AI Artist').trim();
+      const handle = String(clip.handle || '').trim();
+      const avatarUrl = String(clip.avatar_image_url || clip.image_url || '/covers/avatar.jpg');
+      const coverUrl = String(clip.image_large_url || clip.image_url || '/covers/album-official.jpg');
+      const audioUrl = `https://cdn1.suno.ai/${id}.mp4`;
+      const plays = Number(clip.play_count || 0);
+      const likes = Number(clip.upvote_count || 0);
+      const tags = String(clip.display_tags || clip.metadata?.tags || 'AI Music · Suno').slice(0, 45);
+      const dur = Math.round(Number(clip.metadata?.duration || 180));
+
+      const trackObj = {
+        id: `suno-ai-${id}`,
+        number: tracks.length + 1,
+        title: String(clip.title).slice(0, 90),
+        emoji: '🤖',
+        artist: artistName,
+        album: handle ? `@${handle} · Suno IA` : 'Suno IA Mundial',
+        genre: tags || 'AI Music',
+        bpm: 130,
+        key: 'Am',
+        coverUrl,
+        audioUrl,
+        durationSec: dur > 10 ? dur : 180,
+        plays,
+        likes,
+        source: 'world_full',
+        sourceLabel: 'Suno IA',
+        externalUrl: `https://suno.com/song/${id}`,
+      };
+      tracks.push(trackObj);
+
+      const artKey = (handle || artistName).toLowerCase();
+      const existing = artistMap.get(artKey);
+      if (existing) {
+        existing.playsCount += plays + likes * 3;
+        if (existing.tracks.length < 8) existing.tracks.push(trackObj);
+      } else {
+        artistMap.set(artKey, {
+          id: `suno-artist-${artKey}`,
+          name: artistName,
+          handle,
+          avatarUrl,
+          genre: tags || 'Criador IA',
+          playsCount: plays + likes * 3,
+          profileUrl: handle ? `https://suno.com/@${handle}` : 'https://suno.com',
+          tracks: [trackObj],
+        });
+      }
+    }
+
+    const artists = [...artistMap.values()]
+      .sort((a, b) => b.playsCount - a.playsCount)
+      .slice(0, 32);
+
+    const payload = {
+      updatedAt: new Date().toISOString(),
+      artists,
+      tracks: tracks.slice(0, 60),
+    };
+    sunoDiscoverCache = { ts: Date.now(), data: payload };
+    return payload;
+  } catch {
+    return sunoDiscoverCache.data || { updatedAt: new Date().toISOString(), artists: [], tracks: [] };
+  }
+}
+
+export const OFFLINE_GENRE_FOLDERS = [
+  {
+    id: 'phonk',
+    title: 'Phonk & Drift Automotivo',
+    emoji: '⚡',
+    description: 'Graves pesados e cowbells pra viagem de carro sem internet',
+    audiusGenres: ['Electronic'],
+    queries: ['phonk', 'brazilian phonk', 'drift phonk', 'cosmic phonk', 'kordhell'],
+    mediaKind: 'audio',
+    accent: 'from-pink-500 to-purple-600',
+  },
+  {
+    id: 'funk_brasil',
+    title: 'Funk, Dance & Pancadão',
+    emoji: '🇧🇷',
+    description: 'Batidão brasileiro, baile funk e dance pra animar a estrada',
+    audiusGenres: ['Dance & EDM'],
+    queries: ['baile funk', 'brazilian funk', 'funk brasil', 'mandelao', 'brazil dance'],
+    mediaKind: 'audio',
+    accent: 'from-emerald-400 to-cyan-500',
+  },
+  {
+    id: 'electronic',
+    title: 'Eletrônica, House & Bass',
+    emoji: '🎧',
+    description: 'Sets eletrônicos, bass house, techno e EDM completos offline',
+    audiusGenres: ['Electronic', 'House', 'Techno', 'Dance & EDM'],
+    queries: ['house music', 'bass house', 'techno', 'progressive house', 'edm'],
+    mediaKind: 'audio',
+    accent: 'from-cyan-400 to-blue-600',
+  },
+  {
+    id: 'hiphop_trap',
+    title: 'Trap, Rap & Hip-Hop',
+    emoji: '🔥',
+    description: 'Beats de trap, hip-hop e rap mundial sem depender de 4G',
+    audiusGenres: ['Hip-Hop/Rap', 'Trap'],
+    queries: ['trap beat', 'hip hop', 'rap', 'boom bap', 'drill'],
+    mediaKind: 'audio',
+    accent: 'from-orange-400 to-rose-600',
+  },
+  {
+    id: 'sertanejo_country',
+    title: 'Sertanejo, Country & Estrada',
+    emoji: '🤠',
+    description: 'Viola, country, acústico e modão perfeito pra rodovia',
+    audiusGenres: ['Country', 'Folk', 'Acoustic'],
+    queries: ['sertanejo', 'country road', 'acoustic guitar', 'folk', 'viola'],
+    mediaKind: 'audio',
+    accent: 'from-amber-400 to-orange-600',
+  },
+  {
+    id: 'rock_classics',
+    title: 'Rock, Metal & Clássicos',
+    emoji: '🎸',
+    description: 'Guitarras pesadas, rock clássico e alternativo offline',
+    audiusGenres: ['Rock', 'Metal', 'Alternative'],
+    queries: ['rock', 'metal', 'hard rock', 'indie rock', 'punk'],
+    mediaKind: 'audio',
+    accent: 'from-rose-500 to-red-700',
+  },
+  {
+    id: 'lofi_chill',
+    title: 'Lo-Fi, Synthwave & Noite',
+    emoji: '🌙',
+    description: 'Vibe relaxante, synthwave espacial e lo-fi pra dirigir à noite',
+    audiusGenres: ['Lo-Fi', 'Ambient', 'Deep House'],
+    queries: ['lofi chill', 'synthwave', 'retrowave', 'night drive', 'ambient'],
+    mediaKind: 'audio',
+    accent: 'from-indigo-400 to-violet-600',
+  },
+  {
+    id: 'gospel_peace',
+    title: 'Gospel, Louvor & Paz',
+    emoji: '🙏',
+    description: 'Louvores, instrumental de paz e adoração pra toda a família',
+    audiusGenres: ['Devotional', 'Classical', 'Ambient'],
+    queries: ['gospel', 'worship', 'christian', 'louvor', 'peaceful piano'],
+    mediaKind: 'audio',
+    accent: 'from-sky-400 to-teal-500',
+  },
+  {
+    id: 'suno_ai',
+    title: 'Músicas IA (Suno Mundial)',
+    emoji: '🤖',
+    description: 'Faixas futuristas geradas por IA prontas pra salvar offline',
+    audiusGenres: ['Experimental', 'Electronic'],
+    queries: ['ai music', 'future bass', 'cyberpunk', 'cyber'],
+    mediaKind: 'audio',
+    accent: 'from-fuchsia-500 to-cyan-400',
+  },
+  {
+    id: 'videos_offline',
+    title: 'Vídeos & Clipes Offline (MP4)',
+    emoji: '🎬',
+    description: 'Clipes musicais e animações em MP4 pra assistir sem internet na viagem',
+    audiusGenres: [],
+    queries: ['animation', 'music video', 'synthwave', 'cartoon', 'space'],
+    mediaKind: 'video',
+    accent: 'from-rose-500 to-amber-500',
+  },
+];
+
+const offlinePackCache = new Map();
+
+async function fetchAudiusTrendingBatch(genre, limit = 100, offset = 0) {
+  try {
+    const url = genre
+      ? `https://discoveryprovider.audius.co/v1/tracks/trending?genre=${encodeURIComponent(genre)}&limit=${limit}&offset=${offset}&app_name=LENKYX`
+      : `https://discoveryprovider.audius.co/v1/tracks/trending?limit=${limit}&offset=${offset}&app_name=LENKYX`;
+    const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(7000) });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.data || [])
+      .filter((item) => item?.id && item?.title)
+      .map((item) => ({
+        id: `audius-${item.id}`,
+        number: 0,
+        title: String(item.title).slice(0, 90),
+        emoji: '🎧',
+        artist: String(item.user?.name || 'Artista Independente').slice(0, 50),
+        album: item.genre || 'Viagem Offline',
+        genre: item.genre || 'Music',
+        bpm: 128,
+        key: 'Am',
+        coverUrl: item.artwork?.['480x480'] || item.artwork?.['150x150'] || '/covers/album-official.jpg',
+        audioUrl: `https://discoveryprovider.audius.co/v1/tracks/${item.id}/stream?app_name=LENKYX`,
+        durationSec: Number(item.duration) || 190,
+        plays: Number(item.play_count) || 0,
+        likes: Number(item.favorite_count) || 0,
+        source: 'world_full',
+        sourceLabel: 'Offline HD',
+      }));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchArchiveMp4Videos(limit = 60) {
+  try {
+    const q = 'mediatype:movies AND format:"MPEG4" AND (animation OR synthwave OR concert OR cartoon OR cosmic)';
+    const r = await fetch(
+      `https://archive.org/advancedsearch.php?q=${encodeURIComponent(q)}&fl[]=identifier,title,creator&rows=${Math.min(100, limit)}&output=json`,
+      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(7000) }
+    );
+    if (!r.ok) return [];
+    const j = await r.json();
+    const docs = j.response?.docs || [];
+    const out = [];
+    for (let i = 0; i < Math.min(docs.length, 30); i += 6) {
+      const chunk = docs.slice(i, i + 6);
+      const resolved = await Promise.all(
+        chunk.map(async (doc) => {
+          try {
+            const mr = await fetch(`https://archive.org/metadata/${encodeURIComponent(doc.identifier)}/files`, {
+              headers: { 'User-Agent': UA },
+              signal: AbortSignal.timeout(4500),
+            });
+            if (!mr.ok) return null;
+            const mj = await mr.json();
+            const mp4 = (mj.result || []).find(
+              (f) => f.name && f.name.toLowerCase().endsWith('.mp4') && Number(f.size || 0) < 45 * 1024 * 1024
+            );
+            if (!mp4) return null;
+            return {
+              id: `vid-arc-${doc.identifier}`,
+              title: String(doc.title || doc.identifier).slice(0, 85),
+              artist: String(Array.isArray(doc.creator) ? doc.creator[0] : doc.creator || 'Arquivo Cinema').slice(0, 45),
+              genre: 'Vídeo MP4 Offline',
+              coverUrl: `https://archive.org/services/img/${encodeURIComponent(doc.identifier)}`,
+              videoUrl: `https://archive.org/download/${encodeURIComponent(doc.identifier)}/${encodeURIComponent(mp4.name)}`,
+              mediaKind: 'video',
+              durationSec: 180,
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
+      out.push(...resolved.filter(Boolean));
+      if (out.length >= limit) break;
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+export async function getOfflineGenrePack(genreId = 'phonk', requestedLimit = 100, localCatalogTracks = []) {
+  const folder = OFFLINE_GENRE_FOLDERS.find((f) => f.id === genreId) || OFFLINE_GENRE_FOLDERS[0];
+  const targetLimit = Math.max(20, Math.min(500, Number(requestedLimit) || 100));
+  const cacheKey = `${folder.id}:${targetLimit}`;
+  const cached = offlinePackCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 30 * 60 * 1000) {
+    return cached.data;
+  }
+
+  const seen = new Set();
+  const items = [];
+  const pushUnique = (list, mediaKind = folder.mediaKind) => {
+    for (const it of list || []) {
+      if (!it?.id || seen.has(it.id)) continue;
+      const mediaUrl = mediaKind === 'video' ? it.videoUrl || it.audioUrl : it.audioUrl;
+      if (!mediaUrl) continue;
+      seen.add(it.id);
+      items.push({
+        ...it,
+        number: items.length + 1,
+        mediaKind,
+        videoUrl: mediaKind === 'video' ? mediaUrl : undefined,
+      });
+      if (items.length >= targetLimit) break;
+    }
+  };
+
+  if (folder.mediaKind === 'video') {
+    const [sunoHub, archiveVids] = await Promise.all([
+      getSunoDiscoverHub(false),
+      fetchArchiveMp4Videos(Math.min(80, targetLimit)),
+    ]);
+    pushUnique(archiveVids, 'video');
+    pushUnique(
+      (sunoHub.tracks || []).map((t) => ({
+        ...t,
+        id: `vid-${t.id}`,
+        videoUrl: t.audioUrl,
+        mediaKind: 'video',
+      })),
+      'video'
+    );
+    pushUnique(
+      (localCatalogTracks || []).map((t) => ({
+        ...t,
+        id: `vid-${t.id}`,
+        videoUrl: t.audioUrl,
+        mediaKind: 'video',
+      })),
+      'video'
+    );
+  } else {
+    if (folder.id === 'phonk' || folder.id === 'suno_ai') {
+      pushUnique(localCatalogTracks, 'audio');
+      const sunoHub = await getSunoDiscoverHub(false);
+      pushUnique(sunoHub.tracks || [], 'audio');
+    }
+
+    // Parallel search queries + paginated genre trending up to 500
+    const queryBatches = await Promise.all(folder.queries.map((q) => searchAudiusFull(q, 50)));
+    for (const batch of queryBatches) pushUnique(batch, 'audio');
+
+    let offset = 0;
+    while (items.length < targetLimit && offset <= 400) {
+      const genresToFetch = folder.audiusGenres.length ? folder.audiusGenres : [''];
+      const batches = await Promise.all(
+        genresToFetch.map((g) => fetchAudiusTrendingBatch(g, 100, offset))
+      );
+      let addedAny = false;
+      for (const b of batches) {
+        if (b.length > 0) addedAny = true;
+        pushUnique(b, 'audio');
+      }
+      if (!addedAny) break;
+      offset += 100;
+    }
+
+    // If still below targetLimit, fill with general Audius trending pages
+    let extraOffset = 0;
+    while (items.length < targetLimit && extraOffset <= 300) {
+      const extra = await fetchAudiusTrendingBatch('', 100, extraOffset);
+      if (extra.length === 0) break;
+      pushUnique(extra, 'audio');
+      extraOffset += 100;
+    }
+  }
+
+  const payload = {
+    folder,
+    totalAvailable: items.length,
+    maxSupported: 500,
+    updatedAt: new Date().toISOString(),
+    items: items.slice(0, targetLimit),
+  };
+  offlinePackCache.set(cacheKey, { ts: Date.now(), data: payload });
+  return payload;
+}
+
+
+
+

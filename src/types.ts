@@ -93,7 +93,7 @@ export interface AppSettings {
 }
 
 export type AudioVersion = 'v1' | 'v2';
-export type TabId = 'catalog' | 'search' | 'explore' | 'movies' | 'sports' | 'playlists' | 'studio';
+export type TabId = 'catalog' | 'search' | 'explore' | 'movies' | 'sports' | 'offline' | 'playlists' | 'studio';
 export type AppMode = 'creator' | 'fan';
 
 export interface SupporterRankEntry {
@@ -111,6 +111,10 @@ export interface LiveStats {
   dailyGoalBrl: number;
   dailyCollectedBrl: number;
   dailyContributors: number;
+  totalVisits?: number;
+  totalShares?: number;
+  popularityScore?: number;
+  popularityLevel?: string;
   recentSupporters?: { name: string; amount: number; at: string }[];
   leaderboard?: SupporterRankEntry[];
 }

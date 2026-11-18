@@ -18,8 +18,12 @@ import {
   Target,
   Download,
   RefreshCw,
+  Zap,
+  FileText,
+  Trash2,
+  Bot,
 } from 'lucide-react';
-import { AppSettings, Track } from '../types';
+import { AppMode, AppSettings, Track } from '../types';
 import { CosmicTheme, generateSunoBlueprint, LyricLanguage } from '../utils/sunoGenerator';
 import { beatEngine, BEAT_PRESETS, BeatPattern } from '../audio/beatEngine';
 import { authFetch } from '../utils/api';
@@ -28,11 +32,148 @@ import { copyTextReliable, downloadBlobReliable } from '../utils/androidBridge';
 interface Props {
   tracks: Track[];
   settings: AppSettings;
+  mode?: AppMode;
   onTrackCreated: (track: Track) => void;
   onToggleTrackStatus: (track: Track, field: keyof Track['status']) => Promise<void>;
   onPauseCatalogPlayer: () => void;
   onSyncSuno?: () => Promise<void>;
   onToast: (msg: string) => void;
+}
+
+interface UserStudioProject {
+  id: string;
+  title: string;
+  artistName: string;
+  theme: CosmicTheme;
+  bpm: number;
+  prompt: string;
+  lyrics: string;
+  coverSeed: number;
+  cleanCover: boolean;
+  createdAt: string;
+}
+
+const AUTO_HIT_TITLES: Array<{ title: string; theme: CosmicTheme; bpm: number }> = [
+  { title: 'Neon Galaxia Drift', theme: 'space_odyssey', bpm: 134 },
+  { title: 'Pulso Estelar 808', theme: 'drift_racing', bpm: 138 },
+  { title: 'Horizonte Sem Limites', theme: 'festival_finale', bpm: 130 },
+  { title: 'Lua de Saturno', theme: 'dark_nebula', bpm: 128 },
+  { title: 'Favela Astronauta', theme: 'drift_racing', bpm: 132 },
+  { title: 'Coroa do Infinito', theme: 'dark_nebula', bpm: 136 },
+  { title: 'Eclipse Dourado', theme: 'cyber_love', bpm: 126 },
+];
+
+function renderProceduralCoverCanvas(
+  canvas: HTMLCanvasElement,
+  size: number,
+  title: string,
+  artistName: string,
+  seed: number,
+  cleanCover: boolean
+): void {
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const palettes = [
+    ['#070316', '#7c3aed', '#ec4899', '#22d3ee'],
+    ['#040814', '#0ea5e9', '#10b981', '#a855f7'],
+    ['#120312', '#f43f5e', '#f59e0b', '#6366f1'],
+    ['#030712', '#06b6d4', '#ec4899', '#eab308'],
+  ];
+  const pal = palettes[Math.abs(seed) % palettes.length];
+
+  const bg = ctx.createRadialGradient(size * 0.5, size * 0.42, size * 0.04, size * 0.5, size * 0.5, size * 0.78);
+  bg.addColorStop(0, pal[1]);
+  bg.addColorStop(0.45, pal[0]);
+  bg.addColorStop(1, '#020108');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, size, size);
+
+  // Cosmic nebula glows
+  const g1 = ctx.createRadialGradient(size * 0.25, size * 0.25, 0, size * 0.25, size * 0.25, size * 0.45);
+  g1.addColorStop(0, `${pal[2]}99`);
+  g1.addColorStop(1, 'transparent');
+  ctx.fillStyle = g1;
+  ctx.fillRect(0, 0, size, size);
+
+  const g2 = ctx.createRadialGradient(size * 0.78, size * 0.75, 0, size * 0.78, size * 0.75, size * 0.48);
+  g2.addColorStop(0, `${pal[3]}88`);
+  g2.addColorStop(1, 'transparent');
+  ctx.fillStyle = g2;
+  ctx.fillRect(0, 0, size, size);
+
+  // Starfield
+  let rng = (seed * 9301 + 49297) % 233280;
+  const nextRand = () => {
+    rng = (rng * 9301 + 49297) % 233280;
+    return rng / 233280;
+  };
+  for (let i = 0; i < 160; i++) {
+    const x = nextRand() * size;
+    const y = nextRand() * size;
+    const r = (nextRand() * 2.2 + 0.6) * (size / 600);
+    ctx.fillStyle = `rgba(255,255,255,${(0.35 + nextRand() * 0.65).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Futuristic cosmic planet & neon orbital rings
+  const cx = size * 0.5;
+  const cy = size * 0.46;
+  const pr = size * 0.21;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(((seed % 7) - 3) * 0.14);
+  ctx.strokeStyle = `${pal[3]}cc`;
+  ctx.lineWidth = Math.max(2, size * 0.008);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, pr * 1.65, pr * 0.46, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = `${pal[2]}aa`;
+  ctx.lineWidth = Math.max(1.5, size * 0.004);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, pr * 1.95, pr * 0.58, 0.25, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  const planetGrad = ctx.createLinearGradient(cx - pr, cy - pr, cx + pr, cy + pr);
+  planetGrad.addColorStop(0, pal[3]);
+  planetGrad.addColorStop(0.5, pal[2]);
+  planetGrad.addColorStop(1, '#09031a');
+  ctx.fillStyle = planetGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, pr, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Inner prism silhouette
+  ctx.strokeStyle = 'rgba(255,255,255,0.42)';
+  ctx.lineWidth = Math.max(1.5, size * 0.004);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - pr * 0.52);
+  ctx.lineTo(cx + pr * 0.48, cy + pr * 0.38);
+  ctx.lineTo(cx - pr * 0.48, cy + pr * 0.38);
+  ctx.closePath();
+  ctx.stroke();
+
+  if (!cleanCover) {
+    const safeTitle = (title || 'COSMIC WAVE').replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
+    const safeArtist = (artistName || 'ARTISTA IA').trim();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = size * 0.03;
+    ctx.font = `900 ${Math.round(size * 0.068)}px system-ui, -apple-system, sans-serif`;
+    ctx.fillText(safeTitle.slice(0, 26).toUpperCase(), cx, size * 0.83);
+    ctx.fillStyle = pal[3];
+    ctx.font = `800 ${Math.round(size * 0.04)}px system-ui, -apple-system, sans-serif`;
+    ctx.fillText(safeArtist.slice(0, 30).toUpperCase(), cx, size * 0.90);
+    ctx.shadowBlur = 0;
+  }
 }
 
 const COWBELL_SCALE_LABELS = ['OFF', 'R', 'b2', 'm3', '4', '5', 'b6', '7', '8va', 'm10', '11', '12'];
@@ -41,16 +182,37 @@ const COWBELL_SEMITONES = [0, 1, 2, 4, 6, 8, 9, 11, 13, 16, 18, 20];
 export const StudioCreateView: React.FC<Props> = ({
   tracks,
   settings,
+  mode = 'fan',
   onTrackCreated,
   onToggleTrackStatus,
   onPauseCatalogPlayer,
   onSyncSuno,
   onToast,
 }) => {
-  const [subTab, setSubTab] = useState<'suno' | 'distrokid' | 'beatmaker' | 'plan1000'>('suno');
+  const [subTab, setSubTab] = useState<'auto' | 'suno' | 'distrokid' | 'beatmaker' | 'plan1000'>('auto');
   const [dkTrackId, setDkTrackId] = useState<string>(() => tracks[0]?.id || '');
   const [exportingCover, setExportingCover] = useState(false);
   const [syncingHub, setSyncingHub] = useState(false);
+
+  // --- UNIVERSAL AUTO MODE (SUNO + LYRICS + COVER 3000x3000 + DISTROKID) ---
+  const [autoArtistName, setAutoArtistName] = useState<string>(() =>
+    mode === 'creator' ? 'LENKYX' : 'Meu Nome Artístico'
+  );
+  const [autoIdea, setAutoIdea] = useState('');
+  const [autoTheme, setAutoTheme] = useState<CosmicTheme>('space_odyssey');
+  const [autoLang, setAutoLang] = useState<LyricLanguage>('en_pt_chops');
+  const [autoCleanCover, setAutoCleanCover] = useState(true);
+  const [autoCoverSeed, setAutoCoverSeed] = useState<number>(() => Math.floor(Math.random() * 900) + 1);
+  const [autoCoverPreview, setAutoCoverPreview] = useState('');
+  const [autoExporting, setAutoExporting] = useState(false);
+  const [savedProjects, setSavedProjects] = useState<UserStudioProject[]>(() => {
+    try {
+      const raw = localStorage.getItem('lenkyx_my_studio_projects_v1');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const dkTrack = tracks.find((t) => t.id === dkTrackId) || tracks[0];
 
@@ -153,6 +315,115 @@ export const StudioCreateView: React.FC<Props> = ({
       beatEngine.stop();
     };
   }, []);
+
+  useEffect(() => {
+    try {
+      const c = document.createElement('canvas');
+      renderProceduralCoverCanvas(c, 520, genTitle, autoArtistName, autoCoverSeed, autoCleanCover);
+      setAutoCoverPreview(c.toDataURL('image/jpeg', 0.9));
+    } catch {
+      // ignore
+    }
+  }, [genTitle, autoArtistName, autoCoverSeed, autoCleanCover]);
+
+  const handleRunFullAutoPipeline = async () => {
+    const pick = AUTO_HIT_TITLES[Math.floor(Math.random() * AUTO_HIT_TITLES.length)];
+    const finalTitle = autoIdea.trim() || pick.title;
+    const finalTheme = autoIdea.trim() ? autoTheme : pick.theme;
+    const finalBpm = autoIdea.trim() ? genBpm : pick.bpm;
+    const newSeed = Math.floor(Math.random() * 9999) + 1;
+
+    setGenTitle(finalTitle);
+    setGenTheme(finalTheme);
+    setGenBpm(finalBpm);
+    setAutoCoverSeed(newSeed);
+
+    const bp = generateSunoBlueprint({
+      title: finalTitle,
+      theme: finalTheme,
+      bpm: finalBpm,
+      language: autoLang,
+      vocalStyle: genVocal,
+      energy: genEnergy,
+    });
+    setGenerated(bp);
+
+    const project: UserStudioProject = {
+      id: `proj-${Date.now().toString(36)}`,
+      title: finalTitle,
+      artistName: autoArtistName.trim() || 'Artista IA',
+      theme: finalTheme,
+      bpm: finalBpm,
+      prompt: bp.prompt,
+      lyrics: bp.lyrics,
+      coverSeed: newSeed,
+      cleanCover: autoCleanCover,
+      createdAt: new Date().toISOString(),
+    };
+    const nextList = [project, ...savedProjects].slice(0, 20);
+    setSavedProjects(nextList);
+    try {
+      localStorage.setItem('lenkyx_my_studio_projects_v1', JSON.stringify(nextList));
+    } catch {
+      // ignore
+    }
+
+    await copyTextReliable(`STYLE PROMPT:\n${bp.prompt}\n\nLYRICS:\n${bp.lyrics}`);
+    onToast(`⚡ "${finalTitle}" gerada automaticamente (Letra + Prompt Suno + Capa 3000×3000 + Kit DistroKid)!`);
+  };
+
+  const handleDownloadAutoCover3000 = async () => {
+    setAutoExporting(true);
+    try {
+      const c = document.createElement('canvas');
+      renderProceduralCoverCanvas(c, 3000, genTitle, autoArtistName, autoCoverSeed, autoCleanCover);
+      const blob = await new Promise<Blob | null>((res) => c.toBlob((b) => res(b), 'image/jpeg', 0.96));
+      if (!blob) throw new Error();
+      const slug = genTitle.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Musica_IA';
+      await downloadBlobReliable(blob, `${slug}_Capa_DistroKid_3000x3000.jpg`);
+      onToast('✅ Capa oficial 3000×3000 px RGB pronta pro DistroKid baixada!');
+    } catch {
+      onToast('Erro ao renderizar capa 3000×3000.');
+    } finally {
+      setAutoExporting(false);
+    }
+  };
+
+  const handleAutoLaunchDistroKid = async () => {
+    const cleanTitle = genTitle.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
+    const artist = autoArtistName.trim() || 'Artista IA';
+    const sheet = [
+      `=== LANÇAMENTO AUTOMÁTICO DISTROKID ===`,
+      `Artista: ${artist}`,
+      `Título da Música: ${cleanTitle}`,
+      `Idioma: ${autoLang === 'pt_br' ? 'Portuguese' : 'English'}`,
+      `Gênero Principal: Electronic`,
+      `Gênero Secundário: Hip-Hop/Rap`,
+      `BPM: ${genBpm}`,
+      `Explicit: Não`,
+      ``,
+      `=== LETRA ===`,
+      generated.lyrics,
+    ].join('\n');
+    await copyTextReliable(sheet);
+    onToast('📋 Ficha completa + Letra copiadas! Abrindo DistroKid para publicar...');
+    window.open('https://distrokid.com/new/', '_blank', 'noopener,noreferrer');
+  };
+
+  const handleAutoOpenSuno = async () => {
+    await copyTextReliable(`STYLE:\n${generated.prompt}\n\nLYRICS:\n${generated.lyrics}`);
+    onToast('🤖 Prompt + Letra copiados! Cole no Suno e baixe seu áudio WAV!');
+    window.open('https://suno.com/create', '_blank', 'noopener,noreferrer');
+  };
+
+  const handleDownloadAutoLyricsTxt = async () => {
+    const blob = new Blob([`${genTitle} — ${autoArtistName}\n\n${generated.lyrics}\n\n---\nPROMPT SUNO:\n${generated.prompt}`], {
+      type: 'text/plain;charset=utf-8',
+    });
+    const slug = genTitle.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Letra_IA';
+    await downloadBlobReliable(blob, `${slug}_Letra_e_Prompt.txt`);
+    onToast('📄 Arquivo .txt com Letra e Prompt baixado!');
+  };
 
   const handleGenerateSuno = () => {
     const bp = generateSunoBlueprint({
@@ -317,10 +588,10 @@ export const StudioCreateView: React.FC<Props> = ({
           </div>
           <div>
             <h1 className="font-display text-lg sm:text-2xl font-black text-white">
-              ESTÚDIO <span className="neon-text">FÁBRICA 1.000 MÚSICAS</span>
+              ESTÚDIO IA <span className="neon-text">SUNO × DISTROKID</span>
             </h1>
             <p className="text-xs text-purple-200/80">
-              Crie letras + prompts pro Suno, monte batidas Cosmic Phonk ao vivo e controle sua meta diária!
+              Aberto para todos! Crie músicas, letras, capas 3000×3000 px e lance no DistroKid automaticamente.
             </p>
           </div>
         </div>
@@ -328,11 +599,12 @@ export const StudioCreateView: React.FC<Props> = ({
         <div className="flex flex-wrap gap-1.5">
           {(
             [
-              ['suno', '✍️ Letras & Suno', Sparkles],
-              ['distrokid', '🚀 Hub Suno × DistroKid', Rocket],
-              ['beatmaker', '🎹 Criar Beat Aqui', Music2],
-              ['plan1000', '🎯 Meta 1.000', Target],
-            ] as const
+              ['auto', '⚡ Modo Automático'],
+              ['suno', '✍️ Letras & Suno'],
+              ['distrokid', '🚀 Hub Suno × DistroKid'],
+              ['beatmaker', '🎹 Criar Beat Aqui'],
+              ...(mode === 'creator' ? ([['plan1000', '🎯 Meta 1.000']] as const) : []),
+            ] as ReadonlyArray<readonly ['auto' | 'suno' | 'distrokid' | 'beatmaker' | 'plan1000', string]>
           ).map(([id, label]) => (
             <button
               key={id}
@@ -348,6 +620,224 @@ export const StudioCreateView: React.FC<Props> = ({
           ))}
         </div>
       </div>
+
+      {/* === SUBTAB: MODO AUTOMÁTICO 1-CLIQUE (PARA TODOS) === */}
+      {subTab === 'auto' && (
+        <div className="space-y-4">
+          <div className="rounded-3xl glass-panel border border-cyan-400/35 p-4 sm:p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1">
+                  <Bot className="w-3.5 h-3.5" /> Criação + Capa 3000×3000 + Lançamento Automático DistroKid
+                </div>
+                <h2 className="font-display text-base sm:text-xl font-black text-white">
+                  ⚡ Criar Música Completa no Automático (1 Clique)
+                </h2>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-[10px] font-black">
+                GRÁTIS · PARA TODO MUNDO
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+              {/* Controls + Prompt/Lyrics */}
+              <div className="md:col-span-7 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-cyan-300 mb-1">
+                      Seu Nome Artístico (para o DistroKid)
+                    </label>
+                    <input
+                      type="text"
+                      value={autoArtistName}
+                      onChange={(e) => setAutoArtistName(e.target.value)}
+                      placeholder="Ex: MC Estrela, DJ Galaxia..."
+                      className="w-full px-3 py-2 rounded-xl bg-black/55 border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-cyan-300 mb-1">
+                      Tema / Título (ou deixe vazio para IA sortear)
+                    </label>
+                    <input
+                      type="text"
+                      value={autoIdea}
+                      onChange={(e) => setAutoIdea(e.target.value)}
+                      placeholder="Ex: Drift na Lua, Amor Cósmico..."
+                      className="w-full px-3 py-2 rounded-xl bg-black/55 border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-pink-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-purple-200 mb-1">Estilo / Vibe</label>
+                    <select
+                      value={autoTheme}
+                      onChange={(e) => setAutoTheme(e.target.value as CosmicTheme)}
+                      className="w-full px-3 py-2 rounded-xl bg-[#0d0622] border border-purple-500/35 text-xs font-bold text-white"
+                    >
+                      <option value="space_odyssey">🚀 Odisseia Espacial / Phonk</option>
+                      <option value="drift_racing">⚡ Drift Automotivo / Velocidade</option>
+                      <option value="festival_finale">🇧🇷 Energia Festival / Dance</option>
+                      <option value="dark_nebula">🛸 Nebulosa Sombria / Trap</option>
+                      <option value="cyber_love">💜 Amor Cósmico / Melódico</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-purple-200 mb-1">Idioma da Letra</label>
+                    <select
+                      value={autoLang}
+                      onChange={(e) => setAutoLang(e.target.value as LyricLanguage)}
+                      className="w-full px-3 py-2 rounded-xl bg-[#0d0622] border border-purple-500/35 text-xs font-bold text-white"
+                    >
+                      <option value="en_pt_chops">🌎 Inglês + Chops PT (Global)</option>
+                      <option value="pt_br">🇧🇷 100% Português</option>
+                      <option value="bilingual">🔥 Bilíngue (PT + EN)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleRunFullAutoPipeline()}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500 hover:brightness-110 text-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-[0_0_28px_rgba(34,211,238,0.45)] transition active:scale-[0.99]"
+                >
+                  <Zap className="w-4 h-4" /> Gerar Música + Letra + Capa 3000×3000 + Kit DistroKid Agora!
+                </button>
+
+                {/* Generated Lyrics & Suno Prompt */}
+                <div className="rounded-2xl bg-black/45 border border-white/10 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-black text-white truncate">
+                      🎵 {genTitle} — <span className="text-cyan-300">{autoArtistName || 'Artista IA'}</span> ({genBpm} BPM)
+                    </span>
+                    <button
+                      onClick={() => void handleDownloadAutoLyricsTxt()}
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-bold text-cyan-200 flex items-center gap-1 shrink-0"
+                    >
+                      <FileText className="w-3 h-3" /> Baixar Letra .TXT
+                    </button>
+                  </div>
+                  <div className="text-[10px] font-mono text-pink-200 bg-pink-500/10 border border-pink-400/20 rounded-xl p-2 line-clamp-2">
+                    <b>Prompt Suno:</b> {generated.prompt}
+                  </div>
+                  <textarea
+                    value={generated.lyrics}
+                    onChange={(e) => setGenerated((prev) => ({ ...prev, lyrics: e.target.value }))}
+                    rows={7}
+                    className="w-full rounded-xl bg-black/55 border border-white/10 p-2.5 text-[11px] text-purple-100 leading-relaxed focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+              </div>
+
+              {/* Right: Automatic 3000x3000 DistroKid Cover + 1-Tap Launchpad */}
+              <div className="md:col-span-5 rounded-2xl bg-black/45 border border-pink-400/30 p-3.5 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-black text-pink-300">🎨 Capa Oficial 3000×3000 px</span>
+                  <button
+                    onClick={() => setAutoCoverSeed((s) => s + 13)}
+                    className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-bold text-cyan-200 flex items-center gap-1"
+                  >
+                    <Shuffle className="w-3 h-3" /> Nova Arte
+                  </button>
+                </div>
+
+                {autoCoverPreview && (
+                  <div className="relative aspect-square w-full max-w-[240px] mx-auto rounded-2xl overflow-hidden border border-cyan-400/40 shadow-[0_0_30px_rgba(236,72,153,0.3)]">
+                    <img src={autoCoverPreview} alt={genTitle} className="w-full h-full object-cover" />
+                    <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/75 text-[9px] font-black text-emerald-300 border border-emerald-400/40">
+                      3000×3000 RGB
+                    </span>
+                  </div>
+                )}
+
+                <label className="flex items-center justify-center gap-2 text-[11px] text-purple-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoCleanCover}
+                    onChange={(e) => setAutoCleanCover(e.target.checked)}
+                    className="accent-cyan-400"
+                  />
+                  Capa limpa sem texto (100% aprovada no DistroKid)
+                </label>
+
+                <div className="space-y-2">
+                  <button
+                    onClick={() => void handleAutoOpenSuno()}
+                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 hover:brightness-110 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> 1. Criar Áudio no Suno (Prompt Copiado)
+                  </button>
+                  <button
+                    onClick={() => void handleDownloadAutoCover3000()}
+                    disabled={autoExporting}
+                    className="w-full py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-pink-400/40 text-pink-100 font-black text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {autoExporting ? 'Gerando 3000×3000...' : '2. Baixar Capa 3000×3000 px (DistroKid)'}
+                  </button>
+                  <button
+                    onClick={() => void handleAutoLaunchDistroKid()}
+                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black font-black text-xs flex items-center justify-center gap-1.5 shadow"
+                  >
+                    <Rocket className="w-3.5 h-3.5" /> 3. Lançar no DistroKid (Ficha Copiada)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Saved User Creations */}
+          {savedProjects.length > 0 && (
+            <div className="rounded-3xl glass-panel border border-white/10 p-4 space-y-3">
+              <div className="text-xs font-black text-white">📚 Suas Músicas & Capas Criadas ({savedProjects.length})</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {savedProjects.map((proj) => (
+                  <div
+                    key={proj.id}
+                    className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 flex items-center justify-between gap-2"
+                  >
+                    <button
+                      onClick={() => {
+                        setGenTitle(proj.title);
+                        setAutoArtistName(proj.artistName);
+                        setGenTheme(proj.theme);
+                        setGenBpm(proj.bpm);
+                        setAutoCoverSeed(proj.coverSeed);
+                        setAutoCleanCover(proj.cleanCover);
+                        setGenerated({ prompt: proj.prompt, lyrics: proj.lyrics });
+                        onToast(`Projeto "${proj.title}" carregado!`);
+                      }}
+                      className="text-left min-w-0 flex-1"
+                    >
+                      <div className="text-xs font-black text-white truncate">{proj.title}</div>
+                      <div className="text-[10px] text-cyan-300 truncate">
+                        {proj.artistName} · {proj.bpm} BPM
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const filtered = savedProjects.filter((p) => p.id !== proj.id);
+                        setSavedProjects(filtered);
+                        try {
+                          localStorage.setItem('lenkyx_my_studio_projects_v1', JSON.stringify(filtered));
+                        } catch {
+                          // ignore
+                        }
+                      }}
+                      className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/30 text-slate-300 hover:text-rose-200"
+                      title="Remover"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* === SUBTAB: HUB SUNO x DISTROKID === */}
       {subTab === 'distrokid' && (

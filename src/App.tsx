@@ -29,7 +29,20 @@ import {
   Target,
   AudioWaveform,
   Crown,
+  Flame,
+  Smartphone,
+  Zap,
+  CheckCircle2,
+  Power,
+  ShieldOff,
+  Car,
 } from 'lucide-react';
+import {
+  clearBackgroundMediaSession,
+  prefetchVideoAudioBackup,
+  syncBackgroundMediaSession,
+} from './utils/backgroundAudioGuard';
+import { recordRankingHit } from './utils/rankingsApi';
 import {
   AppMode,
   AppSettings,
@@ -54,6 +67,9 @@ const StudioCreateView = React.lazy(() =>
 );
 const CosmicSearchView = React.lazy(() =>
   import('./components/CosmicSearchView').then((m) => ({ default: m.CosmicSearchView }))
+);
+const OfflineTravelView = React.lazy(() =>
+  import('./components/OfflineTravelView').then((m) => ({ default: m.OfflineTravelView }))
 );
 import { BassBoostLevel, MiniPlayer } from './components/MiniPlayer';
 import { LegalTermsModal } from './components/LegalTermsModal';
@@ -88,7 +104,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   pixCity: 'CAMPO GRANDE',
   pixMessage: '100% gratuito e sem anúncios! Sua doação exclusiva via PIX (PicPay) ajuda na manutenção diária do app.',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
-  apkDownloadUrl: 'https://drive.google.com/uc?id=1SsBXDSKNWQxsPqURWWavVhcjvYUJgRFI&export=download',
+  apkDownloadUrl: '/download/apk',
   youtubeUrl: '',
   sunoHandle: '@lenkyx',
   sunoProfileUrl: 'https://suno.com/@lenkyx',
@@ -129,8 +145,52 @@ export function App() {
     dailyGoalBrl: 50,
     dailyCollectedBrl: 0,
     dailyContributors: 0,
+    totalVisits: 120,
+    totalShares: 18,
+    popularityScore: 480,
+    popularityLevel: 'Em Alta',
   });
   const liveSessionIdRef = useRef<string>(getOrCreateSessionId());
+
+  // Instant 2-Second PWA Install Prompt (zero Google Drive virus warning, zero cadastro)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
+  const [installModalOpen, setInstallModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('install') === '1' && !isAndroidApk()) {
+        setInstallModalOpen(true);
+      }
+    } catch {
+      // ignore
+    }
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstantInstall = useCallback(async () => {
+    if (deferredInstallPrompt) {
+      try {
+        await deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice?.outcome === 'accepted') {
+          showToast('LENKYX instalado no seu aparelho em segundos! 🚀');
+          setDeferredInstallPrompt(null);
+          setInstallModalOpen(false);
+          return;
+        }
+      } catch {
+        // fallback to modal
+      }
+    }
+    setInstallModalOpen(true);
+  }, [deferredInstallPrompt]);
 
   // Bass Boost Web Audio nodes + Speed + Loop
   const [bassBoostLevel, setBassBoostLevel] = useState<BassBoostLevel>(0);
@@ -208,6 +268,18 @@ export function App() {
   const [musicMenuOpen, setMusicMenuOpen] = useState(false);
   const [activeVersion, setActiveVersion] = useState<AudioVersion>('v1');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [backgroundMode, setBackgroundMode] = useState(true);
+  const backgroundModeRef = useRef<boolean>(true);
+  const userPausedRef = useRef<boolean>(false);
+  const isPlayingRef = useRef<boolean>(false);
+  const bgBackupUrlRef = useRef<string>('');
+  const bgHandoffActiveRef = useRef<boolean>(false);
+  useEffect(() => {
+    backgroundModeRef.current = backgroundMode;
+  }, [backgroundMode]);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.88);
@@ -458,12 +530,14 @@ export function App() {
         setTracks(loadedTracks);
         setPlayQueue(loadedTracks);
         if (data?.settings) {
+          const rawApk = (data!.settings?.apkDownloadUrl || '').trim();
+          const safeApk = rawApk && !rawApk.includes('1SsBXDSKNWQxsPqURWWavVhcjvYUJgRFI') ? rawApk : '/download/apk';
           setSettings((prev) => ({
             ...prev,
             ...data!.settings,
             pixKey: '41651191808',
             pixKeyConfigured: true,
-            apkDownloadUrl: (data!.settings?.apkDownloadUrl || '').trim() || prev.apkDownloadUrl,
+            apkDownloadUrl: safeApk,
           }));
         }
 
@@ -502,8 +576,23 @@ export function App() {
       }
     };
     const onLoaded = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
+    const onPlay = () => {
+      setIsPlaying(true);
+      isPlayingRef.current = true;
+    };
+    const onPause = () => {
+      if (document.hidden && !userPausedRef.current && backgroundModeRef.current && audio.src && !audio.ended) {
+        window.setTimeout(() => {
+          if (!userPausedRef.current && backgroundModeRef.current && audio.paused && audio.src) {
+            void bassAudioCtxRef.current?.resume().catch(() => {});
+            void audio.play().catch(() => {});
+          }
+        }, 120);
+        return;
+      }
+      setIsPlaying(false);
+      isPlayingRef.current = false;
+    };
 
     audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('loadedmetadata', onLoaded);
@@ -585,14 +674,67 @@ export function App() {
           onStateChange: (ev: { data: number }) => {
             if (!currentTrackRef.current?.youtubeVideoId) return;
             if (ev.data === 1) {
+              bgHandoffActiveRef.current = false;
               setIsPlaying(true);
+              isPlayingRef.current = true;
               const dur = ytPlayerRef.current?.getDuration?.() || 0;
               if (dur > 0) setDuration(dur);
               if (clipQualityRef.current !== 'default') {
                 ytPlayerRef.current?.setPlaybackQuality?.(clipQualityRef.current);
               }
             } else if (ev.data === 2) {
-              setIsPlaying(false);
+              if (document.hidden && !userPausedRef.current && backgroundModeRef.current && !bgHandoffActiveRef.current) {
+                // Browser/OS paused video on screen lock or minimize — try keeping video alive first, then handoff to audio!
+                ytPlayerRef.current?.playVideo?.();
+                void bassAudioCtxRef.current?.resume().catch(() => {});
+                window.setTimeout(() => {
+                  if (
+                    document.hidden &&
+                    !userPausedRef.current &&
+                    backgroundModeRef.current &&
+                    ytPlayerRef.current?.getPlayerState?.() !== 1
+                  ) {
+                    const backupUrl = bgBackupUrlRef.current;
+                    const audio = audioRef.current;
+                    if (backupUrl && audio && currentTrackRef.current?.youtubeVideoId) {
+                      bgHandoffActiveRef.current = true;
+                      const ct = ytPlayerRef.current?.getCurrentTime?.() || 0;
+                      const proxied = backupUrl.startsWith('https://')
+                        ? `/api/audio-proxy?url=${encodeURIComponent(backupUrl)}`
+                        : backupUrl;
+                      audio.src = proxied;
+                      audio.volume = volume;
+                      audio.muted = muted;
+                      audio.playbackRate = playbackSpeed;
+                      audio.loop = loopTrackRef.current;
+                      audio.load();
+                      if (ct > 1 && ct < 180) {
+                        audio.addEventListener(
+                          'loadedmetadata',
+                          () => {
+                            try {
+                              if (Number.isFinite(audio.duration) && ct < audio.duration - 2) {
+                                audio.currentTime = ct;
+                              }
+                            } catch {
+                              // ignore
+                            }
+                          },
+                          { once: true }
+                        );
+                      }
+                      void audio.play().catch(() => {});
+                      setIsPlaying(true);
+                      isPlayingRef.current = true;
+                    }
+                  }
+                }, 480);
+                return;
+              }
+              if (!bgHandoffActiveRef.current) {
+                setIsPlaying(false);
+                isPlayingRef.current = false;
+              }
             } else if (ev.data === 0) {
               setIsPlaying(false);
               const list = playQueueRef.current.length ? playQueueRef.current : tracks;
@@ -789,6 +931,8 @@ export function App() {
     async (track: Track, requestedVersion?: AudioVersion, customQueue?: Track[]) => {
       const audio = audioRef.current;
       if (!audio) return;
+      userPausedRef.current = false;
+      bgHandoffActiveRef.current = false;
       setMusicMenuOpen(true);
 
       if (track.source === 'world_full' || track.source === 'world_preview') {
@@ -804,18 +948,22 @@ export function App() {
       const finalVersion: AudioVersion = targetVersion === 'v2' && track.audioUrlV2 ? 'v2' : 'v1';
 
       if (currentTrack?.id === track.id && activeVersion === finalVersion && !requestedVersion) {
-        if (track.youtubeVideoId && !track.audioUrl) {
+        if (track.youtubeVideoId && !track.audioUrl && !bgHandoffActiveRef.current) {
           const st = ytPlayerRef.current?.getPlayerState?.();
           if (st === 1) {
+            userPausedRef.current = true;
             ytPlayerRef.current?.pauseVideo?.();
           } else {
+            userPausedRef.current = false;
             ytPlayerRef.current?.playVideo?.();
           }
           return;
         }
         if (audio.paused) {
+          userPausedRef.current = false;
           await audio.play().catch(() => {});
         } else {
+          userPausedRef.current = true;
           audio.pause();
         }
         return;
@@ -824,6 +972,28 @@ export function App() {
       setCurrentTrack(track);
       currentTrackRef.current = track;
       setActiveVersion(finalVersion);
+      bgBackupUrlRef.current = '';
+
+      if (track.artist) {
+        void recordRankingHit({
+          kind: 'artist',
+          name: track.artist,
+          photoUrl: track.coverUrl,
+          genre: track.genre || track.album,
+        });
+      }
+      if (track.youtubeVideoId) {
+        void recordRankingHit({
+          kind: 'video',
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          coverUrl: track.coverUrl,
+          youtubeVideoId: track.youtubeVideoId,
+          audioUrl: track.audioUrl,
+          durationSec: track.durationSec,
+        });
+      }
 
       if (track.youtubeVideoId && !track.audioUrl) {
         audio.pause();
@@ -831,6 +1001,11 @@ export function App() {
         setIsPlayingFromOffline(false);
         setCurrentTime(0);
         setDuration(track.durationSec || 0);
+        void prefetchVideoAudioBackup(track.title, track.artist).then((backupUrl) => {
+          if (backupUrl && currentTrackRef.current?.id === track.id) {
+            bgBackupUrlRef.current = backupUrl;
+          }
+        });
         if (ytPlayerRef.current?.loadVideoById) {
           ytPlayerRef.current.setVolume?.(muted ? 0 : Math.round(volume * 100));
           const q = clipTheaterOpenRef.current ? clipQualityRef.current : 'medium';
@@ -838,6 +1013,7 @@ export function App() {
             q !== 'default' ? { videoId: track.youtubeVideoId, suggestedQuality: q } : track.youtubeVideoId
           );
           setIsPlaying(true);
+          isPlayingRef.current = true;
         } else {
           ytPendingVideoRef.current = track.youtubeVideoId;
         }
@@ -982,11 +1158,13 @@ export function App() {
 
   const handleTogglePlay = async () => {
     if (!currentTrack) return;
-    if (currentTrack.youtubeVideoId && !currentTrack.audioUrl) {
+    if (currentTrack.youtubeVideoId && !currentTrack.audioUrl && !bgHandoffActiveRef.current) {
       const st = ytPlayerRef.current?.getPlayerState?.();
       if (st === 1) {
+        userPausedRef.current = true;
         ytPlayerRef.current?.pauseVideo?.();
       } else {
+        userPausedRef.current = false;
         ytPlayerRef.current?.playVideo?.();
       }
       return;
@@ -994,15 +1172,80 @@ export function App() {
     const audio = audioRef.current;
     if (!audio) return;
     if (!audio.src) {
+      userPausedRef.current = false;
       await handlePlayTrack(currentTrack, activeVersion);
       return;
     }
     if (audio.paused) {
+      userPausedRef.current = false;
       await audio.play().catch(() => {});
     } else {
+      userPausedRef.current = true;
       audio.pause();
     }
   };
+
+  // Botão de Segurança: Só para tudo de verdade quando o usuário clicar em Sair/Parar Tudo ou fechar o site
+  const handleEmergencyStop = useCallback(() => {
+    userPausedRef.current = true;
+    bgHandoffActiveRef.current = false;
+    isPlayingRef.current = false;
+    try {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.removeAttribute('src');
+      }
+      ytPlayerRef.current?.stopVideo?.();
+      ytPlayerRef.current?.pauseVideo?.();
+    } catch {
+      // ignore
+    }
+    setIsPlaying(false);
+    setClipTheaterOpen(false);
+    setMusicMenuOpen(false);
+    setWatchingMovie(false);
+    clearBackgroundMediaSession();
+    showToast('🔒 Áudio, vídeo e segundo plano encerrados com segurança!');
+  }, [showToast]);
+
+  // Keep Audio & Video Alive when Minimizing / Locking Phone Screen (ONLY stop on Safety Stop or closing the site)
+  useEffect(() => {
+    const onVisChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (!userPausedRef.current && isPlayingRef.current && backgroundModeRef.current) {
+          void bassAudioCtxRef.current?.resume().catch(() => {});
+          if (audioRef.current?.src && audioRef.current.paused) {
+            void audioRef.current.play().catch(() => {});
+          }
+          if (currentTrackRef.current?.youtubeVideoId && !currentTrackRef.current.audioUrl) {
+            ytPlayerRef.current?.playVideo?.();
+          }
+        }
+      } else if (document.visibilityState === 'visible') {
+        if (!userPausedRef.current && isPlayingRef.current) {
+          void bassAudioCtxRef.current?.resume().catch(() => {});
+        }
+      }
+    };
+    const onBeforeUnload = () => {
+      userPausedRef.current = true;
+      try {
+        audioRef.current?.pause();
+        ytPlayerRef.current?.stopVideo?.();
+      } catch {
+        // ignore
+      }
+      clearBackgroundMediaSession();
+    };
+    document.addEventListener('visibilitychange', onVisChange);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisChange);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+    };
+  }, []);
 
   const handlePrevNext = useCallback(
     (dir: -1 | 1) => {
@@ -1016,41 +1259,35 @@ export function App() {
     [tracks, currentTrack, handlePlayTrack]
   );
 
-  // MediaSession + Android Bridge
+  // Universal MediaSession + Lock-Screen Controls + Android Foreground Service
   useEffect(() => {
     if (!currentTrack) return;
-    try {
-      window.AndroidBridge?.updateMediaState?.(
-        `${currentTrack.emoji ? currentTrack.emoji + ' ' : ''}${currentTrack.title}`,
-        currentTrack.artist || 'LENKYX',
-        currentTrack.album || 'Cosmic Phonk',
-        isPlaying
-      );
-    } catch {
-      // ignore
-    }
-    if ('mediaSession' in navigator) {
-      try {
-        const absCover = new URL(currentTrack.coverUrl || '/covers/album-official.jpg', window.location.origin).href;
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: currentTrack.title,
-          artist: currentTrack.artist || 'LENKYX',
-          album: currentTrack.album || 'Cosmic Phonk',
-          artwork: [
-            { src: absCover, sizes: '512x512', type: 'image/jpeg' },
-            { src: absCover, sizes: '1024x1024', type: 'image/jpeg' },
-          ],
-        });
-        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-        navigator.mediaSession.setActionHandler('play', () => void handleTogglePlay());
-        navigator.mediaSession.setActionHandler('pause', () => void handleTogglePlay());
-        navigator.mediaSession.setActionHandler('previoustrack', () => handlePrevNext(-1));
-        navigator.mediaSession.setActionHandler('nexttrack', () => handlePrevNext(1));
-      } catch {
-        // ignore
+    syncBackgroundMediaSession(
+      {
+        title: `${currentTrack.emoji ? currentTrack.emoji + ' ' : ''}${currentTrack.title}`,
+        artist: currentTrack.artist || 'LENKYX',
+        album: currentTrack.album || 'Cosmic Phonk',
+        artworkUrl: currentTrack.coverUrl,
+        duration,
+        currentTime,
+        isPlaying,
+      },
+      {
+        onPlay: () => {
+          userPausedRef.current = false;
+          void handleTogglePlay();
+        },
+        onPause: () => {
+          userPausedRef.current = true;
+          void handleTogglePlay();
+        },
+        onPrev: () => handlePrevNext(-1),
+        onNext: () => handlePrevNext(1),
+        onStop: () => handleEmergencyStop(),
+        onSeek: (sec) => handleSeek(sec),
       }
-    }
-  }, [currentTrack, isPlaying, handlePrevNext]);
+    );
+  }, [currentTrack, isPlaying, duration, handlePrevNext, handleEmergencyStop]);
 
   useEffect(() => {
     window.__lenkyxMediaAction = (action) => {
@@ -1341,6 +1578,7 @@ export function App() {
     { id: 'explore', label: 'Artistas & Clipes', icon: <Globe2 className="w-4 h-4" /> },
     { id: 'movies', label: 'Cinema & Séries', icon: <Clapperboard className="w-4 h-4" /> },
     { id: 'sports', label: 'Futebol & UFC', icon: <Trophy className="w-4 h-4" /> },
+    { id: 'offline', label: 'Viagem & Offline', icon: <Car className="w-4 h-4" /> },
     { id: 'search', label: 'Busca Rápida', icon: <Search className="w-4 h-4" /> },
     { id: 'playlists', label: 'Minhas Playlists', icon: <ListMusic className="w-4 h-4" /> },
   ];
@@ -1411,24 +1649,22 @@ export function App() {
             })}
           </nav>
 
-          {mode === 'creator' && (
-            <div className="space-y-1 pt-2 border-t border-white/[0.07]">
-              <div className="px-3 text-[9px] font-extrabold uppercase tracking-[0.2em] text-amber-300/80 mb-1">
-                Estúdio Criador
-              </div>
-              <button
-                onClick={() => navigateTab('studio')}
-                className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
-                  activeTab === 'studio'
-                    ? 'bg-cyan-500/20 text-white border border-cyan-400/40'
-                    : 'text-slate-300/80 hover:text-white hover:bg-white/[0.05]'
-                }`}
-              >
-                <Wand2 className="w-4 h-4 text-cyan-300" />
-                <span>Suno × DistroKid</span>
-              </button>
+          <div className="space-y-1 pt-2 border-t border-white/[0.07]">
+            <div className="px-3 text-[9px] font-extrabold uppercase tracking-[0.2em] text-cyan-300/85 mb-1">
+              Criar & Lançar (Grátis)
             </div>
-          )}
+            <button
+              onClick={() => navigateTab('studio')}
+              className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
+                activeTab === 'studio'
+                  ? 'bg-gradient-to-r from-cyan-500/25 to-pink-500/20 text-white border border-cyan-400/45'
+                  : 'text-slate-200 hover:text-white hover:bg-white/[0.06]'
+              }`}
+            >
+              <Wand2 className="w-4 h-4 text-cyan-300" />
+              <span>Criar Música · Suno×DistroKid</span>
+            </button>
+          </div>
 
           {/* Playlists Quick List */}
           <div className="space-y-1 pt-2 border-t border-white/[0.07]">
@@ -1510,14 +1746,13 @@ export function App() {
           </div>
 
           {!isAndroidApk() && (
-            <a
-              href={settings.apkDownloadUrl || '/download/apk'}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => void handleInstantInstall()}
               className="w-full py-2 px-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black flex items-center justify-center gap-1 shadow transition"
             >
-              <Rocket className="w-3.5 h-3.5" /> Baixar App Android
-            </a>
+              <Zap className="w-3.5 h-3.5" /> Instalar App (2s)
+            </button>
           )}
 
           {mode === 'creator' && (
@@ -1658,6 +1893,17 @@ export function App() {
 
           {/* Right Compact Controls */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {(isPlaying || currentTrack) && (
+              <button
+                type="button"
+                onClick={handleEmergencyStop}
+                className="px-2.5 py-1.5 rounded-full bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/50 text-rose-200 text-[10px] sm:text-[11px] font-black flex items-center gap-1 shrink-0 transition shadow-[0_0_15px_rgba(244,63,94,0.28)]"
+                title="Botão de Segurança: Parar som, vídeo e segundo plano imediatamente"
+              >
+                <Power className="w-3.5 h-3.5 text-rose-300" />
+                <span className="hidden sm:inline">Parar Tudo</span>
+              </button>
+            )}
             <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.07] border border-white/10">
               <button
                 onClick={handleToggleMute}
@@ -1785,6 +2031,20 @@ export function App() {
                       : 'Ranking & Bonequinhos 👾'}
                   </span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShareTrack(null);
+                    setShareOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/15 hover:bg-orange-500/30 border border-orange-400/35 text-[11px] font-black text-orange-200 transition"
+                >
+                  <Flame className="w-3.5 h-3.5 text-orange-400" />
+                  <span>
+                    {liveStats.popularityLevel || 'Em Alta'} · {Number(liveStats.popularityScore || 480).toLocaleString('pt-BR')} pts
+                  </span>
+                </button>
               </div>
 
               <button
@@ -1864,6 +2124,7 @@ export function App() {
                       setPixInitialTab('donate');
                       setPixOpen(true);
                     }}
+                    onInstallApp={() => void handleInstantInstall()}
                     onAddToPlaylist={addTrackToPlaylist}
                     onToggleOffline={(t) => void handleToggleOffline(t)}
                     onDownloadAllOffline={() => void handleDownloadAllOffline()}
@@ -1929,6 +2190,7 @@ export function App() {
                         setPixInitialTab('donate');
                         setPixOpen(true);
                       }}
+                      onEmergencyStop={handleEmergencyStop}
                       initialMovie={pendingMovie}
                       onConsumeInitialMovie={() => setPendingMovie(null)}
                     />
@@ -1946,6 +2208,7 @@ export function App() {
                         setPixInitialTab('donate');
                         setPixOpen(true);
                       }}
+                      onEmergencyStop={handleEmergencyStop}
                     />
                   )}
 
@@ -1965,10 +2228,23 @@ export function App() {
                     />
                   )}
 
-                  {activeTab === 'studio' && mode === 'creator' && (
+                  {activeTab === 'offline' && (
+                    <OfflineTravelView
+                      currentTrack={currentTrack}
+                      isPlaying={isPlaying}
+                      offlineTrackIds={offlineTrackIds}
+                      onRefreshOfflineIds={() => setOfflineTrackIds(getOfflineTrackIds())}
+                      onPlayTrack={(t, q) => void handlePlayTrack(t, 'v1', q)}
+                      onPauseMusic={pauseCatalogPlayer}
+                      onToast={showToast}
+                    />
+                  )}
+
+                  {activeTab === 'studio' && (
                     <StudioCreateView
                       tracks={tracks}
                       settings={settings}
+                      mode={mode}
                       onTrackCreated={handleTrackSaved}
                       onToggleTrackStatus={handleToggleStatus}
                       onPauseCatalogPlayer={pauseCatalogPlayer}
@@ -1999,6 +2275,19 @@ export function App() {
           bassBoostLevel={bassBoostLevel}
           playbackSpeed={playbackSpeed}
           loopTrack={loopTrack}
+          backgroundMode={backgroundMode}
+          onToggleBackgroundMode={() => {
+            setBackgroundMode((prev) => {
+              const next = !prev;
+              showToast(
+                next
+                  ? '🔋 Modo Tela Apagada ATIVO: continua tocando com o celular bloqueado ou minimizado!'
+                  : 'Modo Tela Apagada desativado'
+              );
+              return next;
+            });
+          }}
+          onEmergencyStop={handleEmergencyStop}
           onCycleBassBoost={handleCycleBassBoost}
           onSetBassBoostLevel={handleSetBassBoostLevel}
           onCycleSpeed={handleCycleSpeed}
@@ -2036,14 +2325,15 @@ export function App() {
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}
       {!watchingMovie && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-6 px-0.5">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-7 px-0.5">
           {(
             [
               { id: 'catalog' as TabId, label: 'Som', icon: <Music className="w-4 h-4" /> },
               { id: 'explore' as TabId, label: 'Clipes', icon: <Globe2 className="w-4 h-4" /> },
               { id: 'movies' as TabId, label: 'Cinema', icon: <Clapperboard className="w-4 h-4" /> },
               { id: 'sports' as TabId, label: 'Ao Vivo', icon: <Trophy className="w-4 h-4" /> },
-              { id: 'search' as TabId, label: 'Buscar', icon: <Search className="w-4 h-4" /> },
+              { id: 'offline' as TabId, label: 'Offline', icon: <Car className="w-4 h-4" /> },
+              { id: 'studio' as TabId, label: 'Criar IA', icon: <Wand2 className="w-4 h-4" /> },
               { id: 'playlists' as TabId, label: 'Listas', icon: <ListMusic className="w-4 h-4" /> },
             ] as { id: TabId; label: string; icon: React.ReactNode }[]
           ).map((item) => {
@@ -2082,11 +2372,91 @@ export function App() {
         track={shareTrack}
         settings={settings}
         mode={mode}
+        liveStats={liveStats}
+        onStatsUpdate={(st) => setLiveStats(st)}
         onSaveSettings={handleSaveSettings}
-        onOpenSpaceDownload={() => {}}
+        onOpenInstallApp={() => void handleInstantInstall()}
         onToast={showToast}
       />
       <LegalTermsModal open={legalOpen} onClose={() => setLegalOpen(false)} />
+
+      {/* INSTANT 2-SECOND APP INSTALL MODAL (No Google Drive virus screen, No login/cadastro) */}
+      {installModalOpen && (
+        <div
+          onClick={() => setInstallModalOpen(false)}
+          className="fixed inset-0 z-[9996] bg-black/85 backdrop-blur-lg flex items-center justify-center p-3 overflow-y-auto"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-3xl border border-emerald-400/40 bg-[#080417] shadow-[0_0_70px_rgba(16,185,129,0.28)] overflow-hidden"
+          >
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500" />
+            <div className="p-5 space-y-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-400 p-[2px] shrink-0">
+                    <img src="/covers/avatar.jpg" alt="LENKYX" className="w-full h-full rounded-[14px] object-cover" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base font-black text-white">Instalar App LENKYX (2s)</h3>
+                    <p className="text-[11px] text-emerald-300 font-semibold">
+                      100% Direto · Sem Cadastro · Sem Aviso de Vírus
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setInstallModalOpen(false)}
+                  className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-purple-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/30 p-3.5 space-y-2 text-xs text-slate-100">
+                <div className="font-black text-emerald-300 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4" /> Por que instalar assim é instantâneo?
+                </div>
+                <ul className="space-y-1 text-[11px] text-purple-100/90 leading-relaxed">
+                  <li>⚡ Instala em <strong>2 segundos</strong> direto na tela inicial do celular ou PC.</li>
+                  <li>🔓 <strong>Nunca pede cadastro/login</strong> e nunca baixa arquivo pesado do Drive.</li>
+                  <li>🚀 Sempre atualizado automaticamente com músicas, clipes, filmes e arena ao vivo.</li>
+                </ul>
+              </div>
+
+              {deferredInstallPrompt ? (
+                <button
+                  onClick={() => void handleInstantInstall()}
+                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(52,211,153,0.45)]"
+                >
+                  <Zap className="w-4 h-4" /> Instalar Agora em 1 Toque
+                </button>
+              ) : (
+                <div className="space-y-2.5 text-xs">
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-1">
+                    <div className="font-black text-cyan-300 flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5" /> No Android (Chrome / Edge / Samsung)
+                    </div>
+                    <p className="text-[11px] text-slate-200 leading-relaxed">
+                      Toque nos <strong>3 pontinhos (⋮)</strong> no canto superior do navegador e toque em{' '}
+                      <strong className="text-emerald-300">"Instalar aplicativo"</strong> ou{' '}
+                      <strong className="text-emerald-300">"Adicionar à tela inicial"</strong>. Pronto em 2s!
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-1">
+                    <div className="font-black text-pink-300 flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5" /> No iPhone / iPad (Safari)
+                    </div>
+                    <p className="text-[11px] text-slate-200 leading-relaxed">
+                      Toque no botão <strong>Compartilhar (↑)</strong> na barra inferior e escolha{' '}
+                      <strong className="text-pink-300">"Adicionar à Tela de Início"</strong>.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* STARTUP CINEMATIC INTRO + AUTO-UPDATE CHECK + PIX SUPPORT APPEAL */}
       <CosmicGtaLoader
@@ -2220,11 +2590,19 @@ export function App() {
                 </button>
                 <button
                   onClick={() => setClipTheaterOpen(false)}
-                  className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-bold text-purple-100 flex items-center gap-1"
-                  title="Ouvir em segundo plano"
+                  className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/35 text-[11px] font-bold text-emerald-200 flex items-center gap-1"
+                  title="Minimizar e continuar tocando com a tela apagada"
                 >
                   <Minimize2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Só Som</span>
+                  <span className="hidden sm:inline">Tela Apagada</span>
+                </button>
+                <button
+                  onClick={handleEmergencyStop}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/45 border border-rose-400/50 text-[11px] font-black text-rose-100 flex items-center gap-1"
+                  title="Botão de Segurança: Parar som, vídeo e segundo plano"
+                >
+                  <ShieldOff className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Parar Tudo</span>
                 </button>
                 <button
                   onClick={() => setClipTheaterOpen(false)}

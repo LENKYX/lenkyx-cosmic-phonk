@@ -199,3 +199,195 @@ export async function resolvePlayableAudioUrl(
   const remoteUrl = version === 'v2' && track.audioUrlV2 ? track.audioUrlV2 : track.audioUrl;
   return { url: remoteUrl, fromOffline: false };
 }
+
+// === OFFLINE TRAVEL GENRE FOLDERS (UP TO 500 PER GENRE · MUSIC + VIDEO + LOCAL FILES) ===
+const OFFLINE_FOLDERS_KEY = 'lenkyx_offline_folders_v1';
+
+export interface OfflineFolderMeta {
+  id: string;
+  title: string;
+  emoji: string;
+  description: string;
+  mediaKind: 'audio' | 'video';
+  accent: string;
+}
+
+export interface OfflineMediaItem extends Track {
+  mediaKind?: 'audio' | 'video';
+  videoUrl?: string;
+}
+
+export interface SavedOfflineFolderState {
+  folder: OfflineFolderMeta;
+  items: OfflineMediaItem[];
+  savedIds: string[];
+  updatedAt: string;
+}
+
+export const DEFAULT_OFFLINE_FOLDERS: OfflineFolderMeta[] = [
+  { id: 'phonk', title: 'Phonk & Drift Automotivo', emoji: '⚡', description: 'Graves pesados e cowbells pra viagem sem internet', mediaKind: 'audio', accent: 'from-pink-500 to-purple-600' },
+  { id: 'funk_brasil', title: 'Funk, Dance & Pancadão', emoji: '🇧🇷', description: 'Batidão brasileiro pra animar a estrada', mediaKind: 'audio', accent: 'from-emerald-400 to-cyan-500' },
+  { id: 'electronic', title: 'Eletrônica, House & Bass', emoji: '🎧', description: 'Sets eletrônicos e bass house completos offline', mediaKind: 'audio', accent: 'from-cyan-400 to-blue-600' },
+  { id: 'hiphop_trap', title: 'Trap, Rap & Hip-Hop', emoji: '🔥', description: 'Beats de trap e rap mundial offline', mediaKind: 'audio', accent: 'from-orange-400 to-rose-600' },
+  { id: 'sertanejo_country', title: 'Sertanejo, Country & Estrada', emoji: '🤠', description: 'Viola, country e modão pra rodovia', mediaKind: 'audio', accent: 'from-amber-400 to-orange-600' },
+  { id: 'rock_classics', title: 'Rock, Metal & Clássicos', emoji: '🎸', description: 'Guitarras pesadas e rock clássico offline', mediaKind: 'audio', accent: 'from-rose-500 to-red-700' },
+  { id: 'lofi_chill', title: 'Lo-Fi, Synthwave & Noite', emoji: '🌙', description: 'Vibe relaxante pra dirigir à noite', mediaKind: 'audio', accent: 'from-indigo-400 to-violet-600' },
+  { id: 'gospel_peace', title: 'Gospel, Louvor & Paz', emoji: '🙏', description: 'Louvores e paz pra toda a família', mediaKind: 'audio', accent: 'from-sky-400 to-teal-500' },
+  { id: 'suno_ai', title: 'Músicas IA (Suno Mundial)', emoji: '🤖', description: 'Faixas futuristas de IA prontas pro modo viagem', mediaKind: 'audio', accent: 'from-fuchsia-500 to-cyan-400' },
+  { id: 'videos_offline', title: 'Vídeos & Clipes Offline (MP4)', emoji: '🎬', description: 'Clipes e animações em MP4 pra assistir sem internet', mediaKind: 'video', accent: 'from-rose-500 to-amber-500' },
+];
+
+export function loadSavedOfflineFolders(): Record<string, SavedOfflineFolderState> {
+  try {
+    const raw = localStorage.getItem(OFFLINE_FOLDERS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, SavedOfflineFolderState>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveOfflineFoldersMap(map: Record<string, SavedOfflineFolderState>): void {
+  try {
+    localStorage.setItem(OFFLINE_FOLDERS_KEY, JSON.stringify(map));
+  } catch {
+    // ignore storage limit
+  }
+}
+
+export function upsertOfflineFolderItems(folder: OfflineFolderMeta, items: OfflineMediaItem[], markSavedId?: string): SavedOfflineFolderState {
+  const all = loadSavedOfflineFolders();
+  const prev = all[folder.id];
+  const mergedMap = new Map<string, OfflineMediaItem>();
+  for (const it of prev?.items || []) mergedMap.set(it.id, it);
+  for (const it of items) mergedMap.set(it.id, it);
+  const savedSet = new Set<string>(prev?.savedIds || []);
+  if (markSavedId) savedSet.add(markSavedId);
+
+  const nextState: SavedOfflineFolderState = {
+    folder,
+    items: Array.from(mergedMap.values()).slice(0, 500),
+    savedIds: Array.from(savedSet),
+    updatedAt: new Date().toISOString(),
+  };
+  all[folder.id] = nextState;
+  saveOfflineFoldersMap(all);
+  return nextState;
+}
+
+export async function downloadVideoOffline(item: OfflineMediaItem): Promise<OfflineEntry> {
+  const src = item.videoUrl || item.audioUrl;
+  if (!src) throw new Error('Vídeo sem URL');
+  const blob = await fetchMediaBlob(src);
+  await idbPut(`video-${item.id}`, blob);
+  activeBlobUrls.set(`video-${item.id}`, URL.createObjectURL(blob));
+
+  let totalBytes = blob.size;
+  if (item.coverUrl) {
+    try {
+      const cr = await fetch(item.coverUrl);
+      if (cr.ok) {
+        const cb = await cr.blob();
+        await idbPut(`cover-${item.id}`, cb);
+        totalBytes += cb.size;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  const map = loadOfflineMap();
+  const entry: OfflineEntry = {
+    trackId: item.id,
+    hasV1: true,
+    hasV2: false,
+    bytes: totalBytes,
+    downloadedAt: new Date().toISOString(),
+  };
+  map[item.id] = entry;
+  saveOfflineMap(map);
+  return entry;
+}
+
+export async function resolvePlayableVideoUrl(item: OfflineMediaItem): Promise<{ url: string; fromOffline: boolean }> {
+  const key = `video-${item.id}`;
+  if (activeBlobUrls.has(key)) {
+    return { url: activeBlobUrls.get(key)!, fromOffline: true };
+  }
+  try {
+    const blob = await idbGet(key);
+    if (blob && blob.size > 1024) {
+      const u = URL.createObjectURL(blob);
+      activeBlobUrls.set(key, u);
+      return { url: u, fromOffline: true };
+    }
+  } catch {
+    // ignore
+  }
+  const remote = item.videoUrl || item.audioUrl || '';
+  if (remote.startsWith('https://')) {
+    const proxyBase = isAndroidApk() ? 'https://lenkyx-cosmic-phonk.onrender.com' : '';
+    return { url: `${proxyBase}/api/audio-proxy?url=${encodeURIComponent(remote)}`, fromOffline: false };
+  }
+  return { url: remote, fromOffline: false };
+}
+
+export async function importLocalMediaToFolder(
+  folder: OfflineFolderMeta,
+  files: FileList
+): Promise<OfflineMediaItem[]> {
+  const imported: OfflineMediaItem[] = [];
+  const map = loadOfflineMap();
+
+  for (const file of Array.from(files)) {
+    const isVid = file.type.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/i.test(file.name);
+    const id = `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    const cleanName = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
+
+    if (isVid) {
+      await idbPut(`video-${id}`, file);
+      activeBlobUrls.set(`video-${id}`, URL.createObjectURL(file));
+    } else {
+      await idbPut(`audio-${id}-v1`, file);
+      activeBlobUrls.set(`audio-${id}-v1`, URL.createObjectURL(file));
+    }
+
+    map[id] = {
+      trackId: id,
+      hasV1: true,
+      hasV2: false,
+      bytes: file.size,
+      downloadedAt: new Date().toISOString(),
+    };
+
+    const item: OfflineMediaItem = {
+      id,
+      number: imported.length + 1,
+      title: cleanName || 'Arquivo Local',
+      emoji: isVid ? '🎬' : '🎵',
+      artist: 'Meu Aparelho (Offline)',
+      album: folder.title,
+      genre: folder.title,
+      bpm: 128,
+      key: 'Am',
+      coverUrl: '/covers/album-official.jpg',
+      audioUrl: '',
+      videoUrl: isVid ? 'local' : undefined,
+      mediaKind: isVid ? 'video' : 'audio',
+      durationSec: 180,
+      plays: 0,
+      likes: 0,
+      favorite: false,
+      releaseBatch: 1,
+      sunoPrompt: '',
+      lyrics: '',
+      createdAt: new Date().toISOString(),
+      status: { suno: false, cover: true, app: true, youtube: false, distrokid: false },
+      source: 'lenkyx',
+    };
+    imported.push(item);
+    upsertOfflineFolderItems(folder, [item], id);
+  }
+
+  saveOfflineMap(map);
+  return imported;
+}
+

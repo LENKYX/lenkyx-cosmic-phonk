@@ -25,6 +25,10 @@ import {
   searchWorldShorts,
   getFamousArtistsWithPhotos,
   getWorldNewReleases,
+  resolveBackgroundAudioStream,
+  getSunoDiscoverHub,
+  OFFLINE_GENRE_FOLDERS,
+  getOfflineGenrePack,
   CURATED_PLAYLISTS,
 } from './musicAI.js';
 import { getMoviesDirectory, searchMovies, getSeriesSeasonsAndEpisodes } from './moviesAI.js';
@@ -673,6 +677,50 @@ app.get('/api/artist-photo', async (req, res) => {
   }
 });
 
+app.get('/api/offline-folders', (_req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.json({
+    maxPerFolder: 500,
+    folders: OFFLINE_GENRE_FOLDERS,
+  });
+});
+
+app.get('/api/offline-folders/:id', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const id = String(req.params.id || 'phonk');
+  const limit = Number(req.query.limit || 100);
+  try {
+    const db = readDb();
+    const pack = await getOfflineGenrePack(id, limit, db.tracks || []);
+    res.json(pack);
+  } catch {
+    res.status(500).json({ error: 'Falha ao montar pasta offline.' });
+  }
+});
+
+app.get('/api/suno-artists', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  try {
+    const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+    const data = await getSunoDiscoverHub(refresh);
+    res.json(data);
+  } catch {
+    res.json({ updatedAt: new Date().toISOString(), artists: [], tracks: [] });
+  }
+});
+
+app.get('/api/world-audio-fallback', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const title = String(req.query.title || '').trim();
+  const artist = String(req.query.artist || '').trim();
+  try {
+    const info = await resolveBackgroundAudioStream(title, artist);
+    res.json(info);
+  } catch {
+    res.json({ audioUrl: '', title, artist });
+  }
+});
+
 app.get('/api/world-search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   const space = req.query.space === '1' || req.query.space === 'true';
@@ -795,13 +843,32 @@ app.get('/api/sports-search', async (req, res) => {
   }
 });
 
-// === REAL-TIME ONLINE LISTENERS + DAILY PIX GOAL + SUPPORTER RANKING & ALIEN MASCOTS ===
+// === REAL-TIME ONLINE LISTENERS + DAILY PIX GOAL + APP POPULARITY + SUPPORTER RANKING & ALIEN MASCOTS ===
 const LIVE_STATS_PATH = path.join(DATA_DIR, 'live-stats.json');
 const activeListenerSessions = new Map(); // sessionId -> { ts, activity }
+const seenVisitorSessions = new Set();
 const LISTENER_TTL_MS = 180 * 1000; // 3 min heartbeat window
 
 function getTodayBrtKey() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+}
+
+function computePopularityMeta(store, onlineCount = 1) {
+  const visits = Math.max(1, Number(store.totalVisits || 0));
+  const shares = Math.max(0, Number(store.totalShares || 0));
+  const contributors = Math.max(0, Number(store.dailyContributors || 0));
+  const score = visits * 4 + shares * 25 + contributors * 35 + Math.max(1, onlineCount) * 8;
+  let level = 'Radar Cósmico';
+  if (score >= 5000) level = 'Super Nova LENKYX';
+  else if (score >= 2000) level = 'Fenômeno Viral';
+  else if (score >= 700) level = 'Tendência Brasil';
+  else if (score >= 150) level = 'Em Alta';
+  return {
+    totalVisits: visits,
+    totalShares: shares,
+    popularityScore: score,
+    popularityLevel: level,
+  };
 }
 
 function pickUniqueMascotId(existingIds = []) {
@@ -824,6 +891,14 @@ function getSortedLeaderboard(supporters = []) {
     .slice(0, 50);
 }
 
+const DEFAULT_ARTIST_PLAYS = {
+  lenkyx: { name: 'LENKYX', count: 142, photoUrl: '/covers/avatar.jpg', genre: 'Cosmic Phonk' },
+  alok: { name: 'Alok', count: 96, photoUrl: '/covers/album-official.jpg', genre: 'Eletrônica / Bass' },
+  'ana castela': { name: 'Ana Castela', count: 84, photoUrl: '/covers/album-official.jpg', genre: 'Sertanejo' },
+  'mc ryan sp': { name: 'MC Ryan SP', count: 78, photoUrl: '/covers/album-official.jpg', genre: 'Funk Brasil' },
+  matue: { name: 'Matuê', count: 71, photoUrl: '/covers/album-official.jpg', genre: 'Trap Brasil' },
+};
+
 function readLiveStatsStore() {
   const today = getTodayBrtKey();
   const defaults = {
@@ -831,8 +906,13 @@ function readLiveStatsStore() {
     dailyGoalBrl: 50,
     dailyCollectedBrl: 0,
     dailyContributors: 0,
+    totalVisits: 120,
+    totalShares: 18,
     recentSupporters: [],
     supporters: [],
+    artistPlays: { ...DEFAULT_ARTIST_PLAYS },
+    videoPlays: {},
+    moviePlays: {},
   };
   try {
     if (!fs.existsSync(LIVE_STATS_PATH)) {
@@ -840,14 +920,25 @@ function readLiveStatsStore() {
       return defaults;
     }
     const parsed = JSON.parse(fs.readFileSync(LIVE_STATS_PATH, 'utf-8'));
+    const persistedArtistPlays =
+      parsed.artistPlays && Object.keys(parsed.artistPlays).length > 0
+        ? parsed.artistPlays
+        : { ...DEFAULT_ARTIST_PLAYS };
+    const persistedVideoPlays = parsed.videoPlays && typeof parsed.videoPlays === 'object' ? parsed.videoPlays : {};
+    const persistedMoviePlays = parsed.moviePlays && typeof parsed.moviePlays === 'object' ? parsed.moviePlays : {};
     if (parsed.dateKey !== today) {
       const rolled = {
         dateKey: today,
         dailyGoalBrl: Number(parsed.dailyGoalBrl) > 0 ? Number(parsed.dailyGoalBrl) : 50,
         dailyCollectedBrl: 0,
         dailyContributors: 0,
+        totalVisits: Number(parsed.totalVisits || 120),
+        totalShares: Number(parsed.totalShares || 18),
         recentSupporters: [],
         supporters: Array.isArray(parsed.supporters) ? parsed.supporters : [],
+        artistPlays: persistedArtistPlays,
+        videoPlays: persistedVideoPlays,
+        moviePlays: persistedMoviePlays,
       };
       fs.writeFileSync(LIVE_STATS_PATH, JSON.stringify(rolled, null, 2), 'utf-8');
       return rolled;
@@ -855,11 +946,32 @@ function readLiveStatsStore() {
     return {
       ...defaults,
       ...parsed,
+      totalVisits: Number(parsed.totalVisits ?? defaults.totalVisits),
+      totalShares: Number(parsed.totalShares ?? defaults.totalShares),
       supporters: Array.isArray(parsed.supporters) ? parsed.supporters : [],
+      artistPlays: persistedArtistPlays,
+      videoPlays: persistedVideoPlays,
+      moviePlays: persistedMoviePlays,
     };
   } catch {
     return defaults;
   }
+}
+
+function buildTop5Rankings(store) {
+  const rankTop5 = (mapObj) =>
+    Object.values(mapObj || {})
+      .sort((a, b) => Number(b.count || 0) - Number(a.count || 0))
+      .slice(0, 5)
+      .map((item, idx) => ({
+        ...item,
+        rank: idx + 1,
+      }));
+  return {
+    topArtists: rankTop5(store.artistPlays),
+    topVideos: rankTop5(store.videoPlays),
+    topMovies: rankTop5(store.moviePlays),
+  };
 }
 
 function writeLiveStatsStore(data) {
@@ -881,9 +993,11 @@ function pruneAndCountListeners() {
 app.get('/api/live-stats', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const store = readLiveStatsStore();
+  const onlineCount = pruneAndCountListeners();
   res.json({
-    onlineCount: pruneAndCountListeners(),
+    onlineCount,
     ...store,
+    ...computePopularityMeta(store, onlineCount),
     leaderboard: getSortedLeaderboard(store.supporters),
   });
 });
@@ -894,9 +1008,96 @@ app.post('/api/live-stats/ping', (req, res) => {
   const activity = String(req.body?.activity || 'music').slice(0, 32);
   activeListenerSessions.set(sid, { ts: Date.now(), activity });
   const store = readLiveStatsStore();
+  if (!seenVisitorSessions.has(sid)) {
+    seenVisitorSessions.add(sid);
+    store.totalVisits = Number(store.totalVisits || 0) + 1;
+    writeLiveStatsStore(store);
+  }
+  const onlineCount = pruneAndCountListeners();
   res.json({
-    onlineCount: pruneAndCountListeners(),
+    onlineCount,
     ...store,
+    ...computePopularityMeta(store, onlineCount),
+    leaderboard: getSortedLeaderboard(store.supporters),
+  });
+});
+
+app.get('/api/rankings', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const store = readLiveStatsStore();
+  res.json(buildTop5Rankings(store));
+});
+
+app.post('/api/rankings/hit', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const kind = String(req.body?.kind || 'artist');
+  const store = readLiveStatsStore();
+
+  if (kind === 'artist') {
+    const rawName = String(req.body?.name || '').replace(/ - Topic$/i, '').trim().slice(0, 60);
+    if (rawName) {
+      const key = rawName.toLowerCase();
+      const prev = store.artistPlays[key] || { name: rawName, count: 0 };
+      store.artistPlays[key] = {
+        name: rawName,
+        count: Number(prev.count || 0) + 1,
+        photoUrl: String(req.body?.photoUrl || prev.photoUrl || ''),
+        genre: String(req.body?.genre || prev.genre || ''),
+        lastPlayedAt: new Date().toISOString(),
+      };
+    }
+  } else if (kind === 'video') {
+    const id = String(req.body?.id || req.body?.youtubeVideoId || '').trim().slice(0, 80);
+    const title = String(req.body?.title || '').trim().slice(0, 90);
+    if (id && title) {
+      const prev = store.videoPlays[id] || { id, count: 0 };
+      store.videoPlays[id] = {
+        id,
+        title,
+        artist: String(req.body?.artist || prev.artist || 'LENKYX').slice(0, 50),
+        coverUrl: String(req.body?.coverUrl || prev.coverUrl || '/covers/album-official.jpg'),
+        youtubeVideoId: String(req.body?.youtubeVideoId || prev.youtubeVideoId || ''),
+        audioUrl: String(req.body?.audioUrl || prev.audioUrl || ''),
+        durationSec: Number(req.body?.durationSec || prev.durationSec || 180),
+        count: Number(prev.count || 0) + 1,
+        lastPlayedAt: new Date().toISOString(),
+      };
+    }
+  } else if (kind === 'movie') {
+    const id = String(req.body?.id || '').trim().slice(0, 80);
+    const title = String(req.body?.title || '').trim().slice(0, 90);
+    if (id && title) {
+      const prev = store.moviePlays[id] || { id, count: 0 };
+      store.moviePlays[id] = {
+        id,
+        title,
+        subtitle: String(req.body?.subtitle || prev.subtitle || 'Cinema HD').slice(0, 60),
+        posterUrl: String(req.body?.posterUrl || prev.posterUrl || '/covers/album-official.jpg'),
+        youtubeVideoId: String(req.body?.youtubeVideoId || prev.youtubeVideoId || ''),
+        youtubePlaylistId: String(req.body?.youtubePlaylistId || prev.youtubePlaylistId || ''),
+        mediaType: String(req.body?.mediaType || prev.mediaType || 'movie'),
+        count: Number(prev.count || 0) + 1,
+        lastPlayedAt: new Date().toISOString(),
+      };
+    }
+  }
+
+  writeLiveStatsStore(store);
+  res.json({ ok: true, ...buildTop5Rankings(store) });
+});
+
+app.post('/api/live-stats/share', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const store = readLiveStatsStore();
+  store.totalShares = Number(store.totalShares || 0) + 1;
+  writeLiveStatsStore(store);
+  const onlineCount = pruneAndCountListeners();
+  res.json({
+    ok: true,
+    channel: String(req.body?.channel || 'social').slice(0, 32),
+    onlineCount,
+    ...store,
+    ...computePopularityMeta(store, onlineCount),
     leaderboard: getSortedLeaderboard(store.supporters),
   });
 });
@@ -945,12 +1146,14 @@ app.post('/api/live-stats/pix-pledge', (req, res) => {
   store.supporters = supporters;
   writeLiveStatsStore(store);
 
+  const onlineCount = pruneAndCountListeners();
   res.json({
     ok: true,
     unlockedMascotId,
     supporterEntry: entry,
-    onlineCount: pruneAndCountListeners(),
+    onlineCount,
     ...store,
+    ...computePopularityMeta(store, onlineCount),
     leaderboard: getSortedLeaderboard(store.supporters),
   });
 });
@@ -966,10 +1169,12 @@ app.post('/api/live-stats/pix-goal', auth.requireCreator, (req, res) => {
     if (Number.isFinite(c) && c >= 0) store.dailyCollectedBrl = Math.round(c * 100) / 100;
   }
   writeLiveStatsStore(store);
+  const onlineCount = pruneAndCountListeners();
   res.json({
     ok: true,
-    onlineCount: pruneAndCountListeners(),
+    onlineCount,
     ...store,
+    ...computePopularityMeta(store, onlineCount),
     leaderboard: getSortedLeaderboard(store.supporters),
   });
 });
@@ -1216,7 +1421,7 @@ app.get('/sitemap.xml', (req, res) => {
     );
 });
 
-// Direct Android APK download endpoint — streams local APK or redirects to official public Google Drive APK link
+// Direct Android APK download endpoint — streams local APK or opens Instant 2s PWA App Install (never sends to old Drive virus screen)
 app.get('/download/apk', (_req, res) => {
   const candidates = [
     path.join(ROOT, 'downloads', 'LENKYX-Cosmic-Phonk.apk'),
@@ -1225,13 +1430,15 @@ app.get('/download/apk', (_req, res) => {
   ];
   const found = candidates.find((p) => fs.existsSync(p));
   if (found) {
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
     return res.download(found, 'LENKYX-Cosmic-Phonk.apk');
   }
   const db = readDb();
-  const redirectUrl =
-    (db.settings?.apkDownloadUrl || '').trim() ||
-    'https://drive.google.com/uc?id=1SsBXDSKNWQxsPqURWWavVhcjvYUJgRFI&export=download';
-  return res.redirect(302, redirectUrl);
+  const customUrl = (db.settings?.apkDownloadUrl || '').trim();
+  if (customUrl && customUrl.startsWith('http') && !customUrl.includes('1SsBXDSKNWQxsPqURWWavVhcjvYUJgRFI')) {
+    return res.redirect(302, customUrl);
+  }
+  return res.redirect(302, '/?install=1');
 });
 
 // Live App Auto-Update Manifest (reads Supabase public manifest or local fallback)
@@ -1283,13 +1490,16 @@ app.get('/api/app-update', async (_req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-store');
   const db = readDb();
+  const rawApkUrl = (db.settings?.apkDownloadUrl || '').trim();
+  const safeApkUrl =
+    rawApkUrl && !rawApkUrl.includes('1SsBXDSKNWQxsPqURWWavVhcjvYUJgRFI')
+      ? rawApkUrl
+      : '/download/apk';
   const fallback = {
-    latestVersionCode: 22,
-    latestVersionName: '2.2.0-GenZ',
-    apkUrl:
-      (db.settings?.apkDownloadUrl || '').trim() ||
-      'https://drive.google.com/uc?id=1SsBXDSKNWQxsPqURWWavVhcjvYUJgRFI&export=download',
-    releaseNotes: 'LENKYX Cosmic Phonk Geração Z (v2.2.0-GenZ): Design Arquitetônico Cosmic Obsidian, Fotos reais dos 40 artistas, Fliperama Grátis & Novo Mundo RPG.',
+    latestVersionCode: 32,
+    latestVersionName: '3.2.0-Cosmic',
+    apkUrl: safeApkUrl,
+    releaseNotes: 'LENKYX Cosmic Phonk v3.2: Instalação instantânea sem cadastro, Bass Boost em todas as abas e Popularidade ao vivo.',
     updateAvailable: false,
   };
   try {

@@ -14,6 +14,8 @@ import {
   ArrowLeft,
   Disc3,
   BadgeCheck,
+  Crown,
+  Bot,
 } from 'lucide-react';
 import {
   Track,
@@ -29,6 +31,13 @@ import {
   getWorldTrending,
   searchWorldMusic,
 } from '../utils/worldMusic';
+import {
+  fetchSunoAiHub,
+  fetchTop5Rankings,
+  RankedArtistEntry,
+  RankedVideoEntry,
+  SunoAiArtist,
+} from '../utils/rankingsApi';
 import { getSmartDiscoveryQueries, recordPlayTaste, recordSearchTaste } from '../utils/tasteProfile';
 import { CosmicScrollRow } from './CosmicScrollRow';
 
@@ -129,6 +138,10 @@ export const WorldExploreView: React.FC<Props> = ({
   const [lastUpdatedLabel, setLastUpdatedLabel] = useState('Atualizado');
   const [activeLabel, setActiveLabel] = useState('🔥 Em Alta');
   const [pickerTrackId, setPickerTrackId] = useState<string | null>(null);
+  const [topArtists, setTopArtists] = useState<RankedArtistEntry[]>([]);
+  const [topVideos, setTopVideos] = useState<RankedVideoEntry[]>([]);
+  const [sunoArtists, setSunoArtists] = useState<SunoAiArtist[]>([]);
+  const [sunoTracks, setSunoTracks] = useState<Track[]>([]);
 
   const runSearch = async (term: string, label?: string, includeArchiveSpace = false) => {
     setLoading(true);
@@ -173,6 +186,20 @@ export const WorldExploreView: React.FC<Props> = ({
         setLastUpdatedLabel(
           `Atualizado · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
         );
+      })
+      .catch(() => {});
+
+    fetchTop5Rankings()
+      .then((rk) => {
+        if (rk.topArtists?.length) setTopArtists(rk.topArtists);
+        if (rk.topVideos?.length) setTopVideos(rk.topVideos);
+      })
+      .catch(() => {});
+
+    fetchSunoAiHub(false)
+      .then((hub) => {
+        if (hub.artists?.length) setSunoArtists(hub.artists);
+        if (hub.tracks?.length) setSunoTracks(hub.tracks);
       })
       .catch(() => {});
 
@@ -344,6 +371,192 @@ export const WorldExploreView: React.FC<Props> = ({
             </div>
           </div>
         </section>
+      )}
+
+      {/* === TOP 1 AO 5 ARTISTAS MAIS ESCUTADOS + TOP 5 VÍDEOS RECOMENDADOS === */}
+      {topArtists.length > 0 && (
+        <section className="rounded-3xl bg-gradient-to-br from-amber-500/10 via-[#0d0720] to-cyan-500/10 border border-amber-400/25 p-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="font-display text-sm sm:text-base font-black text-white flex items-center gap-2">
+                <Crown className="w-4 h-4 text-amber-400" />
+                <span>Top 1 ao 5 · Artistas Mais Escutados & Recomendados</span>
+              </h2>
+              <p className="text-[11px] text-amber-100/75">
+                Classificação ao vivo dos artistas mais ouvidos pelos fãs no LENKYX
+              </p>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-200 text-[10px] font-black">
+              🔥 RECOMENDADOS DO SITE
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            {topArtists.slice(0, 5).map((art) => {
+              const medal =
+                art.rank === 1
+                  ? 'from-amber-400 to-yellow-500 text-black'
+                  : art.rank === 2
+                  ? 'from-slate-200 to-slate-400 text-black'
+                  : art.rank === 3
+                  ? 'from-amber-600 to-orange-500 text-white'
+                  : 'from-cyan-500/80 to-purple-500/80 text-white';
+              return (
+                <button
+                  key={art.name}
+                  onClick={() => void runSearch(art.name, `🏆 #${art.rank} ${art.name}`)}
+                  className="group relative rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-amber-400/50 p-3 text-left transition flex flex-col gap-2"
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className={`px-2 py-0.5 rounded-full bg-gradient-to-r ${medal} text-[10px] font-black`}>
+                      TOP #{art.rank}
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-300 font-bold">
+                      {art.count} plays
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-black shrink-0 border border-white/15">
+                      <ArtistPortrait name={art.name} photoUrl={art.photoUrl} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-white truncate group-hover:text-amber-300 transition">
+                        {art.name}
+                      </div>
+                      <div className="text-[10px] text-slate-300/80 truncate">{art.genre || 'Destaque'}</div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {(topVideos.length > 0 || clipTracks.length > 0) && (
+            <div className="pt-2 border-t border-white/10 space-y-2">
+              <div className="text-xs font-black text-cyan-200 flex items-center gap-1.5">
+                <Film className="w-3.5 h-3.5 text-pink-400" />
+                <span>Top 1 ao 5 · Melhores Clipes & Vídeos Recomendados</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                {(topVideos.length > 0
+                  ? topVideos.slice(0, 5).map((v) => ({
+                      id: v.id,
+                      title: v.title,
+                      artist: v.artist,
+                      coverUrl: v.coverUrl || '/covers/album-official.jpg',
+                      youtubeVideoId: v.youtubeVideoId,
+                      audioUrl: v.audioUrl,
+                      durationSec: v.durationSec || 180,
+                      rank: v.rank,
+                      count: v.count,
+                    }))
+                  : clipTracks.slice(0, 5).map((t, idx) => ({
+                      id: t.id,
+                      title: t.title,
+                      artist: t.artist,
+                      coverUrl: t.coverUrl,
+                      youtubeVideoId: t.youtubeVideoId,
+                      audioUrl: t.audioUrl,
+                      durationSec: t.durationSec || 180,
+                      rank: idx + 1,
+                      count: t.plays || 50 - idx * 7,
+                    }))
+                ).map((vid) => (
+                  <button
+                    key={vid.id}
+                    onClick={() => {
+                      const trackObj: Track = {
+                        id: vid.id,
+                        number: vid.rank,
+                        title: vid.title,
+                        emoji: '🎬',
+                        artist: vid.artist || 'LENKYX',
+                        album: `Top #${vid.rank} Recomendado`,
+                        bpm: 130,
+                        key: 'Am',
+                        coverUrl: vid.coverUrl,
+                        audioUrl: vid.audioUrl || '',
+                        youtubeVideoId: vid.youtubeVideoId,
+                        durationSec: vid.durationSec,
+                        plays: vid.count,
+                        likes: 0,
+                        favorite: false,
+                        releaseBatch: 1,
+                        sunoPrompt: '',
+                        lyrics: '',
+                        createdAt: new Date().toISOString(),
+                        status: { suno: false, cover: true, app: true, youtube: true, distrokid: false },
+                        source: 'world_full',
+                      };
+                      handlePlayRow(trackObj, [trackObj, ...results]);
+                    }}
+                    className="group flex items-center gap-2 p-2 rounded-xl bg-black/40 hover:bg-pink-500/20 border border-white/10 hover:border-pink-400/50 text-left transition"
+                  >
+                    <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                      #{vid.rank}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[11px] font-bold text-white truncate">{vid.title}</div>
+                      <div className="text-[9px] text-cyan-300/80 truncate">
+                        {vid.artist} · {vid.count} views
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* === SUNO AI ARTISTS & TRACKS HUB === */}
+      {sunoArtists.length > 0 && (
+        <CosmicScrollRow
+          title={
+            <>
+              <Bot className="w-4 h-4 text-cyan-400" />
+              <span>Artistas de Música IA do Suno (Ao Vivo no App)</span>
+            </>
+          }
+          subtitle="Criadores mundiais do Suno IA — toque em um artista ou faixa para ouvir direto com Graves+"
+          count={sunoArtists.length}
+          collapsible
+        >
+          {sunoArtists.map((art) => (
+            <button
+              key={art.id}
+              onClick={() => {
+                if (art.tracks.length > 0) {
+                  handlePlayRow(art.tracks[0], [...art.tracks, ...sunoTracks]);
+                }
+              }}
+              className="group w-40 sm:w-44 shrink-0 rounded-3xl overflow-hidden bg-gradient-to-b from-cyan-500/15 to-black/60 backdrop-blur-xl border border-cyan-400/25 hover:border-cyan-300/70 text-left snap-start transition duration-300 hover:-translate-y-1"
+            >
+              <div className="relative aspect-[4/3.6] w-full overflow-hidden bg-black">
+                <ArtistPortrait
+                  name={art.name}
+                  photoUrl={art.avatarUrl}
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-cyan-400 text-black text-[9px] font-black">
+                  🤖 SUNO IA
+                </span>
+                <span className="opacity-0 group-hover:opacity-100 absolute bottom-2.5 right-2.5 w-9 h-9 rounded-full bg-cyan-400 text-black flex items-center justify-center shadow-lg transition">
+                  <Play className="w-4 h-4 fill-black ml-0.5" />
+                </span>
+              </div>
+              <div className="p-2.5 space-y-0.5">
+                <div className="text-xs font-black text-white truncate group-hover:text-cyan-300">
+                  {art.name}
+                </div>
+                <div className="text-[10px] text-cyan-200/80 truncate">
+                  {art.tracks[0]?.title || art.genre}
+                </div>
+              </div>
+            </button>
+          ))}
+        </CosmicScrollRow>
       )}
 
       {/* === SECTION 1: MODERN GLASSMORPHIC ARTIST CARDS SHOWCASE === */}

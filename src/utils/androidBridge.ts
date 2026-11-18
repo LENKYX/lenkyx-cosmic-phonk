@@ -5,6 +5,7 @@ export interface AndroidBridgeInterface {
   showToast?: (msg: string) => void;
   isAndroidApk?: () => boolean;
   updateMediaState?: (title: string, artist: string, album: string, isPlaying: boolean) => void;
+  stopBackgroundPlayback?: () => void;
   isDeviceSecure?: () => boolean;
   requestDeviceAuth?: (title: string, subtitle: string) => void;
   saveDeviceAccount?: (json: string) => void;

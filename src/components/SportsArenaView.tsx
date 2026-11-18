@@ -17,6 +17,7 @@ import {
   LayoutGrid,
   Radio,
   QrCode,
+  ShieldOff,
 } from 'lucide-react';
 import { MmaScoreItem, SoccerScoreItem, SportStreamItem } from '../types';
 import {
@@ -24,6 +25,7 @@ import {
   searchSportsCatalog,
   SportsCategory,
 } from '../utils/moviesApi';
+import { clearBackgroundMediaSession, syncBackgroundMediaSession } from '../utils/backgroundAudioGuard';
 import { CosmicGtaLoader } from './CosmicGtaLoader';
 import { PlayerQueueStrip } from './PlayerQueueStrip';
 
@@ -35,6 +37,7 @@ interface Props {
   onVolume?: (v: number) => void;
   onToggleMute?: () => void;
   onOpenPix?: () => void;
+  onEmergencyStop?: () => void;
 }
 
 type SportFilter = 'all' | 'soccer' | 'mma';
@@ -58,6 +61,7 @@ export const SportsArenaView: React.FC<Props> = ({
   onVolume,
   onToggleMute,
   onOpenPix,
+  onEmergencyStop,
 }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -115,6 +119,27 @@ export const SportsArenaView: React.FC<Props> = ({
     }
     return () => onSportsModalChange(false);
   }, [activeStream, onSportsModalChange]);
+
+  useEffect(() => {
+    if (!activeStream) return;
+    syncBackgroundMediaSession(
+      {
+        title: activeStream.title,
+        artist: activeStream.subtitle || 'LENKYX Arena Ao Vivo',
+        album: 'Futebol & UFC Ao Vivo',
+        artworkUrl: activeStream.posterUrl,
+        isPlaying: true,
+      },
+      {
+        onPrev: () => stepStream(-1),
+        onNext: () => stepStream(1),
+        onStop: () => {
+          setActiveStream(null);
+          onEmergencyStop?.();
+        },
+      }
+    );
+  }, [activeStream]);
 
   const filteredCategories = useMemo(() => {
     if (sportFilter === 'all') return categories;
@@ -314,6 +339,21 @@ export const SportsArenaView: React.FC<Props> = ({
                 >
                   <QrCode className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">PIX</span>
+                </button>
+              )}
+
+              {onEmergencyStop && (
+                <button
+                  onClick={() => {
+                    setActiveStream(null);
+                    clearBackgroundMediaSession();
+                    onEmergencyStop();
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/45 border border-rose-400/50 text-rose-100 text-[11px] font-black flex items-center gap-1"
+                  title="Botão de Segurança: Parar transmissão e segundo plano"
+                >
+                  <ShieldOff className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Parar Tudo</span>
                 </button>
               )}
 

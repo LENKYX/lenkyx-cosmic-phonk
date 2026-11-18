@@ -1,8 +1,9 @@
 {
-  "name": "LENKYX Cosmic Phonk · Geração Z",
-  "short_name": "LENKYX Gen Z",
-  "description": "App oficial Geração Z de música, Cinema & TV, Fliperama Grátis, Novo Mundo RPG e Estúdio Cosmic Phonk por LENKYX.",
+  "name": "LENKYX — Som, Clipes, Cinema & Arena",
+  "short_name": "LENKYX",
+  "description": "Ouça músicas com grave turbinado, clipes HD, filmes, séries por temporada e Futebol & UFC ao vivo sem anúncios e sem cadastro.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#060310",
   "theme_color": "#060310",
@@ -11,7 +12,8 @@
     {
       "src": "/covers/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/covers/avatar.jpg",
