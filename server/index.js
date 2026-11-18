@@ -43,6 +43,16 @@ import {
   createTvHandoffSession,
   getTvHandoffSession,
 } from './communityStore.js';
+import {
+  getHubOverview,
+  joinFreeGiveaway,
+  drawFreeGiveaway,
+  createFreeGiveaway,
+  createSupportGoal,
+  recordGoalSupport,
+  spinCosmicWheel,
+  claimCosmicMission,
+} from './cosmicHub.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1142,6 +1152,109 @@ app.post('/api/community/lives', async (req, res) => {
       likeDelta: Number(req.body?.likeDelta || 0),
     });
     res.json(live);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+// === COSMIC HUB: FREE FAN GIVEAWAYS, VOLUNTARY SUPPORT GOALS & FREE TOKEN WHEEL ===
+app.get('/api/hub/overview', (req, res) => {
+  try {
+    const userId = String(req.query.userId || '').trim();
+    const userName = String(req.query.userName || '').trim();
+    res.json(getHubOverview(userId, userName));
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/hub/giveaways/join', (req, res) => {
+  try {
+    const result = joinFreeGiveaway({
+      giveawayId: String(req.body?.giveawayId || ''),
+      userId: String(req.body?.userId || ''),
+      userName: String(req.body?.userName || ''),
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/hub/giveaways', auth.requireCreator, (req, res) => {
+  try {
+    const created = createFreeGiveaway({
+      title: req.body?.title,
+      description: req.body?.description,
+      prizeSummary: req.body?.prizeSummary,
+      minParticipants: req.body?.minParticipants,
+      maxParticipants: req.body?.maxParticipants,
+    });
+    res.status(201).json(created);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/hub/giveaways/:id/draw', auth.requireCreator, (req, res) => {
+  try {
+    const result = drawFreeGiveaway({ giveawayId: req.params.id });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/hub/goals', auth.requireCreator, (req, res) => {
+  try {
+    const goal = createSupportGoal({
+      title: req.body?.title,
+      description: req.body?.description,
+      targetAmount: req.body?.targetAmount,
+      perkGuaranteed: req.body?.perkGuaranteed,
+    });
+    res.status(201).json(goal);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/hub/goals/:id/support', (req, res) => {
+  try {
+    const result = recordGoalSupport({
+      goalId: req.params.id,
+      supporterName: req.body?.supporterName,
+      amount: req.body?.amount,
+      method: req.body?.method,
+      message: req.body?.message,
+      userId: req.body?.userId,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/hub/wheel/spin', (req, res) => {
+  try {
+    const result = spinCosmicWheel({
+      userId: String(req.body?.userId || ''),
+      userName: String(req.body?.userName || ''),
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/hub/missions/claim', (req, res) => {
+  try {
+    const result = claimCosmicMission({
+      userId: String(req.body?.userId || ''),
+      userName: String(req.body?.userName || ''),
+      missionId: String(req.body?.missionId || ''),
+    });
+    res.json(result);
   } catch (err) {
     res.status(400).json({ error: String(err?.message || err) });
   }

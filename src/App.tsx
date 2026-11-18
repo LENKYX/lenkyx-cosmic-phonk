@@ -33,6 +33,7 @@ import {
   Download,
   Power,
   Share2,
+  Gift,
 } from 'lucide-react';
 import {
   AppMode,
@@ -55,6 +56,7 @@ const SocialShortsAndLiveView = React.lazy(() =>
   import('./components/SocialShortsAndLiveView').then((m) => ({ default: m.SocialShortsAndLiveView }))
 );
 const StudioCreateView = React.lazy(() => import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView })));
+const CosmicHubView = React.lazy(() => import('./components/CosmicHubView').then((m) => ({ default: m.CosmicHubView })));
 import { MiniPlayer } from './components/MiniPlayer';
 import { CosmicScreensaver3D, ExperienceMode } from './components/CosmicScreensaver3D';
 import { SoundBoostModal } from './components/SoundBoostModal';
@@ -1258,6 +1260,7 @@ export function App() {
     { id: 'explore', label: 'Artistas & Mundo', icon: <Globe2 className="w-4 h-4" /> },
     { id: 'movies', label: 'Cinema, Séries & TV', icon: <Clapperboard className="w-4 h-4" /> },
     { id: 'video', label: 'Reels, Live & Vídeos', icon: <Video className="w-4 h-4" /> },
+    { id: 'community_hub', label: 'Prêmios & Metas', icon: <Gift className="w-4 h-4" /> },
     { id: 'playlists', label: 'Minhas Playlists', icon: <ListMusic className="w-4 h-4" /> },
   ];
 
@@ -1840,6 +1843,20 @@ export function App() {
                   />
                 )}
 
+                {activeTab === 'community_hub' && (
+                  <CosmicHubView
+                    user={userProfile}
+                    mode={mode}
+                    settings={settings}
+                    onOpenUserAuth={() => setUserAuthOpen(true)}
+                    onOpenPix={() => {
+                      setPixInitialTab('donate');
+                      setPixOpen(true);
+                    }}
+                    onToast={showToast}
+                  />
+                )}
+
                 {activeTab === 'studio' && mode === 'creator' && (
                   <StudioCreateView
                     tracks={tracks}
@@ -1899,13 +1916,14 @@ export function App() {
 
       {/* MOBILE BOTTOM NAVIGATION BAR (YouTube Music / Netflix style) */}
       {!watchingMovie && !screensaverOpen && (
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-5 items-center px-1">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-6 items-center px-1">
         {(
           [
             { id: 'catalog' as TabId, label: 'Início', icon: <Music className="w-4 h-4" /> },
             { id: 'explore' as TabId, label: 'Artistas', icon: <Globe2 className="w-4 h-4" /> },
-            { id: 'movies' as TabId, label: 'Cinema/TV', icon: <Clapperboard className="w-4 h-4" /> },
-            { id: 'video' as TabId, label: 'Reels/Live', icon: <Video className="w-4 h-4" /> },
+            { id: 'movies' as TabId, label: 'Cinema', icon: <Clapperboard className="w-4 h-4" /> },
+            { id: 'video' as TabId, label: 'Reels', icon: <Video className="w-4 h-4" /> },
+            { id: 'community_hub' as TabId, label: 'Prêmios', icon: <Gift className="w-4 h-4" /> },
             { id: 'playlists' as TabId, label: 'Playlists', icon: <ListMusic className="w-4 h-4" /> },
           ] as { id: TabId; label: string; icon: React.ReactNode; isPix?: boolean }[]
         ).map((item) => {

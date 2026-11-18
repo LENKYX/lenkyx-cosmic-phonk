@@ -93,7 +93,7 @@ export interface AppSettings {
 }
 
 export type AudioVersion = 'v1' | 'v2';
-export type TabId = 'catalog' | 'explore' | 'movies' | 'playlists' | 'video' | 'studio';
+export type TabId = 'catalog' | 'explore' | 'movies' | 'playlists' | 'video' | 'community_hub' | 'studio';
 export type AppMode = 'creator' | 'fan';
 
 export interface MovieItem {
