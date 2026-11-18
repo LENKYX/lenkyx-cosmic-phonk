@@ -5,9 +5,10 @@ import {
   Clapperboard,
   Play,
   Search,
-  Loader2,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   X,
   ExternalLink,
   Sparkles,
@@ -21,7 +22,8 @@ import {
   Minimize2,
   Volume2,
   VolumeX,
-  Sparkles as QualityIcon,
+  LayoutGrid,
+  RefreshCw,
 } from 'lucide-react';
 import { LiveTvCategory, LiveTvChannel, MovieItem } from '../types';
 import {
@@ -32,6 +34,7 @@ import {
   searchMoviesCatalog,
 } from '../utils/moviesApi';
 import { isAndroidApk } from '../utils/androidBridge';
+import { CosmicGtaLoader } from './CosmicGtaLoader';
 
 interface Props {
   onPauseMusic: () => void;
@@ -40,19 +43,28 @@ interface Props {
   muted?: boolean;
   onVolume?: (v: number) => void;
   onToggleMute?: () => void;
+  onOpenTvCast?: (media: {
+    title: string;
+    artist?: string;
+    mode?: 'galaxy' | 'video' | 'shorts' | 'tv';
+    youtubeVideoId?: string;
+    streamUrl?: string;
+    coverUrl?: string;
+  }) => void;
 }
 
 type SectionMode = 'cinema' | 'livetv';
-type CinemaFilter = 'all' | 'movie' | 'series' | 'anime' | 'archive' | 'dubbed' | 'uhd';
+type CinemaFilter = 'all' | 'releases' | 'movie' | 'series' | 'anime' | 'archive' | 'dubbed' | 'uhd';
 
-const QUICK_SEARCH_CHIPS: Array<{ label: string; query: string; mediaType: 'movie' | 'series' | 'anime' }> = [
+const QUICK_SEARCH_CHIPS: Array<{ label: string; query: string; mediaType: 'movie' | 'series' | 'anime' | 'trailer' }> = [
+  { label: `🍿 Lançamentos ${new Date().getFullYear()}`, query: `lancamentos cinema ${new Date().getFullYear()} trailer oficial dublado 4k`, mediaType: 'trailer' },
   { label: '🌍 Internacionais Dublados 1080p', query: 'melhores filmes internacionais completos dublados portugues 1080p', mediaType: 'movie' },
   { label: '📺 Séries Dubladas (Temporadas)', query: 'serie internacional completa dublado portugues episodio hd', mediaType: 'series' },
   { label: '⛩️ Animes Dublados (Temporadas)', query: 'anime completo dublado portugues filme episodio full hd', mediaType: 'anime' },
   { label: '🔥 Ação Full HD', query: 'filme de acao internacional completo dublado 1080p', mediaType: 'movie' },
   { label: '🚀 Ficção Científica HD', query: 'filme completo ficcao cientifica espaco dublado full hd', mediaType: 'movie' },
-  { label: '👻 Terror Internacional Dublado', query: 'filme completo terror suspense internacional dublado hd', mediaType: 'movie' },
-  { label: '🎞️ Sagas & Parte 2', query: 'filme completo parte 1 parte 2 saga sequencia dublado hd', mediaType: 'movie' },
+  { label: '👻 Terror Dublado HD', query: 'filme completo terror suspense internacional dublado hd', mediaType: 'movie' },
+  { label: '🏎️ Carros & Drift', query: 'filme de corrida carros drift acao completo dublado full hd', mediaType: 'movie' },
 ];
 
 const COUNTRY_FILTERS = [
@@ -66,6 +78,120 @@ const COUNTRY_FILTERS = [
   { code: 'KR', label: '🇰🇷 Coreia' },
 ];
 
+// Reusable Netflix+ Carousel Row with Translucent Clickable Left/Right Arrows for TV Cursor & Mouse!
+const NetflixScrollableRow: React.FC<{
+  title: string;
+  emoji: string;
+  count: number;
+  collapsed: boolean;
+  expandedGrid: boolean;
+  onToggleCollapse: () => void;
+  onToggleGrid: () => void;
+  children: React.ReactNode;
+}> = ({ title, emoji, count, collapsed, expandedGrid, onToggleCollapse, onToggleGrid, children }) => {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollRow = (dir: -1 | 1) => {
+    const el = rowRef.current;
+    if (!el) return;
+    const step = Math.max(320, Math.round(el.clientWidth * 0.78));
+    el.scrollBy({ left: dir * step, behavior: 'smooth' });
+  };
+
+  return (
+    <section className="space-y-2.5 group/row">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <h2 className="font-display text-xs sm:text-sm md:text-base font-black text-white flex items-center gap-2">
+          <span>{emoji}</span>
+          <span>{title}</span>
+          <span className="px-2 py-0.5 rounded-full bg-white/10 text-[10px] font-bold text-cyan-300">
+            {count}
+          </span>
+        </h2>
+        <div className="flex items-center gap-1.5">
+          {!collapsed && (
+            <>
+              <button
+                type="button"
+                onClick={() => scrollRow(-1)}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/25 text-white border border-white/10 transition hidden sm:inline-flex"
+                title="Rolar para Esquerda"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollRow(1)}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/25 text-white border border-white/10 transition hidden sm:inline-flex"
+                title="Rolar para Direita"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={onToggleGrid}
+            className={`px-2.5 py-1 rounded-full border text-[10px] font-bold flex items-center gap-1 transition ${
+              expandedGrid
+                ? 'bg-red-600/85 border-red-400 text-white'
+                : 'bg-white/[0.07] hover:bg-white/[0.16] border-white/10 text-cyan-200'
+            }`}
+            title="Alternar entre Carrossel Netflix e Grade Completa (TV)"
+          >
+            <LayoutGrid className="w-3 h-3" />
+            <span>{expandedGrid ? 'Carrossel' : 'Ver Tudo'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="px-2.5 py-1 rounded-full bg-white/[0.07] hover:bg-white/[0.14] border border-white/10 text-[10px] font-bold text-purple-200 flex items-center gap-1 transition"
+          >
+            {collapsed ? 'Mostrar' : 'Minimizar'}
+            {collapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+          </button>
+        </div>
+      </div>
+
+      {!collapsed &&
+        (expandedGrid ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {children}
+          </div>
+        ) : (
+          <div className="relative">
+            {/* Translucent Left Floating Arrow for TV / Mouse Cursor */}
+            <button
+              type="button"
+              onClick={() => scrollRow(-1)}
+              aria-label="Passar filmes para a esquerda"
+              className="absolute left-1 top-1/2 -translate-y-1/2 z-20 w-10 h-20 sm:w-12 sm:h-24 rounded-2xl bg-black/45 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-[0_0_24px_rgba(0,0,0,0.7)] transition opacity-85 hover:opacity-100 hover:scale-105 cursor-pointer"
+            >
+              <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
+            </button>
+
+            <div
+              ref={rowRef}
+              className="flex items-stretch gap-3 overflow-x-auto pb-2.5 px-2 scroll-smooth"
+            >
+              {children}
+            </div>
+
+            {/* Translucent Right Floating Arrow for TV / Mouse Cursor */}
+            <button
+              type="button"
+              onClick={() => scrollRow(1)}
+              aria-label="Passar filmes para a direita"
+              className="absolute right-1 top-1/2 -translate-y-1/2 z-20 w-10 h-20 sm:w-12 sm:h-24 rounded-2xl bg-black/45 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-[0_0_24px_rgba(0,0,0,0.7)] transition opacity-85 hover:opacity-100 hover:scale-105 cursor-pointer"
+            >
+              <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
+            </button>
+          </div>
+        ))}
+    </section>
+  );
+};
+
 export const MoviesView: React.FC<Props> = ({
   onPauseMusic,
   onMovieModalChange,
@@ -73,23 +199,29 @@ export const MoviesView: React.FC<Props> = ({
   muted = false,
   onVolume,
   onToggleMute,
+  onOpenTvCast,
 }) => {
   const [sectionMode, setSectionMode] = useState<SectionMode>('cinema');
 
   // === CINEMA / SERIES / ANIMES STATE ===
   const [categories, setCategories] = useState<MovieCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [backgroundRefreshing, setBackgroundRefreshing] = useState(false);
+  const [lastUpdatedLabel, setLastUpdatedLabel] = useState('Atualizado agora');
   const [searchQ, setSearchQ] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<MovieItem[] | null>(null);
   const [activeFilter, setActiveFilter] = useState<CinemaFilter>('all');
+  const [globalTvGrid, setGlobalTvGrid] = useState(false);
+  const [rowGridIds, setRowGridIds] = useState<Record<string, boolean>>({});
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
+  const [heroIdx, setHeroIdx] = useState(0);
   const [activeMovie, setActiveMovie] = useState<MovieItem | null>(null);
   const [movieQueue, setMovieQueue] = useState<MovieItem[]>([]);
   const [cinemaQuality, setCinemaQuality] = useState<'auto' | 'hd720' | 'hd1080' | 'hd2160'>('hd1080');
   const [expandedView, setExpandedView] = useState(false);
 
-  // === LIVE TV GLOBAL STATE ===
+  // === LIVE TV GLOBAL STATE (also feeds 24h Movie & Series channels row!) ===
   const [tvCategories, setTvCategories] = useState<LiveTvCategory[]>([]);
   const [tvTotalAvailable, setTvTotalAvailable] = useState(0);
   const [tvLoading, setTvLoading] = useState(false);
@@ -108,17 +240,37 @@ export const MoviesView: React.FC<Props> = ({
   const playerBoxRef = useRef<HTMLDivElement | null>(null);
   const tvVideoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const loadCinemaCatalog = async (force = false, silent = false) => {
+    if (!silent) setLoading(true);
+    else setBackgroundRefreshing(true);
+    try {
+      const cats = await fetchMoviesDirectory(force);
+      if (cats.length > 0) setCategories(cats);
+      setLastUpdatedLabel(
+        `Atualizado às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+      );
+    } finally {
+      setLoading(false);
+      setBackgroundRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    let alive = true;
-    void fetchMoviesDirectory().then((cats) => {
-      if (!alive) return;
-      setCategories(cats);
-      setLoading(false);
+    void loadCinemaCatalog(false, false);
+    // Also preload 24h Cinema & Series Live TV channels silently!
+    void fetchLiveTvDirectory().then((res) => {
+      setTvCategories(res.categories);
+      setTvTotalAvailable(res.totalAvailable);
+      setTvLoadedOnce(true);
     });
-    return () => {
-      alive = false;
-    };
+
+    // Auto-update releases & catalog every 25 minutes automatically!
+    const autoTimer = window.setInterval(() => {
+      void loadCinemaCatalog(true, true);
+    }, 25 * 60 * 1000);
+    return () => window.clearInterval(autoTimer);
   }, []);
 
   useEffect(() => {
@@ -144,6 +296,38 @@ export const MoviesView: React.FC<Props> = ({
     return () => onMovieModalChange(false);
   }, [activeMovie, activeChannel, onMovieModalChange]);
 
+  // Smart TV D-Pad Arrow Key Navigation across Netflix cards!
+  useEffect(() => {
+    if (activeMovie || activeChannel) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+      const cards = Array.from(
+        containerRef.current?.querySelectorAll<HTMLButtonElement>('[data-tv-card="1"]') || []
+      );
+      if (cards.length === 0) return;
+      const curIdx = cards.findIndex((c) => c === document.activeElement);
+      if (curIdx === -1) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          cards[0].focus();
+          cards[0].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+        return;
+      }
+      e.preventDefault();
+      let nextIdx = curIdx;
+      if (e.key === 'ArrowRight') nextIdx = Math.min(cards.length - 1, curIdx + 1);
+      if (e.key === 'ArrowLeft') nextIdx = Math.max(0, curIdx - 1);
+      if (e.key === 'ArrowDown') nextIdx = Math.min(cards.length - 1, curIdx + 4);
+      if (e.key === 'ArrowUp') nextIdx = Math.max(0, curIdx - 4);
+      cards[nextIdx].focus();
+      cards[nextIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeMovie, activeChannel]);
+
   const toggleExpandPlayer = async () => {
     const next = !expandedView;
     setExpandedView(next);
@@ -158,7 +342,6 @@ export const MoviesView: React.FC<Props> = ({
     }
   };
 
-  // Sync master volume to Live TV <video> element
   useEffect(() => {
     if (tvVideoRef.current) {
       tvVideoRef.current.volume = muted ? 0 : volume;
@@ -202,7 +385,6 @@ export const MoviesView: React.FC<Props> = ({
             label: lvl.height ? `${lvl.height}p` : `Nível ${idx + 1}`,
           }));
           setTvLevels(lvls);
-          // Default to highest crisp quality or Auto
           if (lvls.length > 1) {
             hls.currentLevel = lvls.length - 1;
             setSelectedTvLevel(lvls.length - 1);
@@ -218,8 +400,7 @@ export const MoviesView: React.FC<Props> = ({
               setTvStatusMsg('Tentando rota alternativa...');
               startStream(`/api/tv-proxy?url=${encodeURIComponent(activeChannel.streamUrl)}`, true);
             } else {
-              setTvError('Este canal está temporariamente fora do ar. Clique em "Próximo Canal" para sintonizar outro.');
-              setTvStatusMsg('');
+              setTvError('Este canal está temporariamente fora do ar. Clique em "Próximo Canal"!');
             }
           }
         });
@@ -248,11 +429,52 @@ export const MoviesView: React.FC<Props> = ({
     };
   }, [activeChannel]);
 
-  const featuredMovie = categories[0]?.movies?.[0] || categories[1]?.movies?.[0] || null;
+  // Catalog Counts & Hero Pool
+  const catalogStats = useMemo(() => {
+    const ids = new Set<string>();
+    let movies = 0;
+    let series = 0;
+    let animes = 0;
+    let trailers = 0;
+    for (const c of categories) {
+      for (const m of c.movies || []) {
+        if (ids.has(m.id)) continue;
+        ids.add(m.id);
+        if (m.isTrailer || m.mediaType === 'trailer') trailers++;
+        else if (m.mediaType === 'anime') animes++;
+        else if (m.mediaType === 'series') series++;
+        else movies++;
+      }
+    }
+    return { total: ids.size, movies, series, animes, trailers };
+  }, [categories]);
+
+  const heroItems = useMemo(() => {
+    const picks: MovieItem[] = [];
+    for (const c of categories.slice(0, 6)) {
+      if (c.movies?.[0]) picks.push(c.movies[0]);
+    }
+    return picks;
+  }, [categories]);
+
+  const featuredMovie = heroItems[heroIdx % Math.max(1, heroItems.length)] || null;
   const featuredQueue = categories[0]?.movies || categories[1]?.movies || [];
+
+  // Auto-rotate Netflix Hero Billboard gently every 9s
+  useEffect(() => {
+    if (heroItems.length < 2) return;
+    const t = window.setInterval(() => {
+      setHeroIdx((i) => (i + 1) % heroItems.length);
+    }, 9000);
+    return () => window.clearInterval(t);
+  }, [heroItems.length]);
 
   const toggleCollapse = (id: string) => {
     setCollapsedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleRowGrid = (id: string) => {
+    setRowGridIds((prev) => ({ ...prev, [id]: !(prev[id] ?? globalTvGrid) }));
   };
 
   const handleOpenMovie = (m: MovieItem, queueList: MovieItem[]) => {
@@ -283,7 +505,7 @@ export const MoviesView: React.FC<Props> = ({
     setActiveChannel(tvQueue[nextIdx]);
   };
 
-  const runSearch = async (rawQ: string, forcedType?: 'movie' | 'series' | 'anime') => {
+  const runSearch = async (rawQ: string, forcedType?: 'movie' | 'series' | 'anime' | 'trailer') => {
     const q = rawQ.trim();
     if (!q) {
       setSearchResults(null);
@@ -293,7 +515,7 @@ export const MoviesView: React.FC<Props> = ({
     setSearching(true);
     try {
       const low = q.toLowerCase();
-      const isTrailer = low.includes('trailer');
+      const isTrailer = forcedType === 'trailer' || low.includes('trailer');
       const inferredType: 'movie' | 'series' | 'anime' | 'trailer' = isTrailer
         ? 'trailer'
         : forcedType || (low.includes('anime') ? 'anime' : low.includes('serie') || low.includes('série') ? 'series' : 'movie');
@@ -324,7 +546,15 @@ export const MoviesView: React.FC<Props> = ({
 
   const matchesFilter = (m: MovieItem): boolean => {
     if (activeFilter === 'all') return true;
-    if (activeFilter === 'movie') return (m.mediaType || 'movie') === 'movie';
+    if (activeFilter === 'releases') {
+      return (
+        m.isTrailer ||
+        m.mediaType === 'trailer' ||
+        (m.category || '').toLowerCase().includes('lançamento') ||
+        m.title.includes(String(new Date().getFullYear()))
+      );
+    }
+    if (activeFilter === 'movie') return (m.mediaType || 'movie') === 'movie' && !m.isTrailer;
     if (activeFilter === 'series') return m.mediaType === 'series';
     if (activeFilter === 'anime') return m.mediaType === 'anime';
     if (activeFilter === 'archive') return m.sourceLabel === 'Acervo Direto' || m.id.startsWith('arcmov-');
@@ -347,12 +577,22 @@ export const MoviesView: React.FC<Props> = ({
     return searchResults.filter(matchesFilter);
   }, [searchResults, activeFilter]);
 
+  // 24/7 Cinema & Series Live Channels merged cleanly into Cinema tab too!
+  const liveCinemaAndSeriesChannels = useMemo(() => {
+    return tvCategories
+      .filter((c) => c.id === 'tv-filmes' || c.id === 'tv-series-24h' || c.id === 'tv-animes')
+      .flatMap((c) => c.channels || [])
+      .slice(0, 48);
+  }, [tvCategories]);
+
   const renderPosterCard = (m: MovieItem, idx: number, queueList: MovieItem[], compactGrid = false) => (
     <button
       key={m.id}
+      type="button"
+      data-tv-card="1"
       onClick={() => handleOpenMovie(m, queueList)}
-      className={`group text-left rounded-2xl cosmic-card-3d overflow-hidden ${
-        compactGrid ? '' : 'w-52 sm:w-60 shrink-0'
+      className={`group text-left rounded-2xl cosmic-card-3d overflow-hidden outline-none focus:ring-4 focus:ring-red-500 focus:scale-[1.05] focus:z-20 transition duration-200 ${
+        compactGrid ? 'w-full' : 'w-52 sm:w-60 shrink-0'
       }`}
     >
       <div className="relative aspect-[16/10] bg-black">
@@ -401,24 +641,30 @@ export const MoviesView: React.FC<Props> = ({
         <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/85 text-[10px] font-mono text-white">
           {m.durationLabel}
         </span>
-        <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-          <span className="w-11 h-11 rounded-full bg-white/95 text-black flex items-center justify-center shadow-lg">
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus:opacity-100 flex items-center justify-center transition">
+          <span className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center shadow-lg">
             <Play className="w-5 h-5 fill-black ml-0.5" />
           </span>
         </div>
       </div>
       <div className="p-3 space-y-0.5">
-        <div className="text-xs font-extrabold text-white line-clamp-2">{m.title}</div>
+        <div className="text-xs font-extrabold text-white line-clamp-2 group-hover:text-red-300 group-focus:text-red-300 transition">
+          {m.title}
+        </div>
         <div className="text-[10px] text-purple-300/75 truncate">{m.subtitle}</div>
       </div>
     </button>
   );
 
-  const renderChannelCard = (ch: LiveTvChannel, queueList: LiveTvChannel[]) => (
+  const renderChannelCard = (ch: LiveTvChannel, queueList: LiveTvChannel[], compactGrid = false) => (
     <button
       key={ch.id}
+      type="button"
+      data-tv-card="1"
       onClick={() => handleOpenChannel(ch, queueList)}
-      className="group w-48 sm:w-56 shrink-0 text-left rounded-2xl cosmic-card-3d overflow-hidden p-3 flex flex-col justify-between gap-2.5 bg-gradient-to-br from-[#0e0722] to-[#070312] hover:border-cyan-400/50 transition"
+      className={`group text-left rounded-2xl cosmic-card-3d overflow-hidden p-3 flex flex-col justify-between gap-2.5 bg-gradient-to-br from-[#0e0722] to-[#070312] hover:border-cyan-400/50 outline-none focus:ring-4 focus:ring-cyan-400 focus:scale-[1.05] focus:z-20 transition ${
+        compactGrid ? 'w-full' : 'w-48 sm:w-56 shrink-0'
+      }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="w-14 h-10 rounded-xl bg-black/70 border border-white/10 flex items-center justify-center overflow-hidden p-1 shrink-0">
@@ -449,7 +695,7 @@ export const MoviesView: React.FC<Props> = ({
     </button>
   );
 
-  // Fullscreen Cinema / Live TV Portal (rendered directly in document.body so Sidebar & MiniPlayer NEVER overlap!)
+  // Fullscreen Cinema / Live TV Portal
   const cinemaModal =
     activeMovie &&
     createPortal(
@@ -463,10 +709,10 @@ export const MoviesView: React.FC<Props> = ({
           className={`w-full mx-auto my-auto overflow-hidden bg-[#06030d] flex flex-col ${
             expandedView
               ? 'h-full max-w-none rounded-none border-0'
-              : 'max-w-6xl rounded-3xl border border-white/15 shadow-[0_0_90px_rgba(220,38,38,0.28)]'
+              : 'max-w-6xl max-h-[94dvh] rounded-3xl border border-white/15 shadow-[0_0_90px_rgba(220,38,38,0.28)]'
           }`}
         >
-          <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#080414]">
+          <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#080414] shrink-0">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Film className="w-4 h-4 text-red-400 shrink-0" />
               <div className="min-w-0">
@@ -478,10 +724,9 @@ export const MoviesView: React.FC<Props> = ({
               </div>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-              {/* Resolution Quality Picker */}
               {(activeMovie.youtubeVideoId || activeMovie.youtubePlaylistId) && (
                 <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/10 border border-cyan-400/35">
-                  <QualityIcon className="w-3 h-3 text-cyan-300 shrink-0" />
+                  <Sparkles className="w-3 h-3 text-cyan-300 shrink-0" />
                   <select
                     value={cinemaQuality}
                     onChange={(e) => setCinemaQuality(e.target.value as typeof cinemaQuality)}
@@ -496,7 +741,6 @@ export const MoviesView: React.FC<Props> = ({
                 </div>
               )}
 
-              {/* Volume Control in Cinema */}
               {onVolume && onToggleMute && (
                 <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/10 border border-white/10">
                   <button
@@ -518,11 +762,29 @@ export const MoviesView: React.FC<Props> = ({
                 </div>
               )}
 
-              {/* Expand / Fullscreen Button */}
+              {onOpenTvCast && (
+                <button
+                  onClick={() =>
+                    onOpenTvCast({
+                      title: activeMovie.title,
+                      artist: activeMovie.subtitle,
+                      mode: 'video',
+                      youtubeVideoId: activeMovie.youtubeVideoId,
+                      streamUrl: activeMovie.videoStreamUrl,
+                      coverUrl: activeMovie.posterUrl,
+                    })
+                  }
+                  className="px-2.5 py-1.5 rounded-xl bg-blue-500/25 hover:bg-blue-500/40 border border-cyan-400/45 text-cyan-100 text-[11px] font-black flex items-center gap-1"
+                  title="Passar este filme/série para a Smart TV"
+                >
+                  <Tv className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">TV</span>
+                </button>
+              )}
+
               <button
                 onClick={() => void toggleExpandPlayer()}
                 className="px-2.5 py-1.5 rounded-xl bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-[11px] font-black flex items-center gap-1"
-                title={expandedView ? 'Reduzir Tela' : 'Ampliar para Tela Cheia'}
               >
                 {expandedView ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                 <span>{expandedView ? 'Reduzir' : 'Ampliar'}</span>
@@ -572,7 +834,7 @@ export const MoviesView: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className={`w-full bg-black ${expandedView ? 'flex-1 min-h-0' : 'aspect-video'}`}>
+          <div className={`w-full bg-black ${expandedView ? 'flex-1 min-h-0' : 'flex-1 min-h-[240px] aspect-video'}`}>
             <iframe
               key={`${activeMovie.id}-${cinemaQuality}`}
               src={
@@ -590,13 +852,10 @@ export const MoviesView: React.FC<Props> = ({
           </div>
 
           {!expandedView && movieQueue.length > 1 && (
-            <div className="p-3 border-t border-white/10 bg-[#080412] space-y-2">
+            <div className="p-3 border-t border-white/10 bg-[#080412] space-y-2 shrink-0">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[10px] font-black uppercase tracking-wider text-red-300">
                   🎞️ Na Sequência ({movieQueue.length} títulos — toque para trocar)
-                </div>
-                <div className="text-[10px] text-cyan-300/80 hidden sm:block">
-                  Séries com selo "Temporada" avançam episódios automaticamente na sequência
                 </div>
               </div>
               <div className="flex items-stretch gap-2.5 overflow-x-auto pb-1">
@@ -617,15 +876,6 @@ export const MoviesView: React.FC<Props> = ({
                         <span className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/80 text-[9px] font-bold text-white">
                           #{idx + 1}
                         </span>
-                        {item.qualityLabel && (
-                          <span className="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-black/80 text-[8px] font-bold text-cyan-300">
-                            {item.qualityLabel.includes('4K')
-                              ? '4K'
-                              : item.qualityLabel.includes('1080')
-                                ? '1080p'
-                                : 'HD'}
-                          </span>
-                        )}
                       </div>
                       <div className="p-1.5">
                         <div className="text-[10px] font-bold text-white line-clamp-1">{item.title}</div>
@@ -654,10 +904,10 @@ export const MoviesView: React.FC<Props> = ({
           className={`w-full mx-auto my-auto overflow-hidden bg-[#05030d] flex flex-col ${
             expandedView
               ? 'h-full max-w-none rounded-none border-0'
-              : 'max-w-6xl rounded-3xl border border-cyan-400/25 shadow-[0_0_90px_rgba(6,182,212,0.28)]'
+              : 'max-w-6xl max-h-[94dvh] rounded-3xl border border-cyan-400/25 shadow-[0_0_90px_rgba(6,182,212,0.28)]'
           }`}
         >
-          <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#070414]">
+          <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#070414] shrink-0">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <Radio className="w-4 h-4 text-red-400 animate-pulse shrink-0" />
               <div className="min-w-0">
@@ -672,7 +922,7 @@ export const MoviesView: React.FC<Props> = ({
             <div className="flex items-center gap-1.5 flex-wrap shrink-0">
               {tvLevels.length > 1 && (
                 <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/10 border border-cyan-400/35">
-                  <QualityIcon className="w-3 h-3 text-cyan-300 shrink-0" />
+                  <Sparkles className="w-3 h-3 text-cyan-300 shrink-0" />
                   <select
                     value={selectedTvLevel}
                     onChange={(e) => {
@@ -681,7 +931,6 @@ export const MoviesView: React.FC<Props> = ({
                       if (hlsRef.current) hlsRef.current.currentLevel = lvl;
                     }}
                     className="bg-transparent text-[11px] font-black text-cyan-200 focus:outline-none cursor-pointer"
-                    title="Qualidade do Sinal ao Vivo"
                   >
                     <option value={-1} className="bg-[#0b0618]">Auto</option>
                     {tvLevels.map((l) => (
@@ -695,11 +944,7 @@ export const MoviesView: React.FC<Props> = ({
 
               {onVolume && onToggleMute && (
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/10 border border-white/10">
-                  <button
-                    onClick={onToggleMute}
-                    className="text-cyan-300 hover:text-white"
-                    title={muted ? 'Ativar Som' : 'Silenciar'}
-                  >
+                  <button onClick={onToggleMute} className="text-cyan-300 hover:text-white">
                     {muted || volume === 0 ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
                   </button>
                   <input
@@ -717,7 +962,6 @@ export const MoviesView: React.FC<Props> = ({
               <button
                 onClick={() => void toggleExpandPlayer()}
                 className="px-2.5 py-1.5 rounded-xl bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-[11px] font-black flex items-center gap-1"
-                title={expandedView ? 'Reduzir Tela' : 'Ampliar para Tela Cheia'}
               >
                 {expandedView ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                 <span>{expandedView ? 'Reduzir' : 'Ampliar'}</span>
@@ -728,16 +972,14 @@ export const MoviesView: React.FC<Props> = ({
                   <button
                     onClick={() => stepChannel(-1)}
                     className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white"
-                    title="Canal Anterior"
                   >
                     <SkipBack className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => stepChannel(1)}
-                    className="px-2.5 py-1.5 rounded-lg bg-cyan-500/25 hover:bg-cyan-500/40 text-cyan-100 text-[11px] font-bold flex items-center gap-1"
-                    title="Próximo Canal"
+                    className="px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold flex items-center gap-1"
                   >
-                    <span>Próximo</span>
+                    <span className="hidden sm:inline">Próximo Canal</span>
                     <SkipForward className="w-3.5 h-3.5" />
                   </button>
                 </>
@@ -746,19 +988,13 @@ export const MoviesView: React.FC<Props> = ({
                 onClick={() => setActiveChannel(null)}
                 className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-red-600 text-white text-xs font-black flex items-center gap-1"
               >
-                <X className="w-4 h-4" /> Fechar TV
+                <X className="w-4 h-4" /> Fechar
               </button>
             </div>
           </div>
 
-          <div className={`relative w-full bg-black flex items-center justify-center ${expandedView ? 'flex-1 min-h-0' : 'aspect-video'}`}>
-            <video
-              ref={tvVideoRef}
-              controls
-              autoPlay
-              playsInline
-              className="w-full h-full object-contain bg-black"
-            />
+          <div className={`relative w-full bg-black ${expandedView ? 'flex-1 min-h-0' : 'flex-1 min-h-[240px] aspect-video'}`}>
+            <video ref={tvVideoRef} controls autoPlay playsInline className="w-full h-full object-contain bg-black" />
             {tvError && (
               <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-6 text-center gap-3">
                 <AlertCircle className="w-10 h-10 text-amber-400" />
@@ -776,7 +1012,7 @@ export const MoviesView: React.FC<Props> = ({
           </div>
 
           {!expandedView && tvQueue.length > 1 && (
-            <div className="p-3 border-t border-white/10 bg-[#070412] space-y-2">
+            <div className="p-3 border-t border-white/10 bg-[#070412] space-y-2 shrink-0">
               <div className="text-[10px] font-black uppercase tracking-wider text-cyan-300">
                 📡 Mudar de Canal ({tvQueue.length} canais sintonizáveis)
               </div>
@@ -807,90 +1043,159 @@ export const MoviesView: React.FC<Props> = ({
     );
 
   return (
-    <div className="space-y-4 pb-36 md:pb-28">
-      {/* Top Mode Switcher: Cinema vs Live TV Mundial */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setSectionMode('cinema')}
-          className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 border transition ${
-            sectionMode === 'cinema'
-              ? 'bg-gradient-to-r from-red-500 to-pink-600 border-red-400 text-white shadow-lg'
-              : 'bg-white/[0.06] hover:bg-white/[0.12] border-white/10 text-purple-200'
-          }`}
-        >
-          <Clapperboard className="w-4 h-4" />
-          🎬 Filmes, Séries & Animes (HD/4K)
-        </button>
+    <div ref={containerRef} className="space-y-4 pb-36 md:pb-28">
+      {/* Discreet GTA-5 Style Corner Loader during Auto-Update */}
+      <CosmicGtaLoader
+        open={backgroundRefreshing}
+        mode="discreet_corner"
+        statusText="Atualizando lançamentos..."
+        onSkip={() => setBackgroundRefreshing(false)}
+      />
 
-        <button
-          onClick={() => setSectionMode('livetv')}
-          className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 border transition ${
-            sectionMode === 'livetv'
-              ? 'bg-gradient-to-r from-cyan-400 to-blue-600 border-cyan-300 text-black shadow-lg'
-              : 'bg-white/[0.06] hover:bg-white/[0.12] border-white/10 text-cyan-200'
-          }`}
-        >
-          <Radio className="w-4 h-4" />
-          📡 TV ao Vivo Mundial {tvTotalAvailable > 0 ? `(${tvTotalAvailable.toLocaleString('pt-BR')} Canais)` : '(Brasil & Mundo)'}
-        </button>
+      {/* Top Mode Switcher + Live Counts + Auto-Refresh */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setSectionMode('cinema')}
+            className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 border transition ${
+              sectionMode === 'cinema'
+                ? 'bg-gradient-to-r from-red-600 to-pink-600 border-red-400 text-white shadow-lg'
+                : 'bg-white/[0.06] hover:bg-white/[0.12] border-white/10 text-purple-200'
+            }`}
+          >
+            <Clapperboard className="w-4 h-4" />
+            🎬 Netflix+ ({catalogStats.total > 0 ? `${catalogStats.movies} Filmes · ${catalogStats.series} Séries · ${catalogStats.animes} Animes` : '300+ Filmes, Séries & Animes'})
+          </button>
+
+          <button
+            onClick={() => setSectionMode('livetv')}
+            className={`px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2 border transition ${
+              sectionMode === 'livetv'
+                ? 'bg-gradient-to-r from-cyan-400 to-blue-600 border-cyan-300 text-black shadow-lg'
+                : 'bg-white/[0.06] hover:bg-white/[0.12] border-white/10 text-cyan-200'
+            }`}
+          >
+            <Radio className="w-4 h-4" />
+            📡 TV ao Vivo {tvTotalAvailable > 0 ? `(${tvTotalAvailable.toLocaleString('pt-BR')} Canais)` : '(Brasil & Mundo)'}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setGlobalTvGrid((v) => !v)}
+            className={`px-3 py-2 rounded-xl text-[11px] font-black border flex items-center gap-1.5 transition ${
+              globalTvGrid
+                ? 'bg-red-600 border-red-400 text-white'
+                : 'bg-white/[0.07] hover:bg-white/15 border-white/15 text-cyan-200'
+            }`}
+            title="Modo Grade TV: exibe tudo em grade sem precisar arrastar para o lado"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>{globalTvGrid ? 'Modo Netflix ◀▶' : 'Grade TV Completa'}</span>
+          </button>
+
+          <button
+            onClick={() => void loadCinemaCatalog(true, true)}
+            disabled={backgroundRefreshing}
+            className="px-3 py-2 rounded-xl bg-white/[0.07] hover:bg-white/15 border border-white/15 text-[11px] font-bold text-emerald-300 flex items-center gap-1.5 transition"
+            title="Buscar novos lançamentos de cinema automaticamente agora"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${backgroundRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{lastUpdatedLabel}</span>
+          </button>
+        </div>
       </div>
 
       {sectionMode === 'cinema' ? (
         <>
-          {/* Featured Hero */}
-          {featuredMovie ? (
-            <section className="relative rounded-[28px] overflow-hidden border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.75)] min-h-[210px] sm:min-h-[250px] flex flex-col justify-end">
+          {/* Netflix+ Rotating Hero Billboard OR GTA-5 Style Loading Stage */}
+          {loading ? (
+            <CosmicGtaLoader
+              open={true}
+              mode="stage"
+              statusText="Carregando 300+ Filmes, 100+ Séries & Lançamentos..."
+            />
+          ) : featuredMovie ? (
+            <section className="relative rounded-[28px] overflow-hidden border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.85)] min-h-[240px] sm:min-h-[290px] flex flex-col justify-end">
               <img
+                key={featuredMovie.id}
                 src={featuredMovie.posterUrl}
                 alt={featuredMovie.title}
-                className="absolute inset-0 w-full h-full object-cover opacity-55 scale-105"
+                className="absolute inset-0 w-full h-full object-cover opacity-60 gta-ken-burns"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#04010c] via-[#04010c]/70 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#04010c] via-[#04010c]/60 to-transparent" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#04010c]/95 via-[#04010c]/55 to-transparent" />
 
-              <div className="relative z-10 p-5 sm:p-7 max-w-2xl space-y-2.5">
+              {/* Translucent Hero Billboard Left/Right Arrows */}
+              {heroItems.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setHeroIdx((i) => (i - 1 + heroItems.length) % heroItems.length)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-16 rounded-2xl bg-black/40 hover:bg-black/75 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition"
+                    title="Destaque Anterior"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHeroIdx((i) => (i + 1) % heroItems.length)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-16 rounded-2xl bg-black/40 hover:bg-black/75 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition"
+                    title="Próximo Destaque"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                </>
+              )}
+
+              <div className="relative z-10 p-5 sm:p-8 sm:pl-16 max-w-2xl space-y-2.5">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600/90 text-[10px] font-black uppercase tracking-wider text-white">
-                    <Clapperboard className="w-3 h-3" /> CINEMA LENKYX · {featuredMovie.durationLabel}
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600 text-[10px] font-black uppercase tracking-wider text-white">
+                    <Clapperboard className="w-3 h-3" /> TOP {(heroIdx % Math.max(1, heroItems.length)) + 1} · {featuredMovie.durationLabel}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-[10px] font-black text-cyan-200">
+                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/25 border border-cyan-400/45 text-[10px] font-black text-cyan-200">
                     {featuredMovie.qualityLabel || 'Full HD 1080p'}
                   </span>
                   {featuredMovie.isDubbed && (
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/90 text-[10px] font-black text-black">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-400 text-[10px] font-black text-black">
                       Dublado PT-BR
                     </span>
                   )}
                 </div>
-                <h1 className="font-display text-xl sm:text-3xl font-black text-white line-clamp-2">
+                <h1 className="font-display text-xl sm:text-3xl font-black text-white line-clamp-2 drop-shadow">
                   {featuredMovie.title}
                 </h1>
                 <p className="text-xs text-purple-100/85">
-                  {featuredMovie.subtitle} · Filmes internacionais dublados, séries com temporadas completas, animes e acervo direto em tela limpa.
+                  {featuredMovie.subtitle} · Use as setinhas transparentes ◀ ▶ ou as setas do controle da TV para navegar facilmente.
                 </p>
                 <div className="flex flex-wrap items-center gap-2.5 pt-1">
                   <button
                     onClick={() => handleOpenMovie(featuredMovie, featuredQueue)}
-                    className="px-5 py-2.5 rounded-full bg-white hover:bg-purple-100 text-black font-black text-xs flex items-center gap-1.5 shadow-lg transition active:scale-95"
+                    className="px-6 py-2.5 rounded-full bg-white hover:bg-purple-100 text-black font-black text-xs flex items-center gap-1.5 shadow-lg transition active:scale-95"
                   >
-                    <Play className="w-4 h-4 fill-black" /> Assistir em Tela Limpa
+                    <Play className="w-4 h-4 fill-black" /> Assistir Agora
                   </button>
+                  {onOpenTvCast && (
+                    <button
+                      onClick={() =>
+                        onOpenTvCast({
+                          title: featuredMovie.title,
+                          artist: featuredMovie.subtitle,
+                          mode: 'video',
+                          youtubeVideoId: featuredMovie.youtubeVideoId,
+                          streamUrl: featuredMovie.videoStreamUrl,
+                          coverUrl: featuredMovie.posterUrl,
+                        })
+                      }
+                      className="px-4 py-2.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 text-white font-black text-xs flex items-center gap-1.5 backdrop-blur-md transition"
+                    >
+                      <Tv className="w-4 h-4 text-cyan-300" /> Passar p/ TV
+                    </button>
+                  )}
                 </div>
               </div>
             </section>
-          ) : (
-            <section className="rounded-[28px] cosmic-card-3d p-6 flex items-center gap-3">
-              <Tv className="w-8 h-8 text-red-400 shrink-0" />
-              <div>
-                <h1 className="font-display text-xl font-black text-white">
-                  LENKYX <span className="text-red-400">CINEMA · SÉRIES & ANIMES</span>
-                </h1>
-                <p className="text-xs text-purple-200/80">
-                  Filmes internacionais dublados, séries completas, animes, acervo aberto e trailers na melhor qualidade HD/4K.
-                </p>
-              </div>
-            </section>
-          )}
+          ) : null}
 
           {/* Search Movies, Series & Animes */}
           <form
@@ -906,7 +1211,7 @@ export const MoviesView: React.FC<Props> = ({
                 type="text"
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
-                placeholder="Buscar filme internacional dublado, série, anime, saga ou trailer 4K..."
+                placeholder="Buscar lançamentos 2026, filme dublado, série, anime ou saga..."
                 className="w-full pl-10 pr-24 py-2.5 rounded-2xl bg-white/[0.07] border border-white/15 text-xs sm:text-sm text-white placeholder-purple-300/55 focus:outline-none focus:border-red-400"
               />
               {searchResults !== null && (
@@ -917,7 +1222,6 @@ export const MoviesView: React.FC<Props> = ({
                     setSearchResults(null);
                   }}
                   className="absolute right-20 p-1 text-purple-300 hover:text-white"
-                  title="Limpar busca"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -937,11 +1241,12 @@ export const MoviesView: React.FC<Props> = ({
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
               {[
                 { id: 'all' as CinemaFilter, label: '🎬 Tudo' },
-                { id: 'movie' as CinemaFilter, label: '🌍 Filmes Internacionais' },
+                { id: 'releases' as CinemaFilter, label: `🍿 Lançamentos ${new Date().getFullYear()}` },
+                { id: 'movie' as CinemaFilter, label: '🌍 Filmes Completos' },
                 { id: 'series' as CinemaFilter, label: '📺 Séries' },
                 { id: 'anime' as CinemaFilter, label: '⛩️ Animes' },
-                { id: 'archive' as CinemaFilter, label: '🏛️ Acervo Direto (Sem YouTube)' },
-                { id: 'dubbed' as CinemaFilter, label: '🎙️ Só Dublados' },
+                { id: 'archive' as CinemaFilter, label: '🏛️ Acervo Direto' },
+                { id: 'dubbed' as CinemaFilter, label: '🎙️ Dublados' },
                 { id: 'uhd' as CinemaFilter, label: '💎 1080p / 4K' },
               ].map((pill) => {
                 const active = activeFilter === pill.id;
@@ -951,7 +1256,7 @@ export const MoviesView: React.FC<Props> = ({
                     onClick={() => setActiveFilter(pill.id)}
                     className={`px-3 py-1.5 rounded-full text-[11px] font-black whitespace-nowrap border transition ${
                       active
-                        ? 'bg-gradient-to-r from-red-500 to-pink-600 border-red-400 text-white shadow'
+                        ? 'bg-gradient-to-r from-red-600 to-pink-600 border-red-400 text-white shadow'
                         : 'bg-white/[0.06] hover:bg-white/[0.12] border-white/10 text-purple-200'
                     }`}
                   >
@@ -994,38 +1299,41 @@ export const MoviesView: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Carousels */}
-          {loading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-2 text-purple-300">
-              <Loader2 className="w-7 h-7 animate-spin text-red-400" />
-              <span className="text-xs font-semibold">Carregando filmes dublados, séries, animes e acervo direto...</span>
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {filteredCategories.map((cat) => {
-                const collapsed = Boolean(collapsedIds[cat.id]);
-                return (
-                  <section key={cat.id} className="space-y-2">
-                    <div className="flex items-center justify-between px-1">
-                      <h2 className="font-display text-xs sm:text-sm font-black text-white flex items-center gap-2">
-                        <span>{cat.emoji}</span>
-                        <span>{cat.title}</span>
-                      </h2>
-                      <button
-                        onClick={() => toggleCollapse(cat.id)}
-                        className="px-2.5 py-1 rounded-full bg-white/[0.07] hover:bg-white/[0.14] border border-white/10 text-[10px] font-bold text-purple-200 flex items-center gap-1 transition"
-                      >
-                        {collapsed ? 'Mostrar' : 'Minimizar'}
-                        {collapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-                      </button>
-                    </div>
+          {/* 24/7 Live Cinema, Series & Anime Channels Strip right inside Netflix+ */}
+          {!loading && liveCinemaAndSeriesChannels.length > 0 && activeFilter === 'all' && (
+            <NetflixScrollableRow
+              title="Canais de Filmes, Séries & Animes 24h Ao Vivo (Pluto TV, Plex & Mundo)"
+              emoji="📡"
+              count={liveCinemaAndSeriesChannels.length}
+              collapsed={Boolean(collapsedIds['cinema-24h-live'])}
+              expandedGrid={rowGridIds['cinema-24h-live'] ?? globalTvGrid}
+              onToggleCollapse={() => toggleCollapse('cinema-24h-live')}
+              onToggleGrid={() => toggleRowGrid('cinema-24h-live')}
+            >
+              {liveCinemaAndSeriesChannels.map((ch) =>
+                renderChannelCard(ch, liveCinemaAndSeriesChannels, rowGridIds['cinema-24h-live'] ?? globalTvGrid)
+              )}
+            </NetflixScrollableRow>
+          )}
 
-                    {!collapsed && (
-                      <div className="flex items-stretch gap-3 overflow-x-auto pb-2">
-                        {cat.movies.map((m, idx) => renderPosterCard(m, idx, cat.movies, false))}
-                      </div>
-                    )}
-                  </section>
+          {/* Netflix+ Movie, Series, Anime & Release Rows */}
+          {!loading && (
+            <div className="space-y-6">
+              {filteredCategories.map((cat) => {
+                const isGrid = rowGridIds[cat.id] ?? globalTvGrid;
+                return (
+                  <NetflixScrollableRow
+                    key={cat.id}
+                    title={cat.title}
+                    emoji={cat.emoji}
+                    count={cat.movies.length}
+                    collapsed={Boolean(collapsedIds[cat.id])}
+                    expandedGrid={isGrid}
+                    onToggleCollapse={() => toggleCollapse(cat.id)}
+                    onToggleGrid={() => toggleRowGrid(cat.id)}
+                  >
+                    {cat.movies.map((m, idx) => renderPosterCard(m, idx, cat.movies, isGrid))}
+                  </NetflixScrollableRow>
                 );
               })}
             </div>
@@ -1043,12 +1351,11 @@ export const MoviesView: React.FC<Props> = ({
                 Canais de TV do Brasil & do Mundo ({tvTotalAvailable > 0 ? tvTotalAvailable.toLocaleString('pt-BR') : '7.000+'} Liberados)
               </h1>
               <p className="text-xs text-cyan-100/80">
-                Sinais oficiais abertos em HD (Pluto TV, filmes 24h, animes, esportes, notícias, Brasil & NASA TV) direto no app.
+                Use as setinhas transparentes ◀ ▶ ou o modo Grade TV para escolher canais facilmente na Smart TV.
               </p>
             </div>
           </section>
 
-          {/* Search Live TV Channels & Filter by Country */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1074,7 +1381,6 @@ export const MoviesView: React.FC<Props> = ({
                     setTvSearchResults(null);
                   }}
                   className="absolute right-20 p-1 text-purple-300 hover:text-white"
-                  title="Limpar busca"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1122,48 +1428,40 @@ export const MoviesView: React.FC<Props> = ({
               </h2>
               {tvSearchResults.length === 0 ? (
                 <div className="py-10 text-center rounded-2xl cosmic-card-3d text-xs text-purple-300">
-                  Nenhum canal encontrado para essa busca. Tente outro nome ou selecione "Mundo Todo".
+                  Nenhum canal encontrado para essa busca.
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-3">
-                  {tvSearchResults.map((ch) => renderChannelCard(ch, tvSearchResults))}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {tvSearchResults.map((ch) => renderChannelCard(ch, tvSearchResults, true))}
                 </div>
               )}
             </div>
           )}
 
           {tvLoading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-2 text-cyan-200">
-              <Loader2 className="w-7 h-7 animate-spin text-cyan-400" />
-              <span className="text-xs font-semibold">Sintonizando canais abertos do Brasil e do mundo...</span>
-            </div>
+            <CosmicGtaLoader
+              open={true}
+              mode="stage"
+              statusText="Sintonizando 7.200+ canais de TV do Brasil e do mundo..."
+            />
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-6">
               {tvCategories.map((cat) => {
                 if (!cat.channels || cat.channels.length === 0) return null;
-                const collapsed = Boolean(collapsedIds[cat.id]);
+                const isGrid = rowGridIds[cat.id] ?? globalTvGrid;
                 return (
-                  <section key={cat.id} className="space-y-2">
-                    <div className="flex items-center justify-between px-1">
-                      <h2 className="font-display text-xs sm:text-sm font-black text-white flex items-center gap-2">
-                        <span>{cat.emoji}</span>
-                        <span>{cat.title}</span>
-                      </h2>
-                      <button
-                        onClick={() => toggleCollapse(cat.id)}
-                        className="px-2.5 py-1 rounded-full bg-white/[0.07] hover:bg-white/[0.14] border border-white/10 text-[10px] font-bold text-purple-200 flex items-center gap-1 transition"
-                      >
-                        {collapsed ? 'Mostrar' : 'Minimizar'}
-                        {collapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-                      </button>
-                    </div>
-
-                    {!collapsed && (
-                      <div className="flex items-stretch gap-3 overflow-x-auto pb-2">
-                        {cat.channels.map((ch) => renderChannelCard(ch, cat.channels))}
-                      </div>
-                    )}
-                  </section>
+                  <NetflixScrollableRow
+                    key={cat.id}
+                    title={cat.title}
+                    emoji={cat.emoji}
+                    count={cat.channels.length}
+                    collapsed={Boolean(collapsedIds[cat.id])}
+                    expandedGrid={isGrid}
+                    onToggleCollapse={() => toggleCollapse(cat.id)}
+                    onToggleGrid={() => toggleRowGrid(cat.id)}
+                  >
+                    {cat.channels.map((ch) => renderChannelCard(ch, cat.channels, isGrid))}
+                  </NetflixScrollableRow>
                 );
               })}
             </div>

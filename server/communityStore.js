@@ -441,10 +441,10 @@ const tvHandoffSessions = new Map();
 
 export function createTvHandoffSession(payload) {
   const digits = String(Math.floor(100 + Math.random() * 900));
-  const letters = 'LNX';
-  const code = `${letters}-${digits}`;
+  const code = digits; // ultra-short 3-digit PIN for Smart TV remotes!
   const session = {
     code,
+    shortPin: digits,
     title: String(payload?.title || 'LENKYX Cosmic Phonk').slice(0, 140),
     artist: String(payload?.artist || 'LENKYX').slice(0, 80),
     mode: String(payload?.mode || 'galaxy').slice(0, 24),
@@ -457,6 +457,7 @@ export function createTvHandoffSession(payload) {
     claimedByTv: false,
   };
   tvHandoffSessions.set(code, session);
+  tvHandoffSessions.set(`LNX-${digits}`, session);
   // Prune sessions older than 2 hours
   const cutoff = Date.now() - 2 * 3600 * 1000;
   for (const [k, v] of tvHandoffSessions.entries()) {
@@ -466,8 +467,9 @@ export function createTvHandoffSession(payload) {
 }
 
 export function getTvHandoffSession(code, markClaimed = false) {
-  const norm = String(code || '').trim().toUpperCase();
-  const s = tvHandoffSessions.get(norm);
+  const raw = String(code || '').trim().toUpperCase();
+  const digitsOnly = raw.replace(/^LNX-?/i, '');
+  const s = tvHandoffSessions.get(raw) || tvHandoffSessions.get(digitsOnly);
   if (!s) return null;
   if (markClaimed) {
     s.claimedByTv = true;

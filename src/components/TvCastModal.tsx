@@ -55,7 +55,8 @@ export const TvCastModal: React.FC<Props> = ({
       ? window.location.origin
       : 'https://lenkyx-cosmic-phonk.onrender.com';
 
-  const tvUrl = session ? `${origin}/?tv=${encodeURIComponent(session.code)}` : `${origin}/?tvMode=1`;
+  const shortTvHome = `${origin}/tv`;
+  const tvUrl = session ? `${origin}/tv/${encodeURIComponent(session.code)}` : shortTvHome;
 
   useEffect(() => {
     if (!open) return;
@@ -65,7 +66,7 @@ export const TvCastModal: React.FC<Props> = ({
       .then(async (s) => {
         if (s) {
           setSession(s);
-          const link = `${origin}/?tv=${encodeURIComponent(s.code)}`;
+          const link = `${origin}/tv/${encodeURIComponent(s.code)}`;
           try {
             const qr = await QRCode.toDataURL(link, {
               width: 240,
@@ -236,10 +237,13 @@ export const TvCastModal: React.FC<Props> = ({
                 <div className="space-y-2.5">
                   <div className="rounded-2xl bg-cyan-500/15 border border-cyan-400/40 p-3 text-center">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-cyan-200">
-                      Código da TV
+                      Link Curto na TV: <span className="text-white font-mono">/tv</span> + Código (3 dígitos)
                     </div>
-                    <div className="text-2xl font-black tracking-widest text-white font-mono">
-                      {session?.code || 'LNX-...'}
+                    <div className="text-3xl font-black tracking-widest text-white font-mono">
+                      {session?.code || '...'}
+                    </div>
+                    <div className="text-[10px] text-cyan-200/85 font-mono truncate mt-0.5">
+                      {tvUrl}
                     </div>
                   </div>
 
@@ -278,13 +282,14 @@ export const TvCastModal: React.FC<Props> = ({
                   <Sparkles className="w-3.5 h-3.5" /> Como funciona (100% Independente):
                 </div>
                 <p>
-                  1. Abra o link <span className="font-mono text-cyan-200">{tvUrl}</span> no navegador da Smart TV (ou
-                  aponte a câmera / envie pelo WhatsApp da TV).
+                  1. Na Smart TV, digite apenas o link curto <span className="font-mono text-cyan-200">{shortTvHome}</span>{' '}
+                  e coloque os <strong>3 números ({session?.code || '...'})</strong> (ou abra direto{' '}
+                  <span className="font-mono text-cyan-200">{tvUrl}</span> ou leia o QR Code).
                   <br />
-                  2. Na tela da TV, o site já abre em <strong>Modo TV 10-Pés</strong> com botão direto para{' '}
-                  <strong>Baixar o App LENKYX na Android TV</strong> e com a Galáxia 3D tocando!
+                  2. Na tela da TV, o site já abre em <strong>Modo TV</strong> com botão direto para{' '}
+                  <strong>Baixar App na TV (<span className="font-mono">/app</span>)</strong>!
                   <br />
-                  3. Clique em <strong>Separar Celular</strong>: seu celular fica livre ou pode até ser desligado que a TV
+                  3. Clique em <strong>Separar Celular</strong>: seu celular fica livre ou pode ser fechado que a TV
                   continua tocando sozinha!
                 </p>
                 {apkDownloadUrl && (

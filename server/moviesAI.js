@@ -4,7 +4,24 @@
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 export const MOVIE_CATEGORIES = [
+  {
+    id: 'cat-lancamentos-cinema',
+    title: `Lançamentos de Cinema ${CURRENT_YEAR} — Trailers Oficiais 4K (Auto)`,
+    emoji: '🍿',
+    mediaType: 'trailer',
+    isTrailerCategory: true,
+    query: `lancamentos cinema ${CURRENT_YEAR} trailer oficial dublado 4k hd`,
+  },
+  {
+    id: 'cat-novidades-completos',
+    title: `Lançamentos & Filmes Novos ${CURRENT_YEAR} (Completos Dublados HD)`,
+    emoji: '✨',
+    mediaType: 'movie',
+    query: `filme novo lancamento ${CURRENT_YEAR} completo dublado portugues full hd`,
+  },
   {
     id: 'cat-internacionais-dub',
     title: 'Top Internacionais Dublados (Full HD)',
@@ -55,6 +72,132 @@ export const MOVIE_CATEGORIES = [
     query: 'filme completo terror suspense internacional dublado hd',
   },
   {
+    id: 'cat-comedia',
+    title: 'Comédia, Aventura & Diversão (Dublados HD)',
+    emoji: '😂',
+    mediaType: 'movie',
+    query: 'filme de comedia aventura completo dublado portugues full hd',
+  },
+  {
+    id: 'cat-drama',
+    title: 'Drama, Romance & Emoção (Dublados HD)',
+    emoji: '🎭',
+    mediaType: 'movie',
+    query: 'filme de drama romance internacional completo dublado hd',
+  },
+  {
+    id: 'cat-artes-marciais',
+    title: 'Artes Marciais, Kung Fu & Lutas (Dublados HD)',
+    emoji: '🥋',
+    mediaType: 'movie',
+    query: 'filme kung fu artes marciais luta completo dublado hd',
+  },
+  {
+    id: 'cat-drift-carros',
+    title: 'Velozes, Drift, Corrida & Phonk Cinema (Dublados HD)',
+    emoji: '🏎️',
+    mediaType: 'movie',
+    query: 'filme de corrida carros drift acao completo dublado full hd',
+  },
+  {
+    id: 'cat-guerra-faroeste',
+    title: 'Guerra, Faroeste & Épicos Históricos (Dublados HD)',
+    emoji: '⚔️',
+    mediaType: 'movie',
+    query: 'filme de guerra faroeste epico completo dublado portugues hd',
+  },
+  {
+    id: 'cat-misterio-policial',
+    title: 'Investigação, Crime & Máfia (Dublados Full HD)',
+    emoji: '🕵️',
+    mediaType: 'movie',
+    query: 'filme policial suspense investigacao completo dublado 1080p',
+  },
+  {
+    id: 'cat-cult-aventura',
+    title: 'Aventura, Fantasia & Sobrevivência (Dublados HD)',
+    emoji: '🧭',
+    mediaType: 'movie',
+    query: 'filme aventura fantasia sobrevivencia completo dublado hd',
+  },
+  {
+    id: 'cat-classicos-dublados',
+    title: 'Filmes Clássicos, Guerra & Épicos (Dublados HD)',
+    emoji: '⚔️',
+    mediaType: 'movie',
+    query: 'filme guerra epico historico completo dublado hd',
+  },
+  {
+    id: 'cat-animes-isekai',
+    title: 'Animes Isekai, Fantasia & Clássicos (Dublados PT-BR)',
+    emoji: '🐉',
+    mediaType: 'anime',
+    query: 'anime fantasia isekai episodio completo dublado portugues',
+  },
+  {
+    id: 'cat-brasil-cinema',
+    title: 'Cinema Nacional & Sucessos Brasileiros (Completos HD)',
+    emoji: '🇧🇷',
+    mediaType: 'movie',
+    query: 'filme brasileiro nacional completo comedia acao drama full hd',
+  },
+  {
+    id: 'cat-series-acao',
+    title: 'Séries de Ação, Policial & Suspense (Episódios Dublados)',
+    emoji: '🚨',
+    mediaType: 'series',
+    query: 'serie de acao suspense crime completa dublado episodio hd',
+  },
+  {
+    id: 'cat-series-terror',
+    title: 'Séries de Terror, Sobrenatural & Mistério (Dubladas)',
+    emoji: '🕯️',
+    mediaType: 'series',
+    query: 'serie terror sobrenatural suspense completo dublado episodio',
+  },
+  {
+    id: 'cat-series-brasil',
+    title: 'Séries Brasileiras, Humor & Novelas (Episódios HD)',
+    emoji: '🇧🇷',
+    mediaType: 'series',
+    query: 'serie brasileira humor novela episodio completo hd',
+  },
+  {
+    id: 'cat-series-scifi',
+    title: 'Séries de Ficção Científica, Espaço & Mistério (HD)',
+    emoji: '🛸',
+    mediaType: 'series',
+    query: 'serie ficcao cientifica espaco misterio dublado episodio completo',
+  },
+  {
+    id: 'cat-doramas',
+    title: 'Doramas & Séries Asiáticas Completas Dubladas (Full HD)',
+    emoji: '🌸',
+    mediaType: 'series',
+    query: 'dorama completo dublado portugues serie coreana episodio hd',
+  },
+  {
+    id: 'cat-series-comedia',
+    title: 'Séries de Comédia, Drama & Clássicas (Dubladas)',
+    emoji: '🍿',
+    mediaType: 'series',
+    query: 'serie comedia drama dublado portugues temporada completa',
+  },
+  {
+    id: 'cat-animes-acao',
+    title: 'Animes Shonen, Luta & Aventura Dublados (Full HD)',
+    emoji: '⚔️',
+    mediaType: 'anime',
+    query: 'anime acao luta aventura completo dublado portugues hd',
+  },
+  {
+    id: 'cat-familia',
+    title: 'Animações, Desenhos & Família (Dublados HD)',
+    emoji: '🦁',
+    mediaType: 'anime',
+    query: 'desenho filme animacao familia completo dublado portugues hd',
+  },
+  {
     id: 'cat-trailers',
     title: 'Lançamentos Cinema — Trailers Oficiais 4K/HD',
     emoji: '🎬',
@@ -64,18 +207,26 @@ export const MOVIE_CATEGORIES = [
   },
   {
     id: 'cat-classicos',
-    title: 'Documentários Espaciais & Clássicos 4K/HD',
-    emoji: '🛸',
+    title: 'Documentários Espaciais & Universo NASA 4K/HD',
+    emoji: '🌌',
     mediaType: 'movie',
     query: 'documentario universo nasa completo dublado 4k hd',
   },
   {
     id: 'cat-archive-cinema',
-    title: 'Acervo Cinema & Séries Clássicas (Fonte Direta Archive.org)',
+    title: 'Acervo Clássico Archive.org — Ficção, Ação & Terror (Direto)',
     emoji: '🏛️',
     mediaType: 'movie',
     isArchiveOnly: true,
     query: 'feature_films OR sci_fi_and_horror',
+  },
+  {
+    id: 'cat-archive-series',
+    title: 'Acervo Clássico Archive.org — Comédia, Aventura & Séries',
+    emoji: '📼',
+    mediaType: 'movie',
+    isArchiveOnly: true,
+    query: 'comedy_films OR Classic_TV',
   },
 ];
 
@@ -241,7 +392,7 @@ export async function searchMovies(
   if (cached && Date.now() - cached.ts < 1000 * 60 * 12) return cached.data;
 
   if (isArchiveOnly) {
-    const arcItems = await fetchArchiveCinema(cleanQ, category, 16);
+    const arcItems = await fetchArchiveCinema(cleanQ, category, 30);
     movieCache.set(key, { ts: Date.now(), data: arcItems });
     return arcItems;
   }
@@ -397,7 +548,7 @@ export async function searchMovies(
             mediaType: resolvedType,
           },
         });
-        if (scoredItems.length >= 24) break;
+        if (scoredItems.length >= 34) break;
       }
     } catch {
       // continue to fallback url or Archive
@@ -406,7 +557,7 @@ export async function searchMovies(
 
   // Prioritize highest quality (4K / 1080p) and Dublado PT-BR at the top
   scoredItems.sort((a, b) => b.score - a.score);
-  const items = scoredItems.slice(0, 18).map((x) => x.item);
+  const items = scoredItems.slice(0, 30).map((x) => x.item);
 
   // Append Internet Archive open feature films only when YouTube returned too few results
   if (!isTrailerCategory && items.length < 10) {
@@ -449,18 +600,42 @@ export async function searchMovies(
   return items;
 }
 
-export async function getMoviesDirectory() {
-  const settled = await Promise.all(
-    MOVIE_CATEGORIES.map(async (cat) => ({
-      ...cat,
-      movies: await searchMovies(
-        cat.query,
-        cat.title,
-        Boolean(cat.isTrailerCategory),
-        cat.mediaType || 'movie',
-        Boolean(cat.isArchiveOnly)
-      ),
-    }))
-  );
-  return { categories: settled };
+let directoryCache = { ts: 0, payload: null };
+
+export async function getMoviesDirectory(forceRefresh = false) {
+  if (!forceRefresh && directoryCache.payload && Date.now() - directoryCache.ts < 1000 * 60 * 30) {
+    return directoryCache.payload;
+  }
+
+  if (forceRefresh) {
+    movieCache.clear();
+  }
+
+  const settled = [];
+  const batchSize = 6;
+  for (let i = 0; i < MOVIE_CATEGORIES.length; i += batchSize) {
+    const chunk = MOVIE_CATEGORIES.slice(i, i + batchSize);
+    const res = await Promise.all(
+      chunk.map(async (cat) => ({
+        ...cat,
+        movies: await searchMovies(
+          cat.query,
+          cat.title,
+          Boolean(cat.isTrailerCategory),
+          cat.mediaType || 'movie',
+          Boolean(cat.isArchiveOnly)
+        ),
+      }))
+    );
+    settled.push(...res);
+  }
+
+  const payload = {
+    updatedAt: new Date().toISOString(),
+    categories: settled,
+  };
+  if (settled.some((c) => c.movies.length > 0)) {
+    directoryCache = { ts: Date.now(), payload };
+  }
+  return payload;
 }

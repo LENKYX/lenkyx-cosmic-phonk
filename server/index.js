@@ -586,9 +586,10 @@ app.use('/api/movies-', (_req, res, next) => {
   next();
 });
 
-app.get('/api/movies-directory', async (_req, res) => {
+app.get('/api/movies-directory', async (req, res) => {
   try {
-    const payload = await getMoviesDirectory();
+    const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+    const payload = await getMoviesDirectory(refresh);
     res.json(payload);
   } catch {
     res.json({ categories: [] });
@@ -1035,6 +1036,19 @@ app.post('/api/community/lives', async (req, res) => {
   }
 });
 
+app.get('/tv', (_req, res) => {
+  res.redirect(302, '/?tvMode=1');
+});
+
+app.get('/tv/:code', (req, res) => {
+  const c = String(req.params.code || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 12);
+  res.redirect(302, c ? `/?tv=${encodeURIComponent(c)}` : '/?tvMode=1');
+});
+
+app.get('/app', (_req, res) => {
+  res.redirect(302, '/download/apk');
+});
+
 // Serve built frontend with optimized mobile/desktop HTTP caching
 if (fs.existsSync(DIST_DIR)) {
   app.use(
@@ -1081,6 +1095,11 @@ async function boot() {
     console.log(
       `Storage mode: ${isSupabaseEnabled() ? 'Supabase Cloud PostgreSQL + local cache' : 'Local JSON'} | Data dir: ${DATA_DIR}`
     );
+    // Warm up 300+ movies, 100+ series, 50+ animes & 7,200+ Live TV caches in background
+    setTimeout(() => {
+      void getMoviesDirectory().catch(() => {});
+      void getLiveTvDirectory().catch(() => {});
+    }, 2000);
   });
 }
 

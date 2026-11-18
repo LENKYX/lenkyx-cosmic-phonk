@@ -18,10 +18,10 @@ function getApiTargets(): string[] {
   return isAndroidApk() ? ['', CLOUD_API_BASE] : ['', CLOUD_API_BASE];
 }
 
-async function fetchJsonWithFallback<T>(path: string): Promise<T | null> {
+async function fetchJsonWithFallback<T>(path: string, timeoutMs = 20000): Promise<T | null> {
   for (const base of getApiTargets()) {
     try {
-      const r = await fetch(`${base}${path}`, { signal: AbortSignal.timeout(12000) });
+      const r = await fetch(`${base}${path}`, { signal: AbortSignal.timeout(timeoutMs) });
       if (r.ok) return (await r.json()) as T;
     } catch {
       // try next target
@@ -30,8 +30,12 @@ async function fetchJsonWithFallback<T>(path: string): Promise<T | null> {
   return null;
 }
 
-export async function fetchMoviesDirectory(): Promise<MovieCategory[]> {
-  const data = await fetchJsonWithFallback<{ categories?: MovieCategory[] }>('/api/movies-directory');
+export async function fetchMoviesDirectory(forceRefresh = false): Promise<MovieCategory[]> {
+  const qs = forceRefresh ? '?refresh=1' : '';
+  const data = await fetchJsonWithFallback<{ categories?: MovieCategory[] }>(
+    `/api/movies-directory${qs}`,
+    24000
+  );
   return data?.categories || [];
 }
 

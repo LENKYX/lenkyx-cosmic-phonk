@@ -59,6 +59,7 @@ import { SoundBoostModal } from './components/SoundBoostModal';
 import { CommunityChatModal, TargetCommentsModal } from './components/CommunityChatModal';
 import { TvCastModal } from './components/TvCastModal';
 import { LegalTermsModal } from './components/LegalTermsModal';
+import { CosmicGtaLoader } from './components/CosmicGtaLoader';
 import { fetchTvHandoff } from './utils/communityApi';
 import { PixModal } from './components/PixModal';
 import {
@@ -216,6 +217,32 @@ export function App() {
     coverUrl?: string;
   } | null>(null);
   const [tvModeBanner, setTvModeBanner] = useState<string | null>(null);
+  const [tvPinInput, setTvPinInput] = useState('');
+  const [gtaLoaderOpen, setGtaLoaderOpen] = useState(() => !sessionStorage.getItem('lenkyx_splash_done'));
+  const [gtaUpdateCorner, setGtaUpdateCorner] = useState(false);
+
+  // Brief discreet GTA-5 style cosmic splash on first visit (2.2s, skippable anytime) + SW update listener
+  useEffect(() => {
+    if (gtaLoaderOpen) {
+      const t = window.setTimeout(() => {
+        setGtaLoaderOpen(false);
+        sessionStorage.setItem('lenkyx_splash_done', '1');
+      }, 2200);
+      return () => window.clearTimeout(t);
+    }
+  }, [gtaLoaderOpen]);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready
+      .then((reg) => {
+        reg.addEventListener('updatefound', () => {
+          setGtaUpdateCorner(true);
+          setTimeout(() => setGtaUpdateCorner(false), 6000);
+        });
+      })
+      .catch(() => {});
+  }, []);
   const [appUpdateInfo, setAppUpdateInfo] = useState<{
     latestVersionName: string;
     apkUrl: string;
@@ -314,10 +341,47 @@ export function App() {
         }
       });
     } else if (tvMode) {
-      setTvModeBanner('📺 Modo Smart TV ativo! Toque livremente sem depender do celular.');
-      setScreensaverOpen(true);
+      setTvModeBanner('📺 Modo Smart TV Ativo! Digite o código de 3 números do celular ou navegue livremente.');
     }
   }, []);
+
+  const handleClaimTvPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = tvPinInput.trim();
+    if (!clean) return;
+    const session = await fetchTvHandoff(clean, true);
+    if (!session) {
+      showToast('Código não encontrado. Gere um novo no botão TV do celular!');
+      return;
+    }
+    setTvModeBanner(`📺 Conectado à TV (${session.code}) · Celular já pode ser desconectado!`);
+    setTvPinInput('');
+    const tvTrack: Track = {
+      id: session.trackId || `tv-${session.code}`,
+      number: 1,
+      title: session.title,
+      artist: session.artist || 'LENKYX',
+      album: 'Smart TV Handoff',
+      emoji: '📺',
+      bpm: 132,
+      key: 'Fm',
+      audioUrl: session.audioUrl || '',
+      youtubeVideoId: session.youtubeVideoId || undefined,
+      coverUrl: session.coverUrl || '/covers/album-official.jpg',
+      plays: 0,
+      likes: 0,
+      favorite: false,
+      releaseBatch: 1,
+      status: { suno: true, cover: true, app: true, youtube: Boolean(session.youtubeVideoId), distrokid: true },
+      sunoPrompt: '',
+      lyrics: '',
+      createdAt: new Date().toISOString(),
+    };
+    setCurrentTrack(tvTrack);
+    setIsPlaying(true);
+    if (session.youtubeVideoId) setClipTheaterOpen(true);
+    else setScreensaverOpen(true);
+  };
 
   // Silent Auto-Update check (Android APK checks Supabase manifest via LocalAssetServer)
   useEffect(() => {
@@ -1666,6 +1730,10 @@ export function App() {
                     muted={muted}
                     onVolume={handleVolume}
                     onToggleMute={handleToggleMute}
+                    onOpenTvCast={(m) => {
+                      setTvCustomMedia(m);
+                      setTvCastOpen(true);
+                    }}
                   />
                 )}
 
@@ -1846,19 +1914,45 @@ export function App() {
         onChangeProfile={handleChangeSoundProfile}
       />
 
-      {/* SMART TV INDEPENDENT MODE BANNER (When opened on a Smart TV via ?tv=CODE) */}
+      {/* SMART TV INDEPENDENT MODE BANNER (When opened on a Smart TV via /tv or /tv/413) */}
       {tvModeBanner && (
-        <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[9994] w-[96vw] max-w-4xl rounded-2xl bg-[#090418]/95 border-2 border-cyan-400/70 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-[0_0_40px_rgba(34,211,238,0.45)]">
+        <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[9994] w-[96vw] max-w-5xl rounded-2xl bg-[#090418]/95 border-2 border-cyan-400/70 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-[0_0_40px_rgba(34,211,238,0.45)]">
           <div className="flex items-center gap-2 text-xs sm:text-sm font-black text-white">
             <Tv className="w-4 h-4 text-cyan-300 shrink-0" />
             <span>{tvModeBanner}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <form onSubmit={(e) => void handleClaimTvPin(e)} className="flex items-center gap-1">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={8}
+                value={tvPinInput}
+                onChange={(e) => setTvPinInput(e.target.value)}
+                placeholder="Código (ex: 413)"
+                className="w-28 px-2.5 py-1 rounded-xl bg-black/60 border border-cyan-400/50 text-xs font-mono font-bold text-white focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="px-2.5 py-1 rounded-xl bg-cyan-400 text-black text-xs font-black"
+              >
+                OK
+              </button>
+            </form>
+            <button
+              onClick={() => {
+                setActiveTab('movies');
+                setTvModeBanner(null);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-black"
+            >
+              🎬 Filmes & Séries TV
+            </button>
             <button
               onClick={() => setScreensaverOpen(true)}
               className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-cyan-400 text-black text-xs font-black"
             >
-              🌌 Galáxia 3D Tela Cheia
+              🌌 Galáxia 3D
             </button>
             {settings.apkDownloadUrl && (
               <a
@@ -1903,6 +1997,23 @@ export function App() {
           setScreensaverOpen(false);
         }}
         onToast={showToast}
+      />
+
+      {/* DISCREET GTA-5 STYLE COSMIC LOADING / UPDATE SCREEN */}
+      <CosmicGtaLoader
+        open={gtaLoaderOpen}
+        mode="splash"
+        statusText="Sincronizando Universo LENKYX..."
+        onSkip={() => {
+          setGtaLoaderOpen(false);
+          sessionStorage.setItem('lenkyx_splash_done', '1');
+        }}
+      />
+      <CosmicGtaLoader
+        open={!gtaLoaderOpen && gtaUpdateCorner}
+        mode="discreet_corner"
+        statusText="Nova atualização cósmica aplicada!"
+        onSkip={() => setGtaUpdateCorner(false)}
       />
 
       {/* REAL COPYRIGHT / DMCA SAFE HARBOR LEGAL TERMS MODAL */}

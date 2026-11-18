@@ -129,38 +129,51 @@ export async function loadAllLiveTvChannels() {
 export async function getLiveTvDirectory() {
   const all = await loadAllLiveTvChannels();
 
-  const pick = (pred, limit = 28) => all.filter(pred).slice(0, limit);
+  const pick = (pred, limit = 60) => all.filter(pred).slice(0, limit);
 
   const categories = [
     {
       id: 'tv-brasil',
       title: '🇧🇷 Brasil Ao Vivo — Canais Abertos & HD',
       emoji: '🇧🇷',
-      channels: pick((c) => c.country === 'BR', 36),
+      channels: pick((c) => c.country === 'BR', 60),
     },
     {
       id: 'tv-filmes',
-      title: '🎬 Canais de Filmes & Séries 24h (Pluto TV & Mundo)',
+      title: '🎬 Canais de Filmes 24h (Pluto TV, Plex & Mundo)',
       emoji: '🎬',
-      channels: pick((c) => c.categories.includes('movies') || c.categories.includes('series'), 36),
+      channels: pick((c) => c.categories.includes('movies'), 60),
+    },
+    {
+      id: 'tv-series-24h',
+      title: '📺 Canais de Séries, Novelas & Comédia 24h',
+      emoji: '📺',
+      channels: pick(
+        (c) =>
+          c.categories.includes('series') ||
+          c.categories.includes('comedy') ||
+          c.categories.includes('classic') ||
+          c.categories.includes('entertainment'),
+        60
+      ),
     },
     {
       id: 'tv-animes',
       title: '⛩️ Animes, Desenhos & Animação 24h',
       emoji: '⛩️',
-      channels: pick((c) => c.categories.includes('animation') || c.categories.includes('kids'), 30),
+      channels: pick((c) => c.categories.includes('animation') || c.categories.includes('kids'), 60),
     },
     {
       id: 'tv-esportes',
       title: '⚽ Esportes, Lutas & Ação Mundial',
       emoji: '⚽',
-      channels: pick((c) => c.categories.includes('sports'), 30),
+      channels: pick((c) => c.categories.includes('sports'), 50),
     },
     {
       id: 'tv-noticias',
       title: '📰 Notícias & Atualidades do Mundo',
       emoji: '📰',
-      channels: pick((c) => c.categories.includes('news'), 28),
+      channels: pick((c) => c.categories.includes('news'), 45),
     },
     {
       id: 'tv-musica-espaco',
@@ -170,9 +183,8 @@ export async function getLiveTvDirectory() {
         (c) =>
           c.categories.includes('music') ||
           c.categories.includes('science') ||
-          c.categories.includes('documentary') ||
-          c.categories.includes('entertainment'),
-        30
+          c.categories.includes('documentary'),
+        50
       ),
     },
   ];
