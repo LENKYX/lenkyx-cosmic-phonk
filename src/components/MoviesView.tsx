@@ -221,7 +221,7 @@ export const MoviesView: React.FC<Props> = ({
   const [heroIdx, setHeroIdx] = useState(0);
   const [activeMovie, setActiveMovie] = useState<MovieItem | null>(null);
   const [movieQueue, setMovieQueue] = useState<MovieItem[]>([]);
-  const [cinemaQuality, setCinemaQuality] = useState<'auto' | 'hd720' | 'hd1080' | 'hd2160'>('hd1080');
+  const [cinemaQuality, setCinemaQuality] = useState<'auto' | 'large' | 'hd720' | 'hd1080' | 'hd2160'>('hd720');
   const [expandedView, setExpandedView] = useState(false);
 
   // === LIVE TV GLOBAL STATE (also feeds 24h Movie & Series channels row!) ===
@@ -777,7 +777,8 @@ export const MoviesView: React.FC<Props> = ({
                     title="Melhorar Resolução do Vídeo"
                   >
                     <option value="auto" className="bg-[#0b0618]">Auto</option>
-                    <option value="hd720" className="bg-[#0b0618]">720p HD</option>
+                    <option value="large" className="bg-[#0b0618]">480p Leve</option>
+                    <option value="hd720" className="bg-[#0b0618]">720p HD (Estável)</option>
                     <option value="hd1080" className="bg-[#0b0618]">1080p Full HD</option>
                     <option value="hd2160" className="bg-[#0b0618]">4K Ultra HD</option>
                   </select>

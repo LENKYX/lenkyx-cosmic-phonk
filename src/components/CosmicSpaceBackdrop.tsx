@@ -8,11 +8,15 @@ interface Star {
   hue: number;
 }
 
-export const CosmicSpaceBackdrop: React.FC<{ intense?: boolean }> = ({ intense = false }) => {
+export const CosmicSpaceBackdrop: React.FC<{ intense?: boolean; paused?: boolean }> = ({
+  intense = false,
+  paused: propPaused = false,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const orbLayerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (propPaused) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -22,7 +26,7 @@ export const CosmicSpaceBackdrop: React.FC<{ intense?: boolean }> = ({ intense =
     let height = 0;
     let dpr = 1;
     let rafId = 0;
-    let paused = false;
+    let paused = propPaused || document.hidden || Boolean(document.fullscreenElement);
 
     const starCount = intense ? 220 : 150;
     const depth = 1000;
@@ -66,13 +70,14 @@ export const CosmicSpaceBackdrop: React.FC<{ intense?: boolean }> = ({ intense =
     };
 
     const onVisibility = () => {
-      paused = document.hidden;
+      paused = propPaused || document.hidden || Boolean(document.fullscreenElement);
     };
 
     resize();
     window.addEventListener('resize', resize);
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     document.addEventListener('visibilitychange', onVisibility);
+    document.addEventListener('fullscreenchange', onVisibility);
 
     const speed = intense ? 2.4 : 1.35;
 
@@ -141,8 +146,13 @@ export const CosmicSpaceBackdrop: React.FC<{ intense?: boolean }> = ({ intense =
       window.removeEventListener('resize', resize);
       window.removeEventListener('pointermove', onPointerMove);
       document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('fullscreenchange', onVisibility);
     };
-  }, [intense]);
+  }, [intense, propPaused]);
+
+  if (propPaused) {
+    return <div className="fixed inset-0 pointer-events-none z-0 bg-[#04010c]" />;
+  }
 
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#04010c]">

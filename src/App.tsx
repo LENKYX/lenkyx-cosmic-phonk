@@ -174,12 +174,13 @@ export function App() {
   // Global Player state (HTML5 <audio> + YouTube Full-Track Audio Engine)
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytPlayerRef = useRef<{
-    loadVideoById?: (id: string) => void;
+    loadVideoById?: (arg: string | { videoId: string; suggestedQuality?: string }) => void;
     playVideo?: () => void;
     pauseVideo?: () => void;
     stopVideo?: () => void;
     seekTo?: (sec: number, allowSeekAhead?: boolean) => void;
     setVolume?: (vol: number) => void;
+    setPlaybackQuality?: (q: string) => void;
     getCurrentTime?: () => number;
     getDuration?: () => number;
     getPlayerState?: () => number;
@@ -274,6 +275,30 @@ export function App() {
   const [spaceDownloadOpen, setSpaceDownloadOpen] = useState(false);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
   const [clipFitMode, setClipFitMode] = useState<'standard' | 'compact' | 'fullscreen'>('standard');
+  const [clipQuality, setClipQuality] = useState<'medium' | 'large' | 'hd720' | 'default'>('hd720');
+  const clipQualityRef = useRef<'medium' | 'large' | 'hd720' | 'default'>('hd720');
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+
+  useEffect(() => {
+    clipQualityRef.current = clipQuality;
+    if (clipQuality !== 'default') {
+      ytPlayerRef.current?.setPlaybackQuality?.(clipQuality);
+    }
+  }, [clipQuality]);
+
+  useEffect(() => {
+    const onFs = () => {
+      const fs = Boolean(document.fullscreenElement);
+      setIsNativeFullscreen(fs);
+      if (fs && clipQualityRef.current !== 'default') {
+        window.setTimeout(() => {
+          ytPlayerRef.current?.setPlaybackQuality?.(clipQualityRef.current);
+        }, 250);
+      }
+    };
+    document.addEventListener('fullscreenchange', onFs);
+    return () => document.removeEventListener('fullscreenchange', onFs);
+  }, []);
   const [legalOpen, setLegalOpen] = useState(false);
   const [safeExitOpen, setSafeExitOpen] = useState(false);
   const [socialDistOpen, setSocialDistOpen] = useState(false);
@@ -624,10 +649,17 @@ export function App() {
         events: {
           onReady: () => {
             ytPlayerRef.current?.setVolume?.(Math.round(volume * 100));
+            if (clipQualityRef.current !== 'default') {
+              ytPlayerRef.current?.setPlaybackQuality?.(clipQualityRef.current);
+            }
             if (ytPendingVideoRef.current) {
               const vid = ytPendingVideoRef.current;
               ytPendingVideoRef.current = null;
-              ytPlayerRef.current?.loadVideoById?.(vid);
+              ytPlayerRef.current?.loadVideoById?.(
+                clipQualityRef.current !== 'default'
+                  ? { videoId: vid, suggestedQuality: clipQualityRef.current }
+                  : vid
+              );
             }
           },
           onError: () => {
@@ -649,6 +681,9 @@ export function App() {
               setIsPlaying(true);
               const dur = ytPlayerRef.current?.getDuration?.() || 0;
               if (dur > 0) setDuration(dur);
+              if (clipQualityRef.current !== 'default') {
+                ytPlayerRef.current?.setPlaybackQuality?.(clipQualityRef.current);
+              }
             } else if (ev.data === 2) {
               setIsPlaying(false);
             } else if (ev.data === 0) {
@@ -758,7 +793,11 @@ export function App() {
         setDuration(track.durationSec || 0);
         if (ytPlayerRef.current?.loadVideoById) {
           ytPlayerRef.current.setVolume?.(muted ? 0 : Math.round(volume * 100));
-          ytPlayerRef.current.loadVideoById(track.youtubeVideoId);
+          ytPlayerRef.current.loadVideoById(
+            clipQualityRef.current !== 'default'
+              ? { videoId: track.youtubeVideoId, suggestedQuality: clipQualityRef.current }
+              : track.youtubeVideoId
+          );
           setIsPlaying(true);
         } else {
           ytPendingVideoRef.current = track.youtubeVideoId;
@@ -1331,8 +1370,8 @@ export function App() {
 
   return (
     <div className="h-dvh overflow-hidden bg-[#04010c] text-white flex relative">
-      {/* === 3D DEEP SPACE PARALLAX STARFIELD & FLOATING PLANETS === */}
-      <CosmicSpaceBackdrop />
+      {/* === 3D DEEP SPACE PARALLAX STARFIELD & FLOATING PLANETS (Auto-pauses during Video/Fullscreen!) === */}
+      <CosmicSpaceBackdrop paused={isWatchingVideoOrMovie || activeTab === 'video' || isNativeFullscreen} />
 
       {/* === JBL PARTYBOX REACTIVE LIGHT SHOW (dims automatically for Videos & Movies!) === */}
       <JblLightShowOverlay
@@ -2357,7 +2396,7 @@ export function App() {
         }}
         className={
           clipTheaterOpen && currentTrack?.youtubeVideoId
-            ? `fixed inset-0 z-[9995] bg-black/92 backdrop-blur-xl flex items-center justify-center ${
+            ? `fixed inset-0 z-[9995] bg-black flex items-center justify-center ${
                 clipFitMode === 'fullscreen' ? 'p-0' : 'p-2 sm:p-4'
               }`
             : 'fixed -left-[9999px] -top-[9999px] w-[320px] h-[180px] opacity-0 pointer-events-none'
@@ -2397,6 +2436,32 @@ export function App() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                <select
+                  value={clipQuality}
+                  onChange={(e) => {
+                    const q = e.target.value as typeof clipQuality;
+                    setClipQuality(q);
+                    if (q !== 'default') {
+                      ytPlayerRef.current?.setPlaybackQuality?.(q);
+                    }
+                    showToast(
+                      q === 'medium'
+                        ? '⚡ Qualidade 360p (Ultra Leve · Zero Travamento)'
+                        : q === 'large'
+                          ? '⚡ Qualidade 480p (Leve & Rápido)'
+                          : q === 'hd720'
+                            ? '🎬 Qualidade 720p HD (Estável em Tela Cheia)'
+                            : '🎬 Qualidade Automática'
+                    );
+                  }}
+                  className="px-2 py-1.5 rounded-xl bg-white/10 border border-cyan-400/35 text-cyan-100 text-[11px] font-black focus:outline-none cursor-pointer"
+                  title="Escolher qualidade para evitar travamentos em Tela Cheia"
+                >
+                  <option value="hd720" className="bg-[#090418]">720p HD</option>
+                  <option value="large" className="bg-[#090418]">480p Leve</option>
+                  <option value="medium" className="bg-[#090418]">360p Rápido</option>
+                  <option value="default" className="bg-[#090418]">Auto</option>
+                </select>
                 <button
                   onClick={() =>
                     setClipFitMode((m) =>
@@ -2461,17 +2526,7 @@ export function App() {
               <div className="min-w-0">
                 <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
                 <div className="text-[10px] text-cyan-300/80 flex items-center gap-2">
-                  <span>Próxima segue na sequência</span>
-                  {currentTrack.externalUrl && (
-                    <a
-                      href={currentTrack.externalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline text-pink-300 font-bold"
-                    >
-                      Abrir no YouTube
-                    </a>
-                  )}
+                  <span>Próxima segue na sequência · Reproduzindo no LENKYX</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
