@@ -254,6 +254,77 @@ export async function loadAllLiveTvChannels(forceRefresh = false) {
     const pinnedIds = new Set(verifiedPinned.map((p) => p.id));
     const candidateMap = new Map();
 
+    // Fetch live YouTube channels (TV Brasil, Música, Esportes, Espaço 24h) via YouTube Live filter (sp=EgJAAQ%3D%3D)
+    const ytLiveChannels = [];
+    try {
+      const ytQueries = [
+        { q: 'tv ao vivo brasil noticias esportes 24 horas', cat: ['youtube_live', 'news'], country: 'BR' },
+        { q: 'lofi hip hop phonk music radio 24/7 live', cat: ['youtube_live', 'music'], country: 'INT' },
+        { q: 'nasa earth space live stream 4k', cat: ['youtube_live', 'science'], country: 'US' },
+      ];
+      const ytBatches = await Promise.all(
+        ytQueries.map(async (item) => {
+          try {
+            const res = await fetch(
+              `https://www.youtube.com/results?search_query=${encodeURIComponent(item.q)}&sp=EgJAAQ%253D%253D`,
+              { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(5500) }
+            );
+            if (!res.ok) return [];
+            const html = await res.text();
+            const m = html.match(/var ytInitialData = (\{.*?\});<\/script>/);
+            if (!m) return [];
+            const data = JSON.parse(m[1]);
+            const found = [];
+            const seenYt = new Set();
+            const walk = (node) => {
+              if (!node || typeof node !== 'object' || found.length >= 10) return;
+              if (node.videoRenderer?.videoId) {
+                const v = node.videoRenderer;
+                const vid = v.videoId;
+                if (vid && !seenYt.has(vid)) {
+                  seenYt.add(vid);
+                  const title = v.title?.runs?.map((x) => x.text).join('') || 'YouTube Live';
+                  const network = v.ownerText?.runs?.[0]?.text || 'YouTube Ao Vivo';
+                  const logo =
+                    v.thumbnail?.thumbnails?.slice(-1)?.[0]?.url ||
+                    `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+                  found.push({
+                    id: `YTLIVE-${vid}`,
+                    name: `${title.slice(0, 62)}`,
+                    country: item.country,
+                    network: `${network} · YouTube Live`,
+                    categories: item.cat,
+                    quality: '1080p',
+                    logo,
+                    streamUrl: '',
+                    youtubeLiveId: vid,
+                    verified: true,
+                  });
+                }
+              }
+              if (Array.isArray(node)) for (const el of node) walk(el);
+              else for (const val of Object.values(node)) walk(val);
+            };
+            walk(data);
+            return found;
+          } catch {
+            return [];
+          }
+        })
+      );
+      const seenAllYt = new Set();
+      for (const batch of ytBatches) {
+        for (const ch of batch) {
+          if (!seenAllYt.has(ch.youtubeLiveId)) {
+            seenAllYt.add(ch.youtubeLiveId);
+            ytLiveChannels.push(ch);
+          }
+        }
+      }
+    } catch {
+      // ignore youtube live fetch failure
+    }
+
     try {
       const [stRes, chRes, lgRes] = await Promise.all([
         fetch('https://iptv-org.github.io/api/streams.json', {
@@ -350,6 +421,9 @@ export async function loadAllLiveTvChannels(forceRefresh = false) {
     const verifiedStreams = await verifyChannelCandidates(Array.from(probeBatchSet.values()), 65);
     const mergedMap = new Map();
     for (const p of verifiedPinned) mergedMap.set(p.id, p);
+    for (const yt of ytLiveChannels) {
+      if (!mergedMap.has(yt.id)) mergedMap.set(yt.id, yt);
+    }
     for (const v of verifiedStreams) {
       if (!mergedMap.has(v.id)) mergedMap.set(v.id, v);
     }
@@ -371,6 +445,12 @@ export async function getLiveTvDirectory(forceRefresh = false) {
   const pick = (pred, limit = 50) => all.filter(pred).slice(0, limit);
 
   const categories = [
+    {
+      id: 'tv-youtube-live',
+      title: '🔴 Canais Ao Vivo do YouTube 24h (TV, Música, Espaço & Notícias)',
+      emoji: '🔴',
+      channels: pick((c) => Boolean(c.youtubeLiveId) || c.categories.includes('youtube_live'), 45),
+    },
     {
       id: 'tv-brasil',
       title: '🇧🇷 Brasil Ao Vivo — Canais Verificados Online',

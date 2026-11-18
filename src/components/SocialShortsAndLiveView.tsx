@@ -74,6 +74,7 @@ type LiveEffectId = 'studio_hd' | 'cosmic_aurora' | 'cyber_glitch' | 'jbl_pulse'
 
 const SHORT_CATEGORIES: { id: string; label: string }[] = [
   { id: 'all', label: '🌍 Mundo Inteiro' },
+  { id: 'live', label: '🔴 Ao Vivo (YouTube Live)' },
   { id: 'phonk', label: '🔥 Phonk & Drift' },
   { id: 'brazil', label: '🇧🇷 Brasil' },
   { id: 'djs', label: '🎧 DJs & Beats' },
@@ -147,6 +148,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   const [shorts, setShorts] = useState<CommunityShortItem[]>([]);
   const [shortCategory, setShortCategory] = useState('all');
   const [shortSearch, setShortSearch] = useState('');
+  const [shortsMenuOpen, setShortsMenuOpen] = useState(false);
   const [shortsLoading, setShortsLoading] = useState(false);
   const [exclusiveShortsOpen, setExclusiveShortsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -160,6 +162,8 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
   // === HD LIVE STREAM STUDIO + EFFECTS + AI CREATURES STATE ===
   const [lives, setLives] = useState<LiveRoomItem[]>([]);
+  const [ytLives, setYtLives] = useState<CommunityShortItem[]>([]);
+  const [watchingYtLive, setWatchingYtLive] = useState<CommunityShortItem | null>(null);
   const [watchingLive, setWatchingLive] = useState<LiveRoomItem | null>(null);
   const [isHostingLive, setIsHostingLive] = useState(false);
   const [liveTitle, setLiveTitle] = useState('Live Cosmic Phonk · Conversa & Som HD');
@@ -206,6 +210,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   useEffect(() => {
     void loadShorts('all', '');
     void fetchActiveLives().then(setLives);
+    void fetchWorldShorts('live', '').then(setYtLives);
   }, []);
 
   // Keyboard Left/Right navigation for Horizontal Shorts
@@ -642,9 +647,44 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* World Categories + Search */}
-      <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-2.5 space-y-2 shrink-0">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* Contextual Toggle Strip + World Categories & Search (Opens ONLY when tapped!) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => setShortsMenuOpen((v) => !v)}
+            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-black text-cyan-200 flex items-center gap-1.5"
+          >
+            <Search className="w-3.5 h-3.5" />
+            {shortsMenuOpen ? 'Fechar Menu Vídeos' : 'Menu Categorias & Busca'}
+          </button>
+          <button
+            onClick={() => {
+              setShortCategory('live');
+              void loadShorts('live', '');
+            }}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-black transition ${
+              shortCategory === 'live'
+                ? 'bg-rose-600 text-white shadow'
+                : 'bg-rose-500/20 border border-rose-400/40 text-rose-200 hover:bg-rose-500/35'
+            }`}
+          >
+            🔴 Reels & Lives Ao Vivo
+          </button>
+        </div>
+
+        {!isExclusiveModal && (
+          <button
+            onClick={() => setExclusiveShortsOpen(true)}
+            className="px-3 py-1.5 rounded-full bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/50 text-cyan-100 text-[11px] font-black flex items-center gap-1.5 shrink-0"
+            title="Abrir só os vídeos curtos em tela exclusiva"
+          >
+            <Maximize2 className="w-3.5 h-3.5" /> Abrir Tela Exclusiva
+          </button>
+        )}
+      </div>
+
+      {shortsMenuOpen && (
+        <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-2.5 space-y-2 shrink-0">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 flex-1">
             {SHORT_CATEGORIES.map((c) => (
               <button
@@ -664,42 +704,32 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
             ))}
           </div>
 
-          {!isExclusiveModal && (
-            <button
-              onClick={() => setExclusiveShortsOpen(true)}
-              className="px-3 py-1.5 rounded-full bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/50 text-cyan-100 text-[11px] font-black flex items-center gap-1.5 shrink-0"
-              title="Abrir só os vídeos curtos em tela exclusiva"
-            >
-              <Maximize2 className="w-3.5 h-3.5" /> Abrir Tela Exclusiva
-            </button>
-          )}
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void loadShorts(shortCategory, shortSearch);
-          }}
-          className="flex items-center gap-2"
-        >
-          <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-cyan-300 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={shortSearch}
-              onChange={(e) => setShortSearch(e.target.value)}
-              placeholder="Buscar vídeos curtos do mundo inteiro (ex: drift japonês, funk brasil, DJ, espaço)..."
-              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/45 border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-3.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-black text-white"
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void loadShorts(shortCategory, shortSearch);
+            }}
+            className="flex items-center gap-2"
           >
-            {shortsLoading ? 'Buscando...' : 'Buscar'}
-          </button>
-        </form>
-      </div>
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 text-cyan-300 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={shortSearch}
+                onChange={(e) => setShortSearch(e.target.value)}
+                placeholder="Buscar vídeos curtos ou lives ao vivo (ex: drift, funk brasil, DJ, espaço)..."
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/45 border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-3.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-black text-white"
+            >
+              {shortsLoading ? 'Buscando...' : 'Buscar'}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Horizontal Swipe Controls */}
       <div className="flex items-center justify-between gap-2 px-1 shrink-0">
@@ -1019,9 +1049,12 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   Câmera em HD com direção corrigida (virou à direita, vai pra direita), efeitos visuais e criaturinhas IA na borda!
                 </p>
               </div>
-              {watchingLive && !isHostingLive && (
+              {(watchingLive || watchingYtLive) && !isHostingLive && (
                 <button
-                  onClick={() => setWatchingLive(null)}
+                  onClick={() => {
+                    setWatchingLive(null);
+                    setWatchingYtLive(null);
+                  }}
                   className="px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-white"
                 >
                   Voltar ao Estúdio
@@ -1050,6 +1083,14 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
             <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-rose-500/40 flex items-center justify-center">
               {isHostingLive ? (
                 <canvas ref={liveCanvasRef} className="w-full h-full object-cover" />
+              ) : watchingYtLive && watchingYtLive.youtube_id ? (
+                <iframe
+                  src={`https://www.youtube.com/embed/${watchingYtLive.youtube_id}?autoplay=1&rel=0`}
+                  title={watchingYtLive.title}
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full border-0"
+                />
               ) : watchingLive ? (
                 <div className="relative w-full h-full flex flex-col items-center justify-center p-6 text-center">
                   <img
@@ -1281,7 +1322,10 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   {lives.map((l) => (
                     <button
                       key={l.id}
-                      onClick={() => setWatchingLive(l)}
+                      onClick={() => {
+                        setWatchingYtLive(null);
+                        setWatchingLive(l);
+                      }}
                       className="w-60 shrink-0 p-2.5 rounded-2xl bg-white/[0.06] hover:bg-rose-500/15 border border-white/10 text-left flex items-center gap-2.5 transition"
                     >
                       <span className="w-9 h-9 rounded-xl bg-rose-600/30 border border-rose-400/50 flex items-center justify-center shrink-0">
@@ -1292,6 +1336,49 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                         <div className="text-[10px] text-cyan-300 truncate">
                           @{l.host_name} · ❤️ {l.likes}
                         </div>
+                      </div>
+                    </button>
+                  ))}
+                </CosmicScrollRow>
+              </div>
+            )}
+
+            {/* YouTube Live Streams Row */}
+            {ytLives.length > 0 && (
+              <div className="pt-2 border-t border-white/10">
+                <CosmicScrollRow
+                  title={
+                    <>
+                      <Tv className="w-3.5 h-3.5 text-red-400" />
+                      <span className="text-red-300">Lives do YouTube Ao Vivo Agora</span>
+                    </>
+                  }
+                  count={ytLives.length}
+                  gridToggleable={false}
+                >
+                  {ytLives.map((yt) => (
+                    <button
+                      key={yt.id}
+                      onClick={() => {
+                        setWatchingLive(null);
+                        setWatchingYtLive(yt);
+                      }}
+                      className="w-56 shrink-0 rounded-2xl overflow-hidden bg-white/[0.06] hover:bg-red-500/15 border border-white/10 text-left transition group"
+                    >
+                      <div className="relative aspect-video bg-black">
+                        <img
+                          src={yt.poster_url || '/covers/album-official.jpg'}
+                          alt={yt.title}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition"
+                        />
+                        <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-full bg-red-600 text-[9px] font-black text-white">
+                          ● AO VIVO
+                        </span>
+                      </div>
+                      <div className="p-2">
+                        <div className="text-[11px] font-black text-white truncate">{yt.title}</div>
+                        <div className="text-[10px] text-cyan-300 truncate">{yt.creator_name}</div>
                       </div>
                     </button>
                   ))}

@@ -34,6 +34,7 @@ import {
   Power,
   Share2,
   Gift,
+  Gamepad2,
 } from 'lucide-react';
 import {
   AppMode,
@@ -57,6 +58,7 @@ const SocialShortsAndLiveView = React.lazy(() =>
 );
 const StudioCreateView = React.lazy(() => import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView })));
 const CosmicHubView = React.lazy(() => import('./components/CosmicHubView').then((m) => ({ default: m.CosmicHubView })));
+const ArcadeView = React.lazy(() => import('./components/ArcadeView').then((m) => ({ default: m.ArcadeView })));
 import { MiniPlayer } from './components/MiniPlayer';
 import { CosmicScreensaver3D, ExperienceMode } from './components/CosmicScreensaver3D';
 import { SoundBoostModal } from './components/SoundBoostModal';
@@ -179,6 +181,7 @@ export function App() {
   } | null>(null);
   const ytPendingVideoRef = useRef<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const [musicMenuOpen, setMusicMenuOpen] = useState(false);
   const [activeVersion, setActiveVersion] = useState<AudioVersion>('v1');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -667,6 +670,7 @@ export function App() {
     async (track: Track, requestedVersion?: AudioVersion, customQueue?: Track[]) => {
       const audio = audioRef.current;
       if (!audio) return;
+      setMusicMenuOpen(true);
 
       if (track.source === 'world_full' || track.source === 'world_preview') {
         setWorldCacheTracks((prev) => (prev.some((x) => x.id === track.id) ? prev : [track, ...prev].slice(0, 60)));
@@ -1260,9 +1264,13 @@ export function App() {
     { id: 'explore', label: 'Artistas & Mundo', icon: <Globe2 className="w-4 h-4" /> },
     { id: 'movies', label: 'Cinema, Séries & TV', icon: <Clapperboard className="w-4 h-4" /> },
     { id: 'video', label: 'Reels, Live & Vídeos', icon: <Video className="w-4 h-4" /> },
+    { id: 'arcade', label: 'Fliperama & Jogos', icon: <Gamepad2 className="w-4 h-4" /> },
     { id: 'community_hub', label: 'Prêmios & Metas', icon: <Gift className="w-4 h-4" /> },
     { id: 'playlists', label: 'Minhas Playlists', icon: <ListMusic className="w-4 h-4" /> },
   ];
+
+  const isMusicSection =
+    activeTab === 'catalog' || activeTab === 'explore' || activeTab === 'playlists';
 
   const isWatchingVideoOrMovie =
     clipTheaterOpen || watchingMovie;
@@ -1481,24 +1489,48 @@ export function App() {
             </div>
           </div>
 
-          {/* GLOBAL SEARCH BAR — ONLY ONE magnifying glass across the entire app! */}
-          <form onSubmit={handleGlobalSearchSubmit} className="flex-1 max-w-xl relative flex items-center">
-            <Search className="w-4 h-4 text-cyan-300/80 absolute left-3 pointer-events-none" />
-            <input
-              type="text"
-              value={globalSearch}
-              onChange={(e) => setGlobalSearch(e.target.value)}
-              placeholder="Buscar artista (ex: Metallica), sertanejo, rock ou espaço..."
-              className="w-full pl-9 pr-20 sm:pr-24 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/[0.1] focus:bg-white/[0.12] border border-white/10 focus:border-cyan-400/50 text-xs sm:text-sm text-white placeholder-purple-300/60 focus:outline-none transition"
-            />
-            <button
-              type="submit"
-              className="absolute right-1 px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-pink-500 text-white text-[10px] font-extrabold hover:brightness-110 transition"
-              title="Pesquisar músicas completas na Terra e no Espaço"
-            >
-              Buscar
-            </button>
-          </form>
+          {/* CONTEXTUAL TOP BAR: Music search ONLY on Music tabs so Movies, Reels, Arcade & Hub stay clean! */}
+          {isMusicSection ? (
+            <div className="flex-1 max-w-xl flex items-center gap-2 min-w-0">
+              <form onSubmit={handleGlobalSearchSubmit} className="flex-1 relative flex items-center">
+                <Search className="w-4 h-4 text-cyan-300/80 absolute left-3 pointer-events-none" />
+                <input
+                  type="text"
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  placeholder="Buscar artista (ex: Metallica), sertanejo, rock ou espaço..."
+                  className="w-full pl-9 pr-20 sm:pr-24 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/[0.1] focus:bg-white/[0.12] border border-white/10 focus:border-cyan-400/50 text-xs sm:text-sm text-white placeholder-purple-300/60 focus:outline-none transition"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-1 px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-pink-500 text-white text-[10px] font-extrabold hover:brightness-110 transition"
+                  title="Pesquisar músicas completas na Terra e no Espaço"
+                >
+                  Buscar
+                </button>
+              </form>
+              {currentTrack && !musicMenuOpen && (
+                <button
+                  onClick={() => setMusicMenuOpen(true)}
+                  className="px-2.5 py-1.5 rounded-full bg-pink-500/25 hover:bg-pink-500/40 border border-pink-400/45 text-pink-100 text-[11px] font-black flex items-center gap-1 shrink-0 transition"
+                  title="Abrir Menu / Player de Música"
+                >
+                  <Music className="w-3.5 h-3.5" />
+                  <span className="hidden lg:inline max-w-[110px] truncate">{currentTrack.title}</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center gap-2 min-w-0 px-1">
+              <span className="text-xs sm:text-sm font-black text-cyan-200 truncate">
+                {activeTab === 'movies' && '🎬 Cinema, Séries, Animes & TV Online'}
+                {activeTab === 'video' && '🎥 Reels Mundiais & Lives Ao Vivo HD'}
+                {activeTab === 'arcade' && '🕹️ Fliperama Cósmico & Novo Mundo'}
+                {activeTab === 'community_hub' && '🎁 Prêmios Grátis, Metas & Roleta'}
+                {activeTab === 'studio' && '✨ Estúdio Criador'}
+              </span>
+            </div>
+          )}
 
           {/* Right User / Master Volume + Max Boost + 3D Screensaver + JBL Lights */}
           <div className="flex items-center gap-1.5 shrink-0">
@@ -1843,6 +1875,10 @@ export function App() {
                   />
                 )}
 
+                {activeTab === 'arcade' && (
+                  <ArcadeView user={userProfile} onToast={showToast} />
+                )}
+
                 {activeTab === 'community_hub' && (
                   <CosmicHubView
                     user={userProfile}
@@ -1874,8 +1910,8 @@ export function App() {
         </main>
       </div>
 
-      {/* ALWAYS-VISIBLE YOUTUBE MUSIC STYLE BOTTOM PLAYER BAR (hidden during fullscreen Cinema/TV & 3D Screensaver) */}
-      {!watchingMovie && !screensaverOpen && (
+      {/* MUSIC PLAYER BAR: ONLY appears inside Music sections when user opens a song (never blocks Videos, Movies, Games or Images!) */}
+      {!watchingMovie && !screensaverOpen && isMusicSection && musicMenuOpen && (
         <MiniPlayer
           track={currentTrack}
           activeVersion={activeVersion}
@@ -1911,18 +1947,20 @@ export function App() {
           onWatchClip={() => {
             if (currentTrack?.youtubeVideoId) setClipTheaterOpen(true);
           }}
+          onCloseMenu={() => setMusicMenuOpen(false)}
         />
       )}
 
-      {/* MOBILE BOTTOM NAVIGATION BAR (YouTube Music / Netflix style) */}
+      {/* MOBILE BOTTOM NAVIGATION BAR (Scrollable across all 7 sections cleanly!) */}
       {!watchingMovie && !screensaverOpen && (
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-6 items-center px-1">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 flex items-center justify-around overflow-x-auto px-1">
         {(
           [
-            { id: 'catalog' as TabId, label: 'Início', icon: <Music className="w-4 h-4" /> },
+            { id: 'catalog' as TabId, label: 'Músicas', icon: <Music className="w-4 h-4" /> },
             { id: 'explore' as TabId, label: 'Artistas', icon: <Globe2 className="w-4 h-4" /> },
             { id: 'movies' as TabId, label: 'Cinema', icon: <Clapperboard className="w-4 h-4" /> },
             { id: 'video' as TabId, label: 'Reels', icon: <Video className="w-4 h-4" /> },
+            { id: 'arcade' as TabId, label: 'Jogos', icon: <Gamepad2 className="w-4 h-4" /> },
             { id: 'community_hub' as TabId, label: 'Prêmios', icon: <Gift className="w-4 h-4" /> },
             { id: 'playlists' as TabId, label: 'Playlists', icon: <ListMusic className="w-4 h-4" /> },
           ] as { id: TabId; label: string; icon: React.ReactNode; isPix?: boolean }[]
@@ -1939,7 +1977,7 @@ export function App() {
                   navigateTab(item.id);
                 }
               }}
-              className={`flex flex-col items-center justify-center gap-0.5 py-1 transition ${
+              className={`min-w-[50px] shrink-0 flex flex-col items-center justify-center gap-0.5 py-1 px-1 transition ${
                 active ? 'text-pink-400' : 'text-purple-300/75'
               }`}
             >

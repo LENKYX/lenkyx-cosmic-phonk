@@ -616,6 +616,7 @@ const worldShortsCache = new Map();
 
 const WORLD_SHORTS_QUERIES = {
   all: 'cosmic phonk drift car edits dj live dance shorts #shorts',
+  live: 'ao vivo brasil musica dj phonk games tv live stream',
   phonk: 'phonk drift edits brazilian phonk car bass #shorts',
   brazil: 'funk sertanejo brasil music dance festival #shorts',
   djs: 'dj live set electronic edm club festival #shorts',
@@ -626,18 +627,22 @@ const WORLD_SHORTS_QUERIES = {
 
 export async function searchWorldShorts(category = 'all', customQuery = '') {
   const cat = WORLD_SHORTS_QUERIES[category] ? category : 'all';
+  const isLiveMode = cat === 'live' || /\b(ao vivo|live)\b/i.test(customQuery);
   const q = customQuery.trim()
-    ? `${customQuery.trim()} #shorts`
+    ? isLiveMode
+      ? customQuery.trim()
+      : `${customQuery.trim()} #shorts`
     : WORLD_SHORTS_QUERIES[cat];
-  const key = `${cat}|${q.toLowerCase()}`;
+  const key = `${cat}|${q.toLowerCase()}|${isLiveMode ? 'live' : 'shorts'}`;
   const cached = worldShortsCache.get(key);
-  if (cached && Date.now() - cached.ts < 10 * 60 * 1000) {
+  if (cached && Date.now() - cached.ts < (isLiveMode ? 3 * 60 * 1000 : 10 * 60 * 1000)) {
     return cached.items;
   }
 
   try {
+    const spParam = isLiveMode ? 'EgJAAQ%253D%253D' : 'EgIQAQ%253D%253D';
     const r = await fetch(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=EgIQAQ%253D%253D`,
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=${spParam}`,
       { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) }
     );
     if (!r.ok) return [];
@@ -684,7 +689,7 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
         const v = node.videoRenderer;
         const vid = v.videoId;
         const durSec = parseDurationText(v.lengthText?.simpleText || '');
-        if (vid && !seen.has(vid) && (durSec === 0 || durSec <= 120)) {
+        if (vid && !seen.has(vid) && (isLiveMode || durSec === 0 || durSec <= 120)) {
           seen.add(vid);
           const title = v.title?.runs?.map((x) => x.text).join('') || 'Global Music Short';
           const channel = v.ownerText?.runs?.[0]?.text || 'Criador Global';
@@ -693,15 +698,17 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
             `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
           items.push({
             id: `wshort-${vid}`,
-            title: String(title).slice(0, 110),
+            title: isLiveMode ? `🔴 AO VIVO · ${String(title).slice(0, 100)}` : String(title).slice(0, 110),
             creator_name: String(channel).replace(/ - Topic$/i, '').slice(0, 36),
-            creator_color: 'from-pink-500 to-purple-500',
-            description: `Vídeo curto mundial · Categoria ${cat.toUpperCase()}`,
+            creator_color: isLiveMode ? 'from-rose-500 to-amber-500' : 'from-pink-500 to-purple-500',
+            description: isLiveMode
+              ? `Transmissão Ao Vivo do YouTube agora · ${channel}`
+              : `Vídeo curto mundial · Categoria ${cat.toUpperCase()}`,
             media_type: 'youtube_short',
             video_url: '',
             youtube_id: vid,
             poster_url: thumb,
-            audio_title: channel,
+            audio_title: isLiveMode ? '🔴 YouTube Ao Vivo' : channel,
             category: cat,
             likes: 85 + items.length * 13,
             created_at: new Date().toISOString(),

@@ -19,6 +19,7 @@ import {
   Speaker,
   Video,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { AudioVersion, Track } from '../types';
 
@@ -49,6 +50,7 @@ interface Props {
   onLike: (track: Track) => void;
   onToggleOffline: (track: Track) => void;
   onWatchClip?: () => void;
+  onCloseMenu?: () => void;
 }
 
 function fmt(sec: number): string {
@@ -83,6 +85,7 @@ export const MiniPlayer: React.FC<Props> = ({
   onLike,
   onToggleOffline,
   onWatchClip,
+  onCloseMenu,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const bigCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -467,6 +470,15 @@ export const MiniPlayer: React.FC<Props> = ({
                 />
               </div>
             </div>
+            {onCloseMenu && (
+              <button
+                onClick={onCloseMenu}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-red-500/80 text-white/85 hover:text-white transition ml-1 shrink-0"
+                title="Fechar menu de música para ver melhor as capas e telas"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>

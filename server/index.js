@@ -53,6 +53,14 @@ import {
   spinCosmicWheel,
   claimCosmicMission,
 } from './cosmicHub.js';
+import {
+  getArcadeDirectory,
+  searchAllGenerationsGames,
+  getWorldBootstrap,
+  syncWorldPresence,
+  postWorldProgress,
+  postSectorChat,
+} from './arcadeAI.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1272,6 +1280,67 @@ app.post('/api/hub/missions/claim', (req, res) => {
   }
 });
 
+// === GALÁXIA ARCADE & COSMIC PHONK: NOVO MUNDO ONLINE RPG ===
+app.get('/api/arcade/directory', async (_req, res) => {
+  try {
+    const data = await getArcadeDirectory();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/arcade/search', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    const generation = String(req.query.generation || 'all').trim();
+    const data = await searchAllGenerationsGames(q, generation);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/arcade/world/state', (req, res) => {
+  try {
+    const playerId = String(req.query.playerId || '').trim();
+    const playerName = String(req.query.playerName || '').trim();
+    res.json(getWorldBootstrap(playerId, playerName));
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/arcade/world/sync', (req, res) => {
+  try {
+    const data = syncWorldPresence(req.body || {});
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/arcade/world/progress', (req, res) => {
+  try {
+    const data = postWorldProgress(req.body || {});
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/arcade/world/chat', (req, res) => {
+  try {
+    const data = postSectorChat({
+      playerName: req.body?.playerName,
+      message: req.body?.message,
+    });
+    res.json(data);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
 app.get('/tv', (_req, res) => {
   res.redirect(302, '/?tvMode=1');
 });
@@ -1335,6 +1404,7 @@ async function boot() {
     setTimeout(() => {
       void getMoviesDirectory().catch(() => {});
       void getLiveTvDirectory().catch(() => {});
+      void getArcadeDirectory().catch(() => {});
     }, 2000);
   });
 }
