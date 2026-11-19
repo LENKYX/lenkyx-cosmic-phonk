@@ -122,10 +122,17 @@ export async function fetchCommunityShorts(): Promise<CommunityShortItem[]> {
 
 export async function fetchWorldShorts(
   category = 'all',
-  q = ''
+  q = '',
+  excludeIds: string[] = [],
+  forceRefresh = false
 ): Promise<CommunityShortItem[]> {
+  const params = new URLSearchParams();
+  params.set('category', category);
+  if (q) params.set('q', q);
+  if (excludeIds.length > 0) params.set('exclude', excludeIds.slice(-250).join(','));
+  if (forceRefresh) params.set('refresh', '1');
   const res = await req<{ shorts?: CommunityShortItem[] }>(
-    `/api/community/world-shorts?category=${encodeURIComponent(category)}&q=${encodeURIComponent(q)}`
+    `/api/community/world-shorts?${params.toString()}`
   );
   return res?.shorts || [];
 }
@@ -211,4 +218,51 @@ export async function updateLiveRoom(payload: {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export function getClientSubscriberId(userId?: string): string {
+  if (userId) return `u-${userId}`;
+  try {
+    const existing = localStorage.getItem('lenkyx_fan_sub_id');
+    if (existing) return existing;
+    const created = `fan-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem('lenkyx_fan_sub_id', created);
+    return created;
+  } catch {
+    return 'fan-guest';
+  }
+}
+
+export function normalizeChannelKey(nameOrId: string): string {
+  return (
+    String(nameOrId || 'lenkyx-oficial')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .slice(0, 80) || 'lenkyx-oficial'
+  );
+}
+
+export async function fetchChannelSubscriptions(subscriberId: string): Promise<{
+  counts: Record<string, number>;
+  subscribed: string[];
+}> {
+  const res = await req<{ counts?: Record<string, number>; subscribed?: string[] }>(
+    `/api/community/channels?subscriberId=${encodeURIComponent(subscriberId)}`
+  );
+  return { counts: res?.counts || {}, subscribed: res?.subscribed || [] };
+}
+
+export async function toggleChannelSubscribe(payload: {
+  channelId: string;
+  channelName: string;
+  subscriberId: string;
+}): Promise<{ channelId: string; channelName: string; subscribed: boolean; count: number } | null> {
+  return req<{ channelId: string; channelName: string; subscribed: boolean; count: number }>(
+    '/api/community/subscribe',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
 }

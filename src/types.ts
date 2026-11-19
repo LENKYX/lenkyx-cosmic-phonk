@@ -93,7 +93,7 @@ export interface AppSettings {
 }
 
 export type AudioVersion = 'v1' | 'v2';
-export type TabId = 'catalog' | 'search' | 'explore' | 'movies' | 'sports' | 'offline' | 'playlists' | 'studio';
+export type TabId = 'catalog' | 'search' | 'explore' | 'reels' | 'movies' | 'sports' | 'offline' | 'playlists' | 'studio';
 export type AppMode = 'creator' | 'fan';
 
 export interface SupporterRankEntry {

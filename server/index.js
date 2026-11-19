@@ -53,6 +53,8 @@ import {
   likeCommunityShort,
   getActiveLives,
   startOrUpdateLive,
+  getChannelSubscriptions,
+  toggleChannelSubscribe,
   createTvHandoffSession,
   getTvHandoffSession,
 } from './communityStore.js';
@@ -2058,22 +2060,53 @@ app.get('/api/community/shorts', async (_req, res) => {
   }
 });
 
+app.get('/api/community/channels', (req, res) => {
+  try {
+    const subscriberId = String(req.query.subscriberId || '').trim();
+    res.json(getChannelSubscriptions(subscriberId));
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/subscribe', (req, res) => {
+  try {
+    const out = toggleChannelSubscribe({
+      channelId: req.body?.channelId,
+      channelName: req.body?.channelName,
+      subscriberId: req.body?.subscriberId,
+    });
+    res.json(out);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
 app.get('/api/community/world-shorts', async (req, res) => {
   const category = String(req.query.category || 'all').trim();
   const q = String(req.query.q || '').trim();
+  const excludeRaw = String(req.query.exclude || '').trim();
+  const forceRefresh = req.query.refresh === '1' || req.query.refresh === 'true';
+  const excludeIds = excludeRaw
+    ? excludeRaw.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 300)
+    : [];
+  const excludeSet = new Set(excludeIds);
   try {
     const [worldShorts, communityShorts] = await Promise.all([
-      searchWorldShorts(category, q),
+      searchWorldShorts(category, q, excludeIds, forceRefresh),
       getCommunityShorts(),
     ]);
+    const filteredCommunity = communityShorts.filter(
+      (s) => !excludeSet.has(s.id) && !excludeSet.has(s.youtube_id || '')
+    );
     const combined =
       category === 'community'
-        ? communityShorts
+        ? filteredCommunity
         : category === 'all' && !q
-          ? [...communityShorts.slice(0, 4), ...worldShorts]
+          ? [...filteredCommunity.slice(0, 3), ...worldShorts]
           : worldShorts.length > 0
             ? worldShorts
-            : communityShorts;
+            : filteredCommunity;
     res.json({ shorts: combined });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });

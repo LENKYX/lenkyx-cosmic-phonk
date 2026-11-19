@@ -637,33 +637,112 @@ let cachedArtistsTs = 0;
 
 const worldShortsCache = new Map();
 
-const WORLD_SHORTS_QUERIES = {
-  all: 'cosmic phonk drift edits dance music shorts',
-  live: 'music radio dj phonk lofi chill live 24/7 ao vivo',
-  phonk: 'phonk drift edits brazilian phonk shorts',
-  brazil: 'funk sertanejo brasil music dance shorts',
-  djs: 'dj live set electronic club festival shorts',
-  space: 'nasa space galaxy stars planets cosmic shorts',
-  dance: 'viral dance music challenge hip hop shorts',
-  rock: 'electric guitar solo rock metal live shorts',
+const WORLD_SHORTS_POOLS = {
+  all: [
+    'viral youtube shorts brasil mundo entretenimento',
+    'trending music dance comedy gaming #shorts',
+    'melhores reels shorts engraçados jogos musica futebol',
+    'cosmic phonk drift edits dance music shorts',
+    'amazing facts science cars cinema #shorts',
+  ],
+  viral: [
+    'shorts virais brasil hoje humor curiosidades',
+    'trending viral youtube reels shorts 2026',
+    'melhores momentos reels shorts youtube',
+  ],
+  humor: [
+    'comedia humor memes brasileiros #shorts',
+    'funny comedy skits fails youtube #shorts',
+    'pegadinhas humor viral brasil #shorts',
+  ],
+  games: [
+    'free fire gta 5 minecraft roblox jogadas #shorts',
+    'gaming highlights valorant fortnite codm #shorts',
+    'melhores jogadas games celular pc #shorts',
+  ],
+  football: [
+    'futebol gols dribles neymar messi cristiano #shorts',
+    'brasileirao champions league lances #shorts',
+    'football skills goals highlights #shorts',
+  ],
+  cinema: [
+    'filmes series cenas epicas trailers anime #shorts',
+    'anime edits lutas dublado #shorts',
+    'curiosidades filmes lancamentos cinema #shorts',
+  ],
+  tech: [
+    'carros supercarros tecnologia gadgets #shorts',
+    'tecnologia ia novidades curiosidades #shorts',
+  ],
+  music: [
+    'melhores musicas clipes cantores hits #shorts',
+    'sertanejo funk trap pop brasil #shorts',
+  ],
+  live: [
+    'music radio dj phonk lofi chill live 24/7 ao vivo',
+    'ao vivo brasil musica jogos noticias live',
+  ],
+  phonk: [
+    'phonk drift edits brazilian phonk shorts',
+    'sigma cosmic phonk car drift #shorts',
+  ],
+  brazil: [
+    'funk sertanejo brasil music dance shorts',
+    'brasil virais musica cultura #shorts',
+  ],
+  djs: [
+    'dj live set electronic club festival shorts',
+    'alok vintage culture dj set #shorts',
+  ],
+  space: [
+    'nasa space galaxy stars planets cosmic shorts',
+    'universo planetas astronomia #shorts',
+  ],
+  dance: [
+    'viral dance music challenge hip hop shorts',
+    'coreografia danca hit viral #shorts',
+  ],
+  rock: [
+    'electric guitar solo rock metal live shorts',
+    'rock classics live stage #shorts',
+  ],
 };
 
-export async function searchWorldShorts(category = 'all', customQuery = '') {
-  const cat = WORLD_SHORTS_QUERIES[category] ? category : 'all';
+export async function searchWorldShorts(
+  category = 'all',
+  customQuery = '',
+  excludeIds = [],
+  forceRefresh = false
+) {
+  const cat = WORLD_SHORTS_POOLS[category] ? category : 'all';
   const isLiveMode = cat === 'live' || /\b(ao vivo|live)\b/i.test(customQuery);
+  const excludeSet = new Set(
+    (Array.isArray(excludeIds) ? excludeIds : [])
+      .map((x) => String(x || '').replace(/^wshort-/, '').trim())
+      .filter(Boolean)
+  );
+  const pool = WORLD_SHORTS_POOLS[cat] || WORLD_SHORTS_POOLS.all;
+  const pickIdx = forceRefresh ? Math.floor(Math.random() * pool.length) : 0;
+
   const q = customQuery.trim()
     ? isLiveMode
       ? customQuery.trim()
       : `${customQuery.trim()} #shorts`
-    : WORLD_SHORTS_QUERIES[cat];
+    : pool[pickIdx];
   const key = `${cat}|${q.toLowerCase()}|${isLiveMode ? 'live' : 'shorts'}`;
   const cached = worldShortsCache.get(key);
-  if (cached && Date.now() - cached.ts < (isLiveMode ? 3 * 60 * 1000 : 10 * 60 * 1000)) {
-    return cached.items;
+  if (!forceRefresh && cached && Date.now() - cached.ts < (isLiveMode ? 3 * 60 * 1000 : 10 * 60 * 1000)) {
+    const filteredCached = cached.items.filter((it) => !excludeSet.has(it.youtube_id || '') && !excludeSet.has(it.id));
+    if (filteredCached.length >= 6) return filteredCached;
   }
 
   try {
-    const spParam = isLiveMode ? '&sp=EgJAAQ%253D%253D' : '';
+    const spFilters = ['', '&sp=EgIQAQ%253D%253D', '&sp=CAI%253D'];
+    const spParam = isLiveMode
+      ? '&sp=EgJAAQ%253D%253D'
+      : forceRefresh
+        ? spFilters[Math.floor(Math.random() * spFilters.length)]
+        : '';
     const r = await fetch(
       `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}${spParam}`,
       { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) }
@@ -678,7 +757,7 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
     const seen = new Set();
 
     const walk = (node) => {
-      if (!node || typeof node !== 'object' || items.length >= 24) return;
+      if (!node || typeof node !== 'object' || items.length >= 36) return;
       if (node.shortsLockupViewModel) {
         const s = node.shortsLockupViewModel;
         const vid =
@@ -688,20 +767,20 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
         const title =
           s?.overlayMetadata?.primaryText?.content ||
           s?.accessibilityText ||
-          'Global Short';
-        if (vid && !seen.has(vid)) {
+          'YouTube Reel';
+        if (vid && !seen.has(vid) && !excludeSet.has(vid)) {
           seen.add(vid);
           items.push({
             id: `wshort-${vid}`,
             title: String(title).slice(0, 110),
-            creator_name: 'Criador Global',
+            creator_name: 'Canal YouTube',
             creator_color: 'from-cyan-400 to-pink-500',
-            description: `Toque para assistir em tela cheia · ⬆️⬇️`,
+            description: `Reel do YouTube · Arraste ou toque ⬆️⬇️`,
             media_type: 'youtube_short',
             video_url: '',
             youtube_id: vid,
             poster_url: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
-            audio_title: 'Mundo Inteiro · Shorts',
+            audio_title: 'YouTube Reels · Canais Globais',
             category: cat,
             likes: 120 + items.length * 17,
             created_at: new Date().toISOString(),
@@ -712,10 +791,10 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
         const v = node.videoRenderer;
         const vid = v.videoId;
         const durSec = parseDurationText(v.lengthText?.simpleText || '');
-        if (vid && !seen.has(vid) && (isLiveMode || durSec === 0 || durSec <= 120)) {
+        if (vid && !seen.has(vid) && !excludeSet.has(vid) && (isLiveMode || durSec === 0 || durSec <= 150)) {
           seen.add(vid);
-          const title = v.title?.runs?.map((x) => x.text).join('') || 'Global Music Short';
-          const channel = v.ownerText?.runs?.[0]?.text || 'Criador Global';
+          const title = v.title?.runs?.map((x) => x.text).join('') || 'YouTube Reel';
+          const channel = v.ownerText?.runs?.[0]?.text || 'Canal YouTube';
           const thumb =
             v.thumbnail?.thumbnails?.slice(-1)?.[0]?.url ||
             `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
@@ -726,7 +805,7 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
             creator_color: isLiveMode ? 'from-rose-500 to-amber-500' : 'from-pink-500 to-purple-500',
             description: isLiveMode
               ? `Transmissão Ao Vivo agora · ${channel}`
-              : `Vídeo curto mundial · Categoria ${cat.toUpperCase()}`,
+              : `Canal ${channel} · Reels & Shorts`,
             media_type: 'youtube_short',
             video_url: '',
             youtube_id: vid,
@@ -765,7 +844,7 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
             return {
               ...it,
               creator_name:
-                it.creator_name === 'Criador Global' && info?.author_name
+                (it.creator_name === 'Criador Global' || it.creator_name === 'Canal YouTube') && info?.author_name
                   ? String(info.author_name).slice(0, 36)
                   : it.creator_name,
               poster_url: info?.thumbnail_url || it.poster_url,
@@ -780,7 +859,10 @@ export async function searchWorldShorts(category = 'all', customQuery = '') {
       }
     }
 
-    const finalList = embeddable.length > 0 ? embeddable : items.slice(0, 12);
+    let finalList = embeddable.length > 0 ? embeddable : items.slice(0, 14);
+    if (forceRefresh && finalList.length > 1) {
+      finalList = [...finalList].sort(() => Math.random() - 0.5);
+    }
     worldShortsCache.set(key, { ts: Date.now(), items: finalList });
     return finalList;
   } catch {
@@ -886,11 +968,40 @@ export async function resolveBackgroundAudioStream(rawTitle = '', rawArtist = ''
   const cached = bgAudioCache.get(key);
   if (cached && Date.now() - cached.ts < 30 * 60 * 1000) return cached.data;
 
+  // 1. Try FULL-LENGTH Audius streams (exact query, then title-only, then artist-only) so playback NEVER stops at 30s!
+  const candidates = [query, cleanTitle, cleanArtist].filter((x, i, a) => Boolean(x) && a.indexOf(x) === i);
+  for (const qTry of candidates) {
+    try {
+      const audius = await searchAudiusFull(qTry, 5);
+      const best = audius.find((t) => t.audioUrl && (t.durationSec || 0) >= 60) || audius.find((t) => t.audioUrl);
+      if (best) {
+        const data = {
+          audioUrl: best.audioUrl,
+          title: best.title,
+          artist: best.artist,
+          source: 'audius',
+          isPreview: false,
+        };
+        bgAudioCache.set(key, { ts: Date.now(), data });
+        return data;
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  // 2. Try trending full-length Audius track matching genre/vibe before ever using 30s preview
   try {
-    const audius = await searchAudiusFull(query, 4);
-    const best = audius.find((t) => t.audioUrl);
-    if (best) {
-      const data = { audioUrl: best.audioUrl, title: best.title, artist: best.artist, source: 'audius' };
+    const trending = await searchAudiusFull('', 8);
+    const bestTrend = trending.find((t) => t.audioUrl);
+    if (bestTrend && !cleanTitle) {
+      const data = {
+        audioUrl: bestTrend.audioUrl,
+        title: bestTrend.title,
+        artist: bestTrend.artist,
+        source: 'audius',
+        isPreview: false,
+      };
       bgAudioCache.set(key, { ts: Date.now(), data });
       return data;
     }
@@ -898,6 +1009,7 @@ export async function resolveBackgroundAudioStream(rawTitle = '', rawArtist = ''
     // ignore
   }
 
+  // 3. Last resort: iTunes audio preview (client auto-advances seamlessly to full-length queue after it finishes!)
   try {
     const r = await fetch(
       `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=3&country=BR`,
@@ -912,6 +1024,7 @@ export async function resolveBackgroundAudioStream(rawTitle = '', rawArtist = ''
           title: hit.trackName || cleanTitle,
           artist: hit.artistName || cleanArtist,
           source: 'itunes',
+          isPreview: true,
         };
         bgAudioCache.set(key, { ts: Date.now(), data });
         return data;

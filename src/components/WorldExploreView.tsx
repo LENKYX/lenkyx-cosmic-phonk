@@ -16,7 +16,15 @@ import {
   BadgeCheck,
   Crown,
   Bot,
+  Bell,
+  BellRing,
 } from 'lucide-react';
+import {
+  fetchChannelSubscriptions,
+  getClientSubscriberId,
+  normalizeChannelKey,
+  toggleChannelSubscribe,
+} from '../utils/communityApi';
 import {
   Track,
   UserPlaylist,
@@ -153,6 +161,34 @@ export const WorldExploreView: React.FC<Props> = ({
   const [topVideos, setTopVideos] = useState<RankedVideoEntry[]>([]);
   const [sunoArtists, setSunoArtists] = useState<SunoAiArtist[]>([]);
   const [sunoTracks, setSunoTracks] = useState<Track[]>([]);
+  const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
+  const [subscribedChannels, setSubscribedChannels] = useState<Set<string>>(new Set());
+  const subscriberId = useMemo(() => getClientSubscriberId(), []);
+
+  useEffect(() => {
+    void fetchChannelSubscriptions(subscriberId).then((res) => {
+      setChannelCounts(res.counts || {});
+      setSubscribedChannels(new Set(res.subscribed || []));
+    });
+  }, [subscriberId]);
+
+  const handleToggleArtistSubscribe = async (artistName: string) => {
+    const key = normalizeChannelKey(artistName);
+    const res = await toggleChannelSubscribe({
+      channelId: key,
+      channelName: artistName,
+      subscriberId,
+    });
+    if (res) {
+      setChannelCounts((prev) => ({ ...prev, [res.channelId]: res.count }));
+      setSubscribedChannels((prev) => {
+        const next = new Set(prev);
+        if (res.subscribed) next.add(res.channelId);
+        else next.delete(res.channelId);
+        return next;
+      });
+    }
+  };
 
   const runSearch = async (term: string, label?: string, includeArchiveSpace = false) => {
     setLoading(true);
@@ -372,6 +408,32 @@ export const WorldExploreView: React.FC<Props> = ({
                     <Film className="w-3.5 h-3.5" /> Assistir Clipes
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => void handleToggleArtistSubscribe(artistProfile.name)}
+                  className={`px-4 py-2.5 rounded-full text-xs font-black flex items-center gap-1.5 transition ${
+                    subscribedChannels.has(normalizeChannelKey(artistProfile.name))
+                      ? 'bg-white/20 border border-white/25 text-white'
+                      : 'bg-gradient-to-r from-red-600 to-pink-500 text-white shadow hover:brightness-110'
+                  }`}
+                >
+                  {subscribedChannels.has(normalizeChannelKey(artistProfile.name)) ? (
+                    <>
+                      <BellRing className="w-3.5 h-3.5 text-emerald-300" />
+                      <span>Inscrito</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="w-3.5 h-3.5" />
+                      <span>Inscrever-se</span>
+                    </>
+                  )}
+                  {(channelCounts[normalizeChannelKey(artistProfile.name)] || 0) > 0 && (
+                    <span className="opacity-85">
+                      · {channelCounts[normalizeChannelKey(artistProfile.name)]}
+                    </span>
+                  )}
+                </button>
                 <button
                   onClick={() => void runSearch('', '🔥 Em Alta')}
                   className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white flex items-center gap-1 transition"

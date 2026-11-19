@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Play,
   Pause,
@@ -22,9 +22,17 @@ import {
   CheckCircle2,
   Loader2,
   WifiOff,
+  Bell,
+  BellRing,
+  Share2,
 } from 'lucide-react';
 import { AppMode, AppSettings, AudioVersion, Track, UserPlaylist } from '../types';
 import { copyTextReliable, isAndroidApk } from '../utils/androidBridge';
+import {
+  fetchChannelSubscriptions,
+  getClientSubscriberId,
+  toggleChannelSubscribe,
+} from '../utils/communityApi';
 
 interface Props {
   tracks: Track[];
@@ -52,6 +60,7 @@ interface Props {
   lyricsTrack: Track | null;
   onSetLyricsTrack: (track: Track | null) => void;
   onCommentTrack?: (track: Track) => void;
+  onOpenGlobalChat?: () => void;
   onSearchWorld?: (query: string) => void;
   onToast: (msg: string) => void;
 }
@@ -87,6 +96,7 @@ export const CatalogView: React.FC<Props> = ({
   lyricsTrack,
   onSetLyricsTrack,
   onCommentTrack,
+  onOpenGlobalChat,
   onSearchWorld,
   onToast,
 }) => {
@@ -94,6 +104,33 @@ export const CatalogView: React.FC<Props> = ({
   const [viewLayout, setViewLayout] = useState<'feed' | 'list'>('feed');
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [pickerTrackId, setPickerTrackId] = useState<string | null>(null);
+  const [channelSubscribed, setChannelSubscribed] = useState(false);
+  const [channelSubsCount, setChannelSubsCount] = useState(1240);
+  const subscriberId = useMemo(() => getClientSubscriberId(), []);
+
+  useEffect(() => {
+    void fetchChannelSubscriptions(subscriberId).then((res) => {
+      setChannelSubsCount(res.counts['lenkyx-oficial'] || 1240);
+      setChannelSubscribed(res.subscribed.includes('lenkyx-oficial'));
+    });
+  }, [subscriberId]);
+
+  const handleToggleMainChannelSubscribe = async () => {
+    const res = await toggleChannelSubscribe({
+      channelId: 'lenkyx-oficial',
+      channelName: 'LENKYX Oficial',
+      subscriberId,
+    });
+    if (res) {
+      setChannelSubscribed(res.subscribed);
+      setChannelSubsCount(res.count);
+      onToast(
+        res.subscribed
+          ? `🔔 Inscrito no canal LENKYX Oficial! (${res.count} inscritos)`
+          : 'Inscrição removida'
+      );
+    }
+  };
 
   const albums = useMemo(() => {
     const set = new Set<string>();
@@ -205,6 +242,36 @@ export const CatalogView: React.FC<Props> = ({
                 className="px-3.5 sm:px-4 py-2 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_16px_rgba(52,211,153,0.35)] transition active:scale-95"
               >
                 <Smartphone className="w-3.5 h-3.5" /> Baixar (Android · iPhone · PC)
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void handleToggleMainChannelSubscribe()}
+              className={`px-3.5 sm:px-4 py-2 rounded-full font-extrabold text-xs flex items-center gap-1.5 transition active:scale-95 ${
+                channelSubscribed
+                  ? 'bg-white/15 border border-white/25 text-white'
+                  : 'bg-gradient-to-r from-red-600 to-pink-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.4)] hover:brightness-110'
+              }`}
+            >
+              {channelSubscribed ? (
+                <>
+                  <BellRing className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Inscrito · {channelSubsCount}</span>
+                </>
+              ) : (
+                <>
+                  <Bell className="w-3.5 h-3.5" />
+                  <span>Inscrever-se · {channelSubsCount}</span>
+                </>
+              )}
+            </button>
+            {onOpenGlobalChat && (
+              <button
+                type="button"
+                onClick={onOpenGlobalChat}
+                className="px-3.5 sm:px-4 py-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 font-extrabold text-xs flex items-center gap-1.5 transition active:scale-95"
+              >
+                <MessageCircle className="w-3.5 h-3.5" /> Chat
               </button>
             )}
             {mode === 'creator' && (
@@ -630,6 +697,15 @@ export const CatalogView: React.FC<Props> = ({
                         >
                           <Heart className={`w-3.5 h-3.5 ${track.favorite ? 'fill-pink-500' : ''}`} />
                         </button>
+                        {onCommentTrack && (
+                          <button
+                            onClick={() => onCommentTrack(track)}
+                            className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-cyan-500/20 border border-white/10 text-cyan-300 transition"
+                            title="Comentar"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         <button
                           onClick={() => onSetLyricsTrack(track)}
                           className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-white/15 border border-white/10 text-purple-200 transition"
@@ -652,7 +728,7 @@ export const CatalogView: React.FC<Props> = ({
                           className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-emerald-500/20 border border-white/10 text-emerald-300 transition"
                           title="Compartilhar"
                         >
-                          <MessageCircle className="w-3.5 h-3.5" />
+                          <Share2 className="w-3.5 h-3.5" />
                         </button>
                         {pickerTrackId === track.id && (
                           <div className="absolute right-0 bottom-9 z-30 w-44 rounded-xl bg-[#120829] border border-purple-400/40 shadow-2xl p-1.5 space-y-0.5">

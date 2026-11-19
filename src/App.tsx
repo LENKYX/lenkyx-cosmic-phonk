@@ -43,6 +43,10 @@ import {
   Tv,
   Gamepad2,
   Disc3,
+  Plus,
+  Radio,
+  MessageCircle,
+  ChevronRight,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
@@ -70,6 +74,7 @@ import {
 import { GamingMusicModeModal } from './components/GamingMusicModeModal';
 import { WorldLanguageModal } from './components/WorldLanguageModal';
 import { MediaPlayerMenuModal } from './components/MediaPlayerMenuModal';
+import { CommunityChatModal, TargetCommentsModal } from './components/CommunityChatModal';
 import { recordRankingHit } from './utils/rankingsApi';
 import {
   AppMode,
@@ -92,6 +97,9 @@ const SportsArenaView = React.lazy(() =>
 );
 const StudioCreateView = React.lazy(() =>
   import('./components/StudioCreateView').then((m) => ({ default: m.StudioCreateView }))
+);
+const SocialShortsAndLiveView = React.lazy(() =>
+  import('./components/SocialShortsAndLiveView').then((m) => ({ default: m.SocialShortsAndLiveView }))
 );
 const CosmicSearchView = React.lazy(() =>
   import('./components/CosmicSearchView').then((m) => ({ default: m.CosmicSearchView }))
@@ -321,6 +329,20 @@ export function App() {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [musicMenuOpen, setMusicMenuOpen] = useState(false);
   const [mediaPlayerMenuOpen, setMediaPlayerMenuOpen] = useState(false);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [reelsAction, setReelsAction] = useState<'shorts' | 'create_reel' | 'go_live'>('shorts');
+  const [reelsActionNonce, setReelsActionNonce] = useState(0);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [commentTarget, setCommentTarget] = useState<{ id: string; title: string } | null>(null);
+  const [clipLeftOverlayOpen, setClipLeftOverlayOpen] = useState(false);
+  const clipLeftTimerRef = useRef<number | null>(null);
+  const revealClipLeftOverlay = useCallback(() => {
+    setClipLeftOverlayOpen(true);
+    if (clipLeftTimerRef.current !== null) window.clearTimeout(clipLeftTimerRef.current);
+    clipLeftTimerRef.current = window.setTimeout(() => {
+      setClipLeftOverlayOpen(false);
+    }, 4500);
+  }, []);
   const [sleepEndAt, setSleepEndAt] = useState<number | null>(null);
   const [sleepMinutesLeft, setSleepMinutesLeft] = useState<number | null>(null);
   const [activeVersion, setActiveVersion] = useState<AudioVersion>('v1');
@@ -1438,7 +1460,7 @@ export function App() {
     showToast(`📱 ${okCount} músicas salvas offline no aparelho!`);
   }, [tracks, offlineTrackIds, showToast]);
 
-  // Auto-advance to next track
+  // Auto-advance to next track (when screen is off/locked, prefer full-length audioUrl so playback NEVER cuts!)
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -1446,6 +1468,16 @@ export function App() {
       const list = playQueueRef.current.length ? playQueueRef.current : tracks;
       if (!currentTrack || !list.length) return;
       const idx = list.findIndex((t) => t.id === currentTrack.id);
+      if (document.hidden && backgroundModeRef.current) {
+        // When screen is locked/off, pick the next track that has a real full audioUrl (or fall back to LENKYX full catalog)
+        const ordered = [...list.slice(idx + 1), ...list.slice(0, idx + 1)];
+        const fullNext =
+          ordered.find((t) => Boolean(t.audioUrl) && t.id !== currentTrack.id) ||
+          tracks.find((t) => Boolean(t.audioUrl) && t.id !== currentTrack.id) ||
+          list[(idx + 1) % list.length];
+        if (fullNext) void handlePlayTrack(fullNext, 'v1', list);
+        return;
+      }
       const next = list[(idx + 1) % list.length];
       if (next) void handlePlayTrack(next, 'v1', list);
     };
@@ -1607,26 +1639,26 @@ export function App() {
     setGamingPipOpen(isGamingPipOpen());
   }, [currentTrack, isPlaying, duration, handlePrevNext, handleEmergencyStop]);
 
-  // In-Game Anti-Cut Auto-Recovery: keeps music playing when switching into mobile or PC games
+  // Lock-Screen / Screen-Off & In-Game Anti-Cut Auto-Recovery: keeps music playing continuously until closed
   useEffect(() => {
-    if (!gamingModeEnabled) return;
+    if (!gamingModeEnabled && !backgroundMode) return;
     const recoverAudio = () => {
       if (userPausedRef.current || !isPlayingRef.current) return;
       const el = audioRef.current;
-      if (el && el.paused && el.src) {
+      if (el && el.paused && el.src && !el.ended) {
         void el.play().catch(() => {});
       }
     };
     const onVis = () => {
-      window.setTimeout(recoverAudio, 180);
+      window.setTimeout(recoverAudio, 150);
     };
     document.addEventListener('visibilitychange', onVis);
-    const interval = window.setInterval(recoverAudio, 2500);
+    const interval = window.setInterval(recoverAudio, 1500);
     return () => {
       document.removeEventListener('visibilitychange', onVis);
       window.clearInterval(interval);
     };
-  }, [gamingModeEnabled]);
+  }, [gamingModeEnabled, backgroundMode]);
 
   useEffect(() => {
     window.__lenkyxMediaAction = (action) => {
@@ -2243,6 +2275,27 @@ export function App() {
               <Search className="w-4 h-4" />
             </button>
 
+            {/* Universal + Create Button (Desktop & Quick Mobile Access: Reel / Live / Chat / IA) */}
+            <button
+              type="button"
+              onClick={() => setCreateMenuOpen(true)}
+              className="hidden sm:flex px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black text-[11px] font-black items-center gap-1 shadow-[0_0_16px_rgba(236,72,153,0.4)] hover:brightness-110 shrink-0 transition"
+              title="Criar Reel, Abrir Live HD ou Chat"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              <span>Criar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setChatModalOpen(true)}
+              className="w-9 h-9 md:w-auto md:px-2.5 md:py-1.5 rounded-full bg-white/[0.08] hover:bg-white/20 border border-white/15 text-[11px] font-black text-cyan-200 flex items-center justify-center gap-1 shrink-0 transition"
+              title="Chat Espacial Ao Vivo (Liberado)"
+            >
+              <MessageCircle className="w-4 h-4 md:w-3.5 md:h-3.5 text-cyan-300" />
+              <span className="hidden lg:inline">Chat</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setMediaPlayerMenuOpen(true)}
@@ -2372,8 +2425,9 @@ export function App() {
             {(
               [
                 { id: 'catalog' as TabId, label: '🎵 Músicas' },
+                { id: 'reels' as TabId, label: '🎬 Reels & Lives' },
                 { id: 'explore' as TabId, label: '🌍 Clipes & Artistas' },
-                { id: 'movies' as TabId, label: '🎬 Cinema' },
+                { id: 'movies' as TabId, label: '🍿 Cinema' },
                 { id: 'sports' as TabId, label: '🏆 Ao Vivo' },
                 { id: 'offline' as TabId, label: '📱 Offline' },
                 { id: 'studio' as TabId, label: '🤖 Criar IA' },
@@ -2574,9 +2628,35 @@ export function App() {
                     }}
                     lyricsTrack={lyricsTrack}
                     onSetLyricsTrack={setLyricsTrack}
+                    onCommentTrack={(t) =>
+                      setCommentTarget({ id: `track:${t.id}`, title: `${t.title} — ${t.artist}` })
+                    }
+                    onOpenGlobalChat={() => setChatModalOpen(true)}
                     onSearchWorld={triggerWorldSearchDirect}
                     onToast={showToast}
                   />
+                )}
+
+                {activeTab === 'reels' && (
+                  <Suspense
+                    fallback={
+                      <div className="py-16 text-center text-xs text-cyan-300 font-semibold">
+                        Carregando Reels & Lives...
+                      </div>
+                    }
+                  >
+                    <SocialShortsAndLiveView
+                      tracks={allTracksPool}
+                      initialTrack={currentTrack}
+                      user={null}
+                      initialAction={reelsAction}
+                      actionNonce={reelsActionNonce}
+                      onPlayTrack={(t) => void handlePlayTrack(t, 'v1', allTracksPool)}
+                      onPauseCatalogPlayer={pauseCatalogPlayer}
+                      onOpenUserAuth={() => setChatModalOpen(true)}
+                      onToast={showToast}
+                    />
+                  </Suspense>
                 )}
 
                 {activeTab === 'explore' && (
@@ -2760,14 +2840,14 @@ export function App() {
         />
       )}
 
-      {/* YOUTUBE-STYLE 5-TAB MOBILE BOTTOM NAVIGATION BAR */}
+      {/* YOUTUBE-STYLE 5-TAB MOBILE BOTTOM NAVIGATION BAR WITH CENTER + CREATE BUTTON */}
       {!watchingMovie && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#070312]/96 backdrop-blur-2xl border-t border-white/10 grid grid-cols-5 px-2">
           {(
             [
-              { id: 'catalog' as TabId, label: 'Som', icon: <Music className="w-4 h-4" /> },
-              { id: 'explore' as TabId, label: 'Clipes', icon: <Globe2 className="w-4 h-4" /> },
-              { id: 'studio' as TabId, label: 'Criar', icon: <Wand2 className="w-4 h-4" />, center: true },
+              { id: 'catalog' as TabId, label: 'Início', icon: <Music className="w-4 h-4" /> },
+              { id: 'reels' as TabId, label: 'Reels', icon: <Film className="w-4 h-4" /> },
+              { id: 'studio' as TabId, label: 'Criar', icon: <Plus className="w-5 h-5 stroke-[2.8]" />, center: true },
               { id: 'movies' as TabId, label: 'Cinema', icon: <Clapperboard className="w-4 h-4" /> },
               { id: 'offline' as TabId, label: 'Offline', icon: <Car className="w-4 h-4" /> },
             ] as { id: TabId; label: string; icon: React.ReactNode; center?: boolean }[]
@@ -2776,21 +2856,14 @@ export function App() {
             if (item.center) {
               return (
                 <button
-                  key={item.id}
-                  onClick={() => navigateTab(item.id)}
+                  key="create-plus-btn"
+                  type="button"
+                  onClick={() => setCreateMenuOpen(true)}
                   className="flex flex-col items-center justify-center gap-0.5 py-1 transition"
+                  title="Criar Reel, Live HD, Chat ou Música"
                 >
-                  <span
-                    className={`w-10 h-7 rounded-full flex items-center justify-center shadow-[0_0_16px_rgba(236,72,153,0.45)] transition ${
-                      active
-                        ? 'bg-gradient-to-r from-pink-500 to-cyan-400 text-black'
-                        : 'bg-white/15 text-white border border-white/20'
-                    }`}
-                  >
+                  <span className="w-11 h-8 rounded-full flex items-center justify-center bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 text-white shadow-[0_0_18px_rgba(236,72,153,0.55)] border border-white/25 transition active:scale-95">
                     {item.icon}
-                  </span>
-                  <span className={`text-[9px] font-black ${active ? 'text-cyan-300' : 'text-slate-300'}`}>
-                    {item.label}
                   </span>
                 </button>
               );
@@ -3479,6 +3552,7 @@ export function App() {
           )}
 
           <div
+            onClick={clipTheaterOpen ? revealClipLeftOverlay : undefined}
             className={
               clipTheaterOpen
                 ? 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center relative overflow-hidden'
@@ -3486,6 +3560,73 @@ export function App() {
             }
           >
             <div id="lenkyx-yt-audio-host" className="w-full h-full" />
+
+            {/* YouTube-Style Left-Edge Tap-to-Reveal Controls inside Clip Theater */}
+            {clipTheaterOpen && currentTrack?.youtubeVideoId && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  revealClipLeftOverlay();
+                }}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex items-center"
+              >
+                {!clipLeftOverlayOpen ? (
+                  <button
+                    type="button"
+                    onClick={revealClipLeftOverlay}
+                    className="ml-1.5 px-1.5 py-4 rounded-full bg-black/45 hover:bg-black/75 backdrop-blur-md border border-white/20 text-white/85 hover:text-white flex items-center justify-center shadow-lg transition"
+                    title="Toque para abrir controles laterais (Voltar / Fechar)"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <div className="ml-2 p-1.5 rounded-2xl bg-[#090418]/90 backdrop-blur-xl border border-cyan-400/35 shadow-[0_12px_40px_rgba(0,0,0,0.85)] flex flex-col items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setClipTheaterOpen(false)}
+                      className="w-11 h-10 rounded-xl bg-white/15 hover:bg-white/25 text-white flex flex-col items-center justify-center transition"
+                      title="Voltar"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span className="text-[8px] font-black">Voltar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePrevNext(-1)}
+                      className="w-11 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+                      title="Anterior"
+                    >
+                      <SkipBack className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleTogglePlay()}
+                      className="w-11 h-9 rounded-xl bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center transition"
+                      title="Tocar / Pausar"
+                    >
+                      {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black ml-0.5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePrevNext(1)}
+                      className="w-11 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+                      title="Próximo"
+                    >
+                      <SkipForward className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClipTheaterOpen(false)}
+                      className="w-11 h-10 rounded-xl bg-rose-500/30 hover:bg-rose-500/55 border border-rose-400/40 text-rose-100 flex flex-col items-center justify-center transition"
+                      title="Fechar"
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="text-[8px] font-black">Fechar</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {clipTheaterOpen && currentTrack?.youtubeVideoId && !isPlaying && (
               <div
@@ -3641,6 +3782,130 @@ export function App() {
         }}
         onSyncedTracks={(synced) => setTracks(synced)}
         onToast={showToast}
+      />
+
+      {/* === BOTÃO + CRIAR (REEL, LIVE HD, CHAT AO VIVO, MÚSICA IA) === */}
+      {createMenuOpen && (
+        <div
+          onClick={() => setCreateMenuOpen(false)}
+          className="fixed inset-0 z-[9995] bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center p-3 sm:p-5"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-3xl bg-[#090318]/98 border border-cyan-400/40 p-5 space-y-3 shadow-[0_0_70px_rgba(236,72,153,0.35)]"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="w-9 h-9 rounded-2xl bg-gradient-to-r from-pink-500 to-cyan-400 text-white flex items-center justify-center shadow">
+                  <Plus className="w-5 h-5 stroke-[2.8]" />
+                </span>
+                <div>
+                  <h3 className="font-display text-sm font-black text-white">Criar & Transmitir no LENKYX</h3>
+                  <p className="text-[11px] text-cyan-200/80">100% liberado — Reels, Lives, Chats & Músicas IA</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCreateMenuOpen(false)}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateMenuOpen(false);
+                  setReelsAction('create_reel');
+                  setReelsActionNonce((n) => n + 1);
+                  navigateTab('reels');
+                }}
+                className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/35 hover:to-cyan-500/35 border border-emerald-400/40 flex items-center gap-3 text-left transition"
+              >
+                <span className="w-10 h-10 rounded-xl bg-emerald-400 text-black flex items-center justify-center shrink-0">
+                  <Film className="w-5 h-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-black text-white">📹 Criar Conteúdo de Reel (Vídeo Curto)</div>
+                  <div className="text-[11px] text-emerald-200/80">Suba ou poste seu Reel no feed global agora</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateMenuOpen(false);
+                  setReelsAction('go_live');
+                  setReelsActionNonce((n) => n + 1);
+                  navigateTab('reels');
+                }}
+                className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-rose-500/25 to-pink-500/25 hover:from-rose-500/40 hover:to-pink-500/40 border border-rose-400/45 flex items-center gap-3 text-left transition"
+              >
+                <span className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0">
+                  <Radio className="w-5 h-5 animate-pulse" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-black text-white">🔴 Fazer Live HD Agora</div>
+                  <div className="text-[11px] text-rose-200/80">Câmera HD corrigida, efeitos cósmicos e chat ao vivo</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateMenuOpen(false);
+                  setChatModalOpen(true);
+                }}
+                className="w-full p-3.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-cyan-400/30 flex items-center gap-3 text-left transition"
+              >
+                <span className="w-10 h-10 rounded-xl bg-cyan-400 text-black flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-5 h-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-black text-white">💬 Chat Espacial & Comentários</div>
+                  <div className="text-[11px] text-cyan-200/80">Converse livremente com fãs e criadores ao vivo</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateMenuOpen(false);
+                  navigateTab('studio');
+                }}
+                className="w-full p-3.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-purple-400/30 flex items-center gap-3 text-left transition"
+              >
+                <span className="w-10 h-10 rounded-xl bg-purple-500 text-white flex items-center justify-center shrink-0">
+                  <Wand2 className="w-5 h-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-black text-white">🤖 Criar Música / Studio IA</div>
+                  <div className="text-[11px] text-purple-200/80">Gere beats, capas e áudios profissionais no LENKYX</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <CommunityChatModal
+        open={chatModalOpen}
+        onClose={() => setChatModalOpen(false)}
+        user={null}
+        onOpenAuth={() => {
+          setChatModalOpen(false);
+          showToast('💬 Chat liberado para todos! Digite sua mensagem abaixo.');
+        }}
+      />
+
+      <TargetCommentsModal
+        open={Boolean(commentTarget)}
+        onClose={() => setCommentTarget(null)}
+        targetId={commentTarget?.id || ''}
+        targetTitle={commentTarget?.title || ''}
+        user={null}
       />
 
       {toast && (

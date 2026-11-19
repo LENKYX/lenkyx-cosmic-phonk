@@ -36,6 +36,10 @@ import {
   Repeat,
   SkipForward,
   Headphones,
+  ArrowLeft,
+  Bell,
+  BellRing,
+  Plus,
 } from 'lucide-react';
 import { Track, UserProfile } from '../types';
 import {
@@ -45,6 +49,10 @@ import {
   fetchActiveLives,
   fetchChatMessages,
   fetchWorldShorts,
+  fetchChannelSubscriptions,
+  getClientSubscriberId,
+  normalizeChannelKey,
+  toggleChannelSubscribe,
   likeCommunityShortItem,
   publishCommunityShort,
   sendChatMessage,
@@ -62,6 +70,8 @@ interface Props {
   tracks: Track[];
   initialTrack: Track | null;
   user: UserProfile | null;
+  initialAction?: 'shorts' | 'create_reel' | 'go_live';
+  actionNonce?: number;
   onPlayTrack: (track: Track) => void;
   onPauseCatalogPlayer: () => void;
   onOpenUserAuth: () => void;
@@ -80,15 +90,20 @@ type SubTab = 'shorts' | 'live' | 'studio';
 type LiveEffectId = 'studio_hd' | 'cosmic_aurora' | 'cyber_glitch' | 'jbl_pulse' | 'galaxy_portal';
 
 const SHORT_CATEGORIES: { id: string; label: string }[] = [
-  { id: 'all', label: '🌍 Mundo Inteiro' },
-  { id: 'live', label: '🔴 Ao Vivo Agora (HD)' },
-  { id: 'phonk', label: '🔥 Phonk & Drift' },
+  { id: 'all', label: '🌍 Todos Canais' },
+  { id: 'viral', label: '🔥 Virais Hoje' },
+  { id: 'humor', label: '😂 Humor & Memes' },
+  { id: 'games', label: '🎮 Games' },
+  { id: 'football', label: '⚽ Futebol' },
+  { id: 'cinema', label: '🎬 Cinema & Animes' },
+  { id: 'music', label: '🎵 Música' },
+  { id: 'phonk', label: '⚡ Phonk & Drift' },
   { id: 'brazil', label: '🇧🇷 Brasil' },
+  { id: 'tech', label: '🚗 Tech & Carros' },
+  { id: 'live', label: '🔴 Ao Vivo Agora' },
   { id: 'djs', label: '🎧 DJs & Beats' },
-  { id: 'space', label: '🚀 Espaço & Galáxia' },
-  { id: 'dance', label: '💃 Dança & Pop' },
-  { id: 'rock', label: '🎸 Rock & Guitar' },
-  { id: 'community', label: '🎬 Só Comunidade' },
+  { id: 'space', label: '🚀 Espaço' },
+  { id: 'community', label: '📱 Comunidade' },
 ];
 
 const LIVE_EFFECTS: { id: LiveEffectId; label: string; desc: string }[] = [
@@ -317,6 +332,8 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   tracks,
   initialTrack,
   user,
+  initialAction,
+  actionNonce = 0,
   onPlayTrack,
   onPauseCatalogPlayer,
   onOpenUserAuth,
@@ -324,6 +341,39 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   onToast,
 }) => {
   const [subTab, setSubTab] = useState<SubTab>('shorts');
+  const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
+  const [subscribedChannels, setSubscribedChannels] = useState<Set<string>>(new Set());
+  const subscriberId = getClientSubscriberId(user?.id);
+
+  useEffect(() => {
+    void fetchChannelSubscriptions(subscriberId).then((res) => {
+      setChannelCounts(res.counts || {});
+      setSubscribedChannels(new Set(res.subscribed || []));
+    });
+  }, [subscriberId]);
+
+  const handleToggleSubscribe = async (channelName: string) => {
+    const key = normalizeChannelKey(channelName);
+    const res = await toggleChannelSubscribe({
+      channelId: key,
+      channelName: channelName || 'LENKYX Oficial',
+      subscriberId,
+    });
+    if (res) {
+      setChannelCounts((prev) => ({ ...prev, [res.channelId]: res.count }));
+      setSubscribedChannels((prev) => {
+        const next = new Set(prev);
+        if (res.subscribed) next.add(res.channelId);
+        else next.delete(res.channelId);
+        return next;
+      });
+      onToast(
+        res.subscribed
+          ? `🔔 Inscrito no canal ${res.channelName}! (${res.count} inscritos)`
+          : `Inscrição removida de ${res.channelName}`
+      );
+    }
+  };
 
   // === YOUTUBE SHORTS STYLE INDIVIDUAL VERTICAL REELS STATE ===
   const [shorts, setShorts] = useState<CommunityShortItem[]>([]);
@@ -336,6 +386,40 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   const [autoAdvanceShorts, setAutoAdvanceShorts] = useState(true);
   const [loopCurrentShort, setLoopCurrentShort] = useState(false);
   const [zenShortMode, setZenShortMode] = useState(false);
+  const [leftOverlayOpen, setLeftOverlayOpen] = useState(false);
+  const leftOverlayTimerRef = useRef<number | null>(null);
+  const seenReelIdsRef = useRef<string[]>(
+    (() => {
+      try {
+        const raw = localStorage.getItem('lenkyx_seen_reels_v1');
+        return raw ? (JSON.parse(raw) as string[]) : [];
+      } catch {
+        return [];
+      }
+    })()
+  );
+
+  const revealLeftOverlay = () => {
+    setLeftOverlayOpen(true);
+    if (leftOverlayTimerRef.current !== null) window.clearTimeout(leftOverlayTimerRef.current);
+    leftOverlayTimerRef.current = window.setTimeout(() => {
+      setLeftOverlayOpen(false);
+    }, 4500);
+  };
+
+  const markReelSeen = (item?: CommunityShortItem | null) => {
+    if (!item) return;
+    const key = item.youtube_id || item.id;
+    if (!key) return;
+    if (!seenReelIdsRef.current.includes(key)) {
+      seenReelIdsRef.current = [...seenReelIdsRef.current.slice(-300), key];
+      try {
+        localStorage.setItem('lenkyx_seen_reels_v1', JSON.stringify(seenReelIdsRef.current));
+      } catch {
+        // ignore storage errors
+      }
+    }
+  };
   const [commentTarget, setCommentTarget] = useState<{ id: string; title: string } | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [newShortTitle, setNewShortTitle] = useState('');
@@ -381,10 +465,24 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   const effectRef = useRef(liveEffect);
   effectRef.current = liveEffect;
 
-  const loadShorts = async (cat = shortCategory, q = shortSearch) => {
+  const loadShorts = async (cat = shortCategory, q = shortSearch, forceRefresh = false) => {
     setShortsLoading(true);
     try {
-      const list = await fetchWorldShorts(cat, q);
+      // Mark currently visible batch as seen when user explicitly refreshes so they NEVER repeat!
+      if (forceRefresh) {
+        shorts.forEach((s) => markReelSeen(s));
+      }
+      let list = await fetchWorldShorts(cat, q, seenReelIdsRef.current, forceRefresh);
+      if (list.length === 0 && seenReelIdsRef.current.length > 0) {
+        // If user watched every single video in this category, reset history for this category so fresh cycle begins
+        seenReelIdsRef.current = [];
+        try {
+          localStorage.removeItem('lenkyx_seen_reels_v1');
+        } catch {
+          // ignore
+        }
+        list = await fetchWorldShorts(cat, q, [], true);
+      }
       setShorts(list);
       setActiveIndex(0);
     } finally {
@@ -397,6 +495,20 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     void fetchActiveLives().then(setLives);
     void fetchWorldShorts('live', '').then(setYtLives);
   }, []);
+
+  useEffect(() => {
+    if (!actionNonce && !initialAction) return;
+    if (initialAction === 'create_reel') {
+      setSubTab('shorts');
+      setExclusiveShortsOpen(false);
+      setPublishOpen(true);
+    } else if (initialAction === 'go_live') {
+      setSubTab('live');
+      setExclusiveShortsOpen(false);
+    } else if (initialAction === 'shorts') {
+      setSubTab('shorts');
+    }
+  }, [actionNonce, initialAction]);
 
   // Keyboard Up/Down & Left/Right navigation for Individual YouTube Shorts Player
   useEffect(() => {
@@ -576,8 +688,21 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
   const scrollToShort = (nextIdx: number) => {
     if (shorts.length === 0) return;
+    markReelSeen(shorts[activeIndex]);
     const clamped = Math.max(0, Math.min(shorts.length - 1, nextIdx));
     setActiveIndex(clamped);
+    // Automatically load a fresh non-repeating batch when reaching the last 2 Reels!
+    if (clamped >= shorts.length - 2 && !shortsLoading) {
+      void fetchWorldShorts(shortCategory, shortSearch, seenReelIdsRef.current, true).then((more) => {
+        if (more.length > 0) {
+          setShorts((prev) => {
+            const ids = new Set(prev.map((x) => x.id));
+            const uniqueNew = more.filter((x) => !ids.has(x.id));
+            return uniqueNew.length > 0 ? [...prev, ...uniqueNew] : prev;
+          });
+        }
+      });
+    }
   };
 
   const openShortIndividual = (idx: number) => {
@@ -587,6 +712,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   };
 
   const handleShortEnded = () => {
+    markReelSeen(shorts[activeIndex]);
     if (!autoAdvanceShorts || loopCurrentShort || shorts.length <= 1) return;
     const next = activeIndex + 1 < shorts.length ? activeIndex + 1 : 0;
     setActiveIndex(next);
@@ -963,13 +1089,42 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 </div>
               )}
 
-              {/* Bottom Title & Creator Overlay (hidden in Zen Mode!) */}
+              {/* Bottom Title & Creator Overlay + Channel Subscribe (hidden in Zen Mode!) */}
               {!zenShortMode && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/45 to-transparent p-4 pr-16">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/92 via-black/55 to-transparent p-4 pr-16 pointer-events-none">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5 pointer-events-auto">
                     <span className="px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-[10px] font-black text-cyan-200">
                       @{activeShort.creator_name}
                     </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleToggleSubscribe(activeShort.creator_name);
+                      }}
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 transition shadow ${
+                        subscribedChannels.has(normalizeChannelKey(activeShort.creator_name))
+                          ? 'bg-white/20 border border-white/25 text-white'
+                          : 'bg-gradient-to-r from-red-600 to-pink-500 text-white hover:brightness-110'
+                      }`}
+                    >
+                      {subscribedChannels.has(normalizeChannelKey(activeShort.creator_name)) ? (
+                        <>
+                          <BellRing className="w-3 h-3 text-emerald-300" />
+                          <span>Inscrito</span>
+                        </>
+                      ) : (
+                        <>
+                          <Bell className="w-3 h-3" />
+                          <span>Inscrever-se</span>
+                        </>
+                      )}
+                      {(channelCounts[normalizeChannelKey(activeShort.creator_name)] || 0) > 0 && (
+                        <span className="opacity-85">
+                          · {channelCounts[normalizeChannelKey(activeShort.creator_name)]}
+                        </span>
+                      )}
+                    </button>
                     {shortCategory === 'live' && (
                       <span className="px-2 py-0.5 rounded-full bg-rose-600 text-[9px] font-black text-white">
                         AO VIVO
@@ -986,6 +1141,70 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   )}
                 </div>
               )}
+
+              {/* Left-Edge YouTube-Style Tap-to-Reveal Quick Controls (Back / Close / Prev / Next / Refresh) */}
+              <div
+                onClick={revealLeftOverlay}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex items-center"
+              >
+                {!leftOverlayOpen ? (
+                  <button
+                    type="button"
+                    onClick={revealLeftOverlay}
+                    className="ml-1.5 px-1.5 py-4 rounded-full bg-black/35 hover:bg-black/65 backdrop-blur-md border border-white/15 text-white/80 hover:text-white flex items-center justify-center shadow-lg transition"
+                    title="Toque para abrir botões laterais (Voltar / Fechar)"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <div className="ml-2 p-1.5 rounded-2xl bg-[#090418]/85 backdrop-blur-xl border border-cyan-400/35 shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex flex-col items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setExclusiveShortsOpen(false)}
+                      className="w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 text-white flex flex-col items-center justify-center transition"
+                      title="Voltar"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span className="text-[8px] font-black">Voltar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollToShort(activeIndex - 1)}
+                      disabled={activeIndex <= 0}
+                      className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center transition"
+                      title="Anterior"
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollToShort(activeIndex + 1)}
+                      disabled={activeIndex >= shorts.length - 1}
+                      className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white flex items-center justify-center transition"
+                      title="Próximo"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void loadShorts(shortCategory, shortSearch, true)}
+                      className="w-10 h-10 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 flex items-center justify-center transition"
+                      title="Novos Reels sem repetir"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${shortsLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExclusiveShortsOpen(false)}
+                      className="w-10 h-10 rounded-xl bg-rose-500/30 hover:bg-rose-500/50 border border-rose-400/40 text-rose-100 flex flex-col items-center justify-center transition"
+                      title="Fechar"
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="text-[8px] font-black">Fechar</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Right-Side Translucent Action Rail (YouTube Shorts + Cosmic Beats) */}
               <div className="absolute right-2.5 bottom-16 z-20 flex flex-col items-center gap-2.5">
@@ -1100,23 +1319,38 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               🔴 Lives Ao Vivo
             </button>
             <button
-              onClick={() => void loadShorts(shortCategory, shortSearch)}
+              onClick={() => void loadShorts(shortCategory, shortSearch, true)}
               disabled={shortsLoading}
               className="px-3 py-1.5 rounded-full bg-white/[0.08] hover:bg-white/15 border border-white/10 text-[11px] font-bold text-emerald-300 flex items-center gap-1 transition"
+              title="Buscar Reels novos sem repetir os já assistidos"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${shortsLoading ? 'animate-spin' : ''}`} />
-              <span>Atualizar</span>
+              <span>Atualizar (Sem Repetir)</span>
             </button>
           </div>
 
-          {shorts.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={() => openShortIndividual(activeIndex)}
-              className="px-4 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black text-xs font-black flex items-center gap-1.5 shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:brightness-110 transition"
+              onClick={() => setPublishOpen((v) => !v)}
+              className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-xs font-black flex items-center gap-1 shadow-[0_0_20px_rgba(52,211,153,0.35)] hover:brightness-110 transition"
             >
-              <Play className="w-3.5 h-3.5 fill-black" /> Assistir 1 por 1 (Shorts)
+              <Plus className="w-3.5 h-3.5 stroke-[3]" /> Criar Reel
             </button>
-          )}
+            <button
+              onClick={() => setSubTab('live')}
+              className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-white text-xs font-black flex items-center gap-1 shadow-[0_0_20px_rgba(244,63,94,0.35)] hover:brightness-110 transition"
+            >
+              <Radio className="w-3.5 h-3.5" /> Fazer Live
+            </button>
+            {shorts.length > 0 && (
+              <button
+                onClick={() => openShortIndividual(activeIndex)}
+                className="px-4 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black text-xs font-black flex items-center gap-1.5 shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:brightness-110 transition"
+              >
+                <Play className="w-3.5 h-3.5 fill-black" /> Assistir 1 por 1 (Shorts)
+              </button>
+            )}
+          </div>
         </div>
 
         {shortsMenuOpen && (
@@ -1206,13 +1440,40 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                     </span>
                   </div>
 
-                  <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-end justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-xs font-black text-white line-clamp-2 leading-snug drop-shadow">
-                        {s.title}
-                      </div>
-                      <div className="text-[10px] text-cyan-200/85 mt-0.5 flex items-center gap-2">
-                        <span>❤️ {s.likes}</span>
+                  <div className="absolute bottom-2.5 left-2.5 right-2.5 space-y-1.5">
+                    <div className="text-xs font-black text-white line-clamp-2 leading-snug drop-shadow">
+                      {s.title}
+                    </div>
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="text-[10px] text-cyan-200/85">❤️ {s.likes}</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCommentTarget({ id: `short:${s.id}`, title: s.title });
+                          }}
+                          className="px-1.5 py-0.5 rounded-full bg-black/60 hover:bg-black/85 border border-white/15 text-[9px] font-bold text-cyan-200"
+                          title="Comentar"
+                        >
+                          💬
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleToggleSubscribe(s.creator_name);
+                          }}
+                          className={`px-2 py-0.5 rounded-full text-[9px] font-black transition ${
+                            subscribedChannels.has(normalizeChannelKey(s.creator_name))
+                              ? 'bg-white/20 text-emerald-200'
+                              : 'bg-red-600/90 hover:bg-red-500 text-white'
+                          }`}
+                        >
+                          {subscribedChannels.has(normalizeChannelKey(s.creator_name))
+                            ? '✓ Inscrito'
+                            : '+ Inscrever'}
+                        </button>
                       </div>
                     </div>
                   </div>

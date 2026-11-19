@@ -22,6 +22,8 @@ import {
   QrCode,
   ShieldOff,
   Crown,
+  ArrowLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { MovieItem, SeriesEpisodeItem, SeriesSeasonInfo } from '../types';
 import {
@@ -31,7 +33,11 @@ import {
   searchMoviesCatalog,
 } from '../utils/moviesApi';
 import { fetchTop5Rankings, RankedMovieEntry, recordRankingHit } from '../utils/rankingsApi';
-import { clearBackgroundMediaSession, syncBackgroundMediaSession } from '../utils/backgroundAudioGuard';
+import {
+  clearBackgroundMediaSession,
+  setMobileBackgroundKeepalive,
+  syncBackgroundMediaSession,
+} from '../utils/backgroundAudioGuard';
 import { CosmicGtaLoader } from './CosmicGtaLoader';
 import { PlayerQueueStrip } from './PlayerQueueStrip';
 
@@ -203,6 +209,16 @@ export const MoviesView: React.FC<Props> = ({
   const [, setPrerollActive] = useState(false);
   const [cinemaQuality, setCinemaQuality] = useState<'auto' | 'large' | 'hd720' | 'hd1080' | 'hd2160'>('hd720');
   const [expandedView, setExpandedView] = useState(false);
+  const [leftOverlayOpen, setLeftOverlayOpen] = useState(false);
+  const leftOverlayTimerRef = useRef<number | null>(null);
+
+  const revealLeftOverlay = () => {
+    setLeftOverlayOpen(true);
+    if (leftOverlayTimerRef.current !== null) window.clearTimeout(leftOverlayTimerRef.current);
+    leftOverlayTimerRef.current = window.setTimeout(() => {
+      setLeftOverlayOpen(false);
+    }, 4500);
+  };
 
   // Series Seasons & Episodes state
   const [seriesMetaTitle, setSeriesMetaTitle] = useState('');
@@ -216,9 +232,13 @@ export const MoviesView: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const heroTouchStartX = useRef<number | null>(null);
 
-  // Keep cinema audio/video active when minimizing or locking screen
+  // Keep cinema audio/video active continuously even when minimizing or locking screen (never stop at 30s!)
   useEffect(() => {
-    if (!activeMovie) return;
+    if (!activeMovie) {
+      setMobileBackgroundKeepalive(false);
+      return;
+    }
+    setMobileBackgroundKeepalive(true);
     syncBackgroundMediaSession(
       {
         title: activeMovie.title,
@@ -233,6 +253,7 @@ export const MoviesView: React.FC<Props> = ({
         onPrev: () => stepMovie(-1),
         onNext: () => stepMovie(1),
         onStop: () => {
+          setMobileBackgroundKeepalive(false);
           setActiveMovie(null);
           onEmergencyStop?.();
         },
@@ -243,8 +264,14 @@ export const MoviesView: React.FC<Props> = ({
         void videoElRef.current.play().catch(() => {});
       }
     };
+    const keepaliveTimer = window.setInterval(() => {
+      if (document.hidden && videoElRef.current && videoElRef.current.paused && !videoElRef.current.ended) {
+        void videoElRef.current.play().catch(() => {});
+      }
+    }, 2000);
     document.addEventListener('visibilitychange', onVis);
     return () => {
+      window.clearInterval(keepaliveTimer);
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [activeMovie]);
@@ -593,7 +620,16 @@ export const MoviesView: React.FC<Props> = ({
           {/* Compact Mobile-Friendly Header */}
           <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#070414] shrink-0">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <Clapperboard className="w-4 h-4 text-rose-500 shrink-0" />
+              <button
+                type="button"
+                onClick={() => setActiveMovie(null)}
+                className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-black flex items-center gap-1 shrink-0 transition"
+                title="Voltar"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Voltar</span>
+              </button>
+              <Clapperboard className="w-4 h-4 text-rose-500 shrink-0 hidden sm:block" />
               <div className="min-w-0">
                 <div className="text-xs sm:text-sm font-black text-white truncate">{activeMovie.title}</div>
                 <div className="text-[10px] text-purple-200/70 truncate">
@@ -701,8 +737,11 @@ export const MoviesView: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Video Viewport — Immediate playback without intro */}
-          <div className="relative w-full bg-black flex-1 min-h-[220px] sm:aspect-video flex items-center justify-center overflow-hidden">
+          {/* Video Viewport — Immediate playback with YouTube-style Left-Edge Tap-to-Reveal Controls */}
+          <div
+            onClick={revealLeftOverlay}
+            className="relative w-full bg-black flex-1 min-h-[220px] sm:aspect-video flex items-center justify-center overflow-hidden"
+          >
             {activeMovie.videoStreamUrl && !activeMovie.youtubeVideoId && !activeMovie.youtubePlaylistId ? (
               <video
                 ref={videoElRef}
@@ -729,6 +768,75 @@ export const MoviesView: React.FC<Props> = ({
                 className="w-full h-full border-0"
               />
             )}
+
+            {/* Left-Edge Tap-to-Reveal Cinema Controls */}
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                revealLeftOverlay();
+              }}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex items-center"
+            >
+              {!leftOverlayOpen ? (
+                <button
+                  type="button"
+                  onClick={revealLeftOverlay}
+                  className="ml-1.5 px-1.5 py-4 rounded-full bg-black/40 hover:bg-black/75 backdrop-blur-md border border-white/20 text-white/85 hover:text-white flex items-center justify-center shadow-lg transition"
+                  title="Toque para abrir controles laterais (Voltar / Fechar)"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <div className="ml-2 p-1.5 rounded-2xl bg-[#090418]/90 backdrop-blur-xl border border-cyan-400/35 shadow-[0_12px_40px_rgba(0,0,0,0.85)] flex flex-col items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveMovie(null)}
+                    className="w-11 h-10 rounded-xl bg-white/15 hover:bg-white/25 text-white flex flex-col items-center justify-center transition"
+                    title="Voltar"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="text-[8px] font-black">Voltar</span>
+                  </button>
+                  {movieQueue.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => stepMovie(-1)}
+                        className="w-11 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+                        title="Anterior"
+                      >
+                        <SkipBack className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => stepMovie(1)}
+                        className="w-11 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+                        title="Próximo"
+                      >
+                        <SkipForward className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void toggleExpandPlayer()}
+                    className="w-11 h-9 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-200 flex items-center justify-center transition"
+                    title="Ampliar / Reduzir"
+                  >
+                    {expandedView ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveMovie(null)}
+                    className="w-11 h-10 rounded-xl bg-rose-500/30 hover:bg-rose-500/55 border border-rose-400/40 text-rose-100 flex flex-col items-center justify-center transition"
+                    title="Fechar"
+                  >
+                    <X className="w-4 h-4" />
+                    <span className="text-[8px] font-black">Fechar</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Series Seasons & Episodes Selector OR Mobile & TV Next-in-Queue Strip */}

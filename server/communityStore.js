@@ -101,9 +101,10 @@ function readLocal() {
       comments: Array.isArray(parsed.comments) ? parsed.comments : [],
       shorts: Array.isArray(parsed.shorts) && parsed.shorts.length ? parsed.shorts : DEFAULT_SHORTS,
       lives: Array.isArray(parsed.lives) ? parsed.lives : [],
+      channels: parsed.channels && typeof parsed.channels === 'object' ? parsed.channels : {},
     };
   } catch {
-    return { chat: DEFAULT_CHAT, comments: [], shorts: DEFAULT_SHORTS, lives: [] };
+    return { chat: DEFAULT_CHAT, comments: [], shorts: DEFAULT_SHORTS, lives: [], channels: {} };
   }
 }
 
@@ -434,6 +435,65 @@ export async function startOrUpdateLive({ id, hostName, hostColor, title, theme,
   local.lives = [item, ...local.lives].slice(0, 30);
   writeLocal(local);
   return item;
+}
+
+// === CHANNEL SUBSCRIPTIONS (Inscrever-se em canais, artistas & criadores) ===
+function normalizeChannelKey(channelId, channelName) {
+  return String(channelId || channelName || 'lenkyx-oficial')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .slice(0, 80) || 'lenkyx-oficial';
+}
+
+export function getChannelSubscriptions(subscriberId = '') {
+  const local = readLocal();
+  const map = local.channels || {};
+  const subKey = String(subscriberId || '').trim();
+  const counts = {};
+  const subscribed = [];
+  for (const [k, entry] of Object.entries(map)) {
+    const subs = Array.isArray(entry?.subscribers) ? entry.subscribers : [];
+    const baseCount = Number(entry?.baseCount || 0);
+    counts[k] = baseCount + subs.length;
+    if (subKey && subs.includes(subKey)) subscribed.push(k);
+  }
+  return { counts, subscribed };
+}
+
+export function toggleChannelSubscribe({ channelId, channelName, subscriberId }) {
+  const key = normalizeChannelKey(channelId, channelName);
+  const sub = String(subscriberId || '').trim() || `anon-${crypto.randomUUID().slice(0, 8)}`;
+  const local = readLocal();
+  if (!local.channels || typeof local.channels !== 'object') local.channels = {};
+  const existing = local.channels[key] || {
+    channelId: key,
+    channelName: String(channelName || key).slice(0, 80),
+    baseCount: key.includes('lenkyx') ? 1240 : 0,
+    subscribers: [],
+  };
+  const list = Array.isArray(existing.subscribers) ? [...existing.subscribers] : [];
+  const pos = list.indexOf(sub);
+  let isSubscribed = false;
+  if (pos >= 0) {
+    list.splice(pos, 1);
+    isSubscribed = false;
+  } else {
+    list.push(sub);
+    isSubscribed = true;
+  }
+  local.channels[key] = {
+    ...existing,
+    channelName: String(channelName || existing.channelName || key).slice(0, 80),
+    subscribers: list,
+  };
+  writeLocal(local);
+  return {
+    channelId: key,
+    channelName: local.channels[key].channelName,
+    subscribed: isSubscribed,
+    count: Number(local.channels[key].baseCount || 0) + list.length,
+  };
 }
 
 // === INDEPENDENT SMART TV HANDOFF SESSIONS ===
