@@ -10,17 +10,41 @@
     <meta property="og:locale" content="pt_BR" />
     <meta property="og:locale:alternate" content="en_US" />
     <meta property="og:locale:alternate" content="es_LA" />
-    <link rel="alternate" type="application/rss+xml" title="LENKYX Cosmic Phonk RSS" href="/api/feed.xml" />
-    <title>LENKYX · Universo Som, Clipes, Cinema & Arena Ao Vivo — Sem Anúncios</title>
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="de_DE" />
+    <meta property="og:locale:alternate" content="it_IT" />
+    <meta property="og:locale:alternate" content="ja_JP" />
+    <meta property="og:locale:alternate" content="ko_KR" />
+    <meta property="og:locale:alternate" content="zh_CN" />
+    <meta property="og:locale:alternate" content="ar_SA" />
+    <meta property="og:locale:alternate" content="hi_IN" />
+    <meta property="og:locale:alternate" content="ru_RU" />
+    <link rel="alternate" hreflang="x-default" href="https://lenkyx-cosmic-phonk.onrender.com/" />
+    <link rel="alternate" hreflang="pt" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=pt" />
+    <link rel="alternate" hreflang="en" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=en" />
+    <link rel="alternate" hreflang="es" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=es" />
+    <link rel="alternate" hreflang="fr" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=fr" />
+    <link rel="alternate" hreflang="de" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=de" />
+    <link rel="alternate" hreflang="it" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=it" />
+    <link rel="alternate" hreflang="ja" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=ja" />
+    <link rel="alternate" hreflang="ko" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=ko" />
+    <link rel="alternate" hreflang="zh-CN" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=zh-CN" />
+    <link rel="alternate" hreflang="ar" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=ar" />
+    <link rel="alternate" hreflang="hi" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=hi" />
+    <link rel="alternate" hreflang="ru" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=ru" />
+    <link rel="alternate" hreflang="id" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=id" />
+    <link rel="alternate" hreflang="tr" href="https://lenkyx-cosmic-phonk.onrender.com/?lang=tr" />
+    <link rel="alternate" type="application/rss+xml" title="LENKYX Global Feed RSS" href="/api/feed.xml" />
+    <title>LENKYX · Global Music, Gaming Audio, Videos, Cinema & Live Arena</title>
     <meta
       name="description"
-      content="Ouça músicas autorais LENKYX, descubra artistas e clipes, assista filmes, séries por temporadas e acompanhe futebol e lutas UFC/MMA ao vivo — 100% grátis e sem anúncios."
+      content="LENKYX Official Global App: Listen to music while playing any game on Mobile, PC & Consoles, watch HD videos, cinema & live sports free in 100+ languages with zero ads."
     />
     <meta
       name="keywords"
-      content="LENKYX, Som Autoral, Clipes HD, Cinema Online, Séries por Temporadas, Futebol Ao Vivo, UFC MMA Ao Vivo, Sem Anúncios"
+      content="LENKYX, Global Music App, Listen Music While Playing Games, Background Music Gaming Mobile, Cosmic Phonk, Free Music App, HD Videos, Cinema Online, Live Sports UFC"
     />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
     <link rel="canonical" href="https://lenkyx-cosmic-phonk.onrender.com/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="LENKYX" />
@@ -43,9 +67,32 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "LENKYX",
-        "url": "https://lenkyx-cosmic-phonk.onrender.com/"
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "LENKYX",
+            "alternateName": "LENKYX Global Music & Gaming Audio",
+            "url": "https://lenkyx-cosmic-phonk.onrender.com/",
+            "inLanguage": ["pt", "en", "es", "fr", "de", "it", "ja", "ko", "zh-CN", "ar", "hi", "ru", "id", "tr"],
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": "https://lenkyx-cosmic-phonk.onrender.com/?q={search_term_string}",
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "LENKYX Official App",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "Android, iOS, Windows, macOS, Linux, SmartTV, PlayStation, Xbox",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "featureList": "Global Music Streaming, Background Music While Gaming, Floating Picture-in-Picture Gaming HUD, 100+ World Languages Auto-Detection, Offline Travel Mode, HD Cinema & Live Arena"
+          }
+        ]
       }
     </script>
     <link rel="icon" type="image/png" sizes="64x64" href="/covers/favicon.png?v=37" />

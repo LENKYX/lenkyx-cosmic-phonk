@@ -41,12 +41,32 @@ import {
   Copy,
   ExternalLink,
   Tv,
+  Gamepad2,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
   prefetchVideoAudioBackup,
   syncBackgroundMediaSession,
 } from './utils/backgroundAudioGuard';
+import {
+  detectVisitorLanguage,
+  getLanguageMeta,
+  hasManualLanguageOverride,
+  saveUserLanguage,
+  startAutoDomTranslator,
+} from './utils/globalI18n';
+import {
+  applyGamingFpsBoostClass,
+  closeGamingFloatingPlayer,
+  isGamingFpsBoostStored,
+  isGamingModeStored,
+  isGamingPipOpen,
+  openGamingFloatingPlayer,
+  setGamingModeActive,
+  updateGamingPipMetadata,
+} from './utils/gamingAudioBridge';
+import { GamingMusicModeModal } from './components/GamingMusicModeModal';
+import { WorldLanguageModal } from './components/WorldLanguageModal';
 import { recordRankingHit } from './utils/rankingsApi';
 import {
   AppMode,
@@ -255,6 +275,17 @@ export function App() {
   // Global search bar state
   const [globalSearch, setGlobalSearch] = useState('');
   const [mobileIosSearchOpen, setMobileIosSearchOpen] = useState(false);
+
+  // Worldwide Auto-Language & Geo-Region Engine (100+ Languages)
+  const [userLang, setUserLang] = useState<string>(() => detectVisitorLanguage());
+  const [detectedCountry, setDetectedCountry] = useState<string>('');
+  const [langModalOpen, setLangModalOpen] = useState(false);
+
+  // Universal Music-While-Gaming Mode (Mobile, PC, Consoles & PiP Floating HUD)
+  const [gamingModeEnabled, setGamingModeEnabled] = useState<boolean>(() => isGamingModeStored());
+  const [fpsBoostEnabled, setFpsBoostEnabled] = useState<boolean>(() => isGamingFpsBoostStored());
+  const [gamingModalOpen, setGamingModalOpen] = useState(false);
+  const [gamingPipOpen, setGamingPipOpen] = useState(false);
   const [worldTriggerQuery, setWorldTriggerQuery] = useState('');
   const [worldSearchNonce, setWorldSearchNonce] = useState(0);
   const [pendingMovie, setPendingMovie] = useState<MovieItem | null>(null);
@@ -451,6 +482,39 @@ export function App() {
       window.clearTimeout(t);
     };
   }, [gtaLoaderOpen]);
+
+  // Global Auto-Region & Multi-Language Translator Lifecycle
+  useEffect(() => {
+    const stopTranslator = startAutoDomTranslator(userLang);
+    return () => stopTranslator();
+  }, [userLang]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/geo-locale')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((geo) => {
+        if (cancelled || !geo) return;
+        if (geo.country) setDetectedCountry(String(geo.country));
+        if (!hasManualLanguageOverride() && geo.lang) {
+          const detected = saveUserLanguage(String(geo.lang), false);
+          setUserLang(detected);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Gaming Mode & FPS Boost Lifecycle
+  useEffect(() => {
+    setGamingModeActive(gamingModeEnabled);
+  }, [gamingModeEnabled]);
+
+  useEffect(() => {
+    applyGamingFpsBoostClass(fpsBoostEnabled);
+  }, [fpsBoostEnabled]);
 
   const handleBrandTap = useCallback(() => {
     setActiveTab('catalog');
@@ -1279,12 +1343,13 @@ export function App() {
     [tracks, currentTrack, handlePlayTrack]
   );
 
-  // Universal MediaSession + Lock-Screen Controls + Android Foreground Service
+  // Universal MediaSession + Lock-Screen Controls + Gaming PiP HUD Sync
   useEffect(() => {
     if (!currentTrack) return;
+    const displayTitle = `${currentTrack.emoji ? currentTrack.emoji + ' ' : ''}${currentTrack.title}`;
     syncBackgroundMediaSession(
       {
-        title: `${currentTrack.emoji ? currentTrack.emoji + ' ' : ''}${currentTrack.title}`,
+        title: displayTitle,
         artist: currentTrack.artist || 'LENKYX',
         album: currentTrack.album || 'Cosmic Phonk',
         artworkUrl: currentTrack.coverUrl,
@@ -1307,7 +1372,42 @@ export function App() {
         onSeek: (sec) => handleSeek(sec),
       }
     );
+    updateGamingPipMetadata(
+      {
+        title: displayTitle,
+        artist: currentTrack.artist || 'LENKYX',
+        coverUrl: currentTrack.coverUrl,
+        isPlaying,
+      },
+      {
+        onTogglePlay: () => void handleTogglePlay(),
+        onPrev: () => handlePrevNext(-1),
+        onNext: () => handlePrevNext(1),
+      }
+    );
+    setGamingPipOpen(isGamingPipOpen());
   }, [currentTrack, isPlaying, duration, handlePrevNext, handleEmergencyStop]);
+
+  // In-Game Anti-Cut Auto-Recovery: keeps music playing when switching into mobile or PC games
+  useEffect(() => {
+    if (!gamingModeEnabled) return;
+    const recoverAudio = () => {
+      if (userPausedRef.current || !isPlayingRef.current) return;
+      const el = audioRef.current;
+      if (el && el.paused && el.src) {
+        void el.play().catch(() => {});
+      }
+    };
+    const onVis = () => {
+      window.setTimeout(recoverAudio, 180);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    const interval = window.setInterval(recoverAudio, 2500);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.clearInterval(interval);
+    };
+  }, [gamingModeEnabled]);
 
   useEffect(() => {
     window.__lenkyxMediaAction = (action) => {
@@ -1973,6 +2073,32 @@ export function App() {
               />
             </div>
 
+            {/* Quick Gaming Music Mode + Global Auto-Language Pills */}
+            <button
+              type="button"
+              onClick={() => setGamingModalOpen(true)}
+              className={`px-2.5 py-1.5 rounded-full text-[11px] font-black flex items-center gap-1 transition border ${
+                gamingModeEnabled || gamingPipOpen
+                  ? 'bg-cyan-500/25 border-cyan-400 text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.35)]'
+                  : 'bg-white/[0.07] hover:bg-white/15 border-white/15 text-slate-100'
+              }`}
+              title="Ouvir músicas enquanto joga no celular, PC ou console"
+            >
+              <Gamepad2 className="w-3.5 h-3.5 text-cyan-300" />
+              <span className="hidden md:inline">Jogos</span>
+            </button>
+
+            <button
+              type="button"
+              data-no-translate="true"
+              onClick={() => setLangModalOpen(true)}
+              className="px-2 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/15 border border-white/15 text-slate-100 text-[11px] font-black flex items-center gap-1 transition"
+              title="Auto-Language & World Regions (100+ Languages)"
+            >
+              <span>{getLanguageMeta(userLang).flag}</span>
+              <span className="hidden sm:inline uppercase">{getLanguageMeta(userLang).code}</span>
+            </button>
+
             {/* Quick PIX QR + Ranking Pills */}
             <button
               onClick={() => {
@@ -2436,6 +2562,89 @@ export function App() {
         onSubmitMusic={(q) => triggerWorldSearchDirect(q)}
         onTogglePrivate={() => setSearchViewPrivate((v) => !v)}
       />
+      <WorldLanguageModal
+        open={langModalOpen}
+        onClose={() => setLangModalOpen(false)}
+        currentLang={userLang}
+        detectedCountry={detectedCountry}
+        onSelectLanguage={(code) => {
+          const next = saveUserLanguage(code, true);
+          setUserLang(next);
+          showToast(`${getLanguageMeta(next).flag} ${getLanguageMeta(next).nativeName}`);
+        }}
+        onResetAutoDetect={() => {
+          try {
+            localStorage.removeItem('lenkyx_user_lang_manual_v1');
+          } catch {
+            // ignore
+          }
+          const auto = saveUserLanguage(detectVisitorLanguage(), false);
+          setUserLang(auto);
+          showToast(`🌍 ${getLanguageMeta(auto).nativeName}`);
+        }}
+      />
+      <GamingMusicModeModal
+        open={gamingModalOpen}
+        onClose={() => setGamingModalOpen(false)}
+        gamingModeEnabled={gamingModeEnabled}
+        fpsBoostEnabled={fpsBoostEnabled}
+        pipOpen={gamingPipOpen}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        onToggleGamingMode={(enabled) => {
+          setGamingModeEnabled(enabled);
+          if (enabled) setBackgroundMode(true);
+          showToast(
+            enabled
+              ? '🎮 Modo Jogos ativado! Som continua ativo mesmo abrindo jogos no celular e PC.'
+              : 'Modo Jogos desativado.'
+          );
+        }}
+        onToggleFpsBoost={(enabled) => {
+          setFpsBoostEnabled(enabled);
+          showToast(enabled ? '⚡ Boost de FPS ativo para jogos sem travar!' : 'Boost de FPS desativado.');
+        }}
+        onLaunchFloatingPlayer={async () => {
+          const trackToUse = currentTrack || allTracksPool[0] || null;
+          if (trackToUse && !currentTrack) {
+            await handlePlayTrack(trackToUse, 'v1', allTracksPool);
+          }
+          const res = await openGamingFloatingPlayer(
+            {
+              title: trackToUse?.title || 'LENKYX Cosmic Phonk',
+              artist: trackToUse?.artist || 'LENKYX',
+              coverUrl: trackToUse?.coverUrl || '/covers/icon-512.png',
+              isPlaying: true,
+            },
+            {
+              onTogglePlay: () => void handleTogglePlay(),
+              onPrev: () => handlePrevNext(-1),
+              onNext: () => handlePrevNext(1),
+            }
+          );
+          setGamingPipOpen(isGamingPipOpen());
+          if (res === 'unsupported') {
+            showToast('🎵 Modo Jogos ativo em segundo plano! Minimize e abra seu jogo.');
+          } else {
+            showToast('🎮 Mini-Player flutuante aberto por cima dos jogos!');
+          }
+        }}
+        onCloseFloatingPlayer={async () => {
+          await closeGamingFloatingPlayer();
+          setGamingPipOpen(false);
+        }}
+        onQuickPlayStart={() => {
+          const target = currentTrack || allTracksPool[0];
+          if (target) {
+            if (!currentTrack) void handlePlayTrack(target, 'v1', allTracksPool);
+            else if (!isPlaying) void handleTogglePlay();
+          }
+        }}
+        onOpenTvCast={() => {
+          setInstallPlatformTab('tv');
+          setInstallModalOpen(true);
+        }}
+      />
 
       {/* OFFICIAL SITE, VERIFIED SECURITY BADGE & PC / MOBILE APP DOWNLOAD MODAL */}
       {installModalOpen && (
@@ -2465,7 +2674,7 @@ export function App() {
                       Site Oficial & App LENKYX
                     </h3>
                     <p className="text-[11px] text-cyan-200/85 font-semibold">
-                      Disponível para Android, iPhone (iOS), PC & Smart TV
+                      Disponível para Android, iPhone (iOS), PC, Smart TV & Jogos
                     </p>
                   </div>
                 </div>
@@ -2474,6 +2683,24 @@ export function App() {
                   className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-purple-200 shrink-0"
                 >
                   <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Auto-Detected Global Language & Gaming Compatibility Banner */}
+              <div className="rounded-2xl bg-cyan-500/10 border border-cyan-400/30 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <div className="flex items-center gap-2 text-cyan-100 font-bold">
+                  <span>{getLanguageMeta(userLang).flag}</span>
+                  <span>
+                    Idioma Automático: <strong>{getLanguageMeta(userLang).nativeName}</strong>
+                    {detectedCountry ? ` (${detectedCountry})` : ''}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLangModalOpen(true)}
+                  className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-black text-cyan-200"
+                >
+                  🌍 100+ Idiomas
                 </button>
               </div>
 

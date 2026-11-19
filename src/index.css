@@ -335,6 +335,15 @@ input[type='range'].dj-crossfader::-webkit-slider-thumb {
   animation: netflixRibbonGlow 4.5s ease-in-out infinite;
 }
 
+/* Gaming FPS Boost Mode: disables heavy blurs & ambient animations so mobile/PC games get 100% GPU/RAM */
+.lenkyx-gamer-fps-boost *,
+.lenkyx-gamer-fps-boost *::before,
+.lenkyx-gamer-fps-boost *::after {
+  animation-duration: 0.001ms !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 /* GTA-5 style smooth Ken Burns motion for loading artwork */
 @keyframes gtaKenBurns {
   0% {

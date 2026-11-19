@@ -1363,10 +1363,184 @@ app.get('/api/audio-proxy', async (req, res) => {
   }
 });
 
-// SEO Auto-Discovery for Google / Bing / Social Crawlers
+// SEO Auto-Discovery for Google / Bing / Yandex / Baidu / Global Crawlers
 app.get('/robots.txt', (req, res) => {
   const base = `${req.protocol}://${req.get('host')}`;
-  res.type('text/plain').send(`User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`);
+  res
+    .type('text/plain')
+    .send(
+      `User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\nHost: ${base}\n`
+    );
+});
+
+// === WORLDWIDE GEO-LOCALE AUTO-DETECTION & REAL-TIME MULTI-LANGUAGE ENGINE ===
+const COUNTRY_TO_LANG = {
+  BR: 'pt', PT: 'pt', AO: 'pt', MZ: 'pt', CV: 'pt', GW: 'pt',
+  US: 'en', GB: 'en', CA: 'en', AU: 'en', NZ: 'en', IE: 'en', ZA: 'en', NG: 'en', KE: 'en', GH: 'en', SG: 'en', JM: 'en',
+  ES: 'es', MX: 'es', AR: 'es', CO: 'es', CL: 'es', PE: 'es', VE: 'es', EC: 'es', BO: 'es', PY: 'es', UY: 'es',
+  CR: 'es', PA: 'es', DO: 'es', GT: 'es', HN: 'es', SV: 'es', NI: 'es', CU: 'es', PR: 'es',
+  FR: 'fr', BE: 'fr', MC: 'fr', SN: 'fr', CI: 'fr', CM: 'fr', MA: 'fr', DZ: 'fr', TN: 'fr', LU: 'fr',
+  DE: 'de', AT: 'de', CH: 'de', LI: 'de',
+  IT: 'it', SM: 'it', VA: 'it',
+  JP: 'ja', KR: 'ko', CN: 'zh-CN', TW: 'zh-TW', HK: 'zh-TW', MO: 'zh-TW',
+  SA: 'ar', AE: 'ar', EG: 'ar', IQ: 'ar', JO: 'ar', KW: 'ar', LB: 'ar', OM: 'ar', QA: 'ar', BH: 'ar', SY: 'ar', YE: 'ar',
+  IN: 'hi', RU: 'ru', BY: 'ru', KZ: 'kk', ID: 'id', MY: 'ms', TR: 'tr', VN: 'vi', TH: 'th',
+  PL: 'pl', NL: 'nl', SE: 'sv', NO: 'no', DK: 'da', FI: 'fi', UA: 'uk', CZ: 'cs', RO: 'ro',
+  GR: 'el', HU: 'hu', IL: 'he', IR: 'fa', PK: 'ur', BD: 'bn', PH: 'tl', TZ: 'sw', ET: 'am',
+  SK: 'sk', BG: 'bg', HR: 'hr', RS: 'sr', SI: 'sl', LT: 'lt', LV: 'lv', EE: 'et', GE: 'ka', AM: 'hy', AZ: 'az',
+  UZ: 'uz', MN: 'mn', MM: 'my', KH: 'km', LA: 'lo', NP: 'ne', LK: 'si', AL: 'sq', MK: 'mk', BA: 'bs', IS: 'is',
+};
+const RTL_LANG_SET = new Set(['ar', 'he', 'fa', 'ur', 'ps']);
+
+function normalizeServerLang(raw) {
+  const s = String(raw || '').trim();
+  if (!s || s === '*') return '';
+  const low = s.toLowerCase();
+  if (low === 'zh-tw' || low === 'zh-hk' || low === 'zh-hant') return 'zh-TW';
+  if (low.startsWith('zh')) return 'zh-CN';
+  if (low === 'fil') return 'tl';
+  if (low === 'iw') return 'he';
+  const base = low.split(/[-_]/)[0];
+  return /^[a-z]{2,3}$/.test(base) ? base : '';
+}
+
+app.get('/api/geo-locale', (req, res) => {
+  const country = String(
+    req.headers['cf-ipcountry'] ||
+      req.headers['x-vercel-ip-country'] ||
+      req.headers['x-country-code'] ||
+      req.headers['x-geo-country'] ||
+      ''
+  )
+    .trim()
+    .toUpperCase();
+
+  let lang = '';
+  if (req.query?.lang) {
+    lang = normalizeServerLang(req.query.lang);
+  }
+  if (!lang && country && COUNTRY_TO_LANG[country]) {
+    lang = COUNTRY_TO_LANG[country];
+  }
+  if (!lang && req.headers['accept-language']) {
+    const parts = String(req.headers['accept-language']).split(',');
+    for (const part of parts) {
+      const candidate = normalizeServerLang(part.split(';')[0]);
+      if (candidate) {
+        lang = candidate;
+        break;
+      }
+    }
+  }
+  if (!lang) lang = 'en';
+
+  res.json({
+    ok: true,
+    country: country || 'GLOBAL',
+    lang,
+    rtl: RTL_LANG_SET.has(lang),
+    autoDetected: true,
+  });
+});
+
+const serverTransCache = new Map();
+
+async function translateSingleText(text, targetLang) {
+  const clean = String(text || '').trim();
+  if (!clean || !targetLang || targetLang === 'pt') return clean;
+  const key = `${targetLang}::${clean}`;
+  if (serverTransCache.has(key)) return serverTransCache.get(key);
+
+  const tl = targetLang === 'jw' ? 'jv' : targetLang;
+  // 1. Google Translate fast public endpoint
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=pt&tl=${encodeURIComponent(tl)}&dt=t&q=${encodeURIComponent(clean)}`;
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(3500),
+    });
+    if (r.ok) {
+      const data = await r.json();
+      if (Array.isArray(data?.[0])) {
+        const out = data[0].map((seg) => (Array.isArray(seg) ? seg[0] || '' : '')).join('').trim();
+        if (out) {
+          if (serverTransCache.size > 12000) serverTransCache.clear();
+          serverTransCache.set(key, out);
+          return out;
+        }
+      }
+    }
+  } catch {
+    // fallback below
+  }
+
+  // 2. MyMemory World Translation API fallback
+  try {
+    const mmLang = tl === 'zh-CN' ? 'zh' : tl === 'zh-TW' ? 'zh-TW' : tl;
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(clean)}&langpair=pt|${encodeURIComponent(mmLang)}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(4500) });
+    if (r.ok) {
+      const data = await r.json();
+      const out = String(data?.responseData?.translatedText || '').trim();
+      if (out && !/^MYMEMORY WARNING/i.test(out)) {
+        if (serverTransCache.size > 12000) serverTransCache.clear();
+        serverTransCache.set(key, out);
+        return out;
+      }
+    }
+  } catch {
+    // fallback below
+  }
+
+  // 3. Lingva free mirror fallback
+  try {
+    const url = `https://lingva.ml/api/v1/pt/${encodeURIComponent(tl)}/${encodeURIComponent(clean)}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(3500) });
+    if (r.ok) {
+      const data = await r.json();
+      if (data?.translation) {
+        const out = String(data.translation).trim();
+        if (out) {
+          if (serverTransCache.size > 12000) serverTransCache.clear();
+          serverTransCache.set(key, out);
+          return out;
+        }
+      }
+    }
+  } catch {
+    // keep original
+  }
+  return clean;
+}
+
+app.post('/api/translate-batch', async (req, res) => {
+  try {
+    const targetLang = String(req.body?.targetLang || 'en').trim().slice(0, 12);
+    const texts = Array.isArray(req.body?.texts) ? req.body.texts.slice(0, 40) : [];
+    if (!targetLang || targetLang === 'pt' || texts.length === 0) {
+      return res.json({ ok: true, targetLang, translations: {} });
+    }
+    const translations = {};
+    // Translate in small parallel groups so latency stays low
+    const chunkSize = 8;
+    for (let i = 0; i < texts.length; i += chunkSize) {
+      const slice = texts.slice(i, i + chunkSize);
+      const results = await Promise.all(
+        slice.map(async (txt) => {
+          const orig = String(txt || '').trim();
+          if (!orig || orig.length > 300) return [orig, orig];
+          const tr = await translateSingleText(orig, targetLang);
+          return [orig, tr];
+        })
+      );
+      for (const [orig, tr] of results) {
+        if (orig && tr) translations[orig] = tr;
+      }
+    }
+    res.json({ ok: true, targetLang, translations });
+  } catch (err) {
+    res.json({ ok: false, translations: {}, error: err?.message || 'translate error' });
+  }
 });
 
 async function dispatchSocialWebhook(db, payload) {
@@ -1453,10 +1627,23 @@ app.get('/sitemap.xml', (req, res) => {
   const db = readDb();
   const base = (db.settings?.publicUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
   const now = new Date().toISOString().slice(0, 10);
+  const globalLangs = [
+    'pt', 'en', 'es', 'fr', 'de', 'it', 'ja', 'ko', 'zh-CN', 'zh-TW',
+    'ar', 'hi', 'ru', 'id', 'ms', 'tr', 'vi', 'th', 'pl', 'nl', 'uk', 'tl',
+  ];
+  const hrefLinks = (pathStr) =>
+    `<xhtml:link rel="alternate" hreflang="x-default" href="${base}${pathStr}" />` +
+    globalLangs
+      .map((l) => `<xhtml:link rel="alternate" hreflang="${l}" href="${base}${pathStr}${pathStr.includes('?') ? '&' : '?'}lang=${l}" />`)
+      .join('');
+
   const urls = [
-    `<url><loc>${base}/</loc><lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
-    `<url><loc>${base}/tv</loc><lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`,
-    `<url><loc>${base}/app</loc><lastmod>${now}</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>`,
+    `<url><loc>${base}/</loc>${hrefLinks('/')}<lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+    `<url><loc>${base}/app</loc>${hrefLinks('/app')}<lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>0.95</priority></url>`,
+    `<url><loc>${base}/baixar</loc>${hrefLinks('/baixar')}<lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>0.95</priority></url>`,
+    `<url><loc>${base}/download</loc>${hrefLinks('/download')}<lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>0.95</priority></url>`,
+    `<url><loc>${base}/tv</loc>${hrefLinks('/tv')}<lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`,
+    `<url><loc>${base}/site-oficial</loc>${hrefLinks('/site-oficial')}<lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>`,
     ...db.tracks.map(
       (t) =>
         `<url><loc>${base}/?track=${encodeURIComponent(t.id)}</loc><lastmod>${now}</lastmod><changefreq>weekly</changefreq><priority>0.85</priority></url>`
@@ -1465,7 +1652,7 @@ app.get('/sitemap.xml', (req, res) => {
   res
     .type('application/xml')
     .send(
-      `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`
+      `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join('\n')}\n</urlset>`
     );
 });
 
