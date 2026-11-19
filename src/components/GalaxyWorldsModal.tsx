@@ -7,13 +7,21 @@ import {
   Bitcoin,
   Bot,
   CheckCircle2,
+  Compass,
+  Copy,
   CreditCard,
+  Download,
   Flame,
   Globe2,
+  Layers,
   Lock,
+  MapPin,
+  Minus,
   Newspaper,
+  Orbit,
   Plus,
   RefreshCw,
+  Satellite,
   Search,
   Send,
   Shield,
@@ -27,7 +35,14 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
-export type SpecialWorldKind = 'shopping' | 'news' | 'darkweb' | 'finance' | 'idea' | 'create_planet';
+export type SpecialWorldKind =
+  | 'shopping'
+  | 'news'
+  | 'darkweb'
+  | 'finance'
+  | 'satellites'
+  | 'idea'
+  | 'create_planet';
 
 export interface CustomIdeaPlanet {
   id: string;
@@ -103,6 +118,33 @@ interface PortfolioState {
   history: { ts: string; text: string }[];
 }
 
+interface SatLiveData {
+  updatedAt: string;
+  iss: { lat: number; lng: number; altitudeKm: number; velocityKmh: number; visibility: string };
+  constellation: { id: string; name: string; lat: number; lng: number; altKm: number; speedKmh: number; type: string }[];
+  events: { id: string; title: string; category: string; lng: number; lat: number; date: string; url: string; source: string }[];
+  quakes: { id: string; title: string; place: string; mag: number; lng: number; lat: number; depthKm: number; time: string; url: string }[];
+  brasilMaisNews: NewsArticle[];
+  brasilMaisMeta: {
+    program: string;
+    portalUrl: string;
+    constellation: string;
+    coverageKm2Day: string;
+    registeredInstitutions: number;
+    alertClasses: string[];
+  };
+  qgisLayers: {
+    id: string;
+    name: string;
+    provider: string;
+    lyrs: string;
+    url: string;
+    description: string;
+    maxZoom: number;
+  }[];
+  gibsDate: string;
+}
+
 interface Props {
   open: boolean;
   world: SpecialWorldKind;
@@ -110,9 +152,148 @@ interface Props {
   user: UserProfile | null;
   onClose: () => void;
   onPlanetCreated: (planet: CustomIdeaPlanet) => void;
+  onSwitchWorld?: (w: SpecialWorldKind) => void;
+  onOpenFreeCity?: () => void;
   onNavigateWebSearch?: (q: string) => void;
   onToast: (msg: string) => void;
 }
+
+interface MapPinItem {
+  id: string;
+  lat: number;
+  lng: number;
+  color: string;
+  label: string;
+  title: string;
+  subtitle: string;
+  url?: string;
+}
+
+function latLngToWorldPx(lat: number, lng: number, zoom: number) {
+  const scale = 256 * Math.pow(2, zoom);
+  const sinLat = Math.sin((Math.max(-85, Math.min(85, lat)) * Math.PI) / 180);
+  const x = ((lng + 180) / 360) * scale;
+  const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale;
+  return { x, y, scale };
+}
+
+function worldPxToLatLng(px: number, py: number, zoom: number) {
+  const scale = 256 * Math.pow(2, zoom);
+  const lng = (px / scale) * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * py) / scale;
+  const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  return {
+    lat: Math.max(-84, Math.min(84, lat)),
+    lng: ((lng + 540) % 360) - 180,
+  };
+}
+
+const XYZTileViewport: React.FC<{
+  tileUrlTemplate: string;
+  center: { lat: number; lng: number };
+  zoom: number;
+  pins: MapPinItem[];
+  onCenterChange: (next: { lat: number; lng: number }) => void;
+  onPinClick: (pin: MapPinItem) => void;
+}> = ({ tileUrlTemplate, center, zoom, pins, onCenterChange, onPinClick }) => {
+  const [drag, setDrag] = useState<{ sx: number; sy: number; cx: number; cy: number } | null>(null);
+  const viewW = 860;
+  const viewH = 380;
+  const centerPx = latLngToWorldPx(center.lat, center.lng, zoom);
+  const numTiles = Math.pow(2, zoom);
+  const minTx = Math.floor((centerPx.x - viewW / 2) / 256);
+  const maxTx = Math.floor((centerPx.x + viewW / 2) / 256);
+  const minTy = Math.max(0, Math.floor((centerPx.y - viewH / 2) / 256));
+  const maxTy = Math.min(numTiles - 1, Math.floor((centerPx.y + viewH / 2) / 256));
+
+  const tiles: { key: string; left: number; top: number; src: string }[] = [];
+  for (let tx = minTx; tx <= maxTx; tx++) {
+    for (let ty = minTy; ty <= maxTy; ty++) {
+      const wrappedX = ((tx % numTiles) + numTiles) % numTiles;
+      const src = tileUrlTemplate
+        .replace('{z}', String(zoom))
+        .replace('{x}', String(wrappedX))
+        .replace('{y}', String(ty));
+      tiles.push({
+        key: `${zoom}_${tx}_${ty}`,
+        left: tx * 256 - (centerPx.x - viewW / 2),
+        top: ty * 256 - (centerPx.y - viewH / 2),
+        src,
+      });
+    }
+  }
+
+  return (
+    <div
+      className="relative w-full h-[320px] sm:h-[380px] rounded-2xl overflow-hidden bg-slate-950 border border-cyan-400/35 select-none cursor-grab active:cursor-grabbing touch-none"
+      onPointerDown={(e) => {
+        setDrag({ sx: e.clientX, sy: e.clientY, cx: centerPx.x, cy: centerPx.y });
+      }}
+      onPointerMove={(e) => {
+        if (!drag) return;
+        const dx = e.clientX - drag.sx;
+        const dy = e.clientY - drag.sy;
+        onCenterChange(worldPxToLatLng(drag.cx - dx, drag.cy - dy, zoom));
+      }}
+      onPointerUp={() => setDrag(null)}
+      onPointerLeave={() => setDrag(null)}
+    >
+      <div
+        className="absolute inset-0"
+        style={{
+          transform: 'translateZ(0)',
+        }}
+      >
+        {tiles.map((t) => (
+          <img
+            key={t.key}
+            src={t.src}
+            alt=""
+            draggable={false}
+            referrerPolicy="no-referrer"
+            style={{
+              position: 'absolute',
+              left: `${(t.left / viewW) * 100}%`,
+              top: `${(t.top / viewH) * 100}%`,
+              width: `${(256 / viewW) * 100}%`,
+              height: `${(256 / viewH) * 100}%`,
+              objectFit: 'cover',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Live Satellites / EONET / USGS Pins */}
+      {pins.map((p) => {
+        const pt = latLngToWorldPx(p.lat, p.lng, zoom);
+        const relX = ((pt.x - (centerPx.x - viewW / 2)) / viewW) * 100;
+        const relY = ((pt.y - (centerPx.y - viewH / 2)) / viewH) * 100;
+        if (relX < -4 || relX > 104 || relY < -4 || relY > 104) return null;
+        return (
+          <button
+            key={p.id}
+            type="button"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              onPinClick(p);
+            }}
+            style={{ left: `${relX}%`, top: `${relY}%`, borderColor: p.color }}
+            title={p.title}
+            className="absolute -translate-x-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-full bg-slate-950/85 border text-[9px] font-black text-white shadow-lg hover:scale-110 transition flex items-center gap-1"
+          >
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: p.color }} />
+            <span>{p.label}</span>
+          </button>
+        );
+      })}
+
+      {/* Coordinates HUD */}
+      <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-full bg-slate-950/80 border border-white/15 text-[10px] font-mono text-cyan-200 pointer-events-none">
+        LAT {center.lat.toFixed(3)} · LNG {center.lng.toFixed(3)} · Z{zoom}
+      </div>
+    </div>
+  );
+};
 
 const SparklineSvg: React.FC<{ points: number[]; positive: boolean }> = ({ points, positive }) => {
   if (!points || points.length < 2) return null;
@@ -147,6 +328,8 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
   user,
   onClose,
   onPlanetCreated,
+  onSwitchWorld,
+  onOpenFreeCity,
   onToast,
 }) => {
   // News state
@@ -181,8 +364,22 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
   const [darkInput, setDarkInput] = useState('');
   const [hashInput, setHashInput] = useState('LENKYX-QUANTUM-KEY');
   const [hashOutput, setHashOutput] = useState('');
-  const [inspectHost, setInspectHost] = useState('lenkyx.app');
+  const [inspectHost, setInspectHost] = useState('brasilmais.mj.gov.br');
   const [inspectResult, setInspectResult] = useState<Record<string, unknown> | null>(null);
+
+  // Satellites, Brasil+ & QGIS XYZ state
+  const [satData, setSatData] = useState<SatLiveData | null>(null);
+  const [satLoading, setSatLoading] = useState(false);
+  const [selectedLayerId, setSelectedLayerId] = useState('google_hybrid');
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({ lat: -14.235, lng: -51.925 });
+  const [mapZoom, setMapZoom] = useState(4);
+  const [selectedPin, setSelectedPin] = useState<{
+    title: string;
+    subtitle: string;
+    lat: number;
+    lng: number;
+    url?: string;
+  } | null>(null);
 
   // Idea Planet creator & resolver
   const [newPlanetName, setNewPlanetName] = useState('');
@@ -200,8 +397,9 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
   const loadNews = useCallback(async (cat = newsCat, q = newsQuery, refresh = false) => {
     setNewsLoading(true);
     try {
+      const localLang = encodeURIComponent(navigator.language || 'pt');
       const r = await fetch(
-        `/api/worlds/news?category=${encodeURIComponent(cat)}&q=${encodeURIComponent(q)}&refresh=${refresh ? '1' : '0'}`
+        `/api/worlds/news?category=${encodeURIComponent(cat)}&q=${encodeURIComponent(q)}&refresh=${refresh ? '1' : '0'}&lang=${localLang}`
       );
       const d = await r.json();
       if (d?.ok) setNewsItems(d.articles || []);
@@ -254,7 +452,8 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
 
   const loadDarkWeb = useCallback(async (refresh = false) => {
     try {
-      const r = await fetch(`/api/worlds/darkweb?refresh=${refresh ? '1' : '0'}`);
+      const localLang = encodeURIComponent(navigator.language || 'pt');
+      const r = await fetch(`/api/worlds/darkweb?refresh=${refresh ? '1' : '0'}&lang=${localLang}`);
       const d = await r.json();
       if (d?.ok) {
         setCves(d.vulnerabilities || []);
@@ -263,6 +462,20 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
       }
     } catch {
       // ignore
+    }
+  }, []);
+
+  const loadSatellites = useCallback(async (refresh = false) => {
+    setSatLoading(true);
+    try {
+      const localLang = encodeURIComponent(navigator.language || 'pt');
+      const r = await fetch(`/api/worlds/satellites?refresh=${refresh ? '1' : '0'}&lang=${localLang}`);
+      const d = await r.json();
+      if (d?.ok) setSatData(d);
+    } catch {
+      // ignore
+    } finally {
+      setSatLoading(false);
     }
   }, []);
 
@@ -275,7 +488,11 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
       const iv = window.setInterval(() => void loadMarkets(true), 22000);
       return () => window.clearInterval(iv);
     } else if (world === 'darkweb') void loadDarkWeb();
-    else if (world === 'idea' && ideaPlanet?.topic) {
+    else if (world === 'satellites') {
+      void loadSatellites();
+      const iv = window.setInterval(() => void loadSatellites(true), 20000);
+      return () => window.clearInterval(iv);
+    } else if (world === 'idea' && ideaPlanet?.topic) {
       setIdeaContent(null);
       void fetch(`/api/galaxy/planets/resolve?topic=${encodeURIComponent(ideaPlanet.topic)}`)
         .then((r) => r.json())
@@ -284,7 +501,7 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
         })
         .catch(() => {});
     }
-  }, [open, world, ideaPlanet?.topic, loadNews, loadShop, loadMarkets, loadDarkWeb, newsCat, newsQuery, shopCat, shopQuery]);
+  }, [open, world, ideaPlanet?.topic, loadNews, loadShop, loadMarkets, loadDarkWeb, loadSatellites, newsCat, newsQuery, shopCat, shopQuery]);
 
   useEffect(() => {
     if (!open || world !== 'darkweb') return;
@@ -415,13 +632,16 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
                       ? 'bg-gradient-to-br from-red-600 to-orange-600 text-white animate-pulse'
                       : world === 'finance'
                         ? 'bg-gradient-to-br from-amber-400 to-emerald-400 text-black'
-                        : 'bg-gradient-to-br from-cyan-400 to-purple-500 text-black'
+                        : world === 'satellites'
+                          ? 'bg-gradient-to-br from-emerald-400 via-cyan-400 to-blue-600 text-black'
+                          : 'bg-gradient-to-br from-cyan-400 to-purple-500 text-black'
               }`}
             >
               {world === 'shopping' && <ShoppingBag className="w-5 h-5" />}
               {world === 'news' && <Newspaper className="w-5 h-5" />}
               {world === 'darkweb' && <Skull className="w-5 h-5" />}
               {world === 'finance' && <Bitcoin className="w-5 h-5" />}
+              {world === 'satellites' && <Satellite className="w-5 h-5" />}
               {(world === 'idea' || world === 'create_planet') && <Sparkles className="w-5 h-5" />}
             </div>
             <div className="min-w-0">
@@ -430,6 +650,7 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
                 {world === 'news' && 'Observatório Veritas — Notícias do Mundo'}
                 {world === 'darkweb' && 'ABISMO OBSCURO — Dark Web & Cyber Inferno'}
                 {world === 'finance' && 'Apex Quantum — Bitcoins & Bolsas em Tempo Real'}
+                {world === 'satellites' && 'Central Orbital — Satélites, Brasil+ & QGIS XYZ'}
                 {world === 'idea' && `Planeta ${ideaPlanet?.name || 'Ideia'}`}
                 {world === 'create_planet' && 'Criar Nova Ideia = Novo Planeta'}
               </h2>
@@ -448,6 +669,50 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* CONNECTED UNIVERSES BRIDGE BAR */}
+        {onSwitchWorld && (
+          <div className="px-3.5 py-2 border-b border-white/10 bg-black/45 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <span className="text-[9px] font-black uppercase tracking-wider text-cyan-300 shrink-0 flex items-center gap-1 pr-1">
+              <Orbit className="w-3 h-3" /> Universos Conectados:
+            </span>
+            {(
+              [
+                { id: 'satellites', label: '🛰️ Satélites · Brasil+ QGIS' },
+                { id: 'news', label: '📰 Notícias' },
+                { id: 'shopping', label: '🛍️ Compras' },
+                { id: 'finance', label: '₿ Bitcoin & Bolsas' },
+                { id: 'darkweb', label: '💀 Abismo Obscuro' },
+                { id: 'create_planet', label: '🪐 + Novo Planeta' },
+              ] as { id: SpecialWorldKind; label: string }[]
+            ).map((u) => (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => onSwitchWorld(u.id)}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-black shrink-0 transition ${
+                  world === u.id
+                    ? 'bg-cyan-400 text-black shadow-[0_0_12px_rgba(34,211,238,0.5)]'
+                    : 'bg-white/10 text-slate-200 hover:bg-white/20'
+                }`}
+              >
+                {u.label}
+              </button>
+            ))}
+            {onOpenFreeCity && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenFreeCity();
+                }}
+                className="px-2.5 py-1 rounded-full text-[10px] font-black shrink-0 bg-emerald-400/20 text-emerald-200 border border-emerald-400/40 hover:bg-emerald-400/35 transition"
+              >
+                🚗 Free City · Oasis 6
+              </button>
+            )}
+          </div>
+        )}
 
         {/* === WORLD 1: SHOPPING (REAL-TIME NO-BUREAUCRACY MARKET) === */}
         {world === 'shopping' && (
@@ -1010,6 +1275,396 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* === WORLD 4B: REAL-TIME SATELLITES, BRASIL+ (MJSP/PF) & QGIS XYZ === */}
+        {world === 'satellites' && (
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Layer Switcher + Presets + Refresh */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {(satData?.qgisLayers || []).map((layer) => (
+                  <button
+                    key={layer.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedLayerId(layer.id);
+                      if (mapZoom > layer.maxZoom) setMapZoom(layer.maxZoom);
+                    }}
+                    className={`px-2.5 py-1.5 rounded-full text-[10px] font-black transition ${
+                      selectedLayerId === layer.id
+                        ? 'bg-emerald-400 text-black shadow-[0_0_16px_rgba(52,211,153,0.45)]'
+                        : 'bg-white/10 text-slate-200 hover:bg-white/20'
+                    }`}
+                  >
+                    {layer.lyrs === 's' && '🛰️ Google Satélite'}
+                    {layer.lyrs === 'y' && '🗺️ Google Híbrido'}
+                    {layer.lyrs === 'm' && '🛣️ Google Rotas'}
+                    {layer.lyrs === 't' && '⛰️ Google Terreno'}
+                    {layer.lyrs === 'h' && '🚧 Google Estradas'}
+                    {layer.lyrs === 'esri' && '🌍 Esri Satélite'}
+                    {layer.lyrs === 'osm' && '🧭 OpenStreetMap'}
+                    {layer.lyrs === 'gibs' && '🔥 NASA GIBS Terra'}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadSatellites(true)}
+                className="ml-auto px-3 py-1.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-[10px] font-black flex items-center gap-1"
+              >
+                <RefreshCw className={`w-3 h-3 ${satLoading ? 'animate-spin' : ''}`} />
+                <span>Atualizar Satélites</span>
+              </button>
+            </div>
+
+            {/* Quick Location Presets & Zoom */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { label: '🇧🇷 Brasil', lat: -14.235, lng: -51.925, z: 4 },
+                { label: '🌳 Amazônia · RO', lat: -8.76, lng: -63.9, z: 7 },
+                { label: '🐆 Campo Grande · MS', lat: -20.469, lng: -54.62, z: 10 },
+                { label: '🏙️ São Paulo', lat: -23.55, lng: -46.633, z: 11 },
+                ...(satData?.iss
+                  ? [{ label: '🛸 ISS Ao Vivo', lat: satData.iss.lat, lng: satData.iss.lng, z: 4 }]
+                  : []),
+                { label: '🌍 Globo Inteiro', lat: 10, lng: -20, z: 2 },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    setMapCenter({ lat: preset.lat, lng: preset.lng });
+                    setMapZoom(preset.z);
+                  }}
+                  className="px-2.5 py-1 rounded-xl bg-white/[0.06] hover:bg-white/15 border border-white/10 text-[10px] font-bold text-slate-200"
+                >
+                  {preset.label}
+                </button>
+              ))}
+              <div className="ml-auto flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setMapZoom((z) => Math.max(2, z - 1))}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+                  title="Reduzir zoom"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-[11px] font-black text-cyan-300 px-1.5">Z{mapZoom}</span>
+                <button
+                  type="button"
+                  onClick={() => setMapZoom((z) => Math.min(16, z + 1))}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+                  title="Aumentar zoom"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Interactive Slippy XYZ Tile Map */}
+            {(() => {
+              const activeLayer =
+                satData?.qgisLayers?.find((l) => l.id === selectedLayerId) ||
+                satData?.qgisLayers?.[0] || {
+                  id: 'google_hybrid',
+                  name: 'Google Satellite Hybrid',
+                  provider: 'Google XYZ Tiles',
+                  lyrs: 'y',
+                  url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+                  description: 'Satélite + ruas',
+                  maxZoom: 20,
+                };
+              const pins: MapPinItem[] = [
+                ...(satData?.constellation || []).map((s) => ({
+                  id: s.id,
+                  lat: s.lat,
+                  lng: s.lng,
+                  color: '#22d3ee',
+                  label: s.id === 'ISS-ZARYA' ? 'ISS' : s.id.split('-')[0],
+                  title: `${s.name} (${s.type})`,
+                  subtitle: `Altitude: ${s.altKm} km · Velocidade: ${s.speedKmh.toLocaleString()} km/h`,
+                })),
+                ...(satData?.events || []).map((ev) => ({
+                  id: `ev_${ev.id}`,
+                  lat: ev.lat,
+                  lng: ev.lng,
+                  color: '#fb923c',
+                  label: '⚠️',
+                  title: ev.title,
+                  subtitle: `${ev.category} · ${ev.source}`,
+                  url: ev.url,
+                })),
+                ...(satData?.quakes || []).map((q) => ({
+                  id: `q_${q.id}`,
+                  lat: q.lat,
+                  lng: q.lng,
+                  color: '#f43f5e',
+                  label: `M${q.mag}`,
+                  title: q.title,
+                  subtitle: `${q.place} · Profundidade ${q.depthKm} km`,
+                  url: q.url,
+                })),
+              ];
+              return (
+                <div className="space-y-2">
+                  <XYZTileViewport
+                    tileUrlTemplate={activeLayer.url}
+                    center={mapCenter}
+                    zoom={mapZoom}
+                    pins={pins}
+                    onCenterChange={setMapCenter}
+                    onPinClick={(pin) =>
+                      setSelectedPin({
+                        title: pin.title,
+                        subtitle: pin.subtitle,
+                        lat: pin.lat,
+                        lng: pin.lng,
+                        url: pin.url,
+                      })
+                    }
+                  />
+                  {selectedPin && (
+                    <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-400/35 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-black text-white">{selectedPin.title}</div>
+                        <div className="text-[11px] text-cyan-200">
+                          {selectedPin.subtitle} · ({selectedPin.lat.toFixed(3)}, {selectedPin.lng.toFixed(3)})
+                        </div>
+                      </div>
+                      {selectedPin.url && (
+                        <a
+                          href={selectedPin.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 rounded-full bg-cyan-400 text-black text-[10px] font-black"
+                        >
+                          Abrir Fonte Oficial
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Live ISS + Constellation + EONET/USGS Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Brasil MAIS Public Observatory */}
+              <div className="p-3.5 rounded-2xl bg-emerald-500/[0.07] border border-emerald-400/30 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-black text-emerald-300 flex items-center gap-1.5">
+                    <Shield className="w-4 h-4" /> Programa Brasil MAIS (MJSP · PF)
+                  </div>
+                  <a
+                    href={satData?.brasilMaisMeta?.portalUrl || 'https://brasilmais.mj.gov.br/'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2.5 py-1 rounded-full bg-emerald-400 text-black text-[10px] font-black"
+                  >
+                    Portal Brasil MAIS ↗
+                  </a>
+                </div>
+                <p className="text-[11px] text-slate-200 leading-relaxed">
+                  {satData?.brasilMaisMeta?.constellation ||
+                    'Constelação PlanetScope Dove & SuperDove (~130 nanosatélites, 3m diário, 8 bandas)'}{' '}
+                  · <strong>{satData?.brasilMaisMeta?.coverageKm2Day || '8.5M km²/dia'}</strong> ·{' '}
+                  <strong>{satData?.brasilMaisMeta?.registeredInstitutions || 799}</strong> instituições públicas.
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {(satData?.brasilMaisMeta?.alertClasses || []).map((cls) => (
+                    <span
+                      key={cls}
+                      className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-400/25 text-[9px] font-bold text-emerald-200"
+                    >
+                      {cls}
+                    </span>
+                  ))}
+                </div>
+                <div className="space-y-1.5 pt-1 max-h-40 overflow-y-auto pr-1">
+                  {(satData?.brasilMaisNews || []).slice(0, 4).map((n) => (
+                    <a
+                      key={n.id}
+                      href={n.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block p-2 rounded-xl bg-black/35 hover:bg-black/55 border border-white/10"
+                    >
+                      <div className="text-[11px] font-bold text-white line-clamp-1">{n.title}</div>
+                      <div className="text-[9px] text-emerald-300">{n.source}</div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              {/* QGIS XYZ Tiles & .QLR / GeoJSON Direct Export */}
+              <div className="p-3.5 rounded-2xl bg-sky-500/[0.07] border border-sky-400/30 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-black text-sky-300 flex items-center gap-1.5">
+                    <Layers className="w-4 h-4" /> QGIS XYZ Tiles & Exportação Direta
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const features = [
+                        ...(satData?.events || []).map((ev) => ({
+                          type: 'Feature',
+                          properties: { title: ev.title, category: ev.category, source: ev.source, date: ev.date },
+                          geometry: { type: 'Point', coordinates: [ev.lng, ev.lat] },
+                        })),
+                        ...(satData?.quakes || []).map((q) => ({
+                          type: 'Feature',
+                          properties: { title: q.title, magnitude: q.mag, place: q.place },
+                          geometry: { type: 'Point', coordinates: [q.lng, q.lat] },
+                        })),
+                      ];
+                      const blob = new Blob([JSON.stringify({ type: 'FeatureCollection', features }, null, 2)], {
+                        type: 'application/geo+json',
+                      });
+                      const u = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = u;
+                      a.download = `lenkyx-satelites-tempo-real.geojson`;
+                      a.click();
+                      URL.revokeObjectURL(u);
+                      onToast('GeoJSON exportado para abrir no QGIS!');
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-sky-400 text-black text-[10px] font-black flex items-center gap-1"
+                  >
+                    <Download className="w-3 h-3" /> GeoJSON Ao Vivo
+                  </button>
+                </div>
+                <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                  {(satData?.qgisLayers || []).map((l) => (
+                    <div
+                      key={l.id}
+                      className="p-2 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-bold text-white truncate">{l.name}</div>
+                        <div className="text-[9px] font-mono text-cyan-300 truncate">{l.url}</div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard?.writeText(l.url);
+                            onToast(`URL XYZ copiada (${l.name})`);
+                          }}
+                          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white"
+                          title="Copiar URL XYZ para QGIS"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                        <a
+                          href={`/api/worlds/satellites/qgis-layer.qlr?layer=${encodeURIComponent(l.id)}`}
+                          download={`lenkyx-${l.id}.qlr`}
+                          className="px-2 py-1 rounded-lg bg-sky-500/25 hover:bg-sky-500 text-sky-200 hover:text-white text-[9px] font-black"
+                        >
+                          .QLR
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Live Global Events (NASA EONET + USGS) + In-App Free City Alternative Universe Eye */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 space-y-2">
+                <div className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                  <Flame className="w-4 h-4" /> Eventos Globais em Tempo Real (NASA EONET & USGS)
+                </div>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {(satData?.events || []).slice(0, 6).map((ev) => (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => {
+                        setMapCenter({ lat: ev.lat, lng: ev.lng });
+                        setMapZoom(7);
+                        setSelectedPin({
+                          title: ev.title,
+                          subtitle: ev.category,
+                          lat: ev.lat,
+                          lng: ev.lng,
+                          url: ev.url,
+                        });
+                      }}
+                      className="w-full text-left p-2 rounded-xl bg-black/35 hover:bg-white/10 border border-white/10 flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-bold text-white truncate">{ev.title}</div>
+                        <div className="text-[9px] text-amber-300">{ev.category}</div>
+                      </div>
+                      <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    </button>
+                  ))}
+                  {(satData?.quakes || []).slice(0, 4).map((q) => (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => {
+                        setMapCenter({ lat: q.lat, lng: q.lng });
+                        setMapZoom(7);
+                        setSelectedPin({
+                          title: q.title,
+                          subtitle: q.place,
+                          lat: q.lat,
+                          lng: q.lng,
+                          url: q.url,
+                        });
+                      }}
+                      className="w-full text-left p-2 rounded-xl bg-rose-950/30 hover:bg-rose-900/40 border border-rose-500/20 flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-bold text-white truncate">{q.title}</div>
+                        <div className="text-[9px] text-rose-300">Magnitude {q.mag} · {q.place}</div>
+                      </div>
+                      <Compass className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* In-App Alternative Universe Eye (Free City · Oasis 6 Internal Telemetry) */}
+              <div className="p-3.5 rounded-2xl bg-purple-500/[0.08] border border-purple-400/30 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-black text-purple-200 flex items-center gap-1.5">
+                    <Orbit className="w-4 h-4 text-cyan-300" /> Olho do Universo Alternativo (Free City · Oasis 6)
+                  </div>
+                  {onOpenFreeCity && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenFreeCity();
+                      }}
+                      className="px-2.5 py-1 rounded-full bg-cyan-400 text-black text-[10px] font-black"
+                    >
+                      Entrar em Free City
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  {[
+                    { cam: 'CAM-01 · Praia Neon', status: 'Ao Vivo no App', target: 'Guy & Esportivos' },
+                    { cam: 'CAM-02 · Oasis Park', status: 'Ao Vivo no App', target: 'Fauna, Flores & Abelhas' },
+                    { cam: 'CAM-03 · Av. Central', status: 'Ao Vivo no App', target: 'Tráfego Autônomo 18x' },
+                    { cam: 'CAM-04 · Cofre Quantum', status: 'Economia Virtual', target: 'Créditos & Portfólio App' },
+                  ].map((c) => (
+                    <div key={c.cam} className="p-2 rounded-xl bg-black/45 border border-purple-400/20">
+                      <div className="font-black text-white">{c.cam}</div>
+                      <div className="text-[9px] text-emerald-300">{c.status}</div>
+                      <div className="text-[9px] text-slate-300">{c.target}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

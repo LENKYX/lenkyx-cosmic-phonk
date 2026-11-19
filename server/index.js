@@ -62,6 +62,7 @@ import {
   getGalaxyConsciousness,
   stepAutonomousConsciousness,
   replyAsConsciousNpc,
+  fetchSatelliteLiveOverview,
   startAutonomousWorldSync,
 } from './worldsAutonomous.js';
 import {
@@ -2955,7 +2956,19 @@ app.get('/api/worlds/news', async (req, res) => {
     const category = String(req.query.category || 'all');
     const q = String(req.query.q || '');
     const refresh = req.query.refresh === '1';
-    res.json(await fetchWorldNews(category, q, refresh));
+    const localLang =
+      normalizeServerLang(req.query.lang || req.headers['accept-language']?.split(',')[0] || 'pt') || 'pt';
+    const data = await fetchWorldNews(category, q, refresh);
+    if (localLang !== 'pt' && Array.isArray(data.articles)) {
+      data.articles = await Promise.all(
+        data.articles.slice(0, 14).map(async (a) => ({
+          ...a,
+          title: await translateCached(a.title, localLang),
+          summary: await translateCached(a.summary, localLang),
+        }))
+      );
+    }
+    res.json({ ...data, localLang });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }
@@ -3010,7 +3023,25 @@ app.get('/api/worlds/shopping/orders', (_req, res) => {
 app.get('/api/worlds/darkweb', async (req, res) => {
   try {
     const refresh = req.query.refresh === '1';
-    res.json(await fetchDarkWebIntel(refresh));
+    const localLang =
+      normalizeServerLang(req.query.lang || req.headers['accept-language']?.split(',')[0] || 'pt') || 'pt';
+    const data = await fetchDarkWebIntel(refresh);
+    const [vulnerabilities, cyberNews] = await Promise.all([
+      Promise.all(
+        (data.vulnerabilities || []).slice(0, 12).map(async (v) => ({
+          ...v,
+          title: await translateCached(v.title, localLang),
+          summary: await translateCached(v.summary, localLang),
+        }))
+      ),
+      Promise.all(
+        (data.cyberNews || []).slice(0, 12).map(async (n) => ({
+          ...n,
+          title: await translateCached(n.title, localLang),
+        }))
+      ),
+    ]);
+    res.json({ ...data, localLang, vulnerabilities, cyberNews });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }
@@ -3027,6 +3058,107 @@ app.get('/api/worlds/darkweb/inspect', async (req, res) => {
     res.json(await inspectHostSecurity(host));
   } catch (err) {
     res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+// === REAL-TIME GLOBAL SATELLITES, BRASIL+ (MJSP/PF) & QGIS XYZ TILES ===
+const satTranslationCache = new Map();
+async function translateCached(text, targetLang) {
+  const clean = String(text || '').trim();
+  if (!clean) return clean;
+  const key = `${targetLang}:${clean}`;
+  if (satTranslationCache.has(key)) return satTranslationCache.get(key);
+  const out = await translateAnyText(clean, 'auto', targetLang).catch(() => clean);
+  if (satTranslationCache.size > 600) satTranslationCache.clear();
+  satTranslationCache.set(key, out);
+  return out;
+}
+
+app.get('/api/worlds/satellites', async (req, res) => {
+  try {
+    const refresh = req.query.refresh === '1';
+    const rawLang = req.query.lang || req.headers['accept-language']?.split(',')[0] || 'pt';
+    const localLang = normalizeServerLang(rawLang) || 'pt';
+    const rawData = await fetchSatelliteLiveOverview(refresh);
+
+    // Always translate live global events, quakes, and Brasil+ news into user's local language
+    const [events, quakes, brasilMaisNews] = await Promise.all([
+      Promise.all(
+        (rawData.events || []).slice(0, 18).map(async (ev) => ({
+          ...ev,
+          title: await translateCached(ev.title, localLang),
+          category: await translateCached(ev.category, localLang),
+        }))
+      ),
+      Promise.all(
+        (rawData.quakes || []).slice(0, 16).map(async (q) => ({
+          ...q,
+          title: await translateCached(q.title, localLang),
+          place: await translateCached(q.place, localLang),
+        }))
+      ),
+      localLang === 'pt'
+        ? rawData.brasilMaisNews || []
+        : Promise.all(
+            (rawData.brasilMaisNews || []).slice(0, 8).map(async (n) => ({
+              ...n,
+              title: await translateCached(n.title, localLang),
+              summary: await translateCached(n.summary, localLang),
+            }))
+          ),
+    ]);
+
+    res.json({
+      ...rawData,
+      localLang,
+      events,
+      quakes,
+      brasilMaisNews,
+    });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/worlds/satellites/qgis-layer.qlr', async (req, res) => {
+  try {
+    const layerId = String(req.query.layer || 'google_sat');
+    const satData = await fetchSatelliteLiveOverview(false);
+    const layer = (satData.qgisLayers || []).find((l) => l.id === layerId) || satData.qgisLayers[0];
+    const safeUrl = String(layer.url || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const safeName = String(layer.name || 'LENKYX Satellite')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const qlr = `<!DOCTYPE qgis-layer-definition>
+<qlr>
+  <layer-tree-group name="" expanded="1" checked="Qt::Checked">
+    <layer-tree-layer id="${layer.id}_lenkyx" name="${safeName}" providerKey="wms" checked="Qt::Checked" expanded="1">
+      <customproperties/>
+    </layer-tree-layer>
+  </layer-tree-group>
+  <maplayers>
+    <maplayer type="raster" autoRefreshEnabled="1" autoRefreshTime="30" hasScaleBasedVisibilityFlag="0">
+      <id>${layer.id}_lenkyx</id>
+      <datasource>type=xyz&amp;url=${safeUrl}&amp;zmax=${layer.maxZoom || 19}&amp;zmin=0</datasource>
+      <layername>${safeName}</layername>
+      <srs>
+        <spatialrefsys>
+          <authid>EPSG:3857</authid>
+        </spatialrefsys>
+      </srs>
+      <provider>wms</provider>
+    </maplayer>
+  </maplayers>
+</qlr>`;
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="lenkyx-${layer.id}.qlr"`);
+    res.send(qlr);
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
   }
 });
 
@@ -3052,8 +3184,30 @@ app.get('/api/calls/poll', (req, res) => {
 });
 
 // === AUTONOMOUS LIVING GALAXY CONSCIOUSNESS, ECOSYSTEM & FREE GUY NPC ===
-app.get('/api/galaxy/consciousness', (_req, res) => {
-  res.json({ ok: true, ecosystem: getGalaxyConsciousness() });
+app.get('/api/galaxy/consciousness', async (req, res) => {
+  const localLang =
+    normalizeServerLang(req.query.lang || req.headers['accept-language']?.split(',')[0] || 'pt') || 'pt';
+  const eco = getGalaxyConsciousness();
+  if (localLang === 'pt') {
+    return res.json({ ok: true, localLang, ecosystem: eco });
+  }
+  const translatedDecisions = await Promise.all(
+    (eco.decisions || []).slice(0, 6).map(async (d) => ({
+      ...d,
+      domain: await translateCached(d.domain, localLang),
+      decision: await translateCached(d.decision, localLang),
+    }))
+  );
+  res.json({
+    ok: true,
+    localLang,
+    ecosystem: {
+      ...eco,
+      weather: await translateCached(eco.weather, localLang),
+      galaxyMood: await translateCached(eco.galaxyMood, localLang),
+      decisions: translatedDecisions,
+    },
+  });
 });
 
 app.post('/api/galaxy/consciousness/act', (req, res) => {

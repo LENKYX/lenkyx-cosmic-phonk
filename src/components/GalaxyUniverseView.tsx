@@ -20,6 +20,7 @@ import {
   Plus,
   Radio,
   RefreshCw,
+  Satellite,
   Search,
   Send,
   ShoppingBag,
@@ -333,6 +334,27 @@ const PLANET_SPECS: PlanetSpec[] = [
     hasSatellite: true,
     style: 'earth',
     icon: <Car className="w-3.5 h-3.5" />,
+  },
+  {
+    id: 'satellites',
+    specialWorld: 'satellites',
+    label: 'Satélites · Brasil+',
+    planetName: 'Órbita QGIS & Terra',
+    orbitRadius: 31.5,
+    orbitSpeed: 0.072,
+    orbitPhase: 2.8,
+    orbitTilt: -0.05,
+    radius: 2.65,
+    spinSpeed: 0.31,
+    accentHex: '#10b981',
+    atmosphereHex: '#22d3ee',
+    hasClouds: true,
+    hasRing: true,
+    ringColor: '#34d399',
+    moons: 1,
+    hasSatellite: true,
+    style: 'earth',
+    icon: <Satellite className="w-3.5 h-3.5" />,
   },
 ];
 
@@ -993,6 +1015,22 @@ function buildSatelliteMesh(solarTex: THREE.Texture): THREE.Group {
   beacon.name = 'beacon';
   g.add(beacon);
 
+  // Optical Earth-observation scan cone (PlanetScope / Sentinel style)
+  const scanCone = new THREE.Mesh(
+    new THREE.ConeGeometry(0.45, 1.3, 18, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: '#34d399',
+      transparent: true,
+      opacity: 0.18,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+  );
+  scanCone.position.set(0, -0.68, 0);
+  scanCone.rotation.x = Math.PI;
+  g.add(scanCone);
+
   return g;
 }
 
@@ -1223,7 +1261,8 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       .catch(() => {});
 
     const pollConsciousness = () => {
-      fetch('/api/galaxy/consciousness')
+      const localLang = encodeURIComponent(navigator.language || 'pt');
+      fetch(`/api/galaxy/consciousness?lang=${localLang}`)
         .then((r) => r.json())
         .then((d) => {
           const latest = d?.ecosystem?.decisions?.[0];
@@ -1861,6 +1900,18 @@ export const GalaxyUniverseView: React.FC<Props> = ({
     const manta2 = buildSpaceLeviathan('#f472b6');
     scene.add(manta2);
 
+    /* === QUANTUM HYPER-BRIDGE LINES (ALL UNIVERSES CONNECTED) === */
+    const bridgeGeo = new THREE.BufferGeometry();
+    const bridgeMat = new THREE.LineBasicMaterial({
+      color: '#22d3ee',
+      transparent: true,
+      opacity: 0.24,
+      blending: THREE.AdditiveBlending,
+    });
+    const bridgeLines = new THREE.LineSegments(bridgeGeo, bridgeMat);
+    scene.add(bridgeLines);
+    disposables.push(bridgeGeo, bridgeMat);
+
     /* === SHOOTING STARS === */
     const meteorGeo = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(0, 0, 0),
@@ -1980,7 +2031,7 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         playCosmicSound('alien');
         openCommsForRef.current(persona || 'zylar');
       } else if (kind === 'satellite') {
-        openCommsForRef.current('sentinel');
+        setWorldModal({ open: true, world: 'satellites', ideaPlanet: null });
       } else if (kind === 'blackhole') {
         playCosmicSound('portal');
         openCommsForRef.current('blackhole');
@@ -2100,6 +2151,17 @@ export const GalaxyUniverseView: React.FC<Props> = ({
           rt.satellite.position.set(Math.cos(satAng) * sr, Math.sin(satAng * 0.7) * 1.1, Math.sin(satAng) * sr);
           rt.satellite.lookAt(rt.pivot.position);
         }
+      }
+
+      // Connect all universes & planets dynamically with live quantum bridges
+      if (planetRuntimes.length > 1) {
+        const pts: number[] = [];
+        for (let idx = 0; idx < planetRuntimes.length; idx++) {
+          const a = planetRuntimes[idx].pivot.position;
+          const b = planetRuntimes[(idx + 1) % planetRuntimes.length].pivot.position;
+          pts.push(a.x, a.y, a.z, b.x, b.y, b.z);
+        }
+        bridgeGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
       }
 
       // Alien UFOs + Cosmic Leviathans
@@ -2713,13 +2775,15 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* SPECIALIZED WORLDS (SHOPPING · NEWS · DARK WEB · BITCOIN/STOCKS · IDEA PLANETS) */}
+      {/* SPECIALIZED WORLDS (SHOPPING · NEWS · DARK WEB · BITCOIN/STOCKS · SATELLITES BRASIL+ QGIS · IDEA PLANETS) */}
       <GalaxyWorldsModal
         open={worldModal.open}
         world={worldModal.world}
         ideaPlanet={worldModal.ideaPlanet}
         user={null}
         onClose={() => setWorldModal((w) => ({ ...w, open: false }))}
+        onSwitchWorld={(nextWorld) => setWorldModal({ open: true, world: nextWorld, ideaPlanet: null })}
+        onOpenFreeCity={() => setFreeCityOpen(true)}
         onPlanetCreated={(newPlanet) => {
           setCustomPlanets((prev) => [newPlanet, ...prev]);
         }}

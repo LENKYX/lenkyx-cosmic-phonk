@@ -296,7 +296,8 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
   // Poll server Autonomous Galaxy Consciousness & Ecosystem every 8s
   const fetchConsciousness = useCallback(async () => {
     try {
-      const r = await fetch('/api/galaxy/consciousness');
+      const localLang = encodeURIComponent(navigator.language || 'pt');
+      const r = await fetch(`/api/galaxy/consciousness?lang=${localLang}`);
       const d = await r.json();
       if (d?.ok && d.ecosystem) setEco(d.ecosystem);
     } catch {
