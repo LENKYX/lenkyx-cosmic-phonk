@@ -91,7 +91,7 @@ export const CatalogView: React.FC<Props> = ({
   onToast,
 }) => {
   const [selectedAlbum, setSelectedAlbum] = useState<string>('ALL');
-  const [viewLayout, setViewLayout] = useState<'list' | 'grid'>('list');
+  const [viewLayout, setViewLayout] = useState<'feed' | 'list'>('feed');
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [pickerTrackId, setPickerTrackId] = useState<string | null>(null);
 
@@ -132,104 +132,96 @@ export const CatalogView: React.FC<Props> = ({
   };
 
   return (
-    <div className="space-y-5 pb-36 md:pb-28 cosmic-scene">
-      {/* FLOATING 3D SPACE HERO */}
-      <section className="relative rounded-[28px] cosmic-card-3d overflow-hidden">
-        <div className="relative min-h-[195px] sm:min-h-[220px] w-full flex flex-col justify-end">
-          <img
-            src="/covers/banner.jpg"
-            alt="LENKYX Cosmic Phonk"
-            className="absolute inset-0 w-full h-full object-cover object-center opacity-40 scale-105"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#05020f]/95 via-[#070316]/65 to-transparent" />
+    <div className="space-y-4 pb-36 md:pb-28 cosmic-scene">
+      {/* YOUTUBE-MUSIC COSMIC GALAXY HERO (Clean, zero text clash behind title!) */}
+      <section className="relative rounded-3xl cosmic-card-3d overflow-hidden border border-white/12 bg-gradient-to-br from-[#170933] via-[#0b041c] to-[#061326]">
+        <div className="absolute -top-16 -right-12 w-56 h-56 rounded-full bg-pink-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-12 w-56 h-56 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 p-5 sm:p-7 flex flex-col lg:flex-row lg:items-end justify-between gap-5">
-            <div className="flex items-center gap-4 sm:gap-5">
-              <div className="relative shrink-0">
-                <img
-                  src="/covers/icon-512.png"
-                  alt="LENKYX Logo 3D"
-                  className="w-20 h-20 sm:w-24 sm:h-24 object-contain lenkyx-logo-3d"
-                />
+        <div className="relative z-10 p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 sm:gap-5 min-w-0">
+            <img
+              src="/covers/icon-512.png?v=43"
+              alt="LENKYX Logo 3D"
+              className="w-16 h-16 sm:w-20 sm:h-20 object-contain lenkyx-logo-3d shrink-0"
+            />
+
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[9px] sm:text-[10px] font-black text-emerald-300">
+                  <CheckCircle2 className="w-3 h-3 shrink-0" /> OFICIAL · VERIFICADO
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-500/20 border border-pink-400/35 text-[9px] sm:text-[10px] font-extrabold text-pink-200">
+                  <Sparkles className="w-2.5 h-2.5 shrink-0" /> {tracks.length} FAIXAS SEM ANÚNCIOS
+                </span>
               </div>
-
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] font-black text-emerald-300">
-                    <CheckCircle2 className="w-3 h-3" /> OFICIAL · 100% SEGURO & VERIFICADO
+              <h1 className="font-display text-lg sm:text-2xl lg:text-3xl font-black tracking-wide text-white truncate">
+                {settings.artistName} <span className="neon-text">{settings.brandSubtitle}</span>
+              </h1>
+              <div className="flex flex-wrap items-center gap-3 text-[11px] text-purple-200/80">
+                <span className="inline-flex items-center gap-1">
+                  <Headphones className="w-3.5 h-3.5 text-cyan-400" />
+                  {totalPlays.toLocaleString('pt-BR')} plays
+                </span>
+                {offlineCount > 0 && (
+                  <span className="inline-flex items-center gap-1 text-emerald-300 font-bold">
+                    <WifiOff className="w-3 h-3" /> {offlineCount} offline
                   </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-pink-500/20 border border-pink-400/35 text-[10px] font-extrabold text-pink-200">
-                    <Sparkles className="w-2.5 h-2.5" /> {tracks.length} FAIXAS SEM ANÚNCIOS
-                  </span>
-                </div>
-                <h1 className="font-display text-2xl sm:text-3xl font-black tracking-wide text-white truncate">
-                  {settings.artistName} <span className="neon-text">{settings.brandSubtitle}</span>
-                </h1>
-                <div className="flex flex-wrap items-center gap-3 text-[11px] text-purple-200/80">
-                  <span className="inline-flex items-center gap-1">
-                    <Headphones className="w-3.5 h-3.5 text-cyan-400" />
-                    {totalPlays.toLocaleString('pt-BR')} plays
-                  </span>
-                  {offlineCount > 0 && (
-                    <span className="inline-flex items-center gap-1 text-emerald-300 font-bold">
-                      <WifiOff className="w-3 h-3" /> {offlineCount} offline
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Clean Essential Action Pills */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => tracks[0] && onPlayTrack(tracks[0], 'v1')}
-                className="px-5 py-2.5 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 hover:brightness-110 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_26px_rgba(236,72,153,0.45)] transition active:scale-95"
-              >
-                <Play className="w-3.5 h-3.5 fill-white" /> Tocar Álbum
-              </button>
-              <button
-                onClick={onDownloadAllOffline}
-                disabled={downloadingAll}
-                className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs flex items-center gap-1.5 transition active:scale-95"
-              >
-                {downloadingAll ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
-                ) : offlineCount >= tracks.length && tracks.length > 0 ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                ) : (
-                  <DownloadCloud className="w-3.5 h-3.5 text-cyan-300" />
                 )}
-                {downloadingAll
-                  ? 'Baixando...'
-                  : offlineCount >= tracks.length && tracks.length > 0
-                  ? 'Todas Offline'
-                  : 'Baixar Offline'}
-              </button>
-              {!isAndroidApk() && onInstallApp && (
-                <button
-                  type="button"
-                  onClick={onInstallApp}
-                  className="px-4 py-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_18px_rgba(52,211,153,0.35)] transition active:scale-95"
-                >
-                  <Smartphone className="w-3.5 h-3.5" /> Baixar (Android · iPhone · PC)
-                </button>
-              )}
-              {mode === 'creator' && (
-                <button
-                  onClick={onAddTrack}
-                  className="px-4 py-2.5 rounded-full bg-white text-black hover:bg-purple-100 font-extrabold text-xs flex items-center gap-1 transition"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Nova Faixa
-                </button>
-              )}
+              </div>
             </div>
+          </div>
+
+          {/* Clean Essential Action Row */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => tracks[0] && onPlayTrack(tracks[0], 'v1')}
+              className="px-4 sm:px-5 py-2 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 hover:brightness-110 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_24px_rgba(236,72,153,0.45)] transition active:scale-95"
+            >
+              <Play className="w-3.5 h-3.5 fill-white" /> Tocar Álbum
+            </button>
+            <button
+              onClick={onDownloadAllOffline}
+              disabled={downloadingAll}
+              className="px-3.5 sm:px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs flex items-center gap-1.5 transition active:scale-95"
+            >
+              {downloadingAll ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
+              ) : offlineCount >= tracks.length && tracks.length > 0 ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              ) : (
+                <DownloadCloud className="w-3.5 h-3.5 text-cyan-300" />
+              )}
+              {downloadingAll
+                ? 'Baixando...'
+                : offlineCount >= tracks.length && tracks.length > 0
+                ? 'Todas Offline'
+                : 'Offline'}
+            </button>
+            {!isAndroidApk() && onInstallApp && (
+              <button
+                type="button"
+                onClick={onInstallApp}
+                className="px-3.5 sm:px-4 py-2 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_16px_rgba(52,211,153,0.35)] transition active:scale-95"
+              >
+                <Smartphone className="w-3.5 h-3.5" /> Baixar (Android · iPhone · PC)
+              </button>
+            )}
+            {mode === 'creator' && (
+              <button
+                onClick={onAddTrack}
+                className="px-3.5 py-2 rounded-full bg-white text-black hover:bg-purple-100 font-extrabold text-xs flex items-center gap-1 transition"
+              >
+                <Plus className="w-3.5 h-3.5" /> Nova
+              </button>
+            )}
           </div>
         </div>
       </section>
 
-      {/* FILTER PILLS + VIEW TOGGLE */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+      {/* FILTER PILLS + YOUTUBE/LIST VIEW TOGGLE */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 flex-1 min-w-0">
           {albums.map((alb) => {
             const label =
               alb === 'ALL'
@@ -256,7 +248,15 @@ export const CatalogView: React.FC<Props> = ({
           })}
         </div>
 
-        <div className="inline-flex items-center rounded-xl bg-white/[0.06] border border-white/10 p-0.5 backdrop-blur-md">
+        <div className="inline-flex items-center rounded-xl bg-white/[0.06] border border-white/10 p-0.5 backdrop-blur-md shrink-0">
+          <button
+            onClick={() => setViewLayout('feed')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
+              viewLayout === 'feed' ? 'bg-gradient-to-r from-pink-500 to-cyan-400 text-black font-black' : 'text-purple-200 hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" /> Feed
+          </button>
           <button
             onClick={() => setViewLayout('list')}
             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
@@ -264,14 +264,6 @@ export const CatalogView: React.FC<Props> = ({
             }`}
           >
             <List className="w-3.5 h-3.5" /> Lista
-          </button>
-          <button
-            onClick={() => setViewLayout('grid')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
-              viewLayout === 'grid' ? 'bg-pink-500 text-white' : 'text-purple-200 hover:text-white'
-            }`}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" /> Capas
           </button>
         </div>
       </div>
@@ -523,8 +515,8 @@ export const CatalogView: React.FC<Props> = ({
           })}
         </div>
       ) : (
-        /* FLOATING 3D GRID CARDS (Zero V2 clutter) */
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
+        /* YOUTUBE-STYLE COSMIC GALAXY FEED CARDS (Dynamic, intuitive, zero clutter) */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((track) => {
             const active = currentTrack?.id === track.id;
             const isOff = offlineTrackIds.has(track.id);
@@ -532,72 +524,155 @@ export const CatalogView: React.FC<Props> = ({
             return (
               <div
                 key={track.id}
-                className={`group rounded-2xl cosmic-card-3d p-3 space-y-2.5 ${
-                  active ? 'border-pink-500/70 shadow-[0_0_26px_rgba(236,72,153,0.3)]' : ''
+                className={`group rounded-2xl cosmic-card-3d overflow-hidden transition duration-200 ${
+                  active ? 'border-cyan-400/70 shadow-[0_0_28px_rgba(34,211,238,0.28)]' : 'hover:border-white/25'
                 }`}
               >
-                <div className="relative aspect-square rounded-xl overflow-hidden bg-black">
+                {/* 16:9 YouTube-style Cover Stage */}
+                <div
+                  onClick={() => onPlayTrack(track, 'v1')}
+                  className="relative aspect-video w-full overflow-hidden bg-black cursor-pointer"
+                >
                   <img
                     src={track.coverUrl}
                     alt={track.title}
                     loading="lazy"
                     decoding="async"
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                   />
-                  <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/75 text-[9px] font-mono font-bold text-cyan-300">
-                    #{String(track.number).padStart(2, '0')}
-                  </span>
-                  {isOff && (
-                    <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-emerald-500/85 text-[8px] font-extrabold text-black">
-                      OFFLINE
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+
+                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono font-bold text-cyan-300">
+                      #{String(track.number).padStart(2, '0')}
                     </span>
-                  )}
-                  <button
-                    onClick={() => onPlayTrack(track, 'v1')}
-                    className="absolute bottom-2 right-2 w-9 h-9 rounded-full bg-pink-500 flex items-center justify-center shadow-lg transition hover:scale-110"
-                  >
-                    {active && isPlaying ? (
-                      <Pause className="w-4 h-4 text-white fill-white" />
-                    ) : (
-                      <Play className="w-4 h-4 text-white fill-white ml-0.5" />
+                    {isOff && (
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-400 text-black text-[9px] font-black">
+                        OFFLINE
+                      </span>
                     )}
-                  </button>
+                  </div>
+
+                  <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-[10px] font-mono font-bold text-white border border-white/10">
+                    {fmtDur(track.durationSec)}
+                  </span>
+
+                  <div
+                    className={`absolute inset-0 flex items-center justify-center transition ${
+                      active ? 'opacity-100' : 'opacity-85 group-hover:opacity-100'
+                    }`}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-full flex items-center justify-center shadow-[0_0_25px_rgba(236,72,153,0.65)] transition group-hover:scale-110 ${
+                        active
+                          ? 'bg-gradient-to-r from-pink-500 to-cyan-400 text-black'
+                          : 'bg-black/65 backdrop-blur-md border border-white/30 text-white'
+                      }`}
+                    >
+                      {active && isPlaying ? (
+                        <Pause className="w-5 h-5 fill-current" />
+                      ) : (
+                        <Play className="w-5 h-5 fill-current ml-0.5" />
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="text-xs font-bold text-white truncate">
-                    {track.emoji} {track.title}
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-purple-200/75">
-                    <span>
-                      {track.bpm} BPM · {fmtDur(track.durationSec)}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => onToggleOffline(track)}
-                        disabled={isDl}
-                        className={`p-1 rounded bg-white/5 hover:bg-emerald-500/25 ${
-                          isOff ? 'text-emerald-400' : 'text-cyan-300'
-                        }`}
-                        title={isOff ? 'Salva Offline' : 'Baixar Offline'}
-                      >
-                        {isDl ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : isOff ? (
-                          <CheckCircle2 className="w-3 h-3" />
-                        ) : (
-                          <DownloadCloud className="w-3 h-3" />
-                        )}
-                      </button>
-                      {onSendToVideo && (
+                {/* YouTube-style Channel Info & Quick Controls */}
+                <div className="p-3 flex items-start gap-2.5">
+                  <img
+                    src="/covers/icon-192.png?v=43"
+                    alt="LENKYX"
+                    className="w-9 h-9 object-contain shrink-0 lenkyx-logo-3d mt-0.5"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div
+                      onClick={() => onPlayTrack(track, 'v1')}
+                      className={`text-sm font-black truncate cursor-pointer ${
+                        active ? 'text-cyan-300' : 'text-white'
+                      }`}
+                    >
+                      {track.emoji} {track.title}
+                    </div>
+                    <div className="text-[11px] text-slate-300/80 truncate mt-0.5">
+                      {track.artist} · {track.bpm} BPM · {(track.plays || 0).toLocaleString('pt-BR')} plays
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1">
                         <button
-                          onClick={() => onSendToVideo(track)}
-                          className="p-1 rounded bg-white/5 hover:bg-cyan-500/25 text-cyan-300"
-                          title="Criar Vídeo"
+                          onClick={() => onToggleOffline(track)}
+                          disabled={isDl}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 border transition ${
+                            isOff
+                              ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
+                              : 'bg-white/[0.06] hover:bg-white/15 border-white/10 text-cyan-200'
+                          }`}
+                          title={isOff ? 'Salva Offline' : 'Baixar Offline'}
                         >
-                          <Video className="w-3 h-3" />
+                          {isDl ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : isOff ? (
+                            <CheckCircle2 className="w-3 h-3" />
+                          ) : (
+                            <DownloadCloud className="w-3 h-3" />
+                          )}
+                          <span>{isOff ? 'Salva' : 'Baixar'}</span>
                         </button>
-                      )}
+                        <button
+                          onClick={() => onLikeTrack(track)}
+                          className={`p-1.5 rounded-lg border transition ${
+                            track.favorite
+                              ? 'bg-pink-500/20 border-pink-400/45 text-pink-400'
+                              : 'bg-white/[0.06] hover:bg-white/15 border-white/10 text-purple-200'
+                          }`}
+                          title="Curtir"
+                        >
+                          <Heart className={`w-3.5 h-3.5 ${track.favorite ? 'fill-pink-500' : ''}`} />
+                        </button>
+                        <button
+                          onClick={() => onSetLyricsTrack(track)}
+                          className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-white/15 border border-white/10 text-purple-200 transition"
+                          title="Letra"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1 relative">
+                        <button
+                          onClick={() => setPickerTrackId(pickerTrackId === track.id ? null : track.id)}
+                          className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-white/15 border border-white/10 text-purple-200 transition"
+                          title="Adicionar à Playlist"
+                        >
+                          <ListPlus className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onShareTrack(track)}
+                          className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-emerald-500/20 border border-white/10 text-emerald-300 transition"
+                          title="Compartilhar"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        </button>
+                        {pickerTrackId === track.id && (
+                          <div className="absolute right-0 bottom-9 z-30 w-44 rounded-xl bg-[#120829] border border-purple-400/40 shadow-2xl p-1.5 space-y-0.5">
+                            <div className="text-[10px] font-bold text-purple-300 px-2 py-1 uppercase">Salvar em:</div>
+                            {playlists.map((pl) => (
+                              <button
+                                key={pl.id}
+                                onClick={() => {
+                                  onAddToPlaylist(pl.id, track);
+                                  setPickerTrackId(null);
+                                }}
+                                className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-pink-500/25 text-xs text-white flex items-center gap-1.5"
+                              >
+                                <span>{pl.emoji}</span>
+                                <span className="truncate">{pl.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

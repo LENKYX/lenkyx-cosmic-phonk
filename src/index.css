@@ -27,6 +27,14 @@
   -webkit-text-fill-color: transparent;
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .neon-border {
   box-shadow:
     0 0 0 1px rgba(168, 85, 247, 0.35),

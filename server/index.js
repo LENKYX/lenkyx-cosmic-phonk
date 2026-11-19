@@ -207,7 +207,12 @@ app.get('/api/health', (req, res) => {
 
 // Static assets
 app.use('/storage', express.static(STORAGE_ROOT, { maxAge: '7d' }));
-app.use('/covers', express.static(path.join(PUBLIC_DIR, 'covers'), { maxAge: '7d' }));
+app.use('/covers', (req, res, next) => {
+  if (/^\/(icon-|favicon|apple-touch-icon|lenkyx-app)/i.test(req.path)) {
+    res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+  }
+  next();
+}, express.static(path.join(PUBLIC_DIR, 'covers'), { maxAge: '7d' }));
 app.use('/audio', express.static(path.join(PUBLIC_DIR, 'audio'), { maxAge: '7d' }));
 app.use('/manifest.json', express.static(path.join(PUBLIC_DIR, 'manifest.json')));
 app.use('/sw.js', express.static(path.join(PUBLIC_DIR, 'sw.js')));

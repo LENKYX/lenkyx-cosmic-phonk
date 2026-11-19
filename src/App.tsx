@@ -1960,7 +1960,7 @@ export function App() {
           className="h-16 px-4 flex items-center gap-3 border-b border-white/[0.08] cursor-pointer hover:bg-white/[0.03] select-none"
         >
           <img
-            src="/covers/icon-192.png"
+            src="/covers/icon-192.png?v=43"
             alt="LENKYX"
             className="w-10 h-10 object-contain lenkyx-logo-3d shrink-0"
           />
@@ -2116,13 +2116,13 @@ export function App() {
 
       {/* === MAIN CONTENT SHELL === */}
       <div className="relative z-10 flex-1 md:pl-60 lg:pl-64 min-w-0 h-full overflow-hidden flex flex-col">
-        {/* TOP HEADER */}
-        <header className="shrink-0 z-30 mx-3 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-2.5 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-2">
-          <div className="flex items-center gap-1 shrink-0">
+        {/* TOP HEADER (YouTube Mobile & Desktop Clean Clockwork Architecture) */}
+        <header className="shrink-0 z-30 mx-2.5 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-2.5 sm:px-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 shrink-0 min-w-0">
             {(tabHistory.length > 0 || activeTab !== 'catalog') && (
               <button
                 onClick={goBackTab}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition"
+                className="p-1.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition shrink-0"
                 title="Voltar"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -2131,44 +2131,30 @@ export function App() {
 
             <div
               onClick={handleBrandTap}
-              className="flex md:hidden items-center gap-1.5 shrink-0 cursor-pointer select-none"
+              className="flex md:hidden items-center gap-2 shrink-0 cursor-pointer select-none"
             >
-              <img src="/covers/icon-192.png" alt="LENKYX" className="w-8 h-8 object-contain lenkyx-logo-3d" />
-              <span className="font-display text-xs font-black hidden xs:inline">LENKYX</span>
+              <img src="/covers/icon-192.png?v=43" alt="LENKYX" className="w-8 h-8 object-contain lenkyx-logo-3d" />
+              <div className="leading-none">
+                <span className="font-display text-sm font-black tracking-wider text-white">LENKYX</span>
+                <span className="block text-[8px] font-extrabold text-emerald-300 tracking-widest">OFICIAL</span>
+              </div>
             </div>
           </div>
 
-          {/* SEARCH OMNIBOX */}
-          <div ref={omniboxWrapRef} className="flex-1 min-w-0 max-w-2xl relative flex items-center gap-2">
+          {/* DESKTOP YOUTUBE-STYLE SEARCH OMNIBOX */}
+          <div ref={omniboxWrapRef} className="hidden md:flex flex-1 min-w-0 max-w-2xl relative items-center gap-2">
             <form
               onSubmit={handleGlobalSearchSubmit}
-              className="flex-1 min-w-0 flex items-center gap-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.11] focus-within:bg-[#0c081a] border border-white/15 focus-within:border-cyan-400/70 px-2.5 sm:px-3.5 py-1.5 shadow-inner transition"
+              className="flex-1 min-w-0 flex items-center gap-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.11] focus-within:bg-[#0c081a] border border-white/15 focus-within:border-cyan-400/70 px-3.5 py-1.5 shadow-inner transition"
             >
               <Search className="w-4 h-4 text-cyan-300 shrink-0" />
               <input
                 type="text"
                 value={globalSearch}
-                onClick={() => {
-                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                    setMobileIosSearchOpen(true);
-                  }
-                }}
-                onFocus={(e) => {
-                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                    e.currentTarget.blur();
-                    setOmniboxOpen(false);
-                    setMobileIosSearchOpen(true);
-                  } else {
-                    setOmniboxOpen(true);
-                  }
-                }}
+                onFocus={() => setOmniboxOpen(true)}
                 onChange={(e) => {
                   setGlobalSearch(e.target.value);
-                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                    setMobileIosSearchOpen(true);
-                  } else {
-                    setOmniboxOpen(true);
-                  }
+                  setOmniboxOpen(true);
                 }}
                 placeholder="Buscar músicas, artistas, clipes, filmes..."
                 className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none"
@@ -2199,22 +2185,11 @@ export function App() {
               </button>
               <button
                 type="submit"
-                className="px-2.5 sm:px-3.5 py-1 rounded-full bg-gradient-to-r from-cyan-400 to-pink-500 text-black text-[11px] font-black hover:brightness-110 shrink-0 transition"
+                className="px-3.5 py-1 rounded-full bg-gradient-to-r from-cyan-400 to-pink-500 text-black text-[11px] font-black hover:brightness-110 shrink-0 transition"
               >
                 Ir
               </button>
             </form>
-
-            {isPlayerAllowedTab && currentTrack && !musicMenuOpen && (
-              <button
-                onClick={() => setMusicMenuOpen(true)}
-                className="hidden sm:flex px-2.5 py-1.5 rounded-full bg-pink-500/25 hover:bg-pink-500/40 border border-pink-400/45 text-pink-100 text-[11px] font-black items-center gap-1 shrink-0 transition"
-                title="Abrir Player de Música"
-              >
-                <Music className="w-3.5 h-3.5" />
-                <span className="hidden xl:inline max-w-[100px] truncate">{currentTrack.title}</span>
-              </button>
-            )}
 
             {omniboxOpen && (
               <div className="absolute left-0 right-0 top-full mt-2 z-[60] rounded-2xl bg-[#090616]/98 backdrop-blur-2xl border border-cyan-400/30 shadow-[0_24px_60px_rgba(0,0,0,0.9)] overflow-hidden">
@@ -2256,33 +2231,43 @@ export function App() {
             )}
           </div>
 
-          {/* Right Compact Controls */}
+          {/* Right Clean Action Bar (Zero Overlap on ANY Phone Screen) */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Mobile Clean Spotlight Search Icon */}
+            <button
+              type="button"
+              onClick={() => setMobileIosSearchOpen(true)}
+              className="md:hidden w-9 h-9 rounded-full bg-white/[0.09] hover:bg-white/20 border border-white/15 flex items-center justify-center text-cyan-300 shrink-0 transition"
+              title="Buscar músicas, artistas, clipes, filmes..."
+            >
+              <Search className="w-4 h-4" />
+            </button>
+
             <button
               type="button"
               onClick={() => setMediaPlayerMenuOpen(true)}
-              className={`px-2 sm:px-2.5 py-1.5 rounded-full border text-[11px] font-black flex items-center gap-1 shrink-0 transition ${
+              className={`w-9 h-9 md:w-auto md:px-2.5 md:py-1.5 rounded-full border text-[11px] font-black flex items-center justify-center gap-1 shrink-0 transition ${
                 isPlaying && backgroundMode
                   ? 'bg-gradient-to-r from-pink-500/25 via-purple-500/25 to-cyan-500/25 border-cyan-400/60 text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.35)]'
-                  : 'bg-white/10 hover:bg-white/20 border-white/15 text-slate-100'
+                  : 'bg-white/[0.08] hover:bg-white/20 border-white/15 text-slate-100'
               }`}
               title="Menu Media Player · Continuar tocando com celular fechado"
             >
-              <Disc3 className={`w-3.5 h-3.5 text-cyan-300 ${isPlaying ? 'animate-spin' : ''}`} />
-              <span className="hidden xs:inline">Player</span>
+              <Disc3 className={`w-4 h-4 md:w-3.5 md:h-3.5 text-cyan-300 ${isPlaying ? 'animate-spin' : ''}`} />
+              <span className="hidden md:inline">Player</span>
             </button>
             {(isPlaying || currentTrack) && (
               <button
                 type="button"
                 onClick={handleEmergencyStop}
-                className="px-2.5 py-1.5 rounded-full bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/50 text-rose-200 text-[10px] sm:text-[11px] font-black flex items-center gap-1 shrink-0 transition shadow-[0_0_15px_rgba(244,63,94,0.28)]"
+                className="w-9 h-9 md:w-auto md:px-2.5 md:py-1.5 rounded-full bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/50 text-rose-200 text-[11px] font-black flex items-center justify-center gap-1 shrink-0 transition shadow-[0_0_15px_rgba(244,63,94,0.28)]"
                 title="Botão de Segurança: Parar som, vídeo e segundo plano imediatamente"
               >
-                <Power className="w-3.5 h-3.5 text-rose-300" />
-                <span className="hidden sm:inline">Parar Tudo</span>
+                <Power className="w-4 h-4 md:w-3.5 md:h-3.5 text-rose-300" />
+                <span className="hidden md:inline">Parar Tudo</span>
               </button>
             )}
-            <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.07] border border-white/10">
+            <div className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.07] border border-white/10">
               <button
                 onClick={handleToggleMute}
                 className="text-cyan-300 hover:text-white transition"
@@ -2301,7 +2286,7 @@ export function App() {
                 step={0.02}
                 value={muted ? 0 : volume}
                 onChange={(e) => handleVolume(Number(e.target.value))}
-                className="hidden lg:block w-16 accent-cyan-400 cursor-pointer"
+                className="w-16 accent-cyan-400 cursor-pointer"
               />
             </div>
 
@@ -2309,14 +2294,14 @@ export function App() {
             <button
               type="button"
               onClick={() => setGamingModalOpen(true)}
-              className={`px-2.5 py-1.5 rounded-full text-[11px] font-black flex items-center gap-1 transition border ${
+              className={`w-9 h-9 md:w-auto md:px-2.5 md:py-1.5 rounded-full text-[11px] font-black flex items-center justify-center gap-1 transition border shrink-0 ${
                 gamingModeEnabled || gamingPipOpen
                   ? 'bg-cyan-500/25 border-cyan-400 text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.35)]'
-                  : 'bg-white/[0.07] hover:bg-white/15 border-white/15 text-slate-100'
+                  : 'bg-white/[0.08] hover:bg-white/15 border-white/15 text-slate-100'
               }`}
               title="Ouvir músicas enquanto joga no celular, PC ou console"
             >
-              <Gamepad2 className="w-3.5 h-3.5 text-cyan-300" />
+              <Gamepad2 className="w-4 h-4 md:w-3.5 md:h-3.5 text-cyan-300" />
               <span className="hidden md:inline">Jogos</span>
             </button>
 
@@ -2324,20 +2309,20 @@ export function App() {
               type="button"
               data-no-translate="true"
               onClick={() => setLangModalOpen(true)}
-              className="px-2 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/15 border border-white/15 text-slate-100 text-[11px] font-black flex items-center gap-1 transition"
+              className="w-9 h-9 md:w-auto md:px-2 md:py-1.5 rounded-full bg-white/[0.08] hover:bg-white/15 border border-white/15 text-slate-100 text-sm md:text-[11px] font-black flex items-center justify-center gap-1 transition shrink-0"
               title="Auto-Language & World Regions (100+ Languages)"
             >
               <span>{getLanguageMeta(userLang).flag}</span>
-              <span className="hidden sm:inline uppercase">{getLanguageMeta(userLang).code}</span>
+              <span className="hidden md:inline uppercase">{getLanguageMeta(userLang).code}</span>
             </button>
 
-            {/* Quick PIX QR + Ranking Pills */}
+            {/* Quick PIX QR + Share (Desktop pills, mobile lives cleanly in YouTube Chip Bar below) */}
             <button
               onClick={() => {
                 setPixInitialTab('donate');
                 setPixOpen(true);
               }}
-              className="px-2.5 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/45 text-emerald-100 text-[11px] font-black flex items-center gap-1 transition"
+              className="hidden sm:flex px-2.5 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/45 text-emerald-100 text-[11px] font-black items-center gap-1 transition"
               title="Abrir QR Code PIX & Apoiar Igrejas/Combate à Fome"
             >
               <QrCode className="w-3.5 h-3.5 text-emerald-300" />
@@ -2349,24 +2334,23 @@ export function App() {
                 setPixInitialTab('ranking');
                 setPixOpen(true);
               }}
-              className="hidden sm:flex px-2.5 py-1.5 rounded-full bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/40 text-amber-100 text-[11px] font-black items-center gap-1 transition"
+              className="hidden lg:flex px-2.5 py-1.5 rounded-full bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/40 text-amber-100 text-[11px] font-black items-center gap-1 transition"
               title="Classificação de Apoio & Coleção de Bonequinhos"
             >
               <Crown className="w-3.5 h-3.5 text-amber-300" />
-              <span className="hidden lg:inline">Ranking</span>
+              <span>Ranking</span>
             </button>
 
-            {/* Quick Invite Friends Button */}
             <button
               onClick={() => {
                 setShareTrack(null);
                 setShareOpen(true);
               }}
-              className="px-2.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/35 hover:to-cyan-500/35 border border-emerald-400/40 text-emerald-100 text-[11px] font-black flex items-center gap-1 transition"
+              className="hidden sm:flex px-2.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/35 hover:to-cyan-500/35 border border-emerald-400/40 text-emerald-100 text-[11px] font-black items-center gap-1 transition"
               title="Compartilhe com amigos"
             >
               <Share2 className="w-3.5 h-3.5 text-emerald-300" />
-              <span className="hidden sm:inline">Compartilhar</span>
+              <span className="hidden lg:inline">Compartilhar</span>
             </button>
 
             {mode === 'creator' && (
@@ -2382,74 +2366,120 @@ export function App() {
           </div>
         </header>
 
+        {/* YOUTUBE-STYLE SCROLLABLE CATEGORY & QUICK-ACCESS CHIP BAR */}
+        <div className="shrink-0 z-20 px-2.5 sm:px-5 pt-2 pb-1">
+          <div className="max-w-[1380px] mx-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {(
+              [
+                { id: 'catalog' as TabId, label: '🎵 Músicas' },
+                { id: 'explore' as TabId, label: '🌍 Clipes & Artistas' },
+                { id: 'movies' as TabId, label: '🎬 Cinema' },
+                { id: 'sports' as TabId, label: '🏆 Ao Vivo' },
+                { id: 'offline' as TabId, label: '📱 Offline' },
+                { id: 'studio' as TabId, label: '🤖 Criar IA' },
+                { id: 'playlists' as TabId, label: '📁 Listas' },
+                { id: 'arcade' as TabId, label: '👾 Jogos' },
+              ] as { id: TabId; label: string }[]
+            ).map((chip) => {
+              const active = activeTab === chip.id;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => navigateTab(chip.id)}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap transition shrink-0 ${
+                    active
+                      ? 'bg-white text-black shadow-[0_0_14px_rgba(255,255,255,0.35)]'
+                      : 'bg-white/[0.07] hover:bg-white/[0.14] border border-white/10 text-slate-200'
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => {
+                setPixInitialTab('donate');
+                setPixOpen(true);
+              }}
+              className="sm:hidden px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/35 text-emerald-200 text-[11px] font-extrabold whitespace-nowrap shrink-0"
+            >
+              💚 PIX
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShareTrack(null);
+                setShareOpen(true);
+              }}
+              className="sm:hidden px-3 py-1.5 rounded-xl bg-cyan-500/20 border border-cyan-400/35 text-cyan-200 text-[11px] font-extrabold whitespace-nowrap shrink-0"
+            >
+              📤 Compartilhar
+            </button>
+            {!isAndroidApk() && (
+              <button
+                type="button"
+                onClick={() => setInstallModalOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-400/20 to-emerald-400/20 border border-cyan-400/40 text-cyan-100 text-[11px] font-extrabold whitespace-nowrap shrink-0"
+              >
+                📲 Baixar App
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* ACTIVE VIEW CONTAINER */}
         <main id="lenkyx-main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full">
-          <div className="w-full max-w-[1380px] mx-auto px-3 sm:px-5 pt-3">
-            {/* Real-Time Active Listeners + Daily PIX Goal + Voluntary Share Strip */}
-            <div className="mb-3 rounded-2xl cosmic-card-3d px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5 border border-white/10">
-              <div className="flex flex-wrap items-center gap-3 text-xs">
-                <div className="inline-flex items-center gap-1.5 font-extrabold text-emerald-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <Users className="w-3.5 h-3.5" />
-                  <span>
-                    {liveStats.onlineCount}{' '}
-                    {liveStats.onlineCount === 1 ? 'pessoa curtindo agora' : 'pessoas curtindo agora'}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPixInitialTab('donate');
-                    setPixOpen(true);
-                  }}
-                  className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-pink-500/20 border border-pink-400/30 transition"
-                >
-                  <Target className="w-3.5 h-3.5 text-pink-400" />
-                  <span className="text-[11px] font-bold text-white">
-                    Meta PIX Hoje:{' '}
-                    <span className="font-mono text-cyan-300">
-                      R$ {liveStats.dailyCollectedBrl.toFixed(0)} / R$ {liveStats.dailyGoalBrl.toFixed(0)}
-                    </span>
-                  </span>
-                  <span className="w-12 h-1.5 rounded-full bg-black/50 overflow-hidden hidden sm:inline-block">
-                    <span
-                      style={{ width: `${dailyPixPct}%` }}
-                      className="block h-full bg-gradient-to-r from-emerald-400 to-pink-500"
-                    />
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPixInitialTab('ranking');
-                    setPixOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 hover:bg-amber-500/30 border border-amber-400/35 text-[11px] font-black text-amber-200 transition"
-                >
-                  <Crown className="w-3.5 h-3.5 text-amber-300" />
-                  <span>
-                    {liveStats.leaderboard && liveStats.leaderboard[0]
-                      ? `Top #1: ${liveStats.leaderboard[0].name} (R$ ${liveStats.leaderboard[0].totalBrl.toFixed(0)})`
-                      : 'Ranking & Bonequinhos 👾'}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShareTrack(null);
-                    setShareOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/15 hover:bg-orange-500/30 border border-orange-400/35 text-[11px] font-black text-orange-200 transition"
-                >
-                  <Flame className="w-3.5 h-3.5 text-orange-400" />
-                  <span>
-                    {liveStats.popularityLevel || 'Em Alta'} · {Number(liveStats.popularityScore || 480).toLocaleString('pt-BR')} pts
-                  </span>
-                </button>
+          <div className="w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-2">
+            {/* Compact 1-Line Live Cosmic Status Ticker (No giant vertical clutter!) */}
+            <div className="mb-3 rounded-2xl bg-white/[0.04] border border-white/10 px-3 py-1.5 flex items-center gap-2.5 overflow-x-auto no-scrollbar">
+              <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-emerald-300 whitespace-nowrap shrink-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span>
+                  {liveStats.onlineCount} {liveStats.onlineCount === 1 ? 'ouvindo' : 'ouvindo'}
+                </span>
               </div>
+
+              <span className="text-white/20 shrink-0">•</span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPixInitialTab('donate');
+                  setPixOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white whitespace-nowrap shrink-0 hover:text-cyan-300 transition"
+              >
+                <Target className="w-3 h-3 text-pink-400" />
+                <span>
+                  PIX Hoje:{' '}
+                  <span className="font-mono text-cyan-300">
+                    R$ {liveStats.dailyCollectedBrl.toFixed(0)}/{liveStats.dailyGoalBrl.toFixed(0)}
+                  </span>
+                </span>
+              </button>
+
+              <span className="text-white/20 shrink-0">•</span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPixInitialTab('ranking');
+                  setPixOpen(true);
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-200 whitespace-nowrap shrink-0 hover:text-white transition"
+              >
+                <Crown className="w-3 h-3 text-amber-300" />
+                <span>
+                  {liveStats.leaderboard && liveStats.leaderboard[0]
+                    ? `Top #1 ${liveStats.leaderboard[0].name}`
+                    : 'Ranking & Bonequinhos'}
+                </span>
+              </button>
+
+              <span className="text-white/20 shrink-0">•</span>
 
               <button
                 type="button"
@@ -2457,10 +2487,12 @@ export function App() {
                   setShareTrack(null);
                   setShareOpen(true);
                 }}
-                className="text-[11px] font-bold text-cyan-200 hover:text-white flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500/15 to-emerald-500/15 hover:from-cyan-500/30 hover:to-emerald-500/30 border border-cyan-400/30 transition"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-200 whitespace-nowrap shrink-0 hover:text-white transition"
               >
-                <Share2 className="w-3 h-3 text-emerald-300" />
-                <span>Curtiu o som e os vídeos sem anúncios? Manda pros amigos!</span>
+                <Flame className="w-3 h-3 text-orange-400" />
+                <span>
+                  {liveStats.popularityLevel || 'Em Alta'} · {Number(liveStats.popularityScore || 480).toLocaleString('pt-BR')} pts
+                </span>
               </button>
             </div>
 
@@ -2728,21 +2760,41 @@ export function App() {
         />
       )}
 
-      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      {/* YOUTUBE-STYLE 5-TAB MOBILE BOTTOM NAVIGATION BAR */}
       {!watchingMovie && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#090516]/96 backdrop-blur-xl border-t border-white/10 grid grid-cols-7 px-0.5">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#070312]/96 backdrop-blur-2xl border-t border-white/10 grid grid-cols-5 px-2">
           {(
             [
               { id: 'catalog' as TabId, label: 'Som', icon: <Music className="w-4 h-4" /> },
               { id: 'explore' as TabId, label: 'Clipes', icon: <Globe2 className="w-4 h-4" /> },
+              { id: 'studio' as TabId, label: 'Criar', icon: <Wand2 className="w-4 h-4" />, center: true },
               { id: 'movies' as TabId, label: 'Cinema', icon: <Clapperboard className="w-4 h-4" /> },
-              { id: 'sports' as TabId, label: 'Ao Vivo', icon: <Trophy className="w-4 h-4" /> },
               { id: 'offline' as TabId, label: 'Offline', icon: <Car className="w-4 h-4" /> },
-              { id: 'studio' as TabId, label: 'Criar IA', icon: <Wand2 className="w-4 h-4" /> },
-              { id: 'playlists' as TabId, label: 'Listas', icon: <ListMusic className="w-4 h-4" /> },
-            ] as { id: TabId; label: string; icon: React.ReactNode }[]
+            ] as { id: TabId; label: string; icon: React.ReactNode; center?: boolean }[]
           ).map((item) => {
             const active = activeTab === item.id;
+            if (item.center) {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => navigateTab(item.id)}
+                  className="flex flex-col items-center justify-center gap-0.5 py-1 transition"
+                >
+                  <span
+                    className={`w-10 h-7 rounded-full flex items-center justify-center shadow-[0_0_16px_rgba(236,72,153,0.45)] transition ${
+                      active
+                        ? 'bg-gradient-to-r from-pink-500 to-cyan-400 text-black'
+                        : 'bg-white/15 text-white border border-white/20'
+                    }`}
+                  >
+                    {item.icon}
+                  </span>
+                  <span className={`text-[9px] font-black ${active ? 'text-cyan-300' : 'text-slate-300'}`}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
             return (
               <button
                 key={item.id}
@@ -2752,7 +2804,7 @@ export function App() {
                 }`}
               >
                 {item.icon}
-                <span className="text-[9px] font-bold truncate max-w-full">{item.label}</span>
+                <span className="text-[10px] font-bold truncate max-w-full">{item.label}</span>
               </button>
             );
           })}
