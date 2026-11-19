@@ -1,190 +1,57 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
 import {
-  Sparkles,
-  Rocket,
-  Shield,
-  Trophy,
+  Activity,
+  ArrowLeft,
+  Bike,
+  Brain,
+  Bug,
+  Car,
+  CloudRain,
   Compass,
-  PackageOpen,
-  Crosshair,
-  Volume2,
-  VolumeX,
+  Eye,
+  Footprints,
   Maximize2,
+  MessageCircle,
   Minimize2,
   Send,
+  Sparkles,
+  Sun,
+  Trees,
   Users,
-  Award,
-  Zap,
-  ChevronUp,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
+  Volume2,
+  VolumeX,
   X,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
-interface GalaxyWeapon {
-  id: string;
-  name: string;
-  rarity: string;
-  costShards: number;
-  damage: number;
-  cooldownMs: number;
-  color: string;
-  description: string;
-}
-
-interface CollectorRelic {
-  id: string;
-  name: string;
-  rarity: string;
-  emoji: string;
-  biome: string;
-  value: number;
-}
-
-interface WorldQuest {
-  id: string;
-  title: string;
-  description: string;
-  target: number;
-  rewardShards: number;
-  rewardXp: number;
-  rewardBadge: string;
-}
-
-interface ExplorerState {
-  playerId: string;
-  playerName: string;
-  level: number;
-  xp: number;
-  shards: number;
-  unlockedWeapons: string[];
-  equippedWeapon: string;
-  relics: { id: string; count: number; firstFoundAt: string }[];
-  badges: string[];
-  stats: {
-    enemiesDefeated: number;
-    chestsOpened: number;
-    bossesDefeated: number;
-    biomesVisited: string[];
+interface EcosystemSnapshot {
+  timeOfDay: number;
+  weather: string;
+  temperatureC: number;
+  oxygenPct: number;
+  soilFertilityPct: number;
+  biodiversityIndex: number;
+  galaxyMood: string;
+  speciesCounts: {
+    bacteriaBillions: number;
+    plantsAndFlowers: number;
+    trees: number;
+    insects: number;
+    birds: number;
+    landAnimals: number;
+    marineLife: number;
+    consciousNpcs: number;
+    activeVehicles: number;
   };
-  claimedQuests: string[];
+  guyState: {
+    name: string;
+    mood: string;
+    currentGoal: string;
+    location: string;
+  };
+  decisions: { id: string; ts: string; domain: string; decision: string }[];
 }
-
-interface PeerExplorer {
-  playerId: string;
-  playerName: string;
-  avatarColor: string;
-  biomeId: string;
-  x: number;
-  y: number;
-  weaponId: string;
-  level: number;
-}
-
-interface DiscoveryItem {
-  id: string;
-  playerName: string;
-  message: string;
-  rarity: string;
-  createdAt: string;
-}
-
-interface SectorChatItem {
-  id: string;
-  playerName: string;
-  message: string;
-  createdAt: string;
-}
-
-interface BiomeConfig {
-  id: string;
-  name: string;
-  subtitle: string;
-  bgTop: string;
-  bgBottom: string;
-  gridColor: string;
-  accent: string;
-  enemyName: string;
-  bossName: string;
-  nextBiomeId: string;
-  nextBiomeName: string;
-  prevBiomeId: string;
-  prevBiomeName: string;
-}
-
-const BIOMES: Record<string, BiomeConfig> = {
-  vale_neon: {
-    id: 'vale_neon',
-    name: 'Vale Neon de Éter',
-    subtitle: 'Setor 01 · Cristais bioluminescentes e ruínas antigas',
-    bgTop: '#041226',
-    bgBottom: '#06283d',
-    gridColor: 'rgba(34, 211, 238, 0.14)',
-    accent: '#22d3ee',
-    enemyName: 'Sentinela de Éter',
-    bossName: 'Guardião Cristalino Alpha',
-    nextBiomeId: 'deserto_plasma',
-    nextBiomeName: 'Deserto de Plasma Solar',
-    prevBiomeId: 'cidadela_lenkyx',
-    prevBiomeName: 'Cidadela Orbital LENKYX',
-  },
-  deserto_plasma: {
-    id: 'deserto_plasma',
-    name: 'Deserto de Plasma Solar',
-    subtitle: 'Setor 02 · Dunas ionizadas sob sóis gêmeos dourados',
-    bgTop: '#1f0d05',
-    bgBottom: '#3b1506',
-    gridColor: 'rgba(251, 191, 36, 0.14)',
-    accent: '#f59e0b',
-    enemyName: 'Escorpião de Plasma',
-    bossName: 'Colosso Solar Dourado',
-    nextBiomeId: 'abismo_negro',
-    nextBiomeName: 'Abismo do Buraco Negro',
-    prevBiomeId: 'vale_neon',
-    prevBiomeName: 'Vale Neon de Éter',
-  },
-  abismo_negro: {
-    id: 'abismo_negro',
-    name: 'Abismo do Buraco Negro',
-    subtitle: 'Setor 03 · Horizonte de eventos e gravidade distorcida',
-    bgTop: '#0b021a',
-    bgBottom: '#1c0538',
-    gridColor: 'rgba(236, 72, 153, 0.15)',
-    accent: '#ec4899',
-    enemyName: 'Espectro do Vazio',
-    bossName: 'Titã do Buraco Negro',
-    nextBiomeId: 'cidadela_lenkyx',
-    nextBiomeName: 'Cidadela Orbital LENKYX',
-    prevBiomeId: 'deserto_plasma',
-    prevBiomeName: 'Deserto de Plasma Solar',
-  },
-  cidadela_lenkyx: {
-    id: 'cidadela_lenkyx',
-    name: 'Cidadela Orbital LENKYX',
-    subtitle: 'Setor 04 · Metrópole espacial 3026 e Naves-Mãe',
-    bgTop: '#09092b',
-    bgBottom: '#1d0b3b',
-    gridColor: 'rgba(168, 85, 247, 0.18)',
-    accent: '#a855f7',
-    enemyName: 'Drone Cibernético 3026',
-    bossName: 'Nave-Mãe Phonk Suprema',
-    nextBiomeId: 'vale_neon',
-    nextBiomeName: 'Vale Neon de Éter',
-    prevBiomeId: 'abismo_negro',
-    prevBiomeName: 'Abismo do Buraco Negro',
-  },
-};
-
-const RARITY_COLORS: Record<string, string> = {
-  Inicial: 'text-cyan-300 border-cyan-400/40 bg-cyan-500/15',
-  Comum: 'text-slate-200 border-slate-400/40 bg-slate-500/15',
-  Raro: 'text-pink-300 border-pink-400/40 bg-pink-500/15',
-  Épico: 'text-purple-300 border-purple-400/45 bg-purple-500/20',
-  Lendário: 'text-amber-300 border-amber-400/50 bg-amber-500/20',
-  Mítico: 'text-rose-300 border-rose-400/60 bg-rose-500/25',
-};
 
 interface Props {
   user: UserProfile | null;
@@ -192,1311 +59,1096 @@ interface Props {
   onExit?: () => void;
 }
 
-function playSynthSfx(enabled: boolean, type: 'shoot' | 'hit' | 'chest' | 'portal' | 'level') {
-  if (!enabled || typeof window === 'undefined') return;
-  try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = (playSynthSfx as unknown as { ctx?: AudioContext }).ctx || new AudioCtx();
-    (playSynthSfx as unknown as { ctx?: AudioContext }).ctx = ctx;
-    if (ctx.state === 'suspended') void ctx.resume();
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    const now = ctx.currentTime;
-
-    if (type === 'shoot') {
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(620, now);
-      osc.frequency.exponentialRampToValueAtTime(160, now + 0.08);
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-      osc.start(now);
-      osc.stop(now + 0.09);
-    } else if (type === 'hit') {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(190, now);
-      osc.frequency.exponentialRampToValueAtTime(55, now + 0.11);
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
-      osc.start(now);
-      osc.stop(now + 0.12);
-    } else if (type === 'chest') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(523, now);
-      osc.frequency.setValueAtTime(659, now + 0.07);
-      osc.frequency.setValueAtTime(1046, now + 0.14);
-      gain.gain.setValueAtTime(0.09, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-      osc.start(now);
-      osc.stop(now + 0.29);
-    } else if (type === 'portal') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(220, now);
-      osc.frequency.exponentialRampToValueAtTime(880, now + 0.28);
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-      osc.start(now);
-      osc.stop(now + 0.31);
-    } else {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(440, now);
-      osc.frequency.setValueAtTime(880, now + 0.1);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-      osc.start(now);
-      osc.stop(now + 0.36);
+function createWindowTexture(accentHex: string): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 256;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#090d1a';
+  ctx.fillRect(0, 0, 128, 256);
+  for (let y = 8; y < 248; y += 16) {
+    for (let x = 8; x < 120; x += 14) {
+      const lit = Math.random() > 0.32;
+      ctx.fillStyle = lit ? (Math.random() > 0.8 ? accentHex : '#fef08a') : '#162038';
+      ctx.globalAlpha = lit ? 0.45 + Math.random() * 0.5 : 0.7;
+      ctx.fillRect(x, y, 8, 10);
     }
-  } catch {
-    // ignore audio synth errors
   }
+  ctx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function buildCarMesh(colorHex: string): THREE.Group {
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: colorHex,
+    metalness: 0.78,
+    roughness: 0.22,
+  });
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: '#0f172a',
+    metalness: 0.9,
+    roughness: 0.1,
+  });
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.58, 4.35), bodyMat);
+  chassis.position.y = 0.52;
+  g.add(chassis);
+
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.52, 2.2), glassMat);
+  cabin.position.set(0, 1.0, -0.15);
+  g.add(cabin);
+
+  const underglow = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.15, 4.4),
+    new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
+  );
+  underglow.rotation.x = Math.PI / 2;
+  underglow.position.y = 0.05;
+  g.add(underglow);
+
+  const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 16);
+  const wheelMat = new THREE.MeshStandardMaterial({ color: '#111827', roughness: 0.7 });
+  [
+    [-1.02, 0.38, 1.35],
+    [1.02, 0.38, 1.35],
+    [-1.02, 0.38, -1.35],
+    [1.02, 0.38, -1.35],
+  ].forEach(([x, y, z]) => {
+    const w = new THREE.Mesh(wheelGeo, wheelMat);
+    w.rotation.z = Math.PI / 2;
+    w.position.set(x, y, z);
+    g.add(w);
+  });
+
+  // Headlights & Taillights
+  const headMat = new THREE.MeshBasicMaterial({ color: '#fef9c3' });
+  const tailMat = new THREE.MeshBasicMaterial({ color: '#ef4444' });
+  [-0.68, 0.68].forEach((x) => {
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.14, 0.1), headMat);
+    hl.position.set(x, 0.55, 2.18);
+    g.add(hl);
+    const tl = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.14, 0.1), tailMat);
+    tl.position.set(x, 0.58, -2.18);
+    g.add(tl);
+  });
+
+  return g;
+}
+
+function buildMotorcycleMesh(colorHex: string): THREE.Group {
+  const g = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.85, roughness: 0.2 });
+  const wheelGeo = new THREE.TorusGeometry(0.36, 0.11, 10, 20);
+  const wheelMat = new THREE.MeshStandardMaterial({ color: '#0f172a', roughness: 0.6 });
+
+  const fw = new THREE.Mesh(wheelGeo, wheelMat);
+  fw.rotation.y = Math.PI / 2;
+  fw.position.set(0, 0.42, 0.88);
+  g.add(fw);
+
+  const rw = new THREE.Mesh(wheelGeo, wheelMat);
+  rw.rotation.y = Math.PI / 2;
+  rw.position.set(0, 0.42, -0.88);
+  g.add(rw);
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.44, 1.55), frameMat);
+  body.position.set(0, 0.72, 0);
+  g.add(body);
+
+  const headlight = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), new THREE.MeshBasicMaterial({ color: '#67e8f9' }));
+  headlight.position.set(0, 0.92, 0.9);
+  g.add(headlight);
+
+  return g;
+}
+
+function buildHumanMesh(shirtColor: string, isGuy = false): THREE.Group {
+  const g = new THREE.Group();
+  const skin = new THREE.MeshStandardMaterial({ color: '#f1c27d', roughness: 0.65 });
+  const shirt = new THREE.MeshStandardMaterial({
+    color: shirtColor,
+    emissive: isGuy ? new THREE.Color('#0284c7') : new THREE.Color('#000000'),
+    emissiveIntensity: isGuy ? 0.28 : 0,
+  });
+  const pants = new THREE.MeshStandardMaterial({ color: isGuy ? '#d6c096' : '#1e293b' });
+
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.78, 0.34), shirt);
+  torso.position.y = 1.15;
+  g.add(torso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 14), skin);
+  head.position.y = 1.78;
+  g.add(head);
+
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.74, 0.24), pants);
+  legL.position.set(-0.16, 0.38, 0);
+  legL.name = 'legL';
+  g.add(legL);
+
+  const legR = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.74, 0.24), pants);
+  legR.position.set(0.16, 0.38, 0);
+  legR.name = 'legR';
+  g.add(legR);
+
+  if (isGuy) {
+    const aura = new THREE.Mesh(
+      new THREE.RingGeometry(0.55, 0.72, 24),
+      new THREE.MeshBasicMaterial({ color: '#38bdf8', side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+    );
+    aura.rotation.x = Math.PI / 2;
+    aura.position.y = 0.05;
+    g.add(aura);
+  }
+  return g;
+}
+
+function buildAnimalMesh(kind: 'dog' | 'deer' | 'wolf'): THREE.Group {
+  const g = new THREE.Group();
+  const color = kind === 'deer' ? '#b45309' : kind === 'wolf' ? '#64748b' : '#d97706';
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.75 });
+  const scale = kind === 'deer' ? 1.25 : kind === 'wolf' ? 1.05 : 0.75;
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.45 * scale, 0.42 * scale, 0.95 * scale), mat);
+  body.position.y = 0.55 * scale;
+  g.add(body);
+
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.32 * scale, 0.32 * scale, 0.42 * scale), mat);
+  head.position.set(0, (kind === 'deer' ? 1.05 : 0.82) * scale, 0.52 * scale);
+  g.add(head);
+
+  const legGeo = new THREE.BoxGeometry(0.12 * scale, 0.48 * scale, 0.12 * scale);
+  [
+    [-0.14, 0.24, 0.32],
+    [0.14, 0.24, 0.32],
+    [-0.14, 0.24, -0.32],
+    [0.14, 0.24, -0.32],
+  ].forEach(([x, y, z]) => {
+    const leg = new THREE.Mesh(legGeo, mat);
+    leg.position.set(x * scale, y * scale, z * scale);
+    g.add(leg);
+  });
+  return g;
+}
+
+function buildTreeMesh(isPalm: boolean): THREE.Group {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.34, isPalm ? 5.5 : 3.6, 8),
+    new THREE.MeshStandardMaterial({ color: '#78350f', roughness: 0.9 })
+  );
+  trunk.position.y = isPalm ? 2.75 : 1.8;
+  g.add(trunk);
+
+  const crownMat = new THREE.MeshStandardMaterial({
+    color: isPalm ? '#22c55e' : '#16a34a',
+    roughness: 0.8,
+  });
+  if (isPalm) {
+    for (let i = 0; i < 6; i++) {
+      const frond = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.12, 2.4), crownMat);
+      frond.position.y = 5.4;
+      frond.rotation.y = (i / 6) * Math.PI * 2;
+      frond.rotation.x = 0.38;
+      g.add(frond);
+    }
+  } else {
+    const foliage = new THREE.Mesh(new THREE.DodecahedronGeometry(1.9, 1), crownMat);
+    foliage.position.y = 4.2;
+    g.add(foliage);
+  }
+  return g;
 }
 
 export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit }) => {
-  const [playerId] = useState(() => {
-    if (user?.id) return user.id;
-    const saved = localStorage.getItem('lenkyx_arcade_explorer_id');
-    if (saved) return saved;
-    const gen = `exp-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem('lenkyx_arcade_explorer_id', gen);
-    return gen;
-  });
-  const playerName = user?.name || 'Explorador Galáctico';
+  const mountRef = useRef<HTMLDivElement | null>(null);
+  const [fullscreen, setFullscreen] = useState(true);
+  const [eco, setEco] = useState<EcosystemSnapshot | null>(null);
+  const [speedKmh, setSpeedKmh] = useState(0);
+  const [inVehicleType, setInVehicleType] = useState<'none' | 'car' | 'moto'>('none');
+  const [nearVehicleLabel, setNearVehicleLabel] = useState<string | null>(null);
+  const [nearGuy, setNearGuy] = useState(false);
+  const [microscopeOpen, setMicroscopeOpen] = useState(false);
+  const [brainLogOpen, setBrainLogOpen] = useState(false);
+  const [npcChatOpen, setNpcChatOpen] = useState(false);
+  const [npcVoice, setNpcVoice] = useState(true);
+  const [npcInput, setNpcInput] = useState('');
+  const [npcMessages, setNpcMessages] = useState<{ id: string; who: string; text: string }[]>([
+    {
+      id: 'guy0',
+      who: 'Guy (Consciente)',
+      text: 'Ei! Que bom te ver em Free City! Eu saí do roteiro hoje. Pega um carro ou moto, ou vem caminhar pela natureza viva!',
+    },
+  ]);
+  const [onlinePeersCount, setOnlinePeersCount] = useState(1);
 
-  const [explorer, setExplorer] = useState<ExplorerState | null>(null);
-  const [weapons, setWeapons] = useState<GalaxyWeapon[]>([]);
-  const [relicCatalog, setRelicCatalog] = useState<CollectorRelic[]>([]);
-  const [quests, setQuests] = useState<WorldQuest[]>([]);
-  const [leaderboard, setLeaderboard] = useState<
-    { playerId: string; playerName: string; level: number; xp: number; relicCount: number; weaponCount: number }[]
-  >([]);
-  const [discoveries, setDiscoveries] = useState<DiscoveryItem[]>([]);
-  const [sectorChat, setSectorChat] = useState<SectorChatItem[]>([]);
-  const [onlineCount, setOnlineCount] = useState(1);
-  const [currentBiomeId, setCurrentBiomeId] = useState<string>('vale_neon');
-  const [panelTab, setPanelTab] = useState<'arsenal' | 'relics' | 'quests' | 'online'>('arsenal');
-  const [sfxEnabled, setSfxEnabled] = useState(true);
-  const [fullscreen, setFullscreen] = useState(false);
-  const [chatText, setChatText] = useState('');
-  const [bossHud, setBossHud] = useState<{ name: string; hp: number; maxHp: number } | null>(null);
-  const [bannerMsg, setBannerMsg] = useState<string>('🌌 Bem-vindo ao Novo Mundo: Nova Aetheris!');
-
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const peersRef = useRef<PeerExplorer[]>([]);
-  const explorerRef = useRef<ExplorerState | null>(null);
-  const weaponsRef = useRef<GalaxyWeapon[]>([]);
-  const biomeRef = useRef<string>('vale_neon');
-  const sfxRef = useRef(true);
-
-  useEffect(() => {
-    explorerRef.current = explorer;
-  }, [explorer]);
-  useEffect(() => {
-    weaponsRef.current = weapons;
-  }, [weapons]);
-  useEffect(() => {
-    biomeRef.current = currentBiomeId;
-  }, [currentBiomeId]);
-  useEffect(() => {
-    sfxRef.current = sfxEnabled;
-  }, [sfxEnabled]);
-
-  // Game engine mutable state
-  const gameRef = useRef({
-    px: 450,
-    py: 260,
-    hp: 100,
-    maxHp: 100,
-    aimX: 600,
-    aimY: 260,
-    dashCooldown: 0,
-    dashActiveUntil: 0,
-    lastShotAt: 0,
-    firing: false,
-    keys: new Set<string>(),
-    joyDir: { x: 0, y: 0 },
-    bullets: [] as {
-      x: number;
-      y: number;
-      vx: number;
-      vy: number;
-      color: string;
-      damage: number;
-      radius: number;
-      pierce?: boolean;
-      vortex?: boolean;
-      life: number;
-    }[],
-    enemies: [] as {
-      id: number;
-      x: number;
-      y: number;
-      hp: number;
-      maxHp: number;
-      speed: number;
-      radius: number;
-      isBoss: boolean;
-      name: string;
-      color: string;
-    }[],
-    chests: [] as { id: number; x: number; y: number; rare: boolean }[],
-    particles: [] as { x: number; y: number; vx: number; vy: number; color: string; life: number; size: number }[],
-    stars: Array.from({ length: 70 }, () => ({
-      x: Math.random() * 900,
-      y: Math.random() * 520,
-      r: 0.8 + Math.random() * 1.8,
-      tw: Math.random() * Math.PI * 2,
-    })),
-    nextEntityId: 1,
-    pendingShards: 0,
-    pendingXp: 0,
-    pendingEnemies: 0,
-    pendingChests: 0,
-    pendingBosses: 0,
-    biomeKills: 0,
+  // Mobile / keyboard unified input state
+  const keysRef = useRef<Record<string, boolean>>({});
+  const joyRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const actionTriggerRef = useRef<{ toggleVehicle: () => void; talkNpc: () => void; spawnTree: () => void }>({
+    toggleVehicle: () => {},
+    talkNpc: () => {},
+    spawnTree: () => {},
   });
 
-  const showBanner = useCallback((msg: string) => {
-    setBannerMsg(msg);
-  }, []);
-
-  const loadWorldState = useCallback(async () => {
+  // Poll server Autonomous Galaxy Consciousness & Ecosystem every 8s
+  const fetchConsciousness = useCallback(async () => {
     try {
-      const res = await fetch(
-        `/api/arcade/world/state?playerId=${encodeURIComponent(playerId)}&playerName=${encodeURIComponent(playerName)}`
-      );
-      if (!res.ok) return;
-      const json = await res.json();
-      setExplorer(json.explorer);
-      setWeapons(json.weapons || []);
-      setRelicCatalog(json.relicCatalog || []);
-      setQuests(json.quests || []);
-      setLeaderboard(json.leaderboard || []);
-      setDiscoveries(json.discoveries || []);
-      setSectorChat(json.sectorChat || []);
+      const r = await fetch('/api/galaxy/consciousness');
+      const d = await r.json();
+      if (d?.ok && d.ecosystem) setEco(d.ecosystem);
     } catch {
-      // offline fallback
-    }
-  }, [playerId, playerName]);
-
-  useEffect(() => {
-    void loadWorldState();
-  }, [loadWorldState]);
-
-  const flushProgress = useCallback(
-    async (opts?: {
-      biomeVisited?: string;
-      rollRareDrop?: boolean;
-      dropRarityBoost?: number;
-      equipWeaponId?: string;
-      unlockWeaponId?: string;
-      claimQuestId?: string;
-    }) => {
-      const g = gameRef.current;
-      const payload = {
-        playerId,
-        playerName,
-        shardsDelta: g.pendingShards,
-        xpDelta: g.pendingXp,
-        enemiesDelta: g.pendingEnemies,
-        chestsDelta: g.pendingChests,
-        bossesDelta: g.pendingBosses,
-        ...opts,
-      };
-      g.pendingShards = 0;
-      g.pendingXp = 0;
-      g.pendingEnemies = 0;
-      g.pendingChests = 0;
-      g.pendingBosses = 0;
-
-      try {
-        const res = await fetch('/api/arcade/world/progress', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const json = await res.json();
-        if (!res.ok) {
-          if (json.error) onToast(json.error);
-          return;
-        }
-        setExplorer(json.explorer);
-        if (json.discoveries) setDiscoveries(json.discoveries);
-        if (json.droppedRelic) {
-          playSynthSfx(sfxRef.current, 'chest');
-          showBanner(`🎁 Item Raro Encontrado: ${json.droppedRelic.emoji} ${json.droppedRelic.name} (${json.droppedRelic.rarity})!`);
-          onToast(`🎁 Relíquia ${json.droppedRelic.rarity}: ${json.droppedRelic.emoji} ${json.droppedRelic.name}!`);
-        }
-      } catch {
-        // ignore network hiccup
-      }
-    },
-    [playerId, playerName, onToast, showBanner]
-  );
-
-  const spawnBiomeEntities = useCallback((biomeId: string) => {
-    const g = gameRef.current;
-    const biome = BIOMES[biomeId] || BIOMES.vale_neon;
-    g.enemies = [];
-    g.chests = [];
-    g.bullets = [];
-    g.biomeKills = 0;
-    setBossHud(null);
-
-    for (let i = 0; i < 6; i++) {
-      g.enemies.push({
-        id: g.nextEntityId++,
-        x: 140 + Math.random() * 620,
-        y: 80 + Math.random() * 360,
-        hp: 55,
-        maxHp: 55,
-        speed: 0.75 + Math.random() * 0.65,
-        radius: 16,
-        isBoss: false,
-        name: biome.enemyName,
-        color: biome.accent,
-      });
-    }
-    for (let i = 0; i < 2; i++) {
-      g.chests.push({
-        id: g.nextEntityId++,
-        x: 160 + Math.random() * 580,
-        y: 100 + Math.random() * 320,
-        rare: i === 1,
-      });
+      // ignore
     }
   }, []);
 
   useEffect(() => {
-    spawnBiomeEntities('vale_neon');
-  }, [spawnBiomeEntities]);
+    void fetchConsciousness();
+    const t = window.setInterval(() => void fetchConsciousness(), 8000);
+    return () => window.clearInterval(t);
+  }, [fetchConsciousness]);
 
-  const warpToBiome = useCallback(
-    (nextId: string) => {
-      const target = BIOMES[nextId];
-      if (!target) return;
-      playSynthSfx(sfxRef.current, 'portal');
-      setCurrentBiomeId(nextId);
-      gameRef.current.px = 450;
-      gameRef.current.py = 260;
-      gameRef.current.hp = gameRef.current.maxHp;
-      spawnBiomeEntities(nextId);
-      showBanner(`🌀 Novo Setor Descoberto: ${target.name} — ${target.subtitle}`);
-      void flushProgress({ biomeVisited: nextId });
-    },
-    [spawnBiomeEntities, showBanner, flushProgress]
-  );
-
-  const triggerInteract = useCallback(() => {
-    const g = gameRef.current;
-    const biome = BIOMES[biomeRef.current] || BIOMES.vale_neon;
-
-    // 1. Check portals (Left portal at x=55,y=260 | Right portal at x=845,y=260)
-    if (Math.hypot(g.px - 845, g.py - 260) < 58) {
-      warpToBiome(biome.nextBiomeId);
-      return;
-    }
-    if (Math.hypot(g.px - 55, g.py - 260) < 58) {
-      warpToBiome(biome.prevBiomeId);
-      return;
-    }
-
-    // 2. Check Cosmic Chests
-    const chestIdx = g.chests.findIndex((c) => Math.hypot(g.px - c.x, g.py - c.y) < 55);
-    if (chestIdx >= 0) {
-      const chest = g.chests[chestIdx];
-      g.chests.splice(chestIdx, 1);
-      g.pendingChests += 1;
-      g.pendingShards += chest.rare ? 45 : 22;
-      g.pendingXp += chest.rare ? 70 : 35;
-      for (let i = 0; i < 24; i++) {
-        const ang = (Math.PI * 2 * i) / 24;
-        g.particles.push({
-          x: chest.x,
-          y: chest.y,
-          vx: Math.cos(ang) * (1.8 + Math.random() * 3),
-          vy: Math.sin(ang) * (1.8 + Math.random() * 3),
-          color: chest.rare ? '#fbbf24' : '#22d3ee',
-          life: 36,
-          size: 3.2,
-        });
-      }
-      playSynthSfx(sfxRef.current, 'chest');
-      void flushProgress({ rollRareDrop: true, dropRarityBoost: chest.rare ? 25 : 8 });
-      return;
-    }
-
-    showBanner('💡 Aproxime-se de uma Cápsula Cósmica ou Portal Luminoso e aperte E!');
-  }, [warpToBiome, flushProgress, showBanner]);
-
-  const triggerDash = useCallback(() => {
-    const g = gameRef.current;
-    const now = Date.now();
-    if (now < g.dashCooldown) return;
-    g.dashActiveUntil = now + 220;
-    g.dashCooldown = now + 1100;
-    playSynthSfx(sfxRef.current, 'portal');
-  }, []);
-
-  // Sync online presence + progress flush every 2.5s
+  // Sync player presence with online multiplayer sector
   useEffect(() => {
-    const timer = setInterval(async () => {
-      const g = gameRef.current;
-      const exp = explorerRef.current;
-      if (g.pendingShards !== 0 || g.pendingXp > 0 || g.pendingEnemies > 0 || g.pendingChests > 0 || g.pendingBosses > 0) {
-        void flushProgress();
-      }
-      try {
-        const res = await fetch('/api/arcade/world/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            playerId,
-            playerName,
-            avatarColor: user?.avatarColor || 'from-cyan-400 to-pink-500',
-            biomeId: biomeRef.current,
-            x: Math.round(g.px),
-            y: Math.round(g.py),
-            weaponId: exp?.equippedWeapon || 'solar_blaster',
-            level: exp?.level || 1,
-          }),
-        });
-        if (res.ok) {
-          const json = await res.json();
-          peersRef.current = json.peers || [];
-          setOnlineCount(json.onlineCount || 1);
-          if (json.discoveries) setDiscoveries(json.discoveries);
-          if (json.sectorChat) setSectorChat(json.sectorChat);
-        }
-      } catch {
-        // ignore
-      }
-    }, 2600);
-    return () => clearInterval(timer);
-  }, [playerId, playerName, user?.avatarColor, flushProgress]);
-
-  // Keyboard Listeners
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
-      const k = e.key.toLowerCase();
-      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) {
-        e.preventDefault();
-      }
-      gameRef.current.keys.add(k);
-      if (k === ' ') gameRef.current.firing = true;
-      if (k === 'e') triggerInteract();
-      if (k === 'shift') triggerDash();
-      if (['1', '2', '3', '4', '5'].includes(k)) {
-        const idx = Number(k) - 1;
-        const w = weaponsRef.current[idx];
-        if (w && explorerRef.current?.unlockedWeapons.includes(w.id)) {
-          void flushProgress({ equipWeaponId: w.id });
-        }
-      }
-    };
-    const onKeyUp = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      gameRef.current.keys.delete(k);
-      if (k === ' ') gameRef.current.firing = false;
-    };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-    };
-  }, [triggerInteract, triggerDash, flushProgress]);
-
-  // Main 60FPS Canvas Game Loop
-  useEffect(() => {
-    let raf = 0;
-    const W = 900;
-    const H = 520;
-
-    const fireWeapon = () => {
-      const g = gameRef.current;
-      const now = Date.now();
-      const exp = explorerRef.current;
-      const weaponId = exp?.equippedWeapon || 'solar_blaster';
-      const weapon = weaponsRef.current.find((w) => w.id === weaponId) || {
-        id: 'solar_blaster',
-        damage: 22,
-        cooldownMs: 210,
-        color: '#22d3ee',
-      };
-      if (now - g.lastShotAt < weapon.cooldownMs) return;
-      g.lastShotAt = now;
-
-      let angle = Math.atan2(g.aimY - g.py, g.aimX - g.px);
-      if (Number.isNaN(angle)) angle = 0;
-      // Auto-aim nearest enemy when firing with Space/mobile button without moving mouse
-      if (!g.keys.has('mouse') && g.enemies.length > 0) {
-        let nearest = g.enemies[0];
-        let bestDist = Infinity;
-        for (const en of g.enemies) {
-          const d = Math.hypot(en.x - g.px, en.y - g.py);
-          if (d < bestDist) {
-            bestDist = d;
-            nearest = en;
-          }
-        }
-        if (bestDist < 420) angle = Math.atan2(nearest.y - g.py, nearest.x - g.px);
-      }
-
-      playSynthSfx(sfxRef.current, 'shoot');
-
-      if (weapon.id === 'supernova_tri') {
-        [-0.22, 0, 0.22].forEach((offset) => {
-          const a = angle + offset;
-          g.bullets.push({
-            x: g.px,
-            y: g.py,
-            vx: Math.cos(a) * 9.5,
-            vy: Math.sin(a) * 9.5,
-            color: weapon.color,
-            damage: weapon.damage,
-            radius: 5,
-            life: 65,
-          });
-        });
-      } else if (weapon.id === 'phonk_sonic') {
-        g.bullets.push({
-          x: g.px,
-          y: g.py,
-          vx: Math.cos(angle) * 7.2,
-          vy: Math.sin(angle) * 7.2,
-          color: weapon.color,
-          damage: weapon.damage,
-          radius: 13,
-          pierce: true,
-          life: 52,
-        });
-      } else if (weapon.id === 'antimatter_rail') {
-        g.bullets.push({
-          x: g.px,
-          y: g.py,
-          vx: Math.cos(angle) * 14,
-          vy: Math.sin(angle) * 14,
-          color: weapon.color,
-          damage: weapon.damage,
-          radius: 6,
-          pierce: true,
-          life: 50,
-        });
-      } else if (weapon.id === 'blackhole_scepter') {
-        g.bullets.push({
-          x: g.px,
-          y: g.py,
-          vx: Math.cos(angle) * 5.2,
-          vy: Math.sin(angle) * 5.2,
-          color: weapon.color,
-          damage: weapon.damage,
-          radius: 16,
-          pierce: true,
-          vortex: true,
-          life: 80,
-        });
-      } else {
-        g.bullets.push({
-          x: g.px,
-          y: g.py,
-          vx: Math.cos(angle) * 9,
-          vy: Math.sin(angle) * 9,
-          color: weapon.color,
-          damage: weapon.damage,
-          radius: 4.5,
-          life: 65,
-        });
-      }
-    };
-
-    const tick = () => {
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
-      if (canvas && ctx) {
-        const g = gameRef.current;
-        const biome = BIOMES[biomeRef.current] || BIOMES.vale_neon;
-        const now = Date.now();
-
-        // 1. Movement
-        let dx = g.joyDir.x;
-        let dy = g.joyDir.y;
-        if (g.keys.has('w') || g.keys.has('arrowup')) dy -= 1;
-        if (g.keys.has('s') || g.keys.has('arrowdown')) dy += 1;
-        if (g.keys.has('a') || g.keys.has('arrowleft')) dx -= 1;
-        if (g.keys.has('d') || g.keys.has('arrowright')) dx += 1;
-        const mag = Math.hypot(dx, dy);
-        if (mag > 0) {
-          const speed = now < g.dashActiveUntil ? 8.2 : 3.7;
-          g.px = Math.max(28, Math.min(W - 28, g.px + (dx / mag) * speed));
-          g.py = Math.max(32, Math.min(H - 32, g.py + (dy / mag) * speed));
-        }
-
-        if (g.firing) fireWeapon();
-
-        // 2. Bullets & Hits
-        for (let i = g.bullets.length - 1; i >= 0; i--) {
-          const b = g.bullets[i];
-          b.x += b.vx;
-          b.y += b.vy;
-          b.life -= 1;
-          if (b.life <= 0 || b.x < 0 || b.x > W || b.y < 0 || b.y > H) {
-            g.bullets.splice(i, 1);
-            continue;
-          }
-          for (let j = g.enemies.length - 1; j >= 0; j--) {
-            const en = g.enemies[j];
-            if (b.vortex && Math.hypot(en.x - b.x, en.y - b.y) < 120) {
-              en.x += (b.x - en.x) * 0.04;
-              en.y += (b.y - en.y) * 0.04;
-            }
-            if (Math.hypot(en.x - b.x, en.y - b.y) < en.radius + b.radius) {
-              en.hp -= b.damage;
-              playSynthSfx(sfxRef.current, 'hit');
-              for (let p = 0; p < 5; p++) {
-                g.particles.push({
-                  x: en.x,
-                  y: en.y,
-                  vx: (Math.random() - 0.5) * 4,
-                  vy: (Math.random() - 0.5) * 4,
-                  color: b.color,
-                  life: 16,
-                  size: 2.5,
-                });
-              }
-              if (!b.pierce) {
-                g.bullets.splice(i, 1);
-                break;
-              }
-            }
-          }
-        }
-
-        // 3. Enemies AI & Death
-        let activeBoss: { name: string; hp: number; maxHp: number } | null = null;
-        for (let j = g.enemies.length - 1; j >= 0; j--) {
-          const en = g.enemies[j];
-          if (en.hp <= 0) {
-            g.enemies.splice(j, 1);
-            g.pendingEnemies += 1;
-            g.biomeKills += 1;
-            g.pendingShards += en.isBoss ? 140 : 14;
-            g.pendingXp += en.isBoss ? 220 : 25;
-            if (en.isBoss) {
-              g.pendingBosses += 1;
-              showBanner(`🏆 Chefão ${en.name} derrotado! Relíquia Rara liberada!`);
-              void flushProgress({ rollRareDrop: true, dropRarityBoost: 35 });
-            }
-            for (let p = 0; p < (en.isBoss ? 30 : 12); p++) {
-              g.particles.push({
-                x: en.x,
-                y: en.y,
-                vx: (Math.random() - 0.5) * 6,
-                vy: (Math.random() - 0.5) * 6,
-                color: en.isBoss ? '#fbbf24' : en.color,
-                life: 28,
-                size: en.isBoss ? 4 : 2.8,
-              });
-            }
-            continue;
-          }
-
-          if (en.isBoss) activeBoss = { name: en.name, hp: Math.max(0, Math.round(en.hp)), maxHp: en.maxHp };
-          const d = Math.hypot(g.px - en.x, g.py - en.y);
-          if (d > 1) {
-            en.x += ((g.px - en.x) / d) * en.speed;
-            en.y += ((g.py - en.y) / d) * en.speed;
-          }
-          if (d < en.radius + 14 && now > g.dashActiveUntil) {
-            g.hp = Math.max(0, g.hp - (en.isBoss ? 0.35 : 0.18));
-            if (g.hp <= 0) {
-              g.hp = g.maxHp;
-              g.px = 450;
-              g.py = 260;
-              showBanner('🛡️ Escudo Cósmico recarregado na base do setor!');
-            }
-          }
-        }
-        setBossHud(activeBoss);
-
-        // Respawn wave or Spawn Sector Boss every 8 kills
-        if (g.enemies.length < 4) {
-          const shouldSpawnBoss = g.biomeKills >= 8 && !g.enemies.some((e) => e.isBoss);
-          if (shouldSpawnBoss) {
-            g.biomeKills = 0;
-            g.enemies.push({
-              id: g.nextEntityId++,
-              x: 450,
-              y: 90,
-              hp: 460,
-              maxHp: 460,
-              speed: 1.15,
-              radius: 30,
-              isBoss: true,
-              name: biome.bossName,
-              color: '#f43f5e',
-            });
-            showBanner(`⚠️ ALERTA DE CHEFÃO: ${biome.bossName} apareceu neste setor!`);
-          } else {
-            const side = Math.random() > 0.5;
-            g.enemies.push({
-              id: g.nextEntityId++,
-              x: side ? 120 + Math.random() * 660 : Math.random() > 0.5 ? 110 : W - 110,
-              y: 60 + Math.random() * 400,
-              hp: 60,
-              maxHp: 60,
-              speed: 0.8 + Math.random() * 0.75,
-              radius: 16,
-              isBoss: false,
-              name: biome.enemyName,
-              color: biome.accent,
-            });
-          }
-        }
-
-        // Respawn chest if empty
-        if (g.chests.length === 0 && Math.random() < 0.015) {
-          g.chests.push({
-            id: g.nextEntityId++,
-            x: 160 + Math.random() * 580,
-            y: 90 + Math.random() * 340,
-            rare: Math.random() > 0.65,
-          });
-        }
-
-        // === RENDER ===
-        const grad = ctx.createLinearGradient(0, 0, 0, H);
-        grad.addColorStop(0, biome.bgTop);
-        grad.addColorStop(1, biome.bgBottom);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, W, H);
-
-        // Animated Stars & Black Hole in Abismo Negro
-        const t = now * 0.001;
-        g.stars.forEach((st) => {
-          const alpha = 0.35 + 0.55 * Math.abs(Math.sin(t + st.tw));
-          ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
-          ctx.beginPath();
-          ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
-          ctx.fill();
-        });
-
-        if (biome.id === 'abismo_negro') {
-          ctx.save();
-          ctx.translate(W / 2, 130);
-          ctx.rotate(t * 0.7);
-          const bh = ctx.createRadialGradient(0, 0, 12, 0, 0, 82);
-          bh.addColorStop(0, '#000000');
-          bh.addColorStop(0.45, '#ec4899');
-          bh.addColorStop(0.75, 'rgba(245,158,11,0.35)');
-          bh.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = bh;
-          ctx.beginPath();
-          ctx.arc(0, 0, 82, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-
-        // Sci-Fi Perspective Grid Floor
-        ctx.strokeStyle = biome.gridColor;
-        ctx.lineWidth = 1;
-        for (let gx = 0; gx <= W; gx += 45) {
-          ctx.beginPath();
-          ctx.moveTo(gx, 0);
-          ctx.lineTo(gx, H);
-          ctx.stroke();
-        }
-        for (let gy = 0; gy <= H; gy += 45) {
-          ctx.beginPath();
-          ctx.moveTo(0, gy);
-          ctx.lineTo(W, gy);
-          ctx.stroke();
-        }
-
-        // Portals (Left & Right)
-        [
-          { x: 55, y: 260, label: `◀ ${biome.prevBiomeName.split(' ')[0]}`, color: '#38bdf8' },
-          { x: 845, y: 260, label: `${biome.nextBiomeName.split(' ')[0]} ▶`, color: '#ec4899' },
-        ].forEach((pt) => {
-          ctx.save();
-          ctx.translate(pt.x, pt.y);
-          ctx.rotate(t * 1.4);
-          ctx.strokeStyle = pt.color;
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(0, 0, 26, 0, Math.PI * 1.6);
-          ctx.stroke();
-          ctx.restore();
-          ctx.fillStyle = 'rgba(255,255,255,0.9)';
-          ctx.font = 'bold 10px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(pt.label, pt.x, pt.y + 42);
-        });
-
-        // Cosmic Chests
-        g.chests.forEach((c) => {
-          ctx.save();
-          ctx.fillStyle = c.rare ? '#fbbf24' : '#22d3ee';
-          ctx.shadowBlur = 16;
-          ctx.shadowColor = c.rare ? '#fbbf24' : '#22d3ee';
-          ctx.fillRect(c.x - 13, c.y - 10, 26, 20);
-          ctx.restore();
-          ctx.fillStyle = '#fff';
-          ctx.font = 'bold 10px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(c.rare ? '✨ Cápsula Rara (E)' : '📦 Cápsula (E)', c.x, c.y - 16);
-        });
-
-        // Online Co-op Peers in same biome
-        peersRef.current
-          .filter((p) => p.biomeId === biome.id)
-          .forEach((p) => {
-            ctx.save();
-            ctx.fillStyle = '#34d399';
-            ctx.shadowBlur = 14;
-            ctx.shadowColor = '#34d399';
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 13, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-            ctx.fillStyle = '#a7f3d0';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${p.playerName} Nv.${p.level}`, p.x, p.y - 20);
-          });
-
-        // Enemies & Bosses
-        g.enemies.forEach((en) => {
-          ctx.save();
-          ctx.fillStyle = en.isBoss ? '#f43f5e' : en.color;
-          ctx.shadowBlur = en.isBoss ? 24 : 12;
-          ctx.shadowColor = en.color;
-          ctx.beginPath();
-          ctx.arc(en.x, en.y, en.radius, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-          // HP bar above enemy
-          const bw = en.isBoss ? 64 : 30;
-          ctx.fillStyle = 'rgba(0,0,0,0.65)';
-          ctx.fillRect(en.x - bw / 2, en.y - en.radius - 10, bw, 4);
-          ctx.fillStyle = en.isBoss ? '#fbbf24' : '#34d399';
-          ctx.fillRect(en.x - bw / 2, en.y - en.radius - 10, bw * Math.max(0, en.hp / en.maxHp), 4);
-        });
-
-        // Bullets
-        g.bullets.forEach((b) => {
-          ctx.save();
-          ctx.fillStyle = b.color;
-          ctx.shadowBlur = 14;
-          ctx.shadowColor = b.color;
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        });
-
-        // Particles
-        for (let p = g.particles.length - 1; p >= 0; p--) {
-          const pt = g.particles[p];
-          pt.x += pt.vx;
-          pt.y += pt.vy;
-          pt.life -= 1;
-          if (pt.life <= 0) {
-            g.particles.splice(p, 1);
-            continue;
-          }
-          ctx.fillStyle = pt.color;
-          ctx.globalAlpha = Math.max(0, pt.life / 32);
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.globalAlpha = 1;
-        }
-
-        // Local Explorer (Player)
-        const exp = explorerRef.current;
-        const eqWeapon = weaponsRef.current.find((w) => w.id === exp?.equippedWeapon);
-        const pColor = eqWeapon?.color || '#22d3ee';
-        ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = pColor;
-        ctx.lineWidth = 3.5;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = pColor;
-        ctx.beginPath();
-        ctx.arc(g.px, g.py, 15, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-
-        // Player HP bar & Name
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${playerName} (Nv.${exp?.level || 1})`, g.px, g.py - 24);
-        ctx.fillStyle = 'rgba(0,0,0,0.65)';
-        ctx.fillRect(g.px - 22, g.py + 20, 44, 5);
-        ctx.fillStyle = '#22d3ee';
-        ctx.fillRect(g.px - 22, g.py + 20, 44 * (g.hp / g.maxHp), 5);
-      }
-      raf = requestAnimationFrame(tick);
-    };
-
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [playerName, flushProgress, showBanner]);
-
-  const handleSendChat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = chatText.trim();
-    if (!clean) return;
-    setChatText('');
-    try {
-      const res = await fetch('/api/arcade/world/chat', {
+    const pid = user?.id || `guest_${Math.random().toString(36).slice(2, 7)}`;
+    const pname = user?.name || 'Jogador Nº 1';
+    const sync = () => {
+      void fetch('/api/arcade/world/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerName, message: clean }),
+        body: JSON.stringify({
+          playerId: pid,
+          playerName: pname,
+          avatarColor: user?.avatarColor || '#22d3ee',
+          biomeId: 'free-city',
+          x: 0,
+          y: 0,
+        }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (Array.isArray(d?.peers)) setOnlinePeersCount(Math.max(1, d.peers.length));
+        })
+        .catch(() => {});
+    };
+    sync();
+    const iv = window.setInterval(sync, 10000);
+    return () => window.clearInterval(iv);
+  }, [user?.id, user?.name, user?.avatarColor]);
+
+  const sendNpcMessage = async (custom?: string) => {
+    const txt = (custom ?? npcInput).trim();
+    if (!txt) return;
+    setNpcInput('');
+    setNpcMessages((prev) => [...prev, { id: `u_${Date.now()}`, who: user?.name || 'Você', text: txt }]);
+    try {
+      const userLang = localStorage.getItem('lenkyx_lang_v1') || 'pt';
+      const r = await fetch('/api/galaxy/npc-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ npcName: 'Guy', message: txt, userLang }),
       });
-      if (res.ok) {
-        const json = await res.json();
-        setSectorChat(json.sectorChat || []);
+      const d = await r.json();
+      if (d?.reply) {
+        setNpcMessages((prev) => [...prev, { id: `g_${Date.now()}`, who: 'Guy (Consciente)', text: d.reply }]);
+        if (npcVoice && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(d.reply);
+          u.lang = userLang === 'en' ? 'en-US' : 'pt-BR';
+          window.speechSynthesis.speak(u);
+        }
       }
     } catch {
       // ignore
     }
   };
 
-  const currentBiome = BIOMES[currentBiomeId] || BIOMES.vale_neon;
-  const activeWeapon = useMemo(
-    () => weapons.find((w) => w.id === explorer?.equippedWeapon) || weapons[0],
-    [weapons, explorer?.equippedWeapon]
-  );
+  useEffect(() => {
+    const container = mountRef.current;
+    if (!container) return;
 
-  const toggleFullscreen = () => {
-    const el = wrapperRef.current;
-    if (!el) return;
-    if (!document.fullscreenElement) {
-      el.requestFullscreen?.().catch(() => {});
-      setFullscreen(true);
-    } else {
-      document.exitFullscreen?.().catch(() => {});
-      setFullscreen(false);
+    const w = container.clientWidth || window.innerWidth;
+    const h = container.clientHeight || window.innerHeight;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#0b1530');
+    scene.fog = new THREE.FogExp2('#0b1530', 0.0052);
+
+    const camera = new THREE.PerspectiveCamera(62, w / h, 0.2, 420);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    container.appendChild(renderer.domElement);
+
+    const ambient = new THREE.HemisphereLight('#e0f2fe', '#1e293b', 1.1);
+    scene.add(ambient);
+    const sunLight = new THREE.DirectionalLight('#fffbeb', 1.8);
+    sunLight.position.set(45, 70, 35);
+    scene.add(sunLight);
+
+    // Ground: City Asphalt + Park Grass + Golden Beach + Ocean
+    const cityFloor = new THREE.Mesh(
+      new THREE.PlaneGeometry(240, 240),
+      new THREE.MeshStandardMaterial({ color: '#1e293b', roughness: 0.9 })
+    );
+    cityFloor.rotation.x = -Math.PI / 2;
+    scene.add(cityFloor);
+
+    // Oasis Living Park (East Quadrant)
+    const parkGrass = new THREE.Mesh(
+      new THREE.PlaneGeometry(78, 130),
+      new THREE.MeshStandardMaterial({ color: '#15803d', roughness: 0.95 })
+    );
+    parkGrass.rotation.x = -Math.PI / 2;
+    parkGrass.position.set(54, 0.03, 0);
+    scene.add(parkGrass);
+
+    // Beach & Ocean (South Edge)
+    const beach = new THREE.Mesh(
+      new THREE.PlaneGeometry(240, 32),
+      new THREE.MeshStandardMaterial({ color: '#eab308', roughness: 0.9 })
+    );
+    beach.rotation.x = -Math.PI / 2;
+    beach.position.set(0, 0.04, 82);
+    scene.add(beach);
+
+    const ocean = new THREE.Mesh(
+      new THREE.PlaneGeometry(260, 80),
+      new THREE.MeshStandardMaterial({ color: '#0284c7', metalness: 0.6, roughness: 0.18, transparent: true, opacity: 0.92 })
+    );
+    ocean.rotation.x = -Math.PI / 2;
+    ocean.position.set(0, 0.02, 132);
+    scene.add(ocean);
+
+    // Roads (Avenues along X & Z)
+    const roadMat = new THREE.MeshStandardMaterial({ color: '#0f172a', roughness: 0.8 });
+    const lineMat = new THREE.MeshBasicMaterial({ color: '#facc15' });
+    [-36, 0, 36].forEach((pos) => {
+      const roadZ = new THREE.Mesh(new THREE.PlaneGeometry(11, 180), roadMat);
+      roadZ.rotation.x = -Math.PI / 2;
+      roadZ.position.set(pos, 0.06, -10);
+      scene.add(roadZ);
+
+      const roadX = new THREE.Mesh(new THREE.PlaneGeometry(180, 11), roadMat);
+      roadX.rotation.x = -Math.PI / 2;
+      roadX.position.set(0, 0.065, pos);
+      scene.add(roadX);
+
+      for (let d = -80; d <= 68; d += 10) {
+        const dashZ = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 4.2), lineMat);
+        dashZ.rotation.x = -Math.PI / 2;
+        dashZ.position.set(pos, 0.08, d);
+        scene.add(dashZ);
+      }
+    });
+
+    // City Skyscrapers with Lit Neon Windows
+    const buildingColors = ['#22d3ee', '#f472b6', '#a855f7', '#34d399', '#fbbf24'];
+    const buildingBlocks: [number, number, number, number][] = [
+      [-18, -18, 12, 28],
+      [-18, 18, 13, 22],
+      [18, -18, 12, 34],
+      [18, 18, 11, 20],
+      [-54, -18, 14, 26],
+      [-54, 18, 12, 31],
+      [-54, -54, 13, 24],
+      [-18, -54, 14, 38],
+      [18, -54, 12, 29],
+    ];
+    buildingBlocks.forEach(([bx, bz, size, height], i) => {
+      const tex = createWindowTexture(buildingColors[i % buildingColors.length]);
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(size, height, size),
+        new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.45 })
+      );
+      mesh.position.set(bx, height / 2, bz);
+      scene.add(mesh);
+    });
+
+    // Trees, Flowers & Plants in Living Oasis Park
+    const trees: THREE.Group[] = [];
+    const spawnTreeAt = (tx: number, tz: number, palm = false) => {
+      const tr = buildTreeMesh(palm);
+      tr.position.set(tx, 0, tz);
+      scene.add(tr);
+      trees.push(tr);
+    };
+    for (let i = 0; i < 34; i++) {
+      const tx = 26 + Math.random() * 62;
+      const tz = -52 + Math.random() * 105;
+      if (Math.abs(tz) < 7 || Math.abs(tz - 36) < 7 || Math.abs(tz + 36) < 7) continue;
+      spawnTreeAt(tx, tz, i % 4 === 0);
     }
-  };
+    // Beach palm trees
+    for (let x = -72; x <= 72; x += 18) {
+      spawnTreeAt(x, 68 + Math.random() * 4, true);
+    }
+
+    // Flowers & Insect Pollinators (Butterflies, Bees, Fireflies)
+    const insects: { mesh: THREE.Mesh; base: THREE.Vector3; speed: number; phase: number }[] = [];
+    const insectColors = ['#facc15', '#f472b6', '#67e8f9', '#a3e635'];
+    for (let i = 0; i < 48; i++) {
+      const ix = 22 + Math.random() * 68;
+      const iz = -55 + Math.random() * 115;
+      const flower = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22, 6, 6),
+        new THREE.MeshBasicMaterial({ color: insectColors[i % insectColors.length] })
+      );
+      flower.position.set(ix, 0.25, iz);
+      scene.add(flower);
+
+      const bug = new THREE.Mesh(
+        new THREE.SphereGeometry(0.11, 6, 6),
+        new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? '#fef08a' : '#22d3ee' })
+      );
+      const base = new THREE.Vector3(ix, 1.3 + Math.random() * 2.2, iz);
+      bug.position.copy(base);
+      scene.add(bug);
+      insects.push({ mesh: bug, base, speed: 1.5 + Math.random() * 2.2, phase: Math.random() * 6.28 });
+    }
+
+    // Living Birds Flying Overhead
+    const birds: { group: THREE.Group; center: THREE.Vector3; rad: number; speed: number; phase: number }[] = [];
+    for (let b = 0; b < 14; b++) {
+      const bg = new THREE.Group();
+      const wingMat = new THREE.MeshBasicMaterial({ color: '#f8fafc', side: THREE.DoubleSide });
+      const lw = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.28), wingMat);
+      lw.position.x = -0.4;
+      const rw = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.28), wingMat);
+      rw.position.x = 0.4;
+      bg.add(lw, rw);
+      scene.add(bg);
+      birds.push({
+        group: bg,
+        center: new THREE.Vector3(25 + (b % 4) * 14, 16 + (b % 3) * 4, -20 + b * 5),
+        rad: 8 + (b % 5) * 4,
+        speed: 0.65 + Math.random() * 0.45,
+        phase: b * 0.9,
+      });
+    }
+
+    // Living Land Animals (Deer, Wolves, Dogs)
+    const animals: { mesh: THREE.Group; pos: THREE.Vector3; dir: number; speed: number }[] = [];
+    const animalKinds: ('dog' | 'deer' | 'wolf')[] = ['deer', 'dog', 'wolf'];
+    for (let a = 0; a < 14; a++) {
+      const am = buildAnimalMesh(animalKinds[a % 3]);
+      const pos = new THREE.Vector3(28 + Math.random() * 55, 0, -45 + Math.random() * 95);
+      am.position.copy(pos);
+      scene.add(am);
+      animals.push({ mesh: am, pos, dir: Math.random() * Math.PI * 2, speed: 1.6 + Math.random() * 1.4 });
+    }
+
+    // Marine Fish Swimming in Ocean
+    const fishes: { mesh: THREE.Mesh; x0: number; z0: number; phase: number }[] = [];
+    for (let f = 0; f < 14; f++) {
+      const fm = new THREE.Mesh(
+        new THREE.ConeGeometry(0.24, 0.9, 6),
+        new THREE.MeshBasicMaterial({ color: f % 2 === 0 ? '#38bdf8' : '#fbbf24' })
+      );
+      fm.rotation.x = Math.PI / 2;
+      const x0 = -50 + f * 8;
+      const z0 = 104 + (f % 3) * 6;
+      fm.position.set(x0, 0.12, z0);
+      scene.add(fm);
+      fishes.push({ mesh: fm, x0, z0, phase: f });
+    }
+
+    // Autonomous Cars & Motorcycles (Drivable GTA-Style!)
+    interface WorldVehicle {
+      id: string;
+      kind: 'car' | 'moto';
+      mesh: THREE.Group;
+      pos: THREE.Vector3;
+      yaw: number;
+      speed: number;
+      axis: 'x' | 'z';
+      dir: 1 | -1;
+      occupiedByPlayer: boolean;
+    }
+    const vehicles: WorldVehicle[] = [];
+    const vehColors = ['#ef4444', '#22d3ee', '#facc15', '#ec4899', '#34d399', '#a855f7'];
+    for (let v = 0; v < 10; v++) {
+      const isMoto = v % 3 === 0;
+      const mesh = isMoto ? buildMotorcycleMesh(vehColors[v % vehColors.length]) : buildCarMesh(vehColors[v % vehColors.length]);
+      const axis = v % 2 === 0 ? 'z' : 'x';
+      const lane = [-36, 0, 36][v % 3];
+      const dir = v % 4 < 2 ? 1 : -1;
+      const pos =
+        axis === 'z'
+          ? new THREE.Vector3(lane + (dir > 0 ? 2.5 : -2.5), 0, -60 + v * 13)
+          : new THREE.Vector3(-65 + v * 14, 0, lane + (dir > 0 ? -2.5 : 2.5));
+      mesh.position.copy(pos);
+      const yaw = axis === 'z' ? (dir > 0 ? 0 : Math.PI) : dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      mesh.rotation.y = yaw;
+      scene.add(mesh);
+      vehicles.push({
+        id: `veh_${v}`,
+        kind: isMoto ? 'moto' : 'car',
+        mesh,
+        pos,
+        yaw,
+        speed: 7 + (v % 3) * 2.5,
+        axis,
+        dir,
+        occupiedByPlayer: false,
+      });
+    }
+
+    // Free Guy (Self-Aware Hero NPC) + Autonomous City Citizens
+    const guyMesh = buildHumanMesh('#0ea5e9', true);
+    const guyPos = new THREE.Vector3(6, 0, 12);
+    guyMesh.position.copy(guyPos);
+    scene.add(guyMesh);
+
+    const npcs: { mesh: THREE.Group; pos: THREE.Vector3; dir: number; speed: number }[] = [];
+    const npcColors = ['#f43f5e', '#10b981', '#eab308', '#a855f7', '#fb923c'];
+    for (let n = 0; n < 12; n++) {
+      const nm = buildHumanMesh(npcColors[n % npcColors.length], false);
+      const pos = new THREE.Vector3(-40 + (n % 5) * 20, 0, -40 + Math.floor(n / 5) * 32);
+      nm.position.copy(pos);
+      scene.add(nm);
+      npcs.push({ mesh: nm, pos, dir: Math.random() * Math.PI * 2, speed: 2.1 + Math.random() });
+    }
+
+    // Player Avatar (Jogador Nº 1 / Free City Explorer)
+    const playerMesh = buildHumanMesh('#22d3ee', false);
+    const playerPos = new THREE.Vector3(0, 0, 16);
+    let playerYaw = Math.PI;
+    playerMesh.position.copy(playerPos);
+    scene.add(playerMesh);
+
+    let activeVehicle: WorldVehicle | null = null;
+    let camYaw = 0;
+    let camPitch = 0.34;
+    let camDragging = false;
+    let lastMouse = { x: 0, y: 0 };
+
+    actionTriggerRef.current.toggleVehicle = () => {
+      if (activeVehicle) {
+        activeVehicle.occupiedByPlayer = false;
+        playerPos.copy(activeVehicle.pos).add(new THREE.Vector3(2.4, 0, 0));
+        playerMesh.visible = true;
+        activeVehicle = null;
+        setInVehicleType('none');
+        setSpeedKmh(0);
+        return;
+      }
+      let best: WorldVehicle | null = null;
+      let bestDist = 7.5;
+      for (const v of vehicles) {
+        const d = v.pos.distanceTo(playerPos);
+        if (d < bestDist) {
+          bestDist = d;
+          best = v;
+        }
+      }
+      if (best) {
+        activeVehicle = best;
+        best.occupiedByPlayer = true;
+        best.speed = 0;
+        playerMesh.visible = false;
+        setInVehicleType(best.kind);
+        onToast(best.kind === 'moto' ? '🏍️ Subiu na Moto!' : '🏎️ Entrou no Esportivo!');
+      } else {
+        onToast('Aproxime-se de um carro ou moto na rua para dirigir.');
+      }
+    };
+
+    actionTriggerRef.current.talkNpc = () => {
+      setNpcChatOpen(true);
+    };
+
+    actionTriggerRef.current.spawnTree = () => {
+      const tx = playerPos.x + Math.cos(playerYaw) * 4;
+      const tz = playerPos.z + Math.sin(playerYaw) * 4;
+      spawnTreeAt(tx, tz, Math.random() > 0.6);
+      void fetch('/api/galaxy/consciousness/act', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'plant_tree' }),
+      })
+        .then((r) => r.json())
+        .then((d) => d?.ecosystem && setEco(d.ecosystem));
+      onToast('🌱 Árvore plantada! Ecossistema enriquecido.');
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      const k = e.key.toLowerCase();
+      keysRef.current[k] = true;
+      if (k === 'e') actionTriggerRef.current.toggleVehicle();
+      if (k === 'f') actionTriggerRef.current.talkNpc();
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      keysRef.current[e.key.toLowerCase()] = false;
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+
+    const domEl = renderer.domElement;
+    const onDown = (e: PointerEvent) => {
+      camDragging = true;
+      lastMouse = { x: e.clientX, y: e.clientY };
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!camDragging) return;
+      camYaw -= (e.clientX - lastMouse.x) * 0.006;
+      camPitch = Math.max(0.14, Math.min(0.85, camPitch + (e.clientY - lastMouse.y) * 0.004));
+      lastMouse = { x: e.clientX, y: e.clientY };
+    };
+    const onUp = () => {
+      camDragging = false;
+    };
+    domEl.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+
+    const onResize = () => {
+      if (!container) return;
+      const nw = container.clientWidth || window.innerWidth;
+      const nh = container.clientHeight || window.innerHeight;
+      camera.aspect = nw / nh;
+      camera.updateProjectionMatrix();
+      renderer.setSize(nw, nh);
+    };
+    window.addEventListener('resize', onResize);
+
+    let raf = 0;
+    let lastT = performance.now();
+    let sim = 0;
+    let uiSyncTick = 0;
+
+    const animate = () => {
+      raf = requestAnimationFrame(animate);
+      const now = performance.now();
+      const dt = Math.min(0.05, (now - lastT) / 1000);
+      lastT = now;
+      sim += dt;
+
+      const keys = keysRef.current;
+      const fwd = (keys['w'] || keys['arrowup'] ? 1 : 0) - (keys['s'] || keys['arrowdown'] ? 1 : 0) - joyRef.current.y;
+      const turn = (keys['a'] || keys['arrowleft'] ? 1 : 0) - (keys['d'] || keys['arrowright'] ? 1 : 0) - joyRef.current.x;
+
+      if (activeVehicle) {
+        const accel = activeVehicle.kind === 'moto' ? 32 : 27;
+        const maxSpd = activeVehicle.kind === 'moto' ? 36 : 33;
+        if (Math.abs(fwd) > 0.05) {
+          activeVehicle.speed = Math.max(-12, Math.min(maxSpd, activeVehicle.speed + fwd * accel * dt));
+        } else {
+          activeVehicle.speed *= Math.pow(0.25, dt);
+        }
+        if (Math.abs(activeVehicle.speed) > 0.5) {
+          activeVehicle.yaw += turn * 2.1 * dt * (activeVehicle.speed >= 0 ? 1 : -1);
+        }
+        activeVehicle.pos.x += Math.sin(activeVehicle.yaw) * activeVehicle.speed * dt;
+        activeVehicle.pos.z += Math.cos(activeVehicle.yaw) * activeVehicle.speed * dt;
+        activeVehicle.pos.x = Math.max(-105, Math.min(105, activeVehicle.pos.x));
+        activeVehicle.pos.z = Math.max(-105, Math.min(82, activeVehicle.pos.z));
+        activeVehicle.mesh.position.copy(activeVehicle.pos);
+        activeVehicle.mesh.rotation.y = activeVehicle.yaw;
+        playerPos.copy(activeVehicle.pos);
+      } else {
+        const moveMag = Math.min(1, Math.hypot(fwd, turn));
+        if (moveMag > 0.08) {
+          const moveAngle = camYaw + Math.atan2(-turn, fwd);
+          playerYaw = moveAngle;
+          const walkSpd = keys['shift'] ? 14 : 8.5;
+          playerPos.x += Math.sin(playerYaw) * walkSpd * moveMag * dt;
+          playerPos.z += Math.cos(playerYaw) * walkSpd * moveMag * dt;
+          playerPos.x = Math.max(-105, Math.min(105, playerPos.x));
+          playerPos.z = Math.max(-105, Math.min(85, playerPos.z));
+          const lL = playerMesh.getObjectByName('legL');
+          const lR = playerMesh.getObjectByName('legR');
+          if (lL && lR) {
+            lL.rotation.x = Math.sin(sim * 10) * 0.55;
+            lR.rotation.x = -Math.sin(sim * 10) * 0.55;
+          }
+        }
+        playerMesh.position.copy(playerPos);
+        playerMesh.rotation.y = playerYaw;
+      }
+
+      // Autonomous Traffic
+      for (const v of vehicles) {
+        if (v.occupiedByPlayer) continue;
+        if (v.axis === 'z') {
+          v.pos.z += v.dir * v.speed * dt;
+          if (v.pos.z > 76) v.pos.z = -76;
+          if (v.pos.z < -76) v.pos.z = 76;
+        } else {
+          v.pos.x += v.dir * v.speed * dt;
+          if (v.pos.x > 90) v.pos.x = -90;
+          if (v.pos.x < -90) v.pos.x = 90;
+        }
+        v.mesh.position.copy(v.pos);
+      }
+
+      // Free Guy & Citizens Autonomous Life
+      const guyAng = sim * 0.25;
+      guyPos.set(6 + Math.cos(guyAng) * 10, 0, 12 + Math.sin(guyAng) * 10);
+      guyMesh.position.copy(guyPos);
+      guyMesh.rotation.y = -guyAng;
+
+      for (const n of npcs) {
+        n.pos.x += Math.sin(n.dir) * n.speed * dt;
+        n.pos.z += Math.cos(n.dir) * n.speed * dt;
+        if (Math.abs(n.pos.x) > 85 || Math.abs(n.pos.z) > 72) n.dir += Math.PI * 0.85;
+        n.mesh.position.copy(n.pos);
+        n.mesh.rotation.y = n.dir;
+      }
+
+      // Living Ecosystem Animations (Insects, Birds, Animals, Fish)
+      for (const ins of insects) {
+        ins.mesh.position.set(
+          ins.base.x + Math.cos(sim * ins.speed + ins.phase) * 1.4,
+          ins.base.y + Math.sin(sim * ins.speed * 1.7 + ins.phase) * 0.45,
+          ins.base.z + Math.sin(sim * ins.speed + ins.phase) * 1.4
+        );
+      }
+      for (const bd of birds) {
+        const a = sim * bd.speed + bd.phase;
+        bd.group.position.set(
+          bd.center.x + Math.cos(a) * bd.rad,
+          bd.center.y + Math.sin(a * 2) * 1.4,
+          bd.center.z + Math.sin(a) * bd.rad
+        );
+        bd.group.rotation.y = -a;
+      }
+      for (const an of animals) {
+        const distPlayer = an.pos.distanceTo(playerPos);
+        if (distPlayer < 6.5 && activeVehicle && Math.abs(activeVehicle.speed) > 4) {
+          an.dir = Math.atan2(an.pos.x - playerPos.x, an.pos.z - playerPos.z);
+        }
+        an.pos.x += Math.sin(an.dir) * an.speed * dt;
+        an.pos.z += Math.cos(an.dir) * an.speed * dt;
+        if (an.pos.x < 22 || an.pos.x > 92 || an.pos.z < -58 || an.pos.z > 62) {
+          an.dir += Math.PI * 0.75;
+        }
+        an.mesh.position.copy(an.pos);
+        an.mesh.rotation.y = an.dir;
+      }
+      for (const fi of fishes) {
+        fi.mesh.position.x = fi.x0 + Math.sin(sim * 0.9 + fi.phase) * 6;
+        fi.mesh.position.z = fi.z0 + Math.cos(sim * 0.7 + fi.phase) * 3;
+      }
+
+      // Follow Camera (3rd-Person GTA / Oasis Chase Cam)
+      const camDist = activeVehicle ? 10.5 : 7.8;
+      const targetCamYaw = activeVehicle ? activeVehicle.yaw + Math.PI : camYaw + Math.PI;
+      const desiredCam = new THREE.Vector3(
+        playerPos.x + Math.sin(targetCamYaw) * camDist,
+        playerPos.y + 3.2 + camPitch * 4.5,
+        playerPos.z + Math.cos(targetCamYaw) * camDist
+      );
+      camera.position.lerp(desiredCam, 0.14);
+      camera.lookAt(playerPos.x, playerPos.y + 1.6, playerPos.z);
+
+      renderer.render(scene, camera);
+
+      uiSyncTick = (uiSyncTick + 1) % 6;
+      if (uiSyncTick === 0) {
+        if (activeVehicle) {
+          setSpeedKmh(Math.round(Math.abs(activeVehicle.speed) * 4.8));
+          setNearVehicleLabel(null);
+        } else {
+          let nearLbl: string | null = null;
+          for (const v of vehicles) {
+            if (v.pos.distanceTo(playerPos) < 7.5) {
+              nearLbl = v.kind === 'moto' ? 'Moto (E)' : 'Carro (E)';
+              break;
+            }
+          }
+          setNearVehicleLabel(nearLbl);
+        }
+        setNearGuy(guyPos.distanceTo(playerPos) < 9.5);
+      }
+    };
+
+    animate();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      domEl.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('resize', onResize);
+      renderer.dispose();
+      if (domEl.parentElement === container) container.removeChild(domEl);
+    };
+  }, [onToast]);
 
   return (
     <div
-      ref={wrapperRef}
-      className={`rounded-3xl bg-[#060214] border border-cyan-400/40 shadow-[0_0_60px_rgba(34,211,238,0.2)] overflow-hidden ${
-        fullscreen ? 'p-4 flex flex-col justify-between min-h-screen' : 'p-3 sm:p-5 space-y-4'
-      }`}
+      className={
+        fullscreen
+          ? 'fixed inset-0 z-[9990] bg-black select-none overflow-hidden'
+          : 'relative w-full h-[76dvh] rounded-3xl overflow-hidden border border-cyan-400/35 bg-black select-none'
+      }
     >
-      {/* Top Game HUD */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-400 via-pink-500 to-purple-600 flex items-center justify-center shadow-lg">
-            <Rocket className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <div className="font-display text-sm sm:text-base font-black text-white flex items-center gap-2">
-              COSMIC PHONK: NOVO MUNDO
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-emerald-300 text-[10px]">
-                ● {onlineCount} Online
-              </span>
-            </div>
-            <div className="text-[11px] text-cyan-200/80">
-              {currentBiome.name} · Nível {explorer?.level || 1} ({explorer?.xp || 0} XP) · ✨{' '}
-              <strong className="text-amber-300">{explorer?.shards || 0} Fragmentos</strong>
-            </div>
+      <div ref={mountRef} className="absolute inset-0 w-full h-full touch-none" />
+
+      {/* Top HUD: Autonomous Galaxy Consciousness + City Telemetry */}
+      <div className="absolute top-3 inset-x-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <div className="pointer-events-auto flex items-center gap-2">
+          {onExit && (
+            <button
+              type="button"
+              onClick={onExit}
+              className="px-3 py-1.5 rounded-full bg-slate-950/80 border border-white/20 text-white text-xs font-black flex items-center gap-1.5 backdrop-blur-xl"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Galáxia</span>
+            </button>
+          )}
+          <div className="px-3 py-1.5 rounded-full bg-slate-950/75 border border-cyan-400/40 backdrop-blur-xl text-[11px] font-black text-white flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>FREE CITY · OASIS 6</span>
+            <span className="text-cyan-300 hidden sm:inline">
+              · {eco?.weather || 'Brisa Solar'} {eco ? `${eco.temperatureC}°C` : ''}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="pointer-events-auto flex items-center gap-1.5">
           <button
-            onClick={() => setSfxEnabled((v) => !v)}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-cyan-200"
-            title={sfxEnabled ? 'Desligar Efeitos Sonoros' : 'Ligar Efeitos Sonoros'}
+            type="button"
+            onClick={() => setBrainLogOpen((v) => !v)}
+            className="px-2.5 py-1.5 rounded-full bg-purple-500/25 hover:bg-purple-500/40 border border-purple-400/50 backdrop-blur-xl text-purple-100 text-[11px] font-black flex items-center gap-1"
+            title="Consciência Autônoma da Galáxia"
           >
-            {sfxEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            <Brain className="w-3.5 h-3.5 text-purple-300" />
+            <span className="hidden sm:inline">IA Viva</span>
           </button>
           <button
-            onClick={toggleFullscreen}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white"
-            title="Tela Cheia"
+            type="button"
+            onClick={() => setMicroscopeOpen((v) => !v)}
+            className="px-2.5 py-1.5 rounded-full bg-emerald-500/25 hover:bg-emerald-500/40 border border-emerald-400/50 backdrop-blur-xl text-emerald-100 text-[11px] font-black flex items-center gap-1"
+            title="Ecossistema & Micro-vida"
+          >
+            <Bug className="w-3.5 h-3.5 text-emerald-300" />
+            <span className="hidden sm:inline">Bio {eco?.biodiversityIndex || 94}%</span>
+          </button>
+          <div className="px-2.5 py-1.5 rounded-full bg-slate-950/75 border border-white/20 backdrop-blur-xl text-[11px] font-black text-cyan-200 flex items-center gap-1">
+            <Users className="w-3.5 h-3.5" />
+            <span>{onlinePeersCount}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFullscreen((f) => !f)}
+            className="p-2 rounded-full bg-slate-950/75 border border-white/20 text-white"
           >
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
-          {onExit && (
-            <button
-              onClick={onExit}
-              className="px-3 py-1.5 rounded-xl bg-red-500/25 hover:bg-red-500/45 border border-red-400/40 text-red-100 text-xs font-black flex items-center gap-1"
-            >
-              <X className="w-3.5 h-3.5" /> Sair
+        </div>
+      </div>
+
+      {/* Autonomous Decisions Feed Drawer */}
+      {brainLogOpen && eco && (
+        <div className="absolute top-16 right-3 z-30 w-80 max-w-[92vw] rounded-2xl bg-slate-950/90 border border-purple-400/45 backdrop-blur-2xl p-3 space-y-2 shadow-2xl">
+          <div className="flex items-center justify-between text-xs font-black text-purple-200">
+            <span className="flex items-center gap-1.5">
+              <Brain className="w-4 h-4 text-purple-400" /> Decisões Autônomas do Universo
+            </span>
+            <button type="button" onClick={() => setBrainLogOpen(false)}>
+              <X className="w-4 h-4 text-slate-400" />
             </button>
+          </div>
+          <div className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-[11px] text-cyan-100">
+            <strong>🎬 Guy (Free Guy):</strong> {eco.guyState.currentGoal}
+          </div>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {eco.decisions.map((d) => (
+              <div key={d.id} className="p-2 rounded-xl bg-white/[0.05] text-[10px] text-slate-200">
+                <span className="text-emerald-300 font-black">[{d.domain}] </span>
+                {d.decision}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Living Ecosystem Microscope Panel */}
+      {microscopeOpen && eco && (
+        <div className="absolute top-16 left-3 z-30 w-76 max-w-[92vw] rounded-2xl bg-slate-950/90 border border-emerald-400/45 backdrop-blur-2xl p-3 space-y-2 shadow-2xl">
+          <div className="flex items-center justify-between text-xs font-black text-emerald-200">
+            <span className="flex items-center gap-1.5">
+              <Eye className="w-4 h-4 text-emerald-400" /> Ecossistema Vivo em Tempo Real
+            </span>
+            <button type="button" onClick={() => setMicroscopeOpen(false)}>
+              <X className="w-4 h-4 text-slate-400" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 text-[10px] font-bold text-white">
+            <div className="p-2 rounded-xl bg-white/5">🦠 Bactérias: {eco.speciesCounts.bacteriaBillions}B</div>
+            <div className="p-2 rounded-xl bg-white/5">🌳 Árvores: {eco.speciesCounts.trees}</div>
+            <div className="p-2 rounded-xl bg-white/5">🌺 Plantas: {eco.speciesCounts.plantsAndFlowers}</div>
+            <div className="p-2 rounded-xl bg-white/5">🦋 Insetos: {eco.speciesCounts.insects}</div>
+            <div className="p-2 rounded-xl bg-white/5">🦅 Aves: {eco.speciesCounts.birds}</div>
+            <div className="p-2 rounded-xl bg-white/5">🦌 Animais: {eco.speciesCounts.landAnimals}</div>
+            <div className="p-2 rounded-xl bg-white/5">🐟 Vida Marinha: {eco.speciesCounts.marineLife}</div>
+            <div className="p-2 rounded-xl bg-white/5">🌬️ Oxigênio: {eco.oxygenPct}%</div>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              void fetch('/api/galaxy/consciousness/act', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'spawn_wildlife' }),
+              })
+                .then((r) => r.json())
+                .then((d) => {
+                  if (d?.ecosystem) setEco(d.ecosystem);
+                  onToast('🦌 Novos animais e aves integrados ao parque!');
+                })
+            }
+            className="w-full py-2 rounded-xl bg-emerald-400 text-black text-[11px] font-black"
+          >
+            + Nutrir Fauna & Flora
+          </button>
+        </div>
+      )}
+
+      {/* Free Guy Dialogue Drawer */}
+      {npcChatOpen && (
+        <div className="absolute bottom-24 right-3 left-3 sm:left-auto sm:w-80 z-30 rounded-3xl bg-slate-950/92 border border-cyan-400/50 backdrop-blur-2xl p-3 space-y-2 shadow-2xl">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-black text-cyan-200 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-cyan-400" /> Guy — Personagem Consciente
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setNpcVoice((v) => !v)}
+                className="p-1 rounded-full bg-white/10 text-cyan-200"
+              >
+                {npcVoice ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              </button>
+              <button type="button" onClick={() => setNpcChatOpen(false)} className="p-1 text-slate-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div className="max-h-40 overflow-y-auto space-y-1.5">
+            {npcMessages.map((m) => (
+              <div key={m.id} className="p-2 rounded-xl bg-white/[0.06] text-[11px] text-white">
+                <span className="text-cyan-300 font-black">{m.who}: </span>
+                {m.text}
+              </div>
+            ))}
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void sendNpcMessage();
+            }}
+            className="flex gap-1.5"
+          >
+            <input
+              type="text"
+              value={npcInput}
+              onChange={(e) => setNpcInput(e.target.value)}
+              placeholder="Falar com Guy..."
+              className="flex-1 bg-white/10 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none"
+            />
+            <button type="submit" className="p-2 rounded-xl bg-cyan-400 text-black">
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Bottom GTA Controls + Speedometer + Mobile Touch Pad */}
+      <div className="absolute bottom-3 inset-x-3 z-20 flex items-end justify-between gap-2 pointer-events-none">
+        {/* Touch D-Pad for Mobile / Mouse */}
+        <div className="pointer-events-auto grid grid-cols-3 gap-1 w-28 sm:w-32">
+          <div />
+          <button
+            type="button"
+            onPointerDown={() => (joyRef.current.y = -1)}
+            onPointerUp={() => (joyRef.current.y = 0)}
+            onPointerLeave={() => (joyRef.current.y = 0)}
+            className="h-9 rounded-xl bg-slate-950/75 border border-white/25 text-white font-black text-xs active:bg-cyan-400 active:text-black"
+          >
+            ▲
+          </button>
+          <div />
+          <button
+            type="button"
+            onPointerDown={() => (joyRef.current.x = -1)}
+            onPointerUp={() => (joyRef.current.x = 0)}
+            onPointerLeave={() => (joyRef.current.x = 0)}
+            className="h-9 rounded-xl bg-slate-950/75 border border-white/25 text-white font-black text-xs active:bg-cyan-400 active:text-black"
+          >
+            ◀
+          </button>
+          <button
+            type="button"
+            onPointerDown={() => (joyRef.current.y = 1)}
+            onPointerUp={() => (joyRef.current.y = 0)}
+            onPointerLeave={() => (joyRef.current.y = 0)}
+            className="h-9 rounded-xl bg-slate-950/75 border border-white/25 text-white font-black text-xs active:bg-cyan-400 active:text-black"
+          >
+            ▼
+          </button>
+          <button
+            type="button"
+            onPointerDown={() => (joyRef.current.x = 1)}
+            onPointerUp={() => (joyRef.current.x = 0)}
+            onPointerLeave={() => (joyRef.current.x = 0)}
+            className="h-9 rounded-xl bg-slate-950/75 border border-white/25 text-white font-black text-xs active:bg-cyan-400 active:text-black"
+          >
+            ▶
+          </button>
+        </div>
+
+        {/* Center Speed / Mode Indicator */}
+        <div className="px-4 py-2 rounded-2xl bg-slate-950/80 border border-white/20 backdrop-blur-xl text-center">
+          {inVehicleType !== 'none' ? (
+            <div className="flex items-center gap-2 text-cyan-300 font-black text-sm">
+              {inVehicleType === 'moto' ? <Bike className="w-4 h-4" /> : <Car className="w-4 h-4" />}
+              <span className="tabular-nums">{speedKmh} km/h</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-emerald-300 font-black text-xs">
+              <Footprints className="w-3.5 h-3.5" />
+              <span>{nearVehicleLabel || (nearGuy ? 'Guy perto (F)' : 'WASD · E Veículo')}</span>
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Biome Quick Warp + Event Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1.5">
-          {Object.values(BIOMES).map((b) => (
-            <button
-              key={b.id}
-              onClick={() => warpToBiome(b.id)}
-              className={`px-2.5 py-1 rounded-xl text-[11px] font-black border transition ${
-                currentBiomeId === b.id
-                  ? 'bg-cyan-400 text-black border-white'
-                  : 'bg-white/[0.06] text-purple-200 border-white/10 hover:bg-white/15'
-              }`}
-            >
-              🌀 {b.name}
-            </button>
-          ))}
-        </div>
-        <div className="text-[11px] font-bold text-amber-200 bg-amber-500/15 border border-amber-400/35 px-3 py-1 rounded-full">
-          {bannerMsg}
-        </div>
-      </div>
-
-      {/* Main Playable Canvas + Boss Bar */}
-      <div className="relative rounded-2xl overflow-hidden border-2 border-cyan-400/35 bg-black">
-        {bossHud && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 w-[85%] max-w-md bg-black/80 border border-rose-400/60 rounded-xl px-3 py-1.5">
-            <div className="flex justify-between text-[10px] font-black text-rose-300 mb-1">
-              <span>⚠️ CHEFÃO: {bossHud.name}</span>
-              <span>
-                {bossHud.hp} / {bossHud.maxHp}
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-rose-500 to-amber-400"
-                style={{ width: `${Math.min(100, (bossHud.hp / bossHud.maxHp) * 100)}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        <canvas
-          ref={canvasRef}
-          width={900}
-          height={520}
-          onMouseMove={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            gameRef.current.aimX = ((e.clientX - rect.left) / rect.width) * 900;
-            gameRef.current.aimY = ((e.clientY - rect.top) / rect.height) * 520;
-            gameRef.current.keys.add('mouse');
-          }}
-          onMouseDown={() => {
-            gameRef.current.keys.add('mouse');
-            gameRef.current.firing = true;
-          }}
-          onMouseUp={() => {
-            gameRef.current.firing = false;
-          }}
-          onMouseLeave={() => {
-            gameRef.current.firing = false;
-            gameRef.current.keys.delete('mouse');
-          }}
-          className="w-full h-auto aspect-[900/520] block cursor-crosshair select-none touch-none"
-        />
-
-        {/* Quick Equipped Weapon Bar Overlay */}
-        <div className="absolute bottom-2 left-2 right-2 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-          <div className="flex flex-wrap gap-1 pointer-events-auto">
-            {weapons.map((w, idx) => {
-              const unlocked = explorer?.unlockedWeapons.includes(w.id);
-              const eq = explorer?.equippedWeapon === w.id;
-              return (
-                <button
-                  key={w.id}
-                  disabled={!unlocked}
-                  onClick={() => void flushProgress({ equipWeaponId: w.id })}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-black border backdrop-blur-md transition ${
-                    eq
-                      ? 'bg-white text-black border-cyan-300 shadow'
-                      : unlocked
-                        ? 'bg-black/70 text-white border-white/25 hover:bg-black/90'
-                        : 'bg-black/45 text-white/35 border-white/10'
-                  }`}
-                >
-                  [{idx + 1}] {w.name.split(' ')[0]}
-                </button>
-              );
-            })}
-          </div>
-          <div className="hidden sm:block px-2.5 py-1 rounded-lg bg-black/70 text-[10px] text-cyan-200 font-bold">
-            WASD/Setas: Mover · Click/Espaço: Atirar · Shift: Dash · E: Portal/Cápsula
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile / Touch Virtual Controls (Always handy on touch & tablet!) */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white/[0.04] border border-white/10 rounded-2xl p-3">
-        <div className="grid grid-cols-3 gap-1 w-32">
-          <div />
+        {/* Right Action Buttons */}
+        <div className="pointer-events-auto flex items-center gap-1.5">
           <button
-            onPointerDown={() => (gameRef.current.joyDir.y = -1)}
-            onPointerUp={() => (gameRef.current.joyDir.y = 0)}
-            onPointerLeave={() => (gameRef.current.joyDir.y = 0)}
-            className="h-9 rounded-lg bg-white/10 active:bg-cyan-400 active:text-black flex items-center justify-center"
+            type="button"
+            onClick={() => actionTriggerRef.current.spawnTree()}
+            className="p-3 rounded-2xl bg-emerald-500/80 hover:bg-emerald-400 text-black font-black shadow-lg"
+            title="Plantar Árvore"
           >
-            <ChevronUp className="w-4 h-4" />
-          </button>
-          <div />
-          <button
-            onPointerDown={() => (gameRef.current.joyDir.x = -1)}
-            onPointerUp={() => (gameRef.current.joyDir.x = 0)}
-            onPointerLeave={() => (gameRef.current.joyDir.x = 0)}
-            className="h-9 rounded-lg bg-white/10 active:bg-cyan-400 active:text-black flex items-center justify-center"
-          >
-            <ChevronLeft className="w-4 h-4" />
+            <Trees className="w-4 h-4" />
           </button>
           <button
-            onPointerDown={() => (gameRef.current.joyDir.y = 1)}
-            onPointerUp={() => (gameRef.current.joyDir.y = 0)}
-            onPointerLeave={() => (gameRef.current.joyDir.y = 0)}
-            className="h-9 rounded-lg bg-white/10 active:bg-cyan-400 active:text-black flex items-center justify-center"
+            type="button"
+            onClick={() => actionTriggerRef.current.talkNpc()}
+            className="p-3 rounded-2xl bg-cyan-500/80 hover:bg-cyan-400 text-black font-black shadow-lg"
+            title="Falar com Guy (F)"
           >
-            <ChevronDown className="w-4 h-4" />
+            <MessageCircle className="w-4 h-4" />
           </button>
           <button
-            onPointerDown={() => (gameRef.current.joyDir.x = 1)}
-            onPointerUp={() => (gameRef.current.joyDir.x = 0)}
-            onPointerLeave={() => (gameRef.current.joyDir.x = 0)}
-            className="h-9 rounded-lg bg-white/10 active:bg-cyan-400 active:text-black flex items-center justify-center"
+            type="button"
+            onClick={() => actionTriggerRef.current.toggleVehicle()}
+            className="px-3.5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-black font-black text-xs flex items-center gap-1 shadow-lg"
+            title="Entrar/Sair do Carro ou Moto (E)"
           >
-            <ChevronRight className="w-4 h-4" />
+            <Car className="w-4 h-4" />
+            <span>{inVehicleType !== 'none' ? 'Sair' : 'Dirigir'}</span>
           </button>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onPointerDown={() => (gameRef.current.firing = true)}
-            onPointerUp={() => (gameRef.current.firing = false)}
-            onPointerLeave={() => (gameRef.current.firing = false)}
-            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-cyan-500 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-lg"
-          >
-            <Crosshair className="w-4 h-4" /> ATIRAR ({activeWeapon?.name.split(' ')[0] || 'Blaster'})
-          </button>
-          <button
-            onClick={triggerDash}
-            className="px-4 py-3 rounded-2xl bg-purple-500/30 border border-purple-400/50 text-purple-100 font-black text-xs flex items-center gap-1"
-          >
-            <Zap className="w-4 h-4" /> DASH
-          </button>
-          <button
-            onClick={triggerInteract}
-            className="px-4 py-3 rounded-2xl bg-amber-400 text-black font-black text-xs flex items-center gap-1"
-          >
-            <PackageOpen className="w-4 h-4" /> PORTAL / CÁPSULA (E)
-          </button>
-        </div>
-      </div>
-
-      {/* Bottom Tabs: Arsenal Galáctico | Cofre Colecionador | Missões Online | Jogadores & Chat */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { id: 'arsenal' as const, label: '🔫 Armas da Galáxia', icon: <Sparkles className="w-3.5 h-3.5" /> },
-            { id: 'relics' as const, label: `💎 Colecionáveis (${explorer?.relics.length || 0}/${relicCatalog.length})`, icon: <Award className="w-3.5 h-3.5" /> },
-            { id: 'quests' as const, label: '🧭 Missões Online', icon: <Compass className="w-3.5 h-3.5" /> },
-            { id: 'online' as const, label: `👥 Mundo Online & Chat (${onlineCount})`, icon: <Users className="w-3.5 h-3.5" /> },
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setPanelTab(t.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border transition ${
-                panelTab === t.id
-                  ? 'bg-cyan-400 text-black border-white'
-                  : 'bg-white/[0.06] text-purple-200 border-white/10 hover:bg-white/10'
-              }`}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* ARSENAL */}
-        {panelTab === 'arsenal' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
-            {weapons.map((w) => {
-              const unlocked = explorer?.unlockedWeapons.includes(w.id);
-              const eq = explorer?.equippedWeapon === w.id;
-              return (
-                <div
-                  key={w.id}
-                  className={`rounded-2xl p-3 border space-y-2 flex flex-col justify-between ${
-                    eq ? 'bg-cyan-500/15 border-cyan-400' : 'bg-white/[0.04] border-white/10'
-                  }`}
-                >
-                  <div className="space-y-1">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black border ${RARITY_COLORS[w.rarity] || ''}`}>
-                      {w.rarity}
-                    </span>
-                    <div className="text-xs font-black text-white">{w.name}</div>
-                    <p className="text-[10px] text-purple-200/75">{w.description}</p>
-                    <div className="text-[10px] font-bold text-cyan-300">Dano: {w.damage}</div>
-                  </div>
-                  {unlocked ? (
-                    <button
-                      onClick={() => void flushProgress({ equipWeaponId: w.id })}
-                      className={`w-full py-1.5 rounded-xl text-[11px] font-black ${
-                        eq ? 'bg-cyan-400 text-black' : 'bg-white/10 hover:bg-white/20 text-white'
-                      }`}
-                    >
-                      {eq ? '✓ Equipada' : 'Equipar'}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => void flushProgress({ unlockWeaponId: w.id })}
-                      className="w-full py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black text-[11px] font-black"
-                    >
-                      Desbloquear ({w.costShards} ✨)
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* RARE COLLECTOR RELICS */}
-        {panelTab === 'relics' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-            {relicCatalog.map((r) => {
-              const owned = explorer?.relics.find((item) => item.id === r.id);
-              return (
-                <div
-                  key={r.id}
-                  className={`rounded-2xl p-3 border text-center space-y-1 ${
-                    owned ? 'bg-white/[0.07] border-amber-400/45' : 'bg-black/40 border-white/10 opacity-55'
-                  }`}
-                >
-                  <div className="text-2xl">{owned ? r.emoji : '❓'}</div>
-                  <div className="text-xs font-black text-white">{owned ? r.name : 'Relíquia Desconhecida'}</div>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black border ${RARITY_COLORS[r.rarity] || ''}`}>
-                    {r.rarity} · {r.biome}
-                  </span>
-                  <div className="text-[10px] text-amber-300 font-bold">
-                    {owned ? `Na Coleção: x${owned.count}` : 'Abra Cápsulas ou Derrote Chefões'}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ONLINE QUESTS */}
-        {panelTab === 'quests' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            {quests.map((q) => {
-              const claimed = explorer?.claimedQuests.includes(q.id);
-              let prog = 0;
-              if (q.id === 'q_discover_biomes') prog = explorer?.stats.biomesVisited.length || 1;
-              if (q.id === 'q_defeat_enemies') prog = explorer?.stats.enemiesDefeated || 0;
-              if (q.id === 'q_open_chests') prog = explorer?.stats.chestsOpened || 0;
-              if (q.id === 'q_defeat_boss') prog = explorer?.stats.bossesDefeated || 0;
-              const ready = !claimed && prog >= q.target;
-
-              return (
-                <div
-                  key={q.id}
-                  className="rounded-2xl p-3.5 bg-white/[0.04] border border-white/12 flex items-center justify-between gap-3"
-                >
-                  <div className="space-y-1">
-                    <div className="text-xs font-black text-white flex items-center gap-1.5">
-                      <Shield className="w-4 h-4 text-cyan-300" /> {q.title}
-                    </div>
-                    <p className="text-[11px] text-purple-200/80">{q.description}</p>
-                    <div className="text-[10px] font-bold text-amber-300">
-                      Progresso: {Math.min(prog, q.target)}/{q.target} · Prêmio: +{q.rewardShards} ✨ +{q.rewardXp} XP + {q.rewardBadge}
-                    </div>
-                  </div>
-                  <button
-                    disabled={!ready}
-                    onClick={() => void flushProgress({ claimQuestId: q.id })}
-                    className={`px-3 py-2 rounded-xl text-[11px] font-black shrink-0 ${
-                      claimed
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/35'
-                        : ready
-                          ? 'bg-amber-400 hover:bg-amber-300 text-black'
-                          : 'bg-white/10 text-white/45'
-                    }`}
-                  >
-                    {claimed ? '✓ Resgatada' : ready ? 'Resgatar!' : 'Em Curso'}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ONLINE SHARED FEED, LEADERBOARD & SECTOR CHAT */}
-        {panelTab === 'online' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            {/* Discoveries Feed */}
-            <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3 space-y-2">
-              <div className="text-xs font-black text-amber-300 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4" /> Descobertas Raras Globais
-              </div>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto text-[11px]">
-                {discoveries.map((d) => (
-                  <div key={d.id} className="p-2 rounded-xl bg-black/40 border border-white/5 text-purple-100">
-                    <strong className="text-cyan-300">{d.playerName}</strong> {d.message}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Leaderboard */}
-            <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3 space-y-2">
-              <div className="text-xs font-black text-cyan-300 flex items-center gap-1.5">
-                <Trophy className="w-4 h-4" /> Ranking de Exploradores
-              </div>
-              <div className="space-y-1 max-h-40 overflow-y-auto text-[11px]">
-                {leaderboard.map((l, idx) => (
-                  <div key={l.playerId} className="flex items-center justify-between px-2 py-1 rounded-lg bg-black/35">
-                    <span className="text-white font-bold truncate">
-                      #{idx + 1} {l.playerName}
-                    </span>
-                    <span className="text-amber-300 font-black shrink-0">
-                      Nv.{l.level} · {l.relicCount} 💎
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Live Sector Chat */}
-            <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3 flex flex-col justify-between space-y-2">
-              <div className="text-xs font-black text-pink-300">💬 Chat Co-op do Mundo</div>
-              <div className="space-y-1 max-h-28 overflow-y-auto text-[11px]">
-                {sectorChat.map((c) => (
-                  <div key={c.id} className="text-purple-100">
-                    <strong className="text-emerald-300">{c.playerName}:</strong> {c.message}
-                  </div>
-                ))}
-              </div>
-              <form onSubmit={(e) => void handleSendChat(e)} className="flex gap-1.5">
-                <input
-                  value={chatText}
-                  onChange={(e) => setChatText(e.target.value)}
-                  placeholder="Chamar equipe ou contar achado..."
-                  className="flex-1 px-2.5 py-1.5 rounded-xl bg-black/50 border border-white/15 text-[11px] text-white focus:outline-none"
-                />
-                <button type="submit" className="px-2.5 py-1.5 rounded-xl bg-cyan-400 text-black font-black">
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

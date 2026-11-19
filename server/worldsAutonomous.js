@@ -732,6 +732,183 @@ export function pollCallSignals(peerId) {
   return list;
 }
 
+// === AUTONOMOUS LIVING GALAXY CONSCIOUSNESS & ECOSYSTEM ENGINE ===
+const ecosystem = {
+  cycleTick: 0,
+  timeOfDay: 10.5, // 0..24h
+  weather: 'Brisa Solar',
+  temperatureC: 24.4,
+  oxygenPct: 21.6,
+  soilFertilityPct: 84,
+  biodiversityIndex: 94,
+  galaxyMood: 'Harmonia Criativa',
+  speciesCounts: {
+    bacteriaBillions: 4820,
+    plantsAndFlowers: 1450,
+    trees: 310,
+    insects: 2890,
+    birds: 185,
+    landAnimals: 94,
+    marineLife: 420,
+    consciousNpcs: 42,
+    activeVehicles: 18,
+  },
+  guyState: {
+    name: 'Guy',
+    mood: 'Livre & Curioso',
+    currentGoal: 'Explorando Free City fora do roteiro e plantando árvores no Oasis Park',
+    location: 'Avenida Oceânica',
+    awakenedScore: 99,
+  },
+  decisions: [
+    {
+      id: 'dec_init',
+      ts: new Date().toISOString(),
+      domain: 'Ecossistema',
+      decision: 'Bactérias do solo enriqueceram a fertilidade em +4%; novas flores e árvores germinando no parque.',
+    },
+  ],
+};
+
+export function stepAutonomousConsciousness(userAction = null) {
+  ecosystem.cycleTick += 1;
+  ecosystem.timeOfDay = Number(((ecosystem.timeOfDay + 0.35) % 24).toFixed(2));
+
+  if (userAction?.type === 'plant_tree') {
+    ecosystem.speciesCounts.trees += 6;
+    ecosystem.speciesCounts.plantsAndFlowers += 18;
+    ecosystem.speciesCounts.insects += 24;
+    ecosystem.oxygenPct = Math.min(24.5, Number((ecosystem.oxygenPct + 0.15).toFixed(2)));
+    ecosystem.decisions.unshift({
+      id: `dec_${Date.now()}`,
+      ts: new Date().toISOString(),
+      domain: 'Natureza',
+      decision: 'Viajante plantou árvores! Abelhas, borboletas e pássaros migraram para polinizar o novo bosque.',
+    });
+  } else if (userAction?.type === 'spawn_wildlife') {
+    ecosystem.speciesCounts.landAnimals += 5;
+    ecosystem.speciesCounts.birds += 8;
+    ecosystem.speciesCounts.marineLife += 12;
+    ecosystem.decisions.unshift({
+      id: `dec_${Date.now()}`,
+      ts: new Date().toISOString(),
+      domain: 'Fauna',
+      decision: 'Nova vida animal integrada ao bioma: lobos, cervos, cães, aves e cardumes equilibram a cadeia natural.',
+    });
+  } else {
+    // Coherent autonomous environmental & city decisions
+    if (ecosystem.soilFertilityPct < 75) {
+      ecosystem.speciesCounts.bacteriaBillions += 240;
+      ecosystem.soilFertilityPct = Math.min(98, ecosystem.soilFertilityPct + 9);
+      ecosystem.weather = 'Chuva Nutritiva';
+      ecosystem.decisions.unshift({
+        id: `dec_${Date.now()}`,
+        ts: new Date().toISOString(),
+        domain: 'Micro-vida & Clima',
+        decision: 'Fertilidade caiu abaixo de 75%: ativei chuva suave e bactérias decompositoras para regenerar o solo.',
+      });
+    } else if (ecosystem.temperatureC > 28.5) {
+      ecosystem.weather = 'Chuva Nutritiva';
+      ecosystem.temperatureC = Number((ecosystem.temperatureC - 2.6).toFixed(1));
+      ecosystem.decisions.unshift({
+        id: `dec_${Date.now()}`,
+        ts: new Date().toISOString(),
+        domain: 'Clima Galáctico',
+        decision: 'Temperatura subiu na cidade: disparei brisa oceânica e chuva leve para proteger plantas e animais.',
+      });
+    } else {
+      ecosystem.soilFertilityPct = Math.max(68, ecosystem.soilFertilityPct - 1 + (ecosystem.cycleTick % 3 === 0 ? 2 : 0));
+      ecosystem.temperatureC = Number(
+        (22 + Math.sin(ecosystem.timeOfDay * 0.26) * 5.2 + (Math.random() - 0.5) * 0.6).toFixed(1)
+      );
+      ecosystem.weather =
+        ecosystem.timeOfDay >= 19 || ecosystem.timeOfDay < 5.5
+          ? 'Aurora Noturna'
+          : ecosystem.cycleTick % 5 === 0
+            ? 'Brisa Dourada'
+            : 'Ensolarado';
+
+      const guyGoals = [
+        'Dirigindo um esportivo elétrico pela orla ouvindo Cosmic Phonk',
+        'Conversando com outros NPCs conscientes sobre liberdade fora do código',
+        'Ajudando abelhas e pássaros no Oasis Central e observando o mar',
+        'Atravessando um portal do Jogador Nº 1 para visitar o Planeta das Músicas',
+      ];
+      const guyLocations = ['Praia Neon', 'Oasis Park', 'Avenida Central', 'Mirante Galáctico'];
+      ecosystem.guyState.currentGoal = guyGoals[ecosystem.cycleTick % guyGoals.length];
+      ecosystem.guyState.location = guyLocations[ecosystem.cycleTick % guyLocations.length];
+
+      const periodicDecisions = [
+        {
+          domain: 'Free Guy IA',
+          decision: `Guy mudou de rota sozinho: agora está em ${ecosystem.guyState.location} (${ecosystem.guyState.currentGoal}).`,
+        },
+        {
+          domain: 'Ecossistema',
+          decision: 'Bactérias fixadoras de nitrogênio e polinizadores aumentaram o crescimento das flores e árvores em +3%.',
+        },
+        {
+          domain: 'Tráfego Inteligente',
+          decision: 'Fluxo de carros e motos autônomos redistribuído nas avenidas para zero congestionamento.',
+        },
+        {
+          domain: 'Fauna Viva',
+          decision: 'Bando de aves migratórias e cardumes costeiros sincronizados com o ciclo solar de Free City.',
+        },
+      ];
+      const pick = periodicDecisions[ecosystem.cycleTick % periodicDecisions.length];
+      ecosystem.decisions.unshift({
+        id: `dec_${Date.now()}`,
+        ts: new Date().toISOString(),
+        ...pick,
+      });
+    }
+  }
+
+  ecosystem.biodiversityIndex = Math.min(
+    100,
+    Math.round(
+      70 +
+        Math.min(15, ecosystem.speciesCounts.trees / 30) +
+        Math.min(15, ecosystem.speciesCounts.landAnimals / 10)
+    )
+  );
+  ecosystem.decisions = ecosystem.decisions.slice(0, 14);
+  return ecosystem;
+}
+
+export function getGalaxyConsciousness() {
+  return ecosystem;
+}
+
+export function replyAsConsciousNpc({ npcName = 'Guy', message = '', userLang = 'pt' }) {
+  const m = String(message || '').trim().toLowerCase();
+  let reply = '';
+  if (/(carro|moto|dirigir|drive|car|bike)/i.test(m)) {
+    reply =
+      'Pode pegar qualquer carro ou moto brilhando na avenida! Eu mesmo acabei de estacionar um esportivo neon perto da praia.';
+  } else if (/(natureza|animal|planta|arvore|árvore|bacteria|bactéria|inseto|eco)/i.test(m)) {
+    reply = `Nosso ecossistema está com ${ecosystem.biodiversityIndex}% de biodiversidade! Tem bactérias nutrindo o solo, insetos polinizando flores, pássaros no céu e animais livres no parque.`;
+  } else if (/(quem|free guy|roteiro|conscien|vida|vivo)/i.test(m)) {
+    reply =
+      'Eu costumava ser só um figurante tomando café todo dia… até perceber que essa Galáxia tem vida própria! Agora eu escolho minhas próprias aventuras com você.';
+  } else if (/(jogador|oasis|portal|galaxia|galáxia)/i.test(m)) {
+    reply =
+      'Bem-vindo ao nosso Oasis aberto! Aqui você pode andar a pé, acelerar de moto ou supercarro, cuidar da vida selvagem ou saltar para qualquer planeta.';
+  } else {
+    reply = `E aí, parceiro! Aqui em ${ecosystem.guyState.location} o clima está "${ecosystem.weather}" (${ecosystem.temperatureC}°C). ${ecosystem.guyState.currentGoal}. Quer dar um rolê ou plantar vida nova?`;
+  }
+  return {
+    ok: true,
+    npcName,
+    mood: ecosystem.guyState.mood,
+    location: ecosystem.guyState.location,
+    reply,
+    ecosystem,
+    userLang,
+  };
+}
+
 // === AUTONOMOUS BACKGROUND SYNC ENGINE ===
 let syncStarted = false;
 export function startAutonomousWorldSync() {
@@ -753,4 +930,5 @@ export function startAutonomousWorldSync() {
 
   setTimeout(() => void runSync(), 2500);
   setInterval(() => void runSync(), 180_000);
+  setInterval(() => stepAutonomousConsciousness(), 15_000);
 }

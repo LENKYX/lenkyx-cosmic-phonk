@@ -59,6 +59,9 @@ import {
   getCallDirectory,
   pushCallSignal,
   pollCallSignals,
+  getGalaxyConsciousness,
+  stepAutonomousConsciousness,
+  replyAsConsciousNpc,
   startAutonomousWorldSync,
 } from './worldsAutonomous.js';
 import {
@@ -3046,6 +3049,32 @@ app.post('/api/calls/signal', (req, res) => {
 app.get('/api/calls/poll', (req, res) => {
   const peerId = String(req.query.peerId || '');
   res.json({ ok: true, signals: pollCallSignals(peerId) });
+});
+
+// === AUTONOMOUS LIVING GALAXY CONSCIOUSNESS, ECOSYSTEM & FREE GUY NPC ===
+app.get('/api/galaxy/consciousness', (_req, res) => {
+  res.json({ ok: true, ecosystem: getGalaxyConsciousness() });
+});
+
+app.post('/api/galaxy/consciousness/act', (req, res) => {
+  const type = String(req.body?.type || '').trim();
+  const ecosystem = stepAutonomousConsciousness(type ? { type } : null);
+  res.json({ ok: true, ecosystem });
+});
+
+app.post('/api/galaxy/npc-chat', async (req, res) => {
+  try {
+    const npcName = String(req.body?.npcName || 'Guy').slice(0, 32);
+    const message = String(req.body?.message || '').slice(0, 300);
+    const userLang = normalizeServerLang(req.body?.userLang || 'pt') || 'pt';
+    const data = replyAsConsciousNpc({ npcName, message, userLang });
+    if (userLang !== 'pt' && data.reply) {
+      data.reply = await translateAnyText(data.reply, 'pt', userLang);
+    }
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
 });
 
 app.get('/tv', (_req, res) => {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lenkyx-cosmic-phonk-v51';
+const CACHE_NAME = 'lenkyx-cosmic-phonk-v52';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

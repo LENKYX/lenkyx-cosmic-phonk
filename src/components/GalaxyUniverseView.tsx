@@ -4,6 +4,7 @@ import {
   AudioWaveform,
   Bitcoin,
   Bluetooth,
+  Car,
   Clapperboard,
   Compass,
   Crown,
@@ -34,6 +35,7 @@ import {
 import { AppSettings, TabId, Track } from '../types';
 import { GalaxyWorldsModal, CustomIdeaPlanet, SpecialWorldKind } from './GalaxyWorldsModal';
 import { GlobalVoiceCallModal, BluetoothConnectModal } from './GlobalVoiceCallModal';
+import { CosmicPhonkWorldGame } from './CosmicPhonkWorldGame';
 
 export interface GalaxyAction {
   type: 'navigate' | 'play_track' | 'visualizer';
@@ -45,6 +47,7 @@ interface PlanetSpec {
   id: string;
   tabId?: TabId;
   specialWorld?: SpecialWorldKind;
+  isFreeCity?: boolean;
   customIdea?: CustomIdeaPlanet;
   label: string;
   planetName: string;
@@ -309,6 +312,27 @@ const PLANET_SPECS: PlanetSpec[] = [
     moons: 1,
     style: 'inferno',
     icon: <Skull className="w-3.5 h-3.5" />,
+  },
+  {
+    id: 'freecity',
+    isFreeCity: true,
+    label: 'Free City · GTA 6',
+    planetName: 'Oasis 6 · Mundo Vivo',
+    orbitRadius: 18.5,
+    orbitSpeed: 0.125,
+    orbitPhase: 4.5,
+    orbitTilt: 0.04,
+    radius: 2.55,
+    spinSpeed: 0.36,
+    accentHex: '#22d3ee',
+    atmosphereHex: '#34d399',
+    hasClouds: true,
+    hasRing: true,
+    ringColor: '#38bdf8',
+    moons: 1,
+    hasSatellite: true,
+    style: 'earth',
+    icon: <Car className="w-3.5 h-3.5" />,
   },
 ];
 
@@ -1184,6 +1208,10 @@ export const GalaxyUniverseView: React.FC<Props> = ({
   }>({ open: false, world: 'shopping', ideaPlanet: null });
   const [callsOpen, setCallsOpen] = useState(false);
   const [bluetoothOpen, setBluetoothOpen] = useState(false);
+  const [freeCityOpen, setFreeCityOpen] = useState(false);
+  const [liveDecision, setLiveDecision] = useState<string>(
+    'Ecossistema vivo: bactérias, flores, insetos e carros autônomos em harmonia em Free City.'
+  );
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -1193,6 +1221,21 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         if (d?.ok && Array.isArray(d.planets)) setCustomPlanets(d.planets);
       })
       .catch(() => {});
+
+    const pollConsciousness = () => {
+      fetch('/api/galaxy/consciousness')
+        .then((r) => r.json())
+        .then((d) => {
+          const latest = d?.ecosystem?.decisions?.[0];
+          if (latest?.decision) {
+            setLiveDecision(`${latest.domain}: ${latest.decision}`);
+          }
+        })
+        .catch(() => {});
+    };
+    pollConsciousness();
+    const t = window.setInterval(pollConsciousness, 16000);
+    return () => window.clearInterval(t);
   }, []);
 
   const allPlanets = useMemo<PlanetSpec[]>(() => {
@@ -1847,7 +1890,15 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         camControlRef.current.warpTargetPos.copy(rt.pivot.position);
       }
       setWarpingMeta({ title: spec.label, subtitle: spec.planetName });
-      if (spec.specialWorld) {
+      if (spec.isFreeCity) {
+        setTimeout(() => {
+          camControlRef.current.warpActive = false;
+          camera.fov = 56;
+          camera.updateProjectionMatrix();
+          setWarpingMeta(null);
+          setFreeCityOpen(true);
+        }, 420);
+      } else if (spec.specialWorld) {
         setTimeout(() => {
           camControlRef.current.warpActive = false;
           camera.fov = 56;
@@ -2690,6 +2741,27 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         onClose={() => setBluetoothOpen(false)}
         onToast={onToast}
       />
+
+      {/* SUBTLE LIVE GALAXY CONSCIOUSNESS & FREE CITY QUICK ENTRY */}
+      {!commsOpen && !freeCityOpen && (
+        <button
+          type="button"
+          onClick={() => setFreeCityOpen(true)}
+          className="absolute bottom-3 left-3 z-20 max-w-[85vw] sm:max-w-md px-3 py-1.5 rounded-full bg-slate-950/65 hover:bg-slate-900/90 border border-cyan-400/35 backdrop-blur-xl flex items-center gap-2 text-left transition shadow-lg"
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+          <span className="text-[10px] font-bold text-cyan-100 truncate">{liveDecision}</span>
+        </button>
+      )}
+
+      {/* FULL 3D GTA 6 + FREE GUY + READY PLAYER ONE LIVING ECOSYSTEM WORLD */}
+      {freeCityOpen && (
+        <CosmicPhonkWorldGame
+          user={null}
+          onToast={onToast}
+          onExit={() => setFreeCityOpen(false)}
+        />
+      )}
     </div>
   );
 };
