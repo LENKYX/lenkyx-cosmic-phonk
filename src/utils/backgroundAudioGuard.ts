@@ -231,3 +231,81 @@ export async function prefetchVideoAudioBackup(title: string, artist = ''): Prom
   }
   return '';
 }
+
+// Screen Wake Lock API ("impedir modo de inatividade do telefone" during Video/Shorts/Live playback)
+let wakeLockSentinel: { release?: () => Promise<void>; released?: boolean } | null = null;
+let wakeLockShouldHold = false;
+let wakeLockListenerBound = false;
+
+async function acquireWakeLockInternal(): Promise<void> {
+  try {
+    const navAny = navigator as unknown as {
+      wakeLock?: { request: (type: 'screen') => Promise<{ release?: () => Promise<void>; released?: boolean }> };
+    };
+    if (!navAny.wakeLock) return;
+    if (wakeLockSentinel && !wakeLockSentinel.released) return;
+    wakeLockSentinel = await navAny.wakeLock.request('screen');
+  } catch {
+    // ignore unsupported or battery-saver rejection
+  }
+}
+
+export function setMediaWakeLock(active: boolean): void {
+  wakeLockShouldHold = active;
+  if (typeof document !== 'undefined' && !wakeLockListenerBound) {
+    wakeLockListenerBound = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && wakeLockShouldHold) {
+        void acquireWakeLockInternal();
+      }
+    });
+  }
+  if (active) {
+    void acquireWakeLockInternal();
+  } else if (wakeLockSentinel) {
+    try {
+      void wakeLockSentinel.release?.();
+    } catch {
+      // ignore
+    }
+    wakeLockSentinel = null;
+  }
+}
+
+export async function requestYoutubeMediaPermissions(): Promise<{
+  notifications: string;
+  cameraMic: boolean;
+  wakeLock: boolean;
+}> {
+  let notifications = 'default';
+  let cameraMic = false;
+  let wakeLock = false;
+
+  try {
+    if (typeof Notification !== 'undefined') {
+      notifications = await Notification.requestPermission();
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (navigator.mediaDevices?.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      stream.getTracks().forEach((t) => t.stop());
+      cameraMic = true;
+    }
+  } catch {
+    cameraMic = false;
+  }
+
+  try {
+    setMediaWakeLock(true);
+    wakeLock = true;
+  } catch {
+    wakeLock = false;
+  }
+
+  return { notifications, cameraMic, wakeLock };
+}
+

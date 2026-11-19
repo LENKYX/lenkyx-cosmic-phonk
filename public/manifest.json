@@ -9,6 +9,29 @@
   "background_color": "#060310",
   "theme_color": "#060310",
   "orientation": "any",
+  "categories": ["entertainment", "music", "video"],
+  "shortcuts": [
+    {
+      "name": "Início",
+      "short_name": "Início",
+      "url": "/?tab=catalog"
+    },
+    {
+      "name": "Shorts",
+      "short_name": "Shorts",
+      "url": "/?tab=reels"
+    },
+    {
+      "name": "Explorar",
+      "short_name": "Explorar",
+      "url": "/?tab=explore"
+    },
+    {
+      "name": "Offline",
+      "short_name": "Offline",
+      "url": "/?tab=offline"
+    }
+  ],
   "icons": [
     {
       "src": "/covers/icon-192.png?v=37",
