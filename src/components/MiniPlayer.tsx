@@ -62,6 +62,7 @@ interface Props {
   onLike: (track: Track) => void;
   onToggleOffline: (track: Track) => void;
   onWatchClip?: () => void;
+  onOpenMediaMenu?: () => void;
   onCloseMenu?: () => void;
 }
 
@@ -104,6 +105,7 @@ export const MiniPlayer: React.FC<Props> = ({
   onLike,
   onToggleOffline,
   onWatchClip,
+  onOpenMediaMenu,
   onCloseMenu,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -531,8 +533,22 @@ export const MiniPlayer: React.FC<Props> = ({
             </button>
           </div>
 
-          {/* Right: Working Bass Boost (all menus), PIX QR, Clip, Offline & Volume */}
+          {/* Right: Working Bass Boost (all menus), Media Menu, PIX QR, Clip, Offline & Volume */}
           <div className="flex items-center gap-1 justify-end md:w-auto">
+            {onOpenMediaMenu && (
+              <button
+                onClick={onOpenMediaMenu}
+                className={`px-2 py-1 rounded-xl border text-[10px] font-black flex items-center gap-1 shrink-0 transition ${
+                  backgroundMode
+                    ? 'bg-gradient-to-r from-emerald-500/25 to-cyan-500/25 border-cyan-400/50 text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.3)]'
+                    : 'bg-white/10 hover:bg-white/20 border-white/15 text-slate-100'
+                }`}
+                title="Abrir Menu Media Player (2º Plano / Tela Fechada)"
+              >
+                <BatteryCharging className="w-3.5 h-3.5 text-emerald-300" />
+                <span className="hidden xs:inline">Player</span>
+              </button>
+            )}
             {onCycleBassBoost && (
               <button
                 onClick={onCycleBassBoost}

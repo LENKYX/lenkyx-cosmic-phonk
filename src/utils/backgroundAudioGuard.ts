@@ -23,6 +23,15 @@ export interface MediaGuardHandlers {
 
 export function syncBackgroundMediaSession(meta: MediaGuardMeta, handlers: MediaGuardHandlers = {}): void {
   try {
+    const navAny = navigator as unknown as { audioSession?: { type: string } };
+    if (navAny.audioSession && meta.isPlaying) {
+      navAny.audioSession.type = 'playback';
+    }
+  } catch {
+    // ignore unsupported
+  }
+
+  try {
     window.AndroidBridge?.updateMediaState?.(
       meta.title || 'LENKYX',
       meta.artist || 'LENKYX',
@@ -42,8 +51,8 @@ export function syncBackgroundMediaSession(meta: MediaGuardMeta, handlers: Media
       artist: meta.artist || 'LENKYX',
       album: meta.album || 'Universo Livre',
       artwork: [
-        { src: absCover, sizes: '512x512', type: 'image/jpeg' },
-        { src: absCover, sizes: '1024x1024', type: 'image/jpeg' },
+        { src: absCover, sizes: '192x192', type: 'image/png' },
+        { src: absCover, sizes: '512x512', type: 'image/png' },
       ],
     });
     navigator.mediaSession.playbackState = meta.isPlaying ? 'playing' : 'paused';
@@ -58,6 +67,29 @@ export function syncBackgroundMediaSession(meta: MediaGuardMeta, handlers: Media
       'nexttrack',
       handlers.onNext ? () => handlers.onNext?.() : null
     );
+    try {
+      navigator.mediaSession.setActionHandler(
+        'seekbackward',
+        handlers.onSeek
+          ? (details) => {
+              const offset = details.seekOffset || 10;
+              handlers.onSeek?.(Math.max(0, (meta.currentTime || 0) - offset));
+            }
+          : null
+      );
+      navigator.mediaSession.setActionHandler(
+        'seekforward',
+        handlers.onSeek
+          ? (details) => {
+              const offset = details.seekOffset || 10;
+              const max = meta.duration && meta.duration > 0 ? meta.duration : (meta.currentTime || 0) + offset;
+              handlers.onSeek?.(Math.min(max, (meta.currentTime || 0) + offset));
+            }
+          : null
+      );
+    } catch {
+      // ignore
+    }
     try {
       navigator.mediaSession.setActionHandler('stop', handlers.onStop ? () => handlers.onStop?.() : null);
     } catch {
@@ -92,6 +124,50 @@ export function syncBackgroundMediaSession(meta: MediaGuardMeta, handlers: Media
     }
   } catch {
     // ignore mediaSession quirks
+  }
+}
+
+let keepaliveCtx: AudioContext | null = null;
+let keepaliveOsc: OscillatorNode | null = null;
+
+export function setMobileBackgroundKeepalive(active: boolean): void {
+  try {
+    if (!active) {
+      if (keepaliveOsc) {
+        try {
+          keepaliveOsc.stop();
+        } catch {
+          // ignore
+        }
+        keepaliveOsc = null;
+      }
+      if (keepaliveCtx) {
+        void keepaliveCtx.close().catch(() => {});
+        keepaliveCtx = null;
+      }
+      return;
+    }
+
+    const AudioCtx =
+      typeof window !== 'undefined'
+        ? window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+        : undefined;
+    if (!AudioCtx) return;
+    if (!keepaliveCtx) {
+      keepaliveCtx = new AudioCtx();
+      const osc = keepaliveCtx.createOscillator();
+      const g = keepaliveCtx.createGain();
+      osc.frequency.value = 30;
+      g.gain.value = 0.00001;
+      osc.connect(g);
+      g.connect(keepaliveCtx.destination);
+      osc.start();
+      keepaliveOsc = osc;
+    } else if (keepaliveCtx.state === 'suspended') {
+      void keepaliveCtx.resume().catch(() => {});
+    }
+  } catch {
+    // ignore
   }
 }
 

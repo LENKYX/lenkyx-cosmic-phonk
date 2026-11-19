@@ -42,10 +42,12 @@ import {
   ExternalLink,
   Tv,
   Gamepad2,
+  Disc3,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
   prefetchVideoAudioBackup,
+  setMobileBackgroundKeepalive,
   syncBackgroundMediaSession,
 } from './utils/backgroundAudioGuard';
 import {
@@ -67,6 +69,7 @@ import {
 } from './utils/gamingAudioBridge';
 import { GamingMusicModeModal } from './components/GamingMusicModeModal';
 import { WorldLanguageModal } from './components/WorldLanguageModal';
+import { MediaPlayerMenuModal } from './components/MediaPlayerMenuModal';
 import { recordRankingHit } from './utils/rankingsApi';
 import {
   AppMode,
@@ -317,6 +320,9 @@ export function App() {
   const ytPendingVideoRef = useRef<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [musicMenuOpen, setMusicMenuOpen] = useState(false);
+  const [mediaPlayerMenuOpen, setMediaPlayerMenuOpen] = useState(false);
+  const [sleepEndAt, setSleepEndAt] = useState<number | null>(null);
+  const [sleepMinutesLeft, setSleepMinutesLeft] = useState<number | null>(null);
   const [activeVersion, setActiveVersion] = useState<AudioVersion>('v1');
   const [isPlaying, setIsPlaying] = useState(false);
   const [backgroundMode, setBackgroundMode] = useState(true);
@@ -327,10 +333,34 @@ export function App() {
   const bgHandoffActiveRef = useRef<boolean>(false);
   useEffect(() => {
     backgroundModeRef.current = backgroundMode;
-  }, [backgroundMode]);
+    setMobileBackgroundKeepalive(isPlaying && backgroundMode && !userPausedRef.current);
+  }, [backgroundMode, isPlaying]);
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+  useEffect(() => {
+    if (!sleepEndAt) {
+      setSleepMinutesLeft(null);
+      return;
+    }
+    const tick = () => {
+      const remMs = sleepEndAt - Date.now();
+      if (remMs <= 0) {
+        setSleepEndAt(null);
+        setSleepMinutesLeft(null);
+        userPausedRef.current = true;
+        audioRef.current?.pause();
+        ytPlayerRef.current?.pauseVideo?.();
+        setIsPlaying(false);
+        setMobileBackgroundKeepalive(false);
+        return;
+      }
+      setSleepMinutesLeft(Math.max(1, Math.ceil(remMs / 60000)));
+    };
+    tick();
+    const id = window.setInterval(tick, 15000);
+    return () => window.clearInterval(id);
+  }, [sleepEndAt]);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.88);
@@ -2228,6 +2258,19 @@ export function App() {
 
           {/* Right Compact Controls */}
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setMediaPlayerMenuOpen(true)}
+              className={`px-2 sm:px-2.5 py-1.5 rounded-full border text-[11px] font-black flex items-center gap-1 shrink-0 transition ${
+                isPlaying && backgroundMode
+                  ? 'bg-gradient-to-r from-pink-500/25 via-purple-500/25 to-cyan-500/25 border-cyan-400/60 text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.35)]'
+                  : 'bg-white/10 hover:bg-white/20 border-white/15 text-slate-100'
+              }`}
+              title="Menu Media Player · Continuar tocando com celular fechado"
+            >
+              <Disc3 className={`w-3.5 h-3.5 text-cyan-300 ${isPlaying ? 'animate-spin' : ''}`} />
+              <span className="hidden xs:inline">Player</span>
+            </button>
             {(isPlaying || currentTrack) && (
               <button
                 type="button"
@@ -2680,6 +2723,7 @@ export function App() {
               setClipTheaterOpen(true);
             }
           }}
+          onOpenMediaMenu={() => setMediaPlayerMenuOpen(true)}
           onCloseMenu={() => setMusicMenuOpen(false)}
         />
       )}
@@ -2771,6 +2815,90 @@ export function App() {
           setUserLang(auto);
           showToast(`🌍 ${getLanguageMeta(auto).nativeName}`);
         }}
+      />
+      <MediaPlayerMenuModal
+        open={mediaPlayerMenuOpen}
+        onClose={() => setMediaPlayerMenuOpen(false)}
+        track={currentTrack}
+        queue={playQueue.length ? playQueue : tracks}
+        isPlaying={isPlaying}
+        isCurrentTrackOffline={currentTrack ? offlineTrackIds.has(currentTrack.id) : false}
+        currentTime={currentTime}
+        duration={duration}
+        volume={volume}
+        muted={muted}
+        bassBoostLevel={bassBoostLevel}
+        playbackSpeed={playbackSpeed}
+        loopTrack={loopTrack}
+        backgroundMode={backgroundMode}
+        pipOpen={gamingPipOpen}
+        sleepMinutesLeft={sleepMinutesLeft}
+        onSelectTrack={(t) => void handlePlayTrack(t, 'v1', playQueue.length ? playQueue : tracks)}
+        onTogglePlay={() => {
+          if (!currentTrack && tracks.length > 0) {
+            void handlePlayTrack(tracks[0], 'v1', tracks);
+          } else {
+            void handleTogglePlay();
+          }
+        }}
+        onPrev={() => handlePrevNext(-1)}
+        onNext={() => handlePrevNext(1)}
+        onSeek={handleSeek}
+        onVolume={handleVolume}
+        onToggleMute={handleToggleMute}
+        onSetBassBoostLevel={handleSetBassBoostLevel}
+        onCycleSpeed={handleCycleSpeed}
+        onToggleLoop={handleToggleLoop}
+        onToggleBackgroundMode={() => {
+          setBackgroundMode((prev) => {
+            const next = !prev;
+            showToast(
+              next
+                ? '📱 2º Plano ATIVO: música continua mesmo com o celular fechado ou tela apagada!'
+                : 'Modo 2º Plano desativado'
+            );
+            return next;
+          });
+        }}
+        onTogglePip={() => {
+          void (async () => {
+            if (isGamingPipOpen()) {
+              await closeGamingFloatingPlayer();
+              setGamingPipOpen(false);
+              return;
+            }
+            const pipMode = await openGamingFloatingPlayer(
+              {
+                title: currentTrack?.title || 'LENKYX Cosmic Phonk',
+                artist: currentTrack?.artist || 'LENKYX',
+                coverUrl: currentTrack?.coverUrl || '/covers/icon-512.png',
+                isPlaying,
+              },
+              {
+                onTogglePlay: () => void handleTogglePlay(),
+                onPrev: () => handlePrevNext(-1),
+                onNext: () => handlePrevNext(1),
+              }
+            );
+            const ok = pipMode !== 'unsupported';
+            setGamingPipOpen(ok);
+            if (ok) showToast('🪟 Mini-Player Flutuante ativo por cima dos outros apps!');
+            else showToast('Seu navegador já usa os controles nativos na tela bloqueada!');
+          })();
+        }}
+        onSetSleepMinutes={(minutes) => {
+          if (!minutes) {
+            setSleepEndAt(null);
+            setSleepMinutesLeft(null);
+            showToast('⏰ Temporizador desligado');
+          } else {
+            setSleepEndAt(Date.now() + minutes * 60 * 1000);
+            setSleepMinutesLeft(minutes);
+            showToast(`⏰ Música vai parar automaticamente em ${minutes} minutos`);
+          }
+        }}
+        onToggleOffline={(t) => void handleToggleOffline(t)}
+        onEmergencyStop={handleEmergencyStop}
       />
       <GamingMusicModeModal
         open={gamingModalOpen}
