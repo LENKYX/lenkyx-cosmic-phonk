@@ -24,6 +24,8 @@ import {
 import {
   runSmartWorldSearch,
   searchWorldShorts,
+  fetchYouTubeVideoComments,
+  fetchCreatorProfile,
   getFamousArtistsWithPhotos,
   fetchArtistPhotoAndBio,
   FAMOUS_ARTISTS_DIRECTORY,
@@ -51,6 +53,8 @@ import {
   getCommunityShorts,
   createCommunityShort,
   likeCommunityShort,
+  getUserLikedShortIds,
+  applyShortLikeOverlay,
   getActiveLives,
   startOrUpdateLive,
   getChannelSubscriptions,
@@ -1371,9 +1375,12 @@ app.get('/api/audio-proxy', async (req, res) => {
       host.includes('audius') ||
       host === 'archive.org' ||
       host.endsWith('.archive.org') ||
+      host.endsWith('.us.archive.org') ||
       host.endsWith('.mzstatic.com') ||
       host.endsWith('.itunes.apple.com') ||
-      host.endsWith('.jamendo.com'));
+      host.endsWith('.jamendo.com') ||
+      host.endsWith('.wikimedia.org') ||
+      host === 'commondatastorage.googleapis.com');
   if (!allowed) {
     return res.status(403).json({ error: 'Host not permitted for audio proxy' });
   }
@@ -1383,7 +1390,7 @@ app.get('/api/audio-proxy', async (req, res) => {
       reqHeaders.Range = String(req.headers.range);
     }
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 25000);
+    const timer = setTimeout(() => controller.abort(), 45000);
     req.on('close', () => controller.abort());
 
     const upstream = await fetch(rawUrl, {
@@ -1401,12 +1408,28 @@ app.get('/api/audio-proxy', async (req, res) => {
     const cl = upstream.headers.get('content-length');
     const cr = upstream.headers.get('content-range');
     const ar = upstream.headers.get('accept-ranges') || 'bytes';
+    const asDownload = req.query.download === '1' || req.query.download === 'true';
+    const rawFile = String(req.query.filename || 'LENKYX-Media')
+      .replace(/[^a-zA-Z0-9._ -]+/g, '_')
+      .trim()
+      .slice(0, 80);
 
     res.status(upstream.status === 206 ? 206 : 200);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
     res.setHeader('Content-Type', ct);
     res.setHeader('Accept-Ranges', ar);
+    if (asDownload) {
+      const ext = ct.includes('mp4') || ct.includes('video')
+        ? '.mp4'
+        : ct.includes('webm')
+          ? '.webm'
+          : ct.includes('ogg')
+            ? '.ogg'
+            : '.mp3';
+      const finalName = rawFile.match(/\.(mp3|mp4|webm|m4a|ogg|wav)$/i) ? rawFile : `${rawFile}${ext}`;
+      res.setHeader('Content-Disposition', `attachment; filename="${finalName}"`);
+    }
     if (cl) res.setHeader('Content-Length', cl);
     if (cr) res.setHeader('Content-Range', cr);
     res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -1421,6 +1444,85 @@ app.get('/api/audio-proxy', async (req, res) => {
     if (!res.headersSent) return res.status(502).json({ error: 'Proxy stream failed' });
     return res.end();
   }
+});
+
+// Universal Download Resolver (Music, Reels/Videos, Movies) — resolves direct playable/downloadable audio or MP4 stream
+app.get('/api/world-resolve-download', async (req, res) => {
+  const title = String(req.query.title || '').trim();
+  const artist = String(req.query.artist || '').trim();
+  const directUrl = String(req.query.directUrl || '').trim();
+  const kind = String(req.query.kind || 'audio').trim();
+  const safeName = `${artist ? `${artist} - ` : ''}${title || 'LENKYX'}`
+    .replace(/[^a-zA-Z0-9._ -]+/g, ' ')
+    .trim()
+    .slice(0, 72);
+
+  if (directUrl && (directUrl.startsWith('/') || directUrl.startsWith('https://'))) {
+    const isLocal = directUrl.startsWith('/');
+    return res.json({
+      ok: true,
+      url: directUrl,
+      downloadUrl: isLocal
+        ? directUrl
+        : `/api/audio-proxy?url=${encodeURIComponent(directUrl)}&download=1&filename=${encodeURIComponent(safeName)}`,
+      filename: `${safeName}${kind === 'video' || kind === 'movie' ? '.mp4' : '.mp3'}`,
+      kind,
+    });
+  }
+
+  try {
+    if (kind === 'movie' || kind === 'video') {
+      const qArchive = `${title} ${artist}`.trim();
+      const arRes = await fetch(
+        `https://archive.org/advancedsearch.php?q=${encodeURIComponent(`(${qArchive}) AND mediatype:movies`)}&fl[]=identifier,title&sort[]=downloads+desc&rows=4&output=json`,
+        { headers: { 'User-Agent': 'LENKYX-Cinema/2.0' }, signal: AbortSignal.timeout(5000) }
+      );
+      if (arRes.ok) {
+        const arJson = await arRes.json();
+        for (const doc of arJson?.response?.docs || []) {
+          try {
+            const metaRes = await fetch(`https://archive.org/metadata/${encodeURIComponent(doc.identifier)}/files`, {
+              signal: AbortSignal.timeout(4000),
+            });
+            if (!metaRes.ok) continue;
+            const metaJson = await metaRes.json();
+            const mp4 = (metaJson?.result || []).find((f) => /\.mp4$/i.test(f.name || ''));
+            if (mp4?.name) {
+              const mp4Url = `https://archive.org/download/${encodeURIComponent(doc.identifier)}/${encodeURIComponent(mp4.name)}`;
+              return res.json({
+                ok: true,
+                url: mp4Url,
+                downloadUrl: `/api/audio-proxy?url=${encodeURIComponent(mp4Url)}&download=1&filename=${encodeURIComponent(safeName)}`,
+                filename: `${safeName}.mp4`,
+                kind: 'video',
+              });
+            }
+          } catch {
+            // continue
+          }
+        }
+      }
+    }
+
+    const bg = await resolveBackgroundAudioStream(title, artist);
+    if (bg?.audioUrl) {
+      return res.json({
+        ok: true,
+        url: bg.audioUrl,
+        downloadUrl: bg.audioUrl.startsWith('/')
+          ? bg.audioUrl
+          : `/api/audio-proxy?url=${encodeURIComponent(bg.audioUrl)}&download=1&filename=${encodeURIComponent(safeName)}`,
+        filename: `${safeName}.mp3`,
+        kind: 'audio',
+        title: bg.title || title,
+        artist: bg.artist || artist,
+      });
+    }
+  } catch {
+    // fallback below
+  }
+
+  return res.status(404).json({ ok: false, error: 'Stream direto indisponível para este item.' });
 });
 
 // SEO Auto-Discovery for Google / Bing / Yandex / Baidu / Global Crawlers
@@ -2045,8 +2147,31 @@ app.post('/api/community/chat', async (req, res) => {
 app.get('/api/community/comments', async (req, res) => {
   try {
     const targetId = String(req.query.targetId || '');
-    const comments = await getCommentsForTarget(targetId, 80);
-    res.json({ targetId, comments });
+    const userId = String(req.query.userId || '').trim();
+    const sort = String(req.query.sort || 'top').trim();
+    let ytId = String(req.query.youtubeId || '').trim();
+    if (!ytId && targetId.startsWith('short:wshort-')) {
+      ytId = targetId.replace(/^short:wshort-/, '').trim();
+    }
+
+    const [localComments, ytComments] = await Promise.all([
+      getCommentsForTarget(targetId, 120, userId),
+      ytId ? fetchYouTubeVideoComments(ytId) : Promise.resolve([]),
+    ]);
+
+    // Attach liked_by_me / any local replies onto YouTube comments too
+    const merged = [...localComments, ...ytComments];
+    if (sort === 'newest') {
+      merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    } else {
+      merged.sort((a, b) => {
+        if ((a.source || 'lenkyx') !== (b.source || 'lenkyx')) {
+          return a.source === 'lenkyx' ? -1 : 1;
+        }
+        return (b.likes || 0) - (a.likes || 0);
+      });
+    }
+    res.json({ targetId, totalCount: merged.length, comments: merged });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }
@@ -2056,6 +2181,7 @@ app.post('/api/community/comments', async (req, res) => {
   try {
     const item = await postComment({
       targetId: req.body?.targetId,
+      parentId: req.body?.parentId || '',
       authorName: req.body?.authorName,
       authorColor: req.body?.authorColor,
       text: req.body?.text,
@@ -2068,17 +2194,69 @@ app.post('/api/community/comments', async (req, res) => {
 
 app.post('/api/community/comments/:id/like', async (req, res) => {
   try {
-    const upd = await likeComment(req.params.id);
+    const upd = await likeComment(
+      req.params.id,
+      req.body?.userId || '',
+      Number(req.body?.baseLikes || 0)
+    );
     res.json(upd || { id: req.params.id });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }
 });
 
-app.get('/api/community/shorts', async (_req, res) => {
+app.get('/api/community/shorts', async (req, res) => {
   try {
-    const shorts = await getCommunityShorts();
+    const userId = String(req.query.userId || '').trim();
+    const shorts = applyShortLikeOverlay(await getCommunityShorts(), userId);
     res.json({ shorts });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/community/shorts/liked', (req, res) => {
+  try {
+    const userId = String(req.query.userId || '').trim();
+    res.json({ likedIds: getUserLikedShortIds(userId) });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/community/creator-profile', async (req, res) => {
+  try {
+    const creatorName = String(req.query.creatorName || '').trim();
+    const youtubeId = String(req.query.youtubeId || '').trim();
+    const channelId = String(req.query.channelId || '').trim();
+    const userId = String(req.query.userId || '').trim();
+
+    const [profile, communityShorts] = await Promise.all([
+      fetchCreatorProfile({ creatorName, youtubeId, channelId }),
+      getCommunityShorts(),
+    ]);
+
+    const matchKey = (profile.channelName || creatorName).toLowerCase();
+    const ownCommunity = communityShorts.filter(
+      (s) =>
+        s.creator_name &&
+        (s.creator_name.toLowerCase() === matchKey ||
+          s.creator_name.toLowerCase() === creatorName.toLowerCase())
+    );
+
+    const seenVids = new Set(profile.shorts.map((s) => s.youtube_id || s.id));
+    const mergedShorts = [
+      ...ownCommunity,
+      ...profile.shorts.filter((s) => !seenVids.has(s.id) && !seenVids.has(s.youtube_id)),
+    ];
+    // Preserve profile.shorts order if ownCommunity is empty
+    const finalShorts = ownCommunity.length > 0 ? [...ownCommunity, ...profile.shorts] : profile.shorts;
+
+    res.json({
+      ...profile,
+      shorts: applyShortLikeOverlay(finalShorts, userId),
+      videos: applyShortLikeOverlay(profile.videos || [], userId),
+    });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }
@@ -2109,6 +2287,7 @@ app.post('/api/community/subscribe', (req, res) => {
 app.get('/api/community/world-shorts', async (req, res) => {
   const category = String(req.query.category || 'all').trim();
   const q = String(req.query.q || '').trim();
+  const userId = String(req.query.userId || '').trim();
   const excludeRaw = String(req.query.exclude || '').trim();
   const forceRefresh = req.query.refresh === '1' || req.query.refresh === 'true';
   const excludeIds = excludeRaw
@@ -2131,7 +2310,7 @@ app.get('/api/community/world-shorts', async (req, res) => {
           : worldShorts.length > 0
             ? worldShorts
             : filteredCommunity;
-    res.json({ shorts: combined });
+    res.json({ shorts: applyShortLikeOverlay(combined, userId) });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }
@@ -2192,6 +2371,12 @@ app.get('/api/tv-handoff/:code', (req, res) => {
 
 app.post('/api/community/shorts', async (req, res) => {
   try {
+    const durSec = Number(req.body?.durationSec || 0);
+    if (durSec > 180) {
+      return res.status(400).json({
+        error: 'Reels permitem apenas vídeos curtos de até 3 minutos (180s, limite do YouTube Shorts).',
+      });
+    }
     const created = await createCommunityShort({
       title: req.body?.title,
       creatorName: req.body?.creatorName,
@@ -2211,7 +2396,11 @@ app.post('/api/community/shorts', async (req, res) => {
 
 app.post('/api/community/shorts/:id/like', async (req, res) => {
   try {
-    const upd = await likeCommunityShort(req.params.id);
+    const upd = await likeCommunityShort(
+      req.params.id,
+      req.body?.userId || '',
+      Number(req.body?.initialLikes || 0)
+    );
     res.json(upd || { id: req.params.id });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });

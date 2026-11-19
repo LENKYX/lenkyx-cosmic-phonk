@@ -849,6 +849,7 @@ export async function searchWorldShorts(
             poster_url: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
             audio_title: 'YouTube Reels · Canais Globais',
             category: cat,
+            duration_sec: 60,
             likes: 120 + items.length * 17,
             created_at: new Date().toISOString(),
           });
@@ -858,7 +859,9 @@ export async function searchWorldShorts(
         const v = node.videoRenderer;
         const vid = v.videoId;
         const durSec = parseDurationText(v.lengthText?.simpleText || '');
-        if (vid && !seen.has(vid) && !excludeSet.has(vid) && (isLiveMode || durSec === 0 || durSec <= 150)) {
+        const hasShortsBadge = JSON.stringify(v.thumbnailOverlays || []).includes('SHORTS');
+        const allowedShortDuration = isLiveMode || (durSec > 0 && durSec <= 180) || (durSec === 0 && hasShortsBadge);
+        if (vid && !seen.has(vid) && !excludeSet.has(vid) && allowedShortDuration) {
           seen.add(vid);
           const title = v.title?.runs?.map((x) => x.text).join('') || 'YouTube Reel';
           const channel = v.ownerText?.runs?.[0]?.text || 'Canal YouTube';
@@ -879,6 +882,7 @@ export async function searchWorldShorts(
             poster_url: thumb,
             audio_title: isLiveMode ? '🔴 Ao Vivo' : channel,
             category: cat,
+            duration_sec: durSec || 60,
             likes: 85 + items.length * 13,
             created_at: new Date().toISOString(),
           });
@@ -1021,6 +1025,29 @@ export async function getWorldNewReleases(forceRefresh = false) {
 
 const bgAudioCache = new Map();
 
+async function verifyPlayableStreamUrl(url) {
+  if (!url) return false;
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 3500);
+    const r = await fetch(url, {
+      headers: { 'User-Agent': UA, Range: 'bytes=0-1023' },
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    clearTimeout(t);
+    try {
+      controller.abort();
+    } catch {
+      // ignore
+    }
+    const ct = (r.headers.get('content-type') || '').toLowerCase();
+    return (r.ok || r.status === 206) && !ct.includes('application/json') && !ct.includes('text/html');
+  } catch {
+    return false;
+  }
+}
+
 export async function resolveBackgroundAudioStream(rawTitle = '', rawArtist = '') {
   const cleanTitle = String(rawTitle || '')
     .replace(/\[.*?\]|\(.*?\)/g, ' ')
@@ -1035,22 +1062,27 @@ export async function resolveBackgroundAudioStream(rawTitle = '', rawArtist = ''
   const cached = bgAudioCache.get(key);
   if (cached && Date.now() - cached.ts < 30 * 60 * 1000) return cached.data;
 
-  // 1. Try FULL-LENGTH Audius streams (exact query, then title-only, then artist-only) so playback NEVER stops at 30s!
+  // 1. Try FULL-LENGTH verified Audius streams (exact query, then title-only, then artist-only) so playback & downloads NEVER 404!
   const candidates = [query, cleanTitle, cleanArtist].filter((x, i, a) => Boolean(x) && a.indexOf(x) === i);
   for (const qTry of candidates) {
     try {
-      const audius = await searchAudiusFull(qTry, 5);
-      const best = audius.find((t) => t.audioUrl && (t.durationSec || 0) >= 60) || audius.find((t) => t.audioUrl);
-      if (best) {
-        const data = {
-          audioUrl: best.audioUrl,
-          title: best.title,
-          artist: best.artist,
-          source: 'audius',
-          isPreview: false,
-        };
-        bgAudioCache.set(key, { ts: Date.now(), data });
-        return data;
+      const audius = await searchAudiusFull(qTry, 6);
+      const ordered = [
+        ...audius.filter((t) => t.audioUrl && (t.durationSec || 0) >= 60),
+        ...audius.filter((t) => t.audioUrl && (t.durationSec || 0) < 60),
+      ];
+      for (const hit of ordered.slice(0, 3)) {
+        if (await verifyPlayableStreamUrl(hit.audioUrl)) {
+          const data = {
+            audioUrl: hit.audioUrl,
+            title: hit.title,
+            artist: hit.artist,
+            source: 'audius',
+            isPreview: false,
+          };
+          bgAudioCache.set(key, { ts: Date.now(), data });
+          return data;
+        }
       }
     } catch {
       // try next candidate
@@ -1501,6 +1533,389 @@ export async function getOfflineGenrePack(genreId = 'phonk', requestedLimit = 10
   };
   offlinePackCache.set(cacheKey, { ts: Date.now(), data: payload });
   return payload;
+}
+
+// === YOUTUBE REAL COMMENTS + CREATOR CHANNEL PROFILE ENGINE ===
+const ytCommentsCache = new Map();
+const creatorProfileCache = new Map();
+
+function extractYouTubeWatchMeta(html) {
+  const m = html.match(/var ytInitialData = (\{.*?\});<\/script>/);
+  const keyM = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+  const data = m ? JSON.parse(m[1]) : null;
+  let owner = null;
+  let contToken = null;
+  const walk = (n) => {
+    if (!n || typeof n !== 'object') return;
+    if (!owner && n.videoOwnerRenderer) owner = n.videoOwnerRenderer;
+    if (!contToken && n.itemSectionRenderer?.sectionIdentifier === 'comment-item-section') {
+      const c =
+        n.itemSectionRenderer.contents?.[0]?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token;
+      if (c) contToken = c;
+    }
+    if (Array.isArray(n)) {
+      for (const el of n) walk(el);
+    } else {
+      for (const val of Object.values(n)) walk(val);
+    }
+  };
+  if (data) walk(data);
+  return { owner, contToken, apiKey: keyM?.[1] || '' };
+}
+
+function parseYouTubeLikeCount(str) {
+  if (!str) return 0;
+  const clean = String(str).trim().replace(/\s+/g, '').replace(',', '.');
+  const m = clean.match(/^([\d.]+)\s*(k|mil|m|mi)?/i);
+  if (!m) return 0;
+  let n = parseFloat(m[1]) || 0;
+  const suf = (m[2] || '').toLowerCase();
+  if (suf === 'k' || suf === 'mil') n *= 1000;
+  else if (suf === 'm' || suf === 'mi') n *= 1000000;
+  return Math.round(n);
+}
+
+export async function fetchYouTubeVideoComments(videoId) {
+  const vid = String(videoId || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20);
+  if (!vid) return [];
+  const cached = ytCommentsCache.get(vid);
+  if (cached && Date.now() - cached.ts < 5 * 60 * 1000) return cached.items;
+
+  try {
+    const html = await (
+      await fetch(`https://www.youtube.com/watch?v=${vid}`, {
+        headers: { 'User-Agent': UA, 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8' },
+        signal: AbortSignal.timeout(7000),
+      })
+    ).text();
+    const { contToken, apiKey } = extractYouTubeWatchMeta(html);
+    if (!contToken || !apiKey) return [];
+
+    const cr = await fetch(`https://www.youtube.com/youtubei/v1/next?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': UA },
+      body: JSON.stringify({
+        context: { client: { clientName: 'WEB', clientVersion: '2.20241126.01.00', hl: 'pt', gl: 'BR' } },
+        continuation: contToken,
+      }),
+      signal: AbortSignal.timeout(7000),
+    });
+    if (!cr.ok) return [];
+    const cj = await cr.json();
+
+    const comments = [];
+    const seenIds = new Set();
+    const walkC = (n) => {
+      if (!n || typeof n !== 'object' || comments.length >= 45) return;
+      if (n.commentEntityPayload) {
+        const p = n.commentEntityPayload;
+        const cid = p.properties?.commentId || `yt-${comments.length}`;
+        const txt = String(p.properties?.content?.content || '').trim();
+        if (txt && !seenIds.has(cid)) {
+          seenIds.add(cid);
+          comments.push({
+            id: `ytc-${vid}-${cid}`,
+            target_id: `short:wshort-${vid}`,
+            author_name: String(p.author?.displayName || 'Usuário YouTube').slice(0, 50),
+            author_avatar: String(p.author?.avatarThumbnailUrl || ''),
+            author_color: 'from-cyan-500 to-blue-600',
+            text: txt.slice(0, 600),
+            likes: parseYouTubeLikeCount(p.toolbar?.likeCountNotliked || p.toolbar?.likeCountLiked || '0'),
+            published_text: String(p.properties?.publishedTime || ''),
+            is_creator: Boolean(p.author?.isCreator),
+            reply_count: parseInt(String(p.toolbar?.replyCount || '0').replace(/\D/g, ''), 10) || 0,
+            source: 'youtube',
+            created_at: new Date(Date.now() - comments.length * 60000).toISOString(),
+          });
+        }
+      } else if (n.commentRenderer) {
+        const r = n.commentRenderer;
+        const cid = r.commentId || `ytr-${comments.length}`;
+        const txt = (r.contentText?.runs || []).map((x) => x.text).join('').trim();
+        if (txt && !seenIds.has(cid)) {
+          seenIds.add(cid);
+          comments.push({
+            id: `ytc-${vid}-${cid}`,
+            target_id: `short:wshort-${vid}`,
+            author_name: String(r.authorText?.simpleText || 'Usuário YouTube').slice(0, 50),
+            author_avatar: String(r.authorThumbnail?.thumbnails?.slice(-1)?.[0]?.url || ''),
+            author_color: 'from-cyan-500 to-blue-600',
+            text: txt.slice(0, 600),
+            likes: parseYouTubeLikeCount(r.voteCount?.simpleText || '0'),
+            published_text: String(r.publishedTimeText?.runs?.[0]?.text || ''),
+            is_creator: Boolean(r.authorIsChannelOwner),
+            reply_count: Number(r.replyCount || 0),
+            source: 'youtube',
+            created_at: new Date(Date.now() - comments.length * 60000).toISOString(),
+          });
+        }
+      }
+      if (Array.isArray(n)) {
+        for (const el of n) walkC(el);
+      } else {
+        for (const val of Object.values(n)) walkC(val);
+      }
+    };
+    walkC(cj);
+
+    ytCommentsCache.set(vid, { ts: Date.now(), items: comments });
+    return comments;
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchCreatorProfile({ creatorName = '', youtubeId = '', channelId = '' }) {
+  const cleanName = String(creatorName || '').trim();
+  const cleanVid = String(youtubeId || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20);
+  const cleanChannel = String(channelId || '').replace(/[^a-zA-Z0-9_@-]/g, '').slice(0, 80);
+  const cacheKey = `${cleanChannel}|${cleanVid}|${cleanName.toLowerCase()}`;
+  const cached = creatorProfileCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 10 * 60 * 1000) return cached.data;
+
+  let resolvedChannelId = cleanChannel.startsWith('UC') ? cleanChannel : '';
+  let resolvedHandle = cleanChannel.startsWith('@') ? cleanChannel : '';
+  let resolvedName = cleanName || 'Criador';
+  let avatarUrl = '';
+  let bannerUrl = '';
+  let subscriberText = '';
+  let description = '';
+
+  try {
+    if (cleanVid && !resolvedChannelId) {
+      const watchHtml = await (
+        await fetch(`https://www.youtube.com/watch?v=${cleanVid}`, {
+          headers: { 'User-Agent': UA, 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8' },
+          signal: AbortSignal.timeout(7000),
+        })
+      ).text();
+      const { owner } = extractYouTubeWatchMeta(watchHtml);
+      if (owner) {
+        resolvedChannelId = owner.navigationEndpoint?.browseEndpoint?.browseId || resolvedChannelId;
+        const canon = owner.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl || '';
+        if (canon.includes('@')) resolvedHandle = canon.replace(/^\/+/, '');
+        resolvedName = owner.title?.runs?.[0]?.text || resolvedName;
+        subscriberText = owner.subscriberCountText?.simpleText || '';
+        avatarUrl = owner.thumbnail?.thumbnails?.slice(-1)?.[0]?.url || '';
+      }
+    }
+
+    if (!resolvedChannelId && !resolvedHandle && cleanName) {
+      const sHtml = await (
+        await fetch(
+          `https://www.youtube.com/results?search_query=${encodeURIComponent(cleanName)}&sp=EgIQAg%253D%253D`,
+          { headers: { 'User-Agent': UA, 'Accept-Language': 'pt-BR,pt;q=0.9' }, signal: AbortSignal.timeout(6000) }
+        )
+      ).text();
+      const sm = sHtml.match(/var ytInitialData = (\{.*?\});<\/script>/);
+      if (sm) {
+        const sdata = JSON.parse(sm[1]);
+        let chRenderer = null;
+        const walkCh = (n) => {
+          if (!n || typeof n !== 'object' || chRenderer) return;
+          if (n.channelRenderer?.channelId) chRenderer = n.channelRenderer;
+          else if (Array.isArray(n)) n.forEach(walkCh);
+          else Object.values(n).forEach(walkCh);
+        };
+        walkCh(sdata);
+        if (chRenderer) {
+          resolvedChannelId = chRenderer.channelId || '';
+          resolvedName = chRenderer.title?.simpleText || resolvedName;
+          const canon = chRenderer.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl || '';
+          if (canon.includes('@')) resolvedHandle = canon.replace(/^\/+/, '');
+          subscriberText = chRenderer.subscriberCountText?.simpleText || chRenderer.videoCountText?.simpleText || '';
+          avatarUrl = chRenderer.thumbnail?.thumbnails?.slice(-1)?.[0]?.url || '';
+          if (avatarUrl.startsWith('//')) avatarUrl = `https:${avatarUrl}`;
+        }
+      }
+    }
+
+    const baseChannelUrl = resolvedChannelId
+      ? `https://www.youtube.com/channel/${resolvedChannelId}`
+      : resolvedHandle
+        ? `https://www.youtube.com/${resolvedHandle}`
+        : '';
+
+    const shorts = [];
+    const videos = [];
+    const seenShorts = new Set();
+    const seenVideos = new Set();
+
+    if (baseChannelUrl) {
+      const fetchChannelTab = async (tab) => {
+        try {
+          const r = await fetch(`${baseChannelUrl}/${tab}`, {
+            headers: { 'User-Agent': UA, 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8' },
+            signal: AbortSignal.timeout(7000),
+          });
+          if (!r.ok) return null;
+          const h = await r.text();
+          const m = h.match(/var ytInitialData = (\{.*?\});<\/script>/);
+          return m ? JSON.parse(m[1]) : null;
+        } catch {
+          return null;
+        }
+      };
+
+      const [shortsData, videosData] = await Promise.all([
+        fetchChannelTab('shorts'),
+        fetchChannelTab('videos'),
+      ]);
+
+      const extractMeta = (data) => {
+        if (!data) return;
+        const meta = data.metadata?.channelMetadataRenderer;
+        if (meta) {
+          if (meta.title) resolvedName = meta.title;
+          if (meta.description && !description) description = meta.description;
+          if (meta.avatar?.thumbnails?.length && !avatarUrl) {
+            avatarUrl = meta.avatar.thumbnails.slice(-1)[0].url;
+          }
+          if (meta.vanityChannelUrl && !resolvedHandle) {
+            const hm = meta.vanityChannelUrl.match(/@[\w.-]+/);
+            if (hm) resolvedHandle = hm[0];
+          }
+        }
+        const ph = data.header?.pageHeaderRenderer?.content?.pageHeaderViewModel;
+        if (ph) {
+          if (!bannerUrl) {
+            bannerUrl = ph.banner?.imageBannerViewModel?.image?.sources?.slice(-1)?.[0]?.url || '';
+          }
+          if (!avatarUrl) {
+            avatarUrl =
+              ph.image?.decoratedAvatarViewModel?.avatar?.avatarViewModel?.image?.sources?.slice(-1)?.[0]?.url || '';
+          }
+          if (!subscriberText) {
+            const parts = ph.metadata?.contentMetadataViewModel?.metadataRows || [];
+            for (const row of parts) {
+              for (const mp of row.metadataParts || []) {
+                const txt = mp.text?.content || '';
+                if (/inscrit|subscrib/i.test(txt)) subscriberText = txt;
+                if (txt.startsWith('@') && !resolvedHandle) resolvedHandle = txt;
+              }
+            }
+          }
+        }
+      };
+
+      extractMeta(shortsData);
+      extractMeta(videosData);
+
+      const walkItems = (node, targetKind) => {
+        if (!node || typeof node !== 'object') return;
+        if (node.shortsLockupViewModel && shorts.length < 36) {
+          const s = node.shortsLockupViewModel;
+          const vid =
+            s?.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId ||
+            s?.inlinePlayerData?.onVisible?.innertubeCommand?.watchEndpoint?.videoId ||
+            '';
+          const title = s?.overlayMetadata?.primaryText?.content || s?.accessibilityText || 'Reel';
+          if (vid && !seenShorts.has(vid)) {
+            seenShorts.add(vid);
+            shorts.push({
+              id: `wshort-${vid}`,
+              title: String(title).slice(0, 110),
+              creator_name: resolvedName,
+              creator_color: 'from-cyan-400 to-pink-500',
+              description: `Canal ${resolvedName}`,
+              media_type: 'youtube_short',
+              video_url: '',
+              youtube_id: vid,
+              poster_url: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+              audio_title: resolvedName,
+              likes: 60 + shorts.length * 9,
+              created_at: new Date().toISOString(),
+            });
+          }
+        }
+        const vr = node.videoRenderer || node.gridVideoRenderer;
+        if (vr?.videoId) {
+          const vid = vr.videoId;
+          const title = vr.title?.runs?.map((x) => x.text).join('') || vr.title?.simpleText || 'Vídeo';
+          const durText = vr.lengthText?.simpleText || '';
+          const durSec = parseDurationText(durText);
+          const thumb = vr.thumbnail?.thumbnails?.slice(-1)?.[0]?.url || `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+          if (targetKind === 'shorts' && (durSec === 0 || durSec <= 95)) {
+            if (!seenShorts.has(vid) && shorts.length < 36) {
+              seenShorts.add(vid);
+              shorts.push({
+                id: `wshort-${vid}`,
+                title: String(title).slice(0, 110),
+                creator_name: resolvedName,
+                creator_color: 'from-pink-500 to-purple-500',
+                description: `Canal ${resolvedName}`,
+                media_type: 'youtube_short',
+                video_url: '',
+                youtube_id: vid,
+                poster_url: thumb,
+                audio_title: resolvedName,
+                likes: 45 + shorts.length * 7,
+                created_at: new Date().toISOString(),
+              });
+            }
+          } else if (targetKind === 'videos' && !seenVideos.has(vid) && videos.length < 30) {
+            seenVideos.add(vid);
+            videos.push({
+              id: `wshort-${vid}`,
+              title: String(title).slice(0, 110),
+              creator_name: resolvedName,
+              creator_color: 'from-cyan-400 to-purple-500',
+              description: durText ? `${durText} · ${resolvedName}` : resolvedName,
+              media_type: 'youtube_short',
+              video_url: '',
+              youtube_id: vid,
+              poster_url: thumb,
+              audio_title: resolvedName,
+              duration_text: durText,
+              likes: 55 + videos.length * 8,
+              created_at: new Date().toISOString(),
+            });
+          }
+        }
+        if (Array.isArray(node)) {
+          for (const el of node) walkItems(el, targetKind);
+        } else {
+          for (const val of Object.values(node)) walkItems(val, targetKind);
+        }
+      };
+
+      if (shortsData) walkItems(shortsData, 'shorts');
+      if (videosData) walkItems(videosData, 'videos');
+    }
+
+    const handleClean =
+      resolvedHandle ||
+      `@${resolvedName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '')
+        .slice(0, 24) || 'criador'}`;
+
+    const profile = {
+      channelId: resolvedChannelId,
+      channelName: resolvedName,
+      handle: handleClean.startsWith('@') ? handleClean : `@${handleClean}`,
+      avatarUrl,
+      bannerUrl,
+      subscriberText,
+      description: String(description || '').slice(0, 400),
+      shorts,
+      videos,
+    };
+    creatorProfileCache.set(cacheKey, { ts: Date.now(), data: profile });
+    return profile;
+  } catch {
+    return {
+      channelId: resolvedChannelId,
+      channelName: resolvedName,
+      handle: resolvedHandle || `@${resolvedName.replace(/\s+/g, '').slice(0, 24) || 'criador'}`,
+      avatarUrl,
+      bannerUrl,
+      subscriberText,
+      description,
+      shorts: [],
+      videos: [],
+    };
+  }
 }
 
 

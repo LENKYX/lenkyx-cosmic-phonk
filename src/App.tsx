@@ -47,6 +47,7 @@ import {
   Radio,
   MessageCircle,
   ChevronRight,
+  RefreshCw,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
@@ -74,6 +75,7 @@ import {
 import { GamingMusicModeModal } from './components/GamingMusicModeModal';
 import { WorldLanguageModal } from './components/WorldLanguageModal';
 import { MediaPlayerMenuModal } from './components/MediaPlayerMenuModal';
+import { AudioVisualizerModal } from './components/AudioVisualizerModal';
 import { CommunityChatModal, TargetCommentsModal } from './components/CommunityChatModal';
 import { recordRankingHit } from './utils/rankingsApi';
 import { claimMediaFocus, registerMediaStopper, stopAllMedia } from './utils/mediaCoordinator';
@@ -131,6 +133,7 @@ import {
   getOfflineTrackIds,
   removeTrackOffline,
   resolvePlayableAudioUrl,
+  triggerDirectFileDownload,
 } from './utils/offlineCache';
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -257,6 +260,10 @@ export function App() {
   const bassLowShelfRef = useRef<BiquadFilterNode | null>(null);
   const bassPeakRef = useRef<BiquadFilterNode | null>(null);
   const bassGainRef = useRef<GainNode | null>(null);
+  const audioAnalyserRef = useRef<AnalyserNode | null>(null);
+  const [visualizerOpen, setVisualizerOpen] = useState(false);
+  const [updatingApp, setUpdatingApp] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<{ label: string; pct: number; mb: number } | null>(null);
 
   // Cinematic Startup Intro + Auto-Update Check on Entry
   const [gtaLoaderOpen, setGtaLoaderOpen] = useState(() => !sessionStorage.getItem('lenkyx_splash_done'));
@@ -268,6 +275,9 @@ export function App() {
       setTabHistory((h) => [...h.slice(-15), prev]);
       return next;
     });
+    if (['reels', 'movies', 'sports', 'studio', 'search', 'arcade'].includes(next)) {
+      setMusicMenuOpen(false);
+    }
     window.requestAnimationFrame(() => {
       document.getElementById('lenkyx-main-scroll')?.scrollTo({ top: 0, behavior: 'auto' });
     });
@@ -509,6 +519,56 @@ export function App() {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => setToast(null), 3500);
   }, []);
+
+  // Fast Automatic Platform Update Listener + Manual 1-Click Update
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    let refreshing = false;
+    const onControllerChange = () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+    return () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+  }, []);
+
+  const handleForceAppUpdate = useCallback(async () => {
+    if (updatingApp) return;
+    setUpdatingApp(true);
+    showToast('⚡ Verificando e aplicando atualização...');
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations().catch(() => []);
+        for (const reg of regs) {
+          reg.active?.postMessage({ type: 'CLEAR_ALL_CACHES' });
+          await reg.update().catch(() => {});
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys().catch(() => []);
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      const res = await authFetch(`/api/state?t=${Date.now()}`);
+      if (res.ok) {
+        const fresh = await res.json();
+        if (Array.isArray(fresh?.tracks) && fresh.tracks.length > 0) {
+          setTracks(fresh.tracks);
+        }
+        if (fresh?.settings) {
+          setSettings((prev) => ({ ...prev, ...fresh.settings }));
+        }
+      }
+      showToast('✅ Plataforma atualizada na versão mais recente!');
+    } catch {
+      showToast('Catálogo sincronizado!');
+    } finally {
+      setUpdatingApp(false);
+    }
+  }, [updatingApp, showToast]);
 
   // Entry Cinematic Intro + Automatic Service Worker Update Check
   useEffect(() => {
@@ -1096,7 +1156,7 @@ export function App() {
           curSrc.startsWith('/') ||
           audio.crossOrigin === 'anonymous');
 
-      if (level > 0 && isSafeForWebAudio && !bassAudioCtxRef.current) {
+      if (isSafeForWebAudio && !bassAudioCtxRef.current) {
         try {
           const AudioCtx =
             window.AudioContext ||
@@ -1113,6 +1173,9 @@ export function App() {
             peak.Q.value = 1.1;
             const gain = ctx.createGain();
             gain.gain.value = 1.0;
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 128;
+            analyser.smoothingTimeConstant = 0.78;
             const limiter = ctx.createDynamicsCompressor();
             limiter.threshold.value = -3;
             limiter.knee.value = 6;
@@ -1122,12 +1185,14 @@ export function App() {
             source.connect(lowShelf);
             lowShelf.connect(peak);
             peak.connect(gain);
-            gain.connect(limiter);
+            gain.connect(analyser);
+            analyser.connect(limiter);
             limiter.connect(ctx.destination);
             bassAudioCtxRef.current = ctx;
             bassLowShelfRef.current = lowShelf;
             bassPeakRef.current = peak;
             bassGainRef.current = gain;
+            audioAnalyserRef.current = analyser;
           }
         } catch {
           // Fallback if already attached
@@ -1417,10 +1482,6 @@ export function App() {
 
   const handleToggleOffline = useCallback(
     async (track: Track) => {
-      if (track.youtubeVideoId && !track.audioUrl) {
-        showToast('Use as faixas LENKYX para baixar e ouvir sem internet!');
-        return;
-      }
       if (offlineTrackIds.has(track.id)) {
         await removeTrackOffline(track.id);
         setOfflineTrackIds(getOfflineTrackIds());
@@ -1428,12 +1489,18 @@ export function App() {
         return;
       }
       setDownloadingIds((prev) => new Set(prev).add(track.id));
+      setDownloadProgress({ label: track.title, pct: 8, mb: 0 });
       try {
-        const entry = await downloadTrackOffline(track);
+        const entry = await downloadTrackOffline(track, (pct, loadedMb) => {
+          setDownloadProgress({ label: track.title, pct, mb: loadedMb });
+        });
         setOfflineTrackIds(getOfflineTrackIds());
         const mb = (entry.bytes / (1024 * 1024)).toFixed(1);
-        showToast(`📱 "${track.title}" salva no aparelho (${mb} MB) — toca offline!`);
+        setDownloadProgress({ label: track.title, pct: 100, mb: Number(mb) });
+        showToast(`✅ "${track.title}" salva Offline (${mb} MB) — toca sem internet!`);
+        window.setTimeout(() => setDownloadProgress(null), 2200);
       } catch {
+        setDownloadProgress(null);
         showToast(`Não foi possível baixar "${track.title}" offline agora.`);
       } finally {
         setDownloadingIds((prev) => {
@@ -1446,6 +1513,37 @@ export function App() {
     [offlineTrackIds, showToast]
   );
 
+  const handleDownloadTrackFile = useCallback(
+    async (track: Track) => {
+      setDownloadingIds((prev) => new Set(prev).add(track.id));
+      setDownloadProgress({ label: `${track.title}.mp3`, pct: 8, mb: 0 });
+      try {
+        const res = await triggerDirectFileDownload({
+          title: track.title,
+          artist: track.artist,
+          directUrl: track.audioUrl || track.audioUrlV2 || undefined,
+          kind: 'audio',
+          onProgress: (pct, loadedMb) => {
+            setDownloadProgress({ label: `${track.title}.mp3`, pct, mb: loadedMb });
+          },
+        });
+        setDownloadProgress({ label: res.filename, pct: 100, mb: res.mb });
+        showToast(`⬇️ "${res.filename}" baixada (${res.mb} MB)!`);
+        window.setTimeout(() => setDownloadProgress(null), 2400);
+      } catch {
+        setDownloadProgress(null);
+        showToast(`Não foi possível baixar o arquivo de "${track.title}" agora.`);
+      } finally {
+        setDownloadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(track.id);
+          return next;
+        });
+      }
+    },
+    [showToast]
+  );
+
   const handleDownloadAllOffline = useCallback(async () => {
     const missing = tracks.filter((t) => !offlineTrackIds.has(t.id));
     if (missing.length === 0) {
@@ -1454,23 +1552,34 @@ export function App() {
     }
     setDownloadingAll(true);
     let okCount = 0;
-    for (const track of missing) {
-      setDownloadingIds((prev) => new Set(prev).add(track.id));
-      try {
-        await downloadTrackOffline(track);
-        okCount++;
-        setOfflineTrackIds(getOfflineTrackIds());
-      } catch {
-        // continue
-      } finally {
-        setDownloadingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(track.id);
-          return next;
-        });
-      }
+    for (let i = 0; i < missing.length; i += 3) {
+      const batch = missing.slice(i, i + 3);
+      await Promise.all(
+        batch.map(async (track) => {
+          setDownloadingIds((prev) => new Set(prev).add(track.id));
+          try {
+            await downloadTrackOffline(track);
+            okCount++;
+            setOfflineTrackIds(getOfflineTrackIds());
+            setDownloadProgress({
+              label: `Baixando músicas (${okCount}/${missing.length})`,
+              pct: Math.round((okCount / missing.length) * 100),
+              mb: 0,
+            });
+          } catch {
+            // continue
+          } finally {
+            setDownloadingIds((prev) => {
+              const next = new Set(prev);
+              next.delete(track.id);
+              return next;
+            });
+          }
+        })
+      );
     }
     setDownloadingAll(false);
+    setDownloadProgress(null);
     showToast(`📱 ${okCount} músicas salvas offline no aparelho!`);
   }, [tracks, offlineTrackIds, showToast]);
 
@@ -2323,39 +2432,14 @@ export function App() {
 
             <button
               type="button"
-              onClick={() => setMediaPlayerMenuOpen(true)}
-              className={`w-9 h-9 md:w-auto md:px-2.5 md:py-1.5 rounded-full border text-[11px] font-black flex items-center justify-center gap-1 shrink-0 transition ${
-                isPlaying && backgroundMode
-                  ? 'bg-gradient-to-r from-pink-500/25 via-purple-500/25 to-cyan-500/25 border-cyan-400/60 text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.35)]'
-                  : 'bg-white/[0.08] hover:bg-white/20 border-white/15 text-slate-100'
-              }`}
-              title="Menu Media Player · 2º Plano"
+              onClick={() => void handleForceAppUpdate()}
+              disabled={updatingApp}
+              className="w-9 h-9 md:w-auto md:px-2.5 md:py-1.5 rounded-full bg-white/[0.08] hover:bg-emerald-500/20 border border-white/15 hover:border-emerald-400/45 text-[11px] font-black text-emerald-200 flex items-center justify-center gap-1 shrink-0 transition"
+              title="Atualizar Plataforma Agora"
             >
-              <Disc3 className={`w-4 h-4 md:w-3.5 md:h-3.5 text-cyan-300 ${isPlaying ? 'animate-spin' : ''}`} />
-              <span className="hidden md:inline">Player</span>
+              <RefreshCw className={`w-4 h-4 md:w-3.5 md:h-3.5 text-emerald-300 ${updatingApp ? 'animate-spin' : ''}`} />
+              <span className="hidden md:inline">Atualizar</span>
             </button>
-            <div className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.07] border border-white/10">
-              <button
-                onClick={handleToggleMute}
-                className="text-cyan-300 hover:text-white transition"
-                title={muted ? 'Ativar Som' : 'Silenciar'}
-              >
-                {muted || volume === 0 ? (
-                  <VolumeX className="w-3.5 h-3.5 text-rose-400" />
-                ) : (
-                  <Volume2 className="w-3.5 h-3.5" />
-                )}
-              </button>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.02}
-                value={muted ? 0 : volume}
-                onChange={(e) => handleVolume(Number(e.target.value))}
-                className="w-16 accent-cyan-400 cursor-pointer"
-              />
-            </div>
 
             {/* Quick Gaming Music Mode + Global Auto-Language Pills */}
             <button
@@ -2420,8 +2504,8 @@ export function App() {
           </div>
         </header>
 
-        {/* YOUTUBE-STYLE SCROLLABLE CATEGORY & QUICK-ACCESS CHIP BAR */}
-        <div className="shrink-0 z-20 px-2.5 sm:px-5 pt-2 pb-1">
+        {/* MOBILE-ONLY SCROLLABLE QUICK-ACCESS CHIP BAR (Desktop uses the left Sidebar) */}
+        <div className="md:hidden shrink-0 z-20 px-2.5 pt-2 pb-1">
           <div className="max-w-[1380px] mx-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {(
               [
@@ -2457,70 +2541,7 @@ export function App() {
 
         {/* ACTIVE VIEW CONTAINER */}
         <main id="lenkyx-main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full">
-          <div className="w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-2">
-            {/* Compact 1-Line Live Cosmic Status Ticker (No giant vertical clutter!) */}
-            <div className="mb-3 rounded-2xl bg-white/[0.04] border border-white/10 px-3 py-1.5 flex items-center gap-2.5 overflow-x-auto no-scrollbar">
-              <div className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-emerald-300 whitespace-nowrap shrink-0">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                <span>
-                  {liveStats.onlineCount} {liveStats.onlineCount === 1 ? 'ouvindo' : 'ouvindo'}
-                </span>
-              </div>
-
-              <span className="text-white/20 shrink-0">•</span>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setPixInitialTab('donate');
-                  setPixOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white whitespace-nowrap shrink-0 hover:text-cyan-300 transition"
-              >
-                <Target className="w-3 h-3 text-pink-400" />
-                <span>
-                  PIX Hoje:{' '}
-                  <span className="font-mono text-cyan-300">
-                    R$ {liveStats.dailyCollectedBrl.toFixed(0)}/{liveStats.dailyGoalBrl.toFixed(0)}
-                  </span>
-                </span>
-              </button>
-
-              <span className="text-white/20 shrink-0">•</span>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setPixInitialTab('ranking');
-                  setPixOpen(true);
-                }}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-200 whitespace-nowrap shrink-0 hover:text-white transition"
-              >
-                <Crown className="w-3 h-3 text-amber-300" />
-                <span>
-                  {liveStats.leaderboard && liveStats.leaderboard[0]
-                    ? `Top #1 ${liveStats.leaderboard[0].name}`
-                    : 'Ranking & Bonequinhos'}
-                </span>
-              </button>
-
-              <span className="text-white/20 shrink-0">•</span>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShareTrack(null);
-                  setShareOpen(true);
-                }}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-200 whitespace-nowrap shrink-0 hover:text-white transition"
-              >
-                <Flame className="w-3 h-3 text-orange-400" />
-                <span>
-                  {liveStats.popularityLevel || 'Em Alta'} · {Number(liveStats.popularityScore || 480).toLocaleString('pt-BR')} pts
-                </span>
-              </button>
-            </div>
-
+          <div className="w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-3">
             {appUpdateInfo && (
               <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
                 <div className="min-w-0">
@@ -2746,8 +2767,8 @@ export function App() {
         </main>
       </div>
 
-      {/* ON-DEMAND MUSIC PLAYER BAR: Shown ONLY when actively playing/using music! */}
-      {!watchingMovie && isPlayerAllowedTab && currentTrack && musicMenuOpen && (
+      {/* ON-DEMAND MUSIC PLAYER BAR: Shown ONLY when actively playing music in music sections! */}
+      {!watchingMovie && isPlayerAllowedTab && !['reels', 'movies', 'sports', 'studio', 'search', 'arcade'].includes(activeTab) && currentTrack && isPlaying && musicMenuOpen && (
         <MiniPlayer
           track={currentTrack}
           activeVersion={activeVersion}
@@ -2807,6 +2828,7 @@ export function App() {
             }
           }}
           onOpenMediaMenu={() => setMediaPlayerMenuOpen(true)}
+          onOpenVisualizer={() => setVisualizerOpen(true)}
           onCloseMenu={() => setMusicMenuOpen(false)}
         />
       )}
@@ -2919,6 +2941,8 @@ export function App() {
         queue={playQueue.length ? playQueue : tracks}
         isPlaying={isPlaying}
         isCurrentTrackOffline={currentTrack ? offlineTrackIds.has(currentTrack.id) : false}
+        isDownloadingOffline={currentTrack ? downloadingIds.has(currentTrack.id) : false}
+        downloadPct={downloadProgress?.pct || 0}
         currentTime={currentTime}
         duration={duration}
         volume={volume}
@@ -2994,8 +3018,35 @@ export function App() {
           }
         }}
         onToggleOffline={(t) => void handleToggleOffline(t)}
+        onDownloadFile={(t) => void handleDownloadTrackFile(t)}
         onEmergencyStop={handleEmergencyStop}
       />
+      <AudioVisualizerModal
+        open={visualizerOpen}
+        onClose={() => setVisualizerOpen(false)}
+        track={currentTrack}
+        isPlaying={isPlaying}
+        analyser={audioAnalyserRef.current}
+        onTogglePlay={() => void handleTogglePlay()}
+        onPrev={() => handlePrevNext(-1)}
+        onNext={() => handlePrevNext(1)}
+      />
+
+      {/* LIVE DOWNLOAD PROGRESS PILL (Visible across all screens immediately on any download) */}
+      {downloadProgress && (
+        <div className="fixed top-16 right-3 z-[80] w-64 rounded-2xl bg-[#0e0722]/95 backdrop-blur-xl border border-cyan-400/50 p-3 shadow-[0_12px_40px_rgba(34,211,238,0.3)] space-y-1.5">
+          <div className="flex items-center justify-between gap-2 text-[11px] font-black text-white">
+            <span className="truncate">⬇️ {downloadProgress.label}</span>
+            <span className="text-cyan-300 shrink-0 tabular-nums">{downloadProgress.pct}%</span>
+          </div>
+          <div className="w-full h-1.5 rounded-full bg-white/15 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-pink-500 transition-all duration-150"
+              style={{ width: `${downloadProgress.pct}%` }}
+            />
+          </div>
+        </div>
+      )}
       <GamingMusicModeModal
         open={gamingModalOpen}
         onClose={() => setGamingModalOpen(false)}

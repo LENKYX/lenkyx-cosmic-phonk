@@ -86,25 +86,70 @@ export function getOfflineStorageSummary(): { count: number; totalMb: number } {
   return { count: entries.length, totalMb: Math.round((bytes / (1024 * 1024)) * 10) / 10 };
 }
 
-async function fetchMediaBlob(url: string): Promise<Blob> {
+export type DownloadProgressCb = (pct: number, loadedMb: number, totalMb: number) => void;
+
+async function readResponseBlobWithProgress(
+  res: Response,
+  onProgress?: DownloadProgressCb
+): Promise<Blob> {
+  const total = Number(res.headers.get('content-length') || 0);
+  const contentType = res.headers.get('content-type') || 'application/octet-stream';
+  if (!res.body || !onProgress) {
+    const b = await res.blob();
+    if (onProgress && b.size > 0) {
+      const mb = Math.round((b.size / (1024 * 1024)) * 10) / 10;
+      onProgress(100, mb, mb);
+    }
+    return b;
+  }
+
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+  let lastEmit = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      chunks.push(value);
+      loaded += value.byteLength;
+      const now = Date.now();
+      if (now - lastEmit > 120) {
+        lastEmit = now;
+        const loadedMb = Math.round((loaded / (1024 * 1024)) * 10) / 10;
+        const totalMb = total > 0 ? Math.round((total / (1024 * 1024)) * 10) / 10 : loadedMb;
+        const pct = total > 0 ? Math.min(99, Math.round((loaded / total) * 100)) : Math.min(92, Math.round((loaded / (1024 * 64)) % 90 + 10));
+        onProgress(pct, loadedMb, totalMb);
+      }
+    }
+  }
+
+  const blob = new Blob(chunks as BlobPart[], { type: contentType });
+  const finalMb = Math.round((blob.size / (1024 * 1024)) * 10) / 10;
+  onProgress(100, finalMb, finalMb);
+  return blob;
+}
+
+async function fetchMediaBlob(url: string, onProgress?: DownloadProgressCb): Promise<Blob> {
   if (!url) throw new Error('Empty url');
   // 1. Direct fetch (works for local /audio/, /storage/, and Suno CORS * CDN)
   try {
     const direct = await fetch(url);
     if (direct.ok) {
-      const b = await direct.blob();
+      const b = await readResponseBlobWithProgress(direct, onProgress);
       if (b.size > 1024) return b;
     }
   } catch {
     // try proxy below
   }
 
-  // 2. Fallback via server audio proxy (for Audius/external CDNs without CORS)
+  // 2. Fallback via server audio proxy (for Audius/Archive/external CDNs without CORS)
   if (url.startsWith('https://')) {
     const proxyBase = isAndroidApk() ? 'https://lenkyx-cosmic-phonk.onrender.com' : '';
     const proxied = await fetch(`${proxyBase}/api/audio-proxy?url=${encodeURIComponent(url)}`);
     if (proxied.ok) {
-      const b = await proxied.blob();
+      const b = await readResponseBlobWithProgress(proxied, onProgress);
       if (b.size > 1024) return b;
     }
   }
@@ -112,42 +157,132 @@ async function fetchMediaBlob(url: string): Promise<Blob> {
   throw new Error('Não foi possível baixar o áudio offline');
 }
 
-export async function downloadTrackOffline(track: Track): Promise<OfflineEntry> {
+export async function resolveDownloadStream(params: {
+  title: string;
+  artist?: string;
+  directUrl?: string;
+  kind?: 'audio' | 'video' | 'movie';
+}): Promise<{ ok: boolean; url: string; downloadUrl: string; filename: string; kind: string }> {
+  const apiBase = isAndroidApk() ? 'https://lenkyx-cosmic-phonk.onrender.com' : '';
+  const qs = new URLSearchParams({
+    title: params.title || 'LENKYX',
+    artist: params.artist || '',
+    directUrl: params.directUrl || '',
+    kind: params.kind || 'audio',
+  });
+  const res = await fetch(`${apiBase}/api/world-resolve-download?${qs.toString()}`);
+  if (!res.ok) throw new Error('Stream indisponível');
+  return res.json();
+}
+
+export async function triggerDirectFileDownload(params: {
+  title: string;
+  artist?: string;
+  directUrl?: string;
+  kind?: 'audio' | 'video' | 'movie';
+  onProgress?: DownloadProgressCb;
+}): Promise<{ filename: string; mb: number; resolvedUrl: string }> {
+  let targetUrl = params.directUrl || '';
+  let downloadUrl = targetUrl;
+  const safeBase = `${params.artist ? `${params.artist} - ` : ''}${params.title || 'LENKYX'}`
+    .replace(/[^a-zA-Z0-9._ -]+/g, ' ')
+    .trim()
+    .slice(0, 72);
+  let filename = `${safeBase}${params.kind === 'video' || params.kind === 'movie' ? '.mp4' : '.mp3'}`;
+
+  if (!targetUrl || targetUrl.startsWith('https://')) {
+    try {
+      const resolved = await resolveDownloadStream(params);
+      if (resolved.ok) {
+        targetUrl = resolved.url;
+        downloadUrl = resolved.downloadUrl;
+        filename = resolved.filename || filename;
+      }
+    } catch {
+      // keep directUrl if present
+    }
+  }
+
+  if (!targetUrl) {
+    throw new Error('Nenhum arquivo disponível para baixar.');
+  }
+
+  params.onProgress?.(5, 0, 0);
+  const blob = await fetchMediaBlob(targetUrl, params.onProgress);
+  const objUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objUrl), 60_000);
+  const mb = Math.round((blob.size / (1024 * 1024)) * 10) / 10;
+  return { filename, mb, resolvedUrl: downloadUrl };
+}
+
+export async function downloadTrackOffline(
+  track: Track,
+  onProgress?: DownloadProgressCb
+): Promise<OfflineEntry> {
   let totalBytes = 0;
   let hasV1 = false;
   let hasV2 = false;
 
-  if (track.audioUrl) {
-    const blobV1 = await fetchMediaBlob(track.audioUrl);
-    await idbPut(`audio-${track.id}-v1`, blobV1);
-    activeBlobUrls.set(`${track.id}-v1`, URL.createObjectURL(blobV1));
-    totalBytes += blobV1.size;
-    hasV1 = true;
+  let primaryAudioUrl = track.audioUrl || '';
+  if (!primaryAudioUrl) {
+    const resolved = await resolveDownloadStream({
+      title: track.title,
+      artist: track.artist,
+      kind: 'audio',
+    });
+    primaryAudioUrl = resolved.url;
+  }
+
+  const jobs: Promise<void>[] = [];
+
+  if (primaryAudioUrl) {
+    jobs.push(
+      fetchMediaBlob(primaryAudioUrl, onProgress).then(async (blobV1) => {
+        await idbPut(`audio-${track.id}-v1`, blobV1);
+        activeBlobUrls.set(`${track.id}-v1`, URL.createObjectURL(blobV1));
+        totalBytes += blobV1.size;
+        hasV1 = true;
+      })
+    );
   }
 
   if (track.audioUrlV2) {
-    try {
-      const blobV2 = await fetchMediaBlob(track.audioUrlV2);
-      await idbPut(`audio-${track.id}-v2`, blobV2);
-      activeBlobUrls.set(`${track.id}-v2`, URL.createObjectURL(blobV2));
-      totalBytes += blobV2.size;
-      hasV2 = true;
-    } catch {
-      // V1 succeeded; V2 optional if unavailable
-    }
+    jobs.push(
+      fetchMediaBlob(track.audioUrlV2)
+        .then(async (blobV2) => {
+          await idbPut(`audio-${track.id}-v2`, blobV2);
+          activeBlobUrls.set(`${track.id}-v2`, URL.createObjectURL(blobV2));
+          totalBytes += blobV2.size;
+          hasV2 = true;
+        })
+        .catch(() => {})
+    );
   }
 
   if (track.coverUrl) {
-    try {
-      const coverRes = await fetch(track.coverUrl);
-      if (coverRes.ok) {
-        const coverBlob = await coverRes.blob();
-        await idbPut(`cover-${track.id}`, coverBlob);
-        totalBytes += coverBlob.size;
-      }
-    } catch {
-      // cover optional
-    }
+    jobs.push(
+      fetch(track.coverUrl)
+        .then(async (coverRes) => {
+          if (coverRes.ok) {
+            const coverBlob = await coverRes.blob();
+            await idbPut(`cover-${track.id}`, coverBlob);
+            totalBytes += coverBlob.size;
+          }
+        })
+        .catch(() => {})
+    );
+  }
+
+  await Promise.all(jobs);
+
+  if (!hasV1 || totalBytes < 1024) {
+    throw new Error('Não foi possível salvar esta faixa offline.');
   }
 
   const map = loadOfflineMap();

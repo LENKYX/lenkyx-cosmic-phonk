@@ -40,14 +40,26 @@ import {
   Bell,
   BellRing,
   Plus,
+  Share2,
+  Volume2,
+  VolumeX,
+  Disc3,
+  Loader2,
+  CheckCircle2,
+  Music2,
+  Download,
 } from 'lucide-react';
+import { triggerDirectFileDownload } from '../utils/offlineCache';
 import { Track, UserProfile } from '../types';
 import {
   ChatMessageItem,
   CommunityShortItem,
+  CreatorProfileData,
   LiveRoomItem,
   fetchActiveLives,
   fetchChatMessages,
+  fetchCreatorProfile,
+  fetchLikedShortIds,
   fetchWorldShorts,
   fetchChannelSubscriptions,
   getClientSubscriberId,
@@ -140,7 +152,13 @@ declare global {
 
 interface YTPlayerHandle {
   playVideo?: () => void;
+  pauseVideo?: () => void;
   seekTo?: (sec: number, allowSeekAhead?: boolean) => void;
+  mute?: () => void;
+  unMute?: () => void;
+  setPlaybackRate?: (rate: number) => void;
+  getCurrentTime?: () => number;
+  getDuration?: () => number;
   destroy?: () => void;
 }
 
@@ -169,23 +187,45 @@ function loadYouTubeIframeApi(): Promise<void> {
 const YouTubeShortPlayer: React.FC<{
   videoId: string;
   loopOne: boolean;
+  muted?: boolean;
+  playbackRate?: number;
+  onDoubleTapLike?: () => void;
   onEnded: () => void;
   onUnavailable: () => void;
-}> = ({ videoId, loopOne, onEnded, onUnavailable }) => {
+}> = ({
+  videoId,
+  loopOne,
+  muted = false,
+  playbackRate = 1,
+  onDoubleTapLike,
+  onEnded,
+  onUnavailable,
+}) => {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YTPlayerHandle | null>(null);
   const [paused, setPaused] = useState(false);
+  const [curTime, setCurTime] = useState(0);
+  const [durTime, setDurTime] = useState(0);
+  const [heartBurst, setHeartBurst] = useState<{ x: number; y: number; key: number } | null>(null);
+  const lastTapRef = useRef<number>(0);
+  const tapTimerRef = useRef<number | null>(null);
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
   const onUnavailRef = useRef(onUnavailable);
   onUnavailRef.current = onUnavailable;
   const loopRef = useRef(loopOne);
   loopRef.current = loopOne;
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
+  const rateRef = useRef(playbackRate);
+  rateRef.current = playbackRate;
 
   useEffect(() => {
     let destroyed = false;
     let player: YTPlayerHandle | null = null;
     setPaused(false);
+    setCurTime(0);
+    setDurTime(0);
 
     loadYouTubeIframeApi().then(() => {
       if (destroyed || !hostRef.current) return;
@@ -221,6 +261,9 @@ const YouTubeShortPlayer: React.FC<{
           onReady: (ev) => {
             playerRef.current = ev.target;
             try {
+              if (mutedRef.current) ev.target.mute?.();
+              else ev.target.unMute?.();
+              if (rateRef.current !== 1) ev.target.setPlaybackRate?.(rateRef.current);
               ev.target.playVideo?.();
             } catch {
               // ignore
@@ -246,8 +289,25 @@ const YouTubeShortPlayer: React.FC<{
       playerRef.current = player;
     });
 
+    const progTimer = window.setInterval(() => {
+      const p = playerRef.current;
+      if (!p) return;
+      try {
+        const d = p.getDuration?.() || 0;
+        const c = p.getCurrentTime?.() || 0;
+        if (d > 0) {
+          setDurTime(d);
+          setCurTime(c);
+        }
+      } catch {
+        // ignore
+      }
+    }, 180);
+
     return () => {
       destroyed = true;
+      window.clearInterval(progTimer);
+      if (tapTimerRef.current !== null) window.clearTimeout(tapTimerRef.current);
       playerRef.current = null;
       try {
         player?.destroy?.();
@@ -257,8 +317,29 @@ const YouTubeShortPlayer: React.FC<{
     };
   }, [videoId]);
 
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    try {
+      if (muted) p.mute?.();
+      else p.unMute?.();
+    } catch {
+      // ignore
+    }
+  }, [muted]);
+
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    try {
+      p.setPlaybackRate?.(playbackRate);
+    } catch {
+      // ignore
+    }
+  }, [playbackRate]);
+
   const toggleShortPlay = () => {
-    const p = playerRef.current as (YTPlayerHandle & { pauseVideo?: () => void }) | null;
+    const p = playerRef.current;
     if (!p) return;
     if (paused) {
       p.playVideo?.();
@@ -269,12 +350,43 @@ const YouTubeShortPlayer: React.FC<{
     }
   };
 
+  const handleStageTap = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 260) {
+      if (tapTimerRef.current !== null) {
+        window.clearTimeout(tapTimerRef.current);
+        tapTimerRef.current = null;
+      }
+      lastTapRef.current = 0;
+      const rect = e.currentTarget.getBoundingClientRect();
+      setHeartBurst({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        key: now,
+      });
+      window.setTimeout(() => setHeartBurst(null), 700);
+      onDoubleTapLike?.();
+      return;
+    }
+    lastTapRef.current = now;
+    tapTimerRef.current = window.setTimeout(() => {
+      toggleShortPlay();
+      tapTimerRef.current = null;
+    }, 230);
+  };
+
+  const pct = durTime > 0 ? Math.min(100, (curTime / durTime) * 100) : 0;
+  const fmtSec = (s: number) => {
+    const t = Math.max(0, Math.floor(s));
+    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  };
+
   return (
     <div className="relative w-full h-full bg-black">
       <div ref={hostRef} className="w-full h-full bg-black" />
       <button
         type="button"
-        onClick={toggleShortPlay}
+        onClick={handleStageTap}
         aria-label={paused ? 'Continuar Reel' : 'Pausar Reel'}
         className={`absolute inset-x-0 top-0 bottom-28 z-10 flex items-center justify-center transition ${
           paused ? 'bg-black/45 backdrop-blur-sm' : 'bg-transparent'
@@ -285,7 +397,181 @@ const YouTubeShortPlayer: React.FC<{
             <Play className="w-7 h-7 fill-black ml-0.5" />
           </span>
         )}
+        {heartBurst && (
+          <span
+            key={heartBurst.key}
+            style={{ left: heartBurst.x - 32, top: heartBurst.y - 32 }}
+            className="absolute pointer-events-none w-16 h-16 flex items-center justify-center animate-ping"
+          >
+            <Heart className="w-14 h-14 fill-pink-500 text-pink-400 drop-shadow-[0_0_24px_rgba(236,72,153,0.9)]" />
+          </span>
+        )}
       </button>
+
+      {/* Live Time Indicator + YouTube-style Thin Rolling Scrub Bar */}
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          if (durTime <= 0) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          playerRef.current?.seekTo?.(ratio * durTime, true);
+          setCurTime(ratio * durTime);
+        }}
+        className="absolute inset-x-0 bottom-0 h-5 z-40 flex flex-col justify-end cursor-pointer group"
+      >
+        {durTime > 0 && (
+          <div className="px-3 pb-1 flex items-center justify-between pointer-events-none">
+            <span className="px-1.5 py-0.5 rounded bg-black/75 border border-white/10 text-[9px] font-black text-white/95 tabular-nums">
+              {fmtSec(curTime)} / {fmtSec(durTime)}
+            </span>
+          </div>
+        )}
+        <div className="w-full h-[3px] group-hover:h-[6px] bg-white/25 transition-all relative">
+          <div
+            className="h-full bg-gradient-to-r from-red-500 via-pink-500 to-cyan-400 transition-[width] duration-150 relative"
+            style={{ width: `${pct}%` }}
+          >
+            <span className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)] opacity-85 group-hover:opacity-100" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const NativeShortVideoPlayer: React.FC<{
+  src: string;
+  poster?: string;
+  muted: boolean;
+  loop: boolean;
+  playbackRate?: number;
+  onEnded: () => void;
+  onDoubleTapLike?: () => void;
+}> = ({ src, poster, muted, loop, playbackRate = 1, onEnded, onDoubleTapLike }) => {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [paused, setPaused] = useState(false);
+  const [curTime, setCurTime] = useState(0);
+  const [durTime, setDurTime] = useState(0);
+  const [heartBurst, setHeartBurst] = useState<{ x: number; y: number; key: number } | null>(null);
+  const lastTapRef = useRef<number>(0);
+  const tapTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate, src]);
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      void v.play().catch(() => {});
+      setPaused(false);
+    } else {
+      v.pause();
+      setPaused(true);
+    }
+  };
+
+  const handleTap = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 260) {
+      if (tapTimerRef.current !== null) {
+        window.clearTimeout(tapTimerRef.current);
+        tapTimerRef.current = null;
+      }
+      lastTapRef.current = 0;
+      const rect = e.currentTarget.getBoundingClientRect();
+      setHeartBurst({ x: e.clientX - rect.left, y: e.clientY - rect.top, key: now });
+      window.setTimeout(() => setHeartBurst(null), 700);
+      onDoubleTapLike?.();
+      return;
+    }
+    lastTapRef.current = now;
+    tapTimerRef.current = window.setTimeout(() => {
+      togglePlay();
+      tapTimerRef.current = null;
+    }, 230);
+  };
+
+  const pct = durTime > 0 ? Math.min(100, (curTime / durTime) * 100) : 0;
+  const fmtSec = (s: number) => {
+    const t = Math.max(0, Math.floor(s));
+    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="relative w-full h-full bg-black">
+      <video
+        ref={videoRef}
+        src={src}
+        poster={poster}
+        autoPlay
+        playsInline
+        muted={muted}
+        loop={loop}
+        onLoadedMetadata={(e) => setDurTime(e.currentTarget.duration || 0)}
+        onTimeUpdate={(e) => {
+          setCurTime(e.currentTarget.currentTime || 0);
+          if (!durTime && e.currentTarget.duration) setDurTime(e.currentTarget.duration);
+        }}
+        onEnded={onEnded}
+        className="w-full h-full object-cover"
+      />
+      <button
+        type="button"
+        onClick={handleTap}
+        aria-label={paused ? 'Continuar Reel' : 'Pausar Reel'}
+        className={`absolute inset-x-0 top-0 bottom-28 z-10 flex items-center justify-center transition ${
+          paused ? 'bg-black/45 backdrop-blur-sm' : 'bg-transparent'
+        }`}
+      >
+        {paused && (
+          <span className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow-[0_0_30px_rgba(236,72,153,0.65)]">
+            <Play className="w-7 h-7 fill-black ml-0.5" />
+          </span>
+        )}
+        {heartBurst && (
+          <span
+            key={heartBurst.key}
+            style={{ left: heartBurst.x - 32, top: heartBurst.y - 32 }}
+            className="absolute pointer-events-none w-16 h-16 flex items-center justify-center animate-ping"
+          >
+            <Heart className="w-14 h-14 fill-pink-500 text-pink-400 drop-shadow-[0_0_24px_rgba(236,72,153,0.9)]" />
+          </span>
+        )}
+      </button>
+
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          const v = videoRef.current;
+          if (!v || durTime <= 0) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          v.currentTime = ratio * durTime;
+          setCurTime(v.currentTime);
+        }}
+        className="absolute inset-x-0 bottom-0 h-5 z-40 flex flex-col justify-end cursor-pointer group"
+      >
+        {durTime > 0 && (
+          <div className="px-3 pb-1 flex items-center justify-between pointer-events-none">
+            <span className="px-1.5 py-0.5 rounded bg-black/75 border border-white/10 text-[9px] font-black text-white/95 tabular-nums">
+              {fmtSec(curTime)} / {fmtSec(durTime)}
+            </span>
+          </div>
+        )}
+        <div className="w-full h-[3px] group-hover:h-[6px] bg-white/25 transition-all relative">
+          <div
+            className="h-full bg-gradient-to-r from-red-500 via-pink-500 to-cyan-400 transition-[width] duration-150 relative"
+            style={{ width: `${pct}%` }}
+          >
+            <span className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)] opacity-85 group-hover:opacity-100" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -387,6 +673,23 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   const [activeIndex, setActiveIndex] = useState(0);
   const [autoAdvanceShorts, setAutoAdvanceShorts] = useState(true);
   const [loopCurrentShort, setLoopCurrentShort] = useState(false);
+  const [shortsMuted, setShortsMuted] = useState(false);
+  const [shortsRate, setShortsRate] = useState<number>(1);
+  const [reelsExpanded, setReelsExpanded] = useState(false);
+  const [downloadingShortId, setDownloadingShortId] = useState<string | null>(null);
+  const [newShortDurationSec, setNewShortDurationSec] = useState<number>(0);
+  const [likedShortIds, setLikedShortIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('lenkyx_liked_shorts_v1');
+      return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const [creatorModalOpen, setCreatorModalOpen] = useState(false);
+  const [creatorLoading, setCreatorLoading] = useState(false);
+  const [creatorProfile, setCreatorProfile] = useState<CreatorProfileData | null>(null);
+  const [creatorTab, setCreatorTab] = useState<'shorts' | 'videos'>('shorts');
   const [zenShortMode, setZenShortMode] = useState(false);
   const [leftOverlayOpen, setLeftOverlayOpen] = useState(false);
   const leftOverlayTimerRef = useRef<number | null>(null);
@@ -422,7 +725,11 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
       }
     }
   };
-  const [commentTarget, setCommentTarget] = useState<{ id: string; title: string } | null>(null);
+  const [commentTarget, setCommentTarget] = useState<{
+    id: string;
+    title: string;
+    youtubeId?: string;
+  } | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [newShortTitle, setNewShortTitle] = useState('');
   const [newShortDesc, setNewShortDesc] = useState('');
@@ -467,6 +774,26 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   const effectRef = useRef(liveEffect);
   effectRef.current = liveEffect;
 
+  const persistLikedIds = (nextSet: Set<string>) => {
+    try {
+      localStorage.setItem('lenkyx_liked_shorts_v1', JSON.stringify(Array.from(nextSet)));
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    void fetchLikedShortIds(subscriberId).then((ids) => {
+      if (ids.length > 0) {
+        setLikedShortIds((prev) => {
+          const merged = new Set([...prev, ...ids]);
+          persistLikedIds(merged);
+          return merged;
+        });
+      }
+    });
+  }, [subscriberId]);
+
   const loadShorts = async (cat = shortCategory, q = shortSearch, forceRefresh = false) => {
     setShortsLoading(true);
     try {
@@ -474,7 +801,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
       if (forceRefresh) {
         shorts.forEach((s) => markReelSeen(s));
       }
-      let list = await fetchWorldShorts(cat, q, seenReelIdsRef.current, forceRefresh);
+      let list = await fetchWorldShorts(cat, q, seenReelIdsRef.current, forceRefresh, subscriberId);
       if (list.length === 0 && seenReelIdsRef.current.length > 0) {
         // If user watched every single video in this category, reset history for this category so fresh cycle begins
         seenReelIdsRef.current = [];
@@ -483,7 +810,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
         } catch {
           // ignore
         }
-        list = await fetchWorldShorts(cat, q, [], true);
+        list = await fetchWorldShorts(cat, q, [], true, subscriberId);
       }
       setShorts(list);
       setActiveIndex(0);
@@ -748,32 +1075,173 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     onToast('⏭️ Pulando vídeo bloqueado pelo autor para o próximo disponível...');
   };
 
-  const handleLikeShort = async (s: CommunityShortItem) => {
-    setShorts((prev) => prev.map((x) => (x.id === s.id ? { ...x, likes: x.likes + 1 } : x)));
-    await likeCommunityShortItem(s.id);
+  const fmtCompactCount = (n: number): string => {
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+    return String(n);
+  };
+
+  const handleLikeShort = async (s: CommunityShortItem, forceLikeOnly = false) => {
+    const alreadyLiked = likedShortIds.has(s.id) || Boolean(s.liked_by_me);
+    if (forceLikeOnly && alreadyLiked) {
+      return; // Double-tap keeps the single like without unliking or stacking!
+    }
+    const nextLiked = !alreadyLiked;
+    const optimisticLikes = Math.max(0, s.likes + (nextLiked ? 1 : -1));
+
+    setLikedShortIds((prev) => {
+      const next = new Set(prev);
+      if (nextLiked) next.add(s.id);
+      else next.delete(s.id);
+      persistLikedIds(next);
+      return next;
+    });
+    setShorts((prev) =>
+      prev.map((x) => (x.id === s.id ? { ...x, likes: optimisticLikes, liked_by_me: nextLiked } : x))
+    );
+
+    const res = await likeCommunityShortItem(s.id, subscriberId, s.likes);
+    if (res && typeof res.likes === 'number') {
+      setLikedShortIds((prev) => {
+        const next = new Set(prev);
+        if (res.liked) next.add(s.id);
+        else next.delete(s.id);
+        persistLikedIds(next);
+        return next;
+      });
+      setShorts((prev) =>
+        prev.map((x) => (x.id === s.id ? { ...x, likes: res.likes, liked_by_me: res.liked } : x))
+      );
+    }
+  };
+
+  const openCreatorProfile = async (item: CommunityShortItem) => {
+    setCreatorModalOpen(true);
+    setCreatorLoading(true);
+    setCreatorTab('shorts');
+    setCreatorProfile({
+      channelId: '',
+      channelName: item.creator_name || 'Criador',
+      handle: `@${(item.creator_name || 'criador').replace(/[^a-zA-Z0-9_.-]+/g, '')}`,
+      avatarUrl: '',
+      bannerUrl: item.poster_url || '',
+      subscriberText: '',
+      description: '',
+      shorts: shorts.filter(
+        (x) => x.creator_name.toLowerCase() === (item.creator_name || '').toLowerCase()
+      ),
+      videos: [],
+    });
+    try {
+      const data = await fetchCreatorProfile({
+        creatorName: item.creator_name,
+        youtubeId: item.youtube_id,
+        userId: subscriberId,
+      });
+      if (data) {
+        setCreatorProfile(data);
+        if (data.shorts.length === 0 && data.videos.length > 0) {
+          setCreatorTab('videos');
+        }
+      }
+    } finally {
+      setCreatorLoading(false);
+    }
+  };
+
+  const handlePlayCreatorList = (list: CommunityShortItem[], startIndex = 0) => {
+    if (!list.length) return;
+    setShorts((prev) => {
+      const seen = new Set(list.map((x) => x.id));
+      return [...list, ...prev.filter((x) => !seen.has(x.id))];
+    });
+    setCreatorModalOpen(false);
+    claimMediaFocus('reels');
+    onPauseCatalogPlayer();
+    setActiveIndex(startIndex);
+    setExclusiveShortsOpen(true);
+  };
+
+  const handleShareShort = async (s: CommunityShortItem) => {
+    const appUrl = window.location.origin;
+    const shareText = `${s.title} — @${s.creator_name} no app LENKYX`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: s.title, text: shareText, url: appUrl });
+      } else {
+        await navigator.clipboard.writeText(`${shareText} · ${appUrl}`);
+        onToast('🔗 Link copiado para compartilhar!');
+      }
+    } catch {
+      // cancelled
+    }
   };
 
   const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (f.size > 12 * 1024 * 1024) {
-      onToast('Escolha um vídeo curto de até 12 MB para publicar rápido.');
+    if (f.size > 18 * 1024 * 1024) {
+      onToast('Escolha um vídeo curto de até 18 MB para publicar rápido.');
+      e.target.value = '';
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setNewShortVideoData(String(reader.result || ''));
-      if (!newShortTitle.trim()) {
-        setNewShortTitle(f.name.replace(/\.[^.]+$/, '').slice(0, 60));
+    const probeUrl = URL.createObjectURL(f);
+    const probeVideo = document.createElement('video');
+    probeVideo.preload = 'metadata';
+    probeVideo.onloadedmetadata = () => {
+      const dur = Math.round(probeVideo.duration || 0);
+      URL.revokeObjectURL(probeUrl);
+      if (dur > 180) {
+        onToast('⏱️ Reels aceitam apenas vídeos curtos de até 3:00 (padrão YouTube Shorts).');
+        return;
       }
+      setNewShortDurationSec(dur);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setNewShortVideoData(String(reader.result || ''));
+        if (!newShortTitle.trim()) {
+          setNewShortTitle(f.name.replace(/\.[^.]+$/, '').slice(0, 60));
+        }
+      };
+      reader.readAsDataURL(f);
     };
-    reader.readAsDataURL(f);
+    probeVideo.onerror = () => {
+      URL.revokeObjectURL(probeUrl);
+      onToast('Não foi possível ler a duração deste vídeo.');
+    };
+    probeVideo.src = probeUrl;
     e.target.value = '';
+  };
+
+  const handleDownloadShort = async (s: CommunityShortItem) => {
+    if (downloadingShortId) return;
+    setDownloadingShortId(s.id);
+    onToast(`⬇️ Preparando download de "${s.title}"...`);
+    try {
+      const res = await triggerDirectFileDownload({
+        title: s.title,
+        artist: s.creator_name,
+        directUrl: s.video_url || undefined,
+        kind: s.video_url ? 'video' : 'audio',
+        onProgress: (pct) => {
+          if (pct === 50) onToast(`⬇️ Baixando "${s.title}" · ${pct}%`);
+        },
+      });
+      onToast(`✅ "${res.filename}" baixado (${res.mb} MB)!`);
+    } catch {
+      onToast(`Não foi possível baixar "${s.title}" agora.`);
+    } finally {
+      setDownloadingShortId(null);
+    }
   };
 
   const handlePublishShort = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newShortTitle.trim() || publishingShort) return;
+    if (newShortDurationSec > 180) {
+      onToast('⏱️ Reels permitem apenas vídeos curtos de até 3:00.');
+      return;
+    }
     setPublishingShort(true);
     try {
       const created = await publishCommunityShort({
@@ -785,6 +1253,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
         videoUrl: newShortVideoData,
         posterUrl: initialTrack?.coverUrl || '/covers/album-official.jpg',
         audioTitle: initialTrack?.title || 'Cosmic Phonk',
+        durationSec: newShortDurationSec || 30,
       });
       if (created) {
         setShorts((prev) => [created, ...prev]);
@@ -793,6 +1262,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
         setNewShortTitle('');
         setNewShortDesc('');
         setNewShortVideoData('');
+        setNewShortDurationSec(0);
         onToast('🚀 Vídeo curto publicado no feed horizontal!');
       }
     } finally {
@@ -1007,7 +1477,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
             }
           }}
         >
-          {/* Ultra-Clean Minimal Top Bar (Zero Clutter Over Video) */}
+          {/* YouTube Shorts Top Controls (Clean, Zero Clutter Over Video) */}
           <div className="flex items-center justify-between gap-2 px-3 py-2 z-30 shrink-0">
             <button
               type="button"
@@ -1017,9 +1487,55 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               <ArrowLeft className="w-4 h-4" /> Voltar
             </button>
 
-            <span className="px-2.5 py-1 rounded-full bg-white/10 text-[11px] font-bold text-cyan-200">
-              {activeIndex + 1} / {shorts.length}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="px-2.5 py-1 rounded-full bg-white/10 text-[11px] font-bold text-cyan-200">
+                {activeIndex + 1} / {visibleShorts.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShortsRate((r) => (r === 1 ? 1.5 : r === 1.5 ? 2 : 1))}
+                className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[11px] font-black text-white transition"
+                title="Velocidade"
+              >
+                {shortsRate}x
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoopCurrentShort((v) => !v)}
+                className={`p-1.5 rounded-full border transition ${
+                  loopCurrentShort
+                    ? 'bg-cyan-400 text-black border-cyan-300'
+                    : 'bg-white/10 border-white/15 text-white hover:bg-white/20'
+                }`}
+                title="Repetir este vídeo"
+              >
+                <Repeat className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setReelsExpanded((v) => !v)}
+                className={`p-1.5 rounded-full border transition ${
+                  reelsExpanded
+                    ? 'bg-cyan-400 text-black border-cyan-300'
+                    : 'bg-white/10 hover:bg-white/20 border-white/15 text-white'
+                }`}
+                title={reelsExpanded ? 'Enquadramento Padrão' : 'Expandir Enquadramento'}
+              >
+                {reelsExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAutoAdvanceShorts((v) => !v)}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-black border transition ${
+                  autoAdvanceShorts
+                    ? 'bg-emerald-400 text-black border-emerald-300'
+                    : 'bg-white/10 border-white/15 text-purple-200'
+                }`}
+                title="Auto Próximo"
+              >
+                Auto
+              </button>
+            </div>
 
             <button
               type="button"
@@ -1033,24 +1549,30 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
           {/* CENTERED 1-BY-1 YOUTUBE SHORTS VERTICAL STAGE */}
           <div className="flex-1 min-h-0 flex items-center justify-center px-2 pb-3 relative">
-            <div className="relative h-full max-h-[840px] w-full max-w-[440px] rounded-[28px] overflow-hidden border border-white/15 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.9)]">
+            <div
+              className={`relative h-full w-full rounded-[28px] overflow-hidden border border-white/15 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.9)] transition-all duration-300 ${
+                reelsExpanded ? 'max-w-[780px] max-h-full' : 'max-w-[440px] max-h-[840px]'
+              }`}
+            >
               {activeShort.video_url ? (
-                <video
+                <NativeShortVideoPlayer
                   key={activeShort.id}
                   src={activeShort.video_url}
                   poster={activeShort.poster_url}
-                  controls
-                  autoPlay
-                  playsInline
+                  muted={shortsMuted}
                   loop={loopCurrentShort}
+                  playbackRate={shortsRate}
                   onEnded={handleShortEnded}
-                  className="w-full h-full object-cover"
+                  onDoubleTapLike={() => void handleLikeShort(activeShort, true)}
                 />
               ) : activeShort.youtube_id ? (
                 <YouTubeShortPlayer
                   key={activeShort.id}
                   videoId={activeShort.youtube_id}
                   loopOne={loopCurrentShort}
+                  muted={shortsMuted}
+                  playbackRate={shortsRate}
+                  onDoubleTapLike={() => void handleLikeShort(activeShort, true)}
                   onEnded={handleShortEnded}
                   onUnavailable={() => handleShortUnavailable(activeShort.id)}
                 />
@@ -1073,17 +1595,34 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 </div>
               )}
 
-              {/* Isolated z-30 Bottom Creator + Subscribe Bar (NEVER pauses video on click!) */}
+              {/* Isolated z-30 Bottom Clickable Creator Profile + Subscribe + Audio Bar (NEVER pauses video!) */}
               <div
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
-                className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/92 via-black/60 to-transparent p-4 pr-16"
+                className="absolute inset-x-0 bottom-1 z-30 bg-gradient-to-t from-black/95 via-black/65 to-transparent p-4 pr-16"
               >
                 <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                  <span className="px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] font-black text-cyan-200">
-                    @{activeShort.creator_name}
-                  </span>
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void openCreatorProfile(activeShort);
+                    }}
+                    className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-[11px] font-black text-cyan-200 transition active:scale-95"
+                    title="Ver perfil e vídeos do criador"
+                  >
+                    <span
+                      className={`w-5 h-5 rounded-full bg-gradient-to-br ${
+                        activeShort.creator_color || 'from-cyan-400 to-pink-500'
+                      } text-[10px] font-black text-white flex items-center justify-center shrink-0`}
+                    >
+                      {(activeShort.creator_name || 'C').slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="truncate max-w-[140px]">@{activeShort.creator_name}</span>
+                  </button>
                   <button
                     type="button"
                     onPointerDown={(e) => e.stopPropagation()}
@@ -1119,29 +1658,51 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 <div className="text-sm font-black text-white line-clamp-2 drop-shadow">
                   {activeShort.title}
                 </div>
+                {activeShort.audio_title && (
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] text-cyan-200/90 font-semibold truncate">
+                    <Music2 className="w-3 h-3 text-pink-400 shrink-0" />
+                    <span className="truncate">{activeShort.audio_title}</span>
+                  </div>
+                )}
               </div>
 
-              {/* Minimal Right-Side Action Rail (ONLY Like, Comment, Prev, Next!) */}
+              {/* YouTube Shorts Right-Side Action Rail (1-Like, All Comments, Share, Sound, Prev/Next) */}
               <div
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="absolute right-2.5 bottom-16 z-30 flex flex-col items-center gap-2.5"
+                className="absolute right-2.5 bottom-4 z-30 flex flex-col items-center gap-2"
               >
                 <button
                   type="button"
                   onClick={() => void handleLikeShort(activeShort)}
-                  className="w-11 h-11 rounded-full bg-black/45 hover:bg-black/70 backdrop-blur-md border border-white/20 flex flex-col items-center justify-center text-white transition active:scale-95"
-                  title="Curtir"
+                  className={`w-11 h-11 rounded-full backdrop-blur-md border flex flex-col items-center justify-center transition active:scale-95 ${
+                    likedShortIds.has(activeShort.id) || activeShort.liked_by_me
+                      ? 'bg-pink-500/35 border-pink-400 text-pink-200 shadow-[0_0_20px_rgba(236,72,153,0.5)]'
+                      : 'bg-black/45 hover:bg-black/70 border-white/20 text-white'
+                  }`}
+                  title={likedShortIds.has(activeShort.id) ? 'Curtido (1 por vídeo)' : 'Curtir'}
                 >
-                  <Heart className="w-4 h-4 fill-pink-500 text-pink-500" />
-                  <span className="text-[9px] font-black">{activeShort.likes}</span>
+                  <Heart
+                    className={`w-4 h-4 ${
+                      likedShortIds.has(activeShort.id) || activeShort.liked_by_me
+                        ? 'fill-pink-500 text-pink-500'
+                        : 'text-white'
+                    }`}
+                  />
+                  <span className="text-[9px] font-black">{fmtCompactCount(activeShort.likes)}</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setCommentTarget({ id: `short:${activeShort.id}`, title: activeShort.title })}
+                  onClick={() =>
+                    setCommentTarget({
+                      id: `short:${activeShort.id}`,
+                      title: activeShort.title,
+                      youtubeId: activeShort.youtube_id,
+                    })
+                  }
                   className="w-11 h-11 rounded-full bg-black/45 hover:bg-black/70 backdrop-blur-md border border-white/20 flex flex-col items-center justify-center text-white transition active:scale-95"
-                  title="Comentar"
+                  title="Comentários"
                 >
                   <MessageCircle className="w-4 h-4 text-cyan-300" />
                   <span className="text-[8px] font-bold">Chat</span>
@@ -1149,9 +1710,45 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
                 <button
                   type="button"
+                  onClick={() => void handleShareShort(activeShort)}
+                  className="w-10 h-10 rounded-full bg-black/45 hover:bg-black/70 backdrop-blur-md border border-white/20 flex items-center justify-center text-white transition active:scale-95"
+                  title="Compartilhar"
+                >
+                  <Share2 className="w-4 h-4 text-emerald-300" />
+                </button>
+
+                <button
+                  type="button"
+                  disabled={downloadingShortId === activeShort.id}
+                  onClick={() => void handleDownloadShort(activeShort)}
+                  className="w-10 h-10 rounded-full bg-black/45 hover:bg-cyan-500/35 backdrop-blur-md border border-white/20 flex items-center justify-center text-white transition active:scale-95"
+                  title="Baixar Reel"
+                >
+                  {downloadingShortId === activeShort.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-cyan-300" />
+                  ) : (
+                    <Download className="w-4 h-4 text-cyan-300" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShortsMuted((m) => !m)}
+                  className="w-10 h-10 rounded-full bg-black/45 hover:bg-black/70 backdrop-blur-md border border-white/20 flex items-center justify-center text-white transition active:scale-95"
+                  title={shortsMuted ? 'Ativar Som' : 'Mudo'}
+                >
+                  {shortsMuted ? (
+                    <VolumeX className="w-4 h-4 text-rose-300" />
+                  ) : (
+                    <Volume2 className="w-4 h-4 text-cyan-200" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => scrollToShort(activeIndex - 1)}
                   disabled={activeIndex <= 0}
-                  className="w-11 h-11 rounded-full bg-black/45 hover:bg-black/70 disabled:opacity-25 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition active:scale-90"
+                  className="w-10 h-10 rounded-full bg-black/45 hover:bg-black/70 disabled:opacity-25 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition active:scale-90"
                   title="Anterior"
                 >
                   <ChevronUp className="w-5 h-5" />
@@ -1159,11 +1756,26 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => scrollToShort(activeIndex + 1)}
-                  disabled={activeIndex >= shorts.length - 1}
-                  className="w-11 h-11 rounded-full bg-black/45 hover:bg-black/70 disabled:opacity-25 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition active:scale-90"
+                  disabled={activeIndex >= visibleShorts.length - 1}
+                  className="w-10 h-10 rounded-full bg-black/45 hover:bg-black/70 disabled:opacity-25 backdrop-blur-md border border-white/20 text-white flex items-center justify-center transition active:scale-90"
                   title="Próximo"
                 >
                   <ChevronDown className="w-5 h-5" />
+                </button>
+
+                {/* Spinning Sound Disc (TikTok / YouTube Shorts) */}
+                <button
+                  type="button"
+                  onClick={() => void openCreatorProfile(activeShort)}
+                  className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-pink-500 to-cyan-400 border border-white/40 overflow-hidden animate-spin"
+                  style={{ animationDuration: '5s' }}
+                  title="Canal & Som"
+                >
+                  <img
+                    src={activeShort.poster_url || '/covers/album-official.jpg'}
+                    alt={activeShort.creator_name}
+                    className="w-full h-full rounded-full object-cover"
+                  />
                 </button>
               </div>
             </div>
@@ -1294,10 +1906,18 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/30" />
 
-                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5">
-                    <span className="px-2 py-0.5 rounded-full bg-black/55 backdrop-blur-md border border-white/15 text-[10px] font-bold text-white truncate max-w-[130px]">
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5 z-10">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void openCreatorProfile(s);
+                      }}
+                      className="px-2 py-0.5 rounded-full bg-black/65 hover:bg-cyan-500/35 backdrop-blur-md border border-white/20 text-[10px] font-bold text-cyan-200 truncate max-w-[135px] transition"
+                      title="Abrir perfil do criador"
+                    >
                       @{s.creator_name}
-                    </span>
+                    </button>
                     <span className="px-2 py-0.5 rounded-full bg-pink-500/80 text-[9px] font-black text-white shrink-0">
                       #{idx + 1}
                     </span>
@@ -1310,21 +1930,39 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                     </span>
                   </div>
 
-                  <div className="absolute bottom-2.5 left-2.5 right-2.5 space-y-1.5">
+                  <div className="absolute bottom-2.5 left-2.5 right-2.5 space-y-1.5 z-10">
                     <div className="text-xs font-black text-white line-clamp-2 leading-snug drop-shadow">
                       {s.title}
                     </div>
                     <div className="flex items-center justify-between gap-1.5">
-                      <span className="text-[10px] text-cyan-200/85">❤️ {s.likes}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleLikeShort(s);
+                        }}
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 transition ${
+                          likedShortIds.has(s.id) || s.liked_by_me
+                            ? 'bg-pink-500/35 border border-pink-400 text-pink-200'
+                            : 'bg-black/55 border border-white/15 text-cyan-200/90 hover:bg-white/15'
+                        }`}
+                      >
+                        <span>{likedShortIds.has(s.id) || s.liked_by_me ? '❤️' : '🤍'}</span>
+                        <span>{fmtCompactCount(s.likes)}</span>
+                      </button>
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setCommentTarget({ id: `short:${s.id}`, title: s.title });
+                            setCommentTarget({
+                              id: `short:${s.id}`,
+                              title: s.title,
+                              youtubeId: s.youtube_id,
+                            });
                           }}
                           className="px-1.5 py-0.5 rounded-full bg-black/60 hover:bg-black/85 border border-white/15 text-[9px] font-bold text-cyan-200"
-                          title="Comentar"
+                          title="Comentários"
                         >
                           💬
                         </button>
@@ -1919,11 +2557,221 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
         </Suspense>
       )}
 
+      {/* === YOUTUBE-STYLE CREATOR CHANNEL PROFILE MODAL === */}
+      {creatorModalOpen &&
+        creatorProfile &&
+        createPortal(
+          <div
+            onClick={() => setCreatorModalOpen(false)}
+            className="fixed inset-0 z-[9996] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center sm:p-5"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl h-[86vh] max-h-[760px] rounded-t-3xl sm:rounded-3xl bg-[#0e0722]/98 border border-white/20 flex flex-col overflow-hidden shadow-[0_0_80px_rgba(34,211,238,0.28)]"
+            >
+              {/* Banner */}
+              <div className="relative h-28 sm:h-36 bg-gradient-to-r from-[#23104c] via-[#13294b] to-[#2e1042] shrink-0 overflow-hidden">
+                {creatorProfile.bannerUrl && (
+                  <img
+                    src={creatorProfile.bannerUrl}
+                    alt={creatorProfile.channelName}
+                    className="w-full h-full object-cover opacity-55"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0e0722] via-transparent to-black/40" />
+                <button
+                  type="button"
+                  onClick={() => setCreatorModalOpen(false)}
+                  className="absolute top-3 right-3 p-2 rounded-full bg-black/55 hover:bg-rose-500/80 border border-white/20 text-white transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Channel Header */}
+              <div className="px-4 sm:px-6 pb-3 -mt-10 relative z-10 shrink-0 space-y-3">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div className="flex items-end gap-3 min-w-0">
+                    <div className="w-20 h-20 rounded-full border-4 border-[#0e0722] bg-gradient-to-br from-cyan-400 to-pink-500 overflow-hidden flex items-center justify-center shadow-xl shrink-0">
+                      {creatorProfile.avatarUrl ? (
+                        <img
+                          src={creatorProfile.avatarUrl}
+                          alt={creatorProfile.channelName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-2xl font-black text-white">
+                          {creatorProfile.channelName.slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 pb-1">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-base sm:text-lg font-black text-white truncate">
+                          {creatorProfile.channelName}
+                        </h3>
+                        <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                      </div>
+                      <div className="text-xs font-bold text-cyan-300 truncate">
+                        {creatorProfile.handle}
+                        {creatorProfile.subscriberText ? ` · ${creatorProfile.subscriberText}` : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleToggleSubscribe(creatorProfile.channelName)}
+                      className={`px-4 py-2 rounded-full text-xs font-black flex items-center gap-1.5 transition shadow ${
+                        subscribedChannels.has(normalizeChannelKey(creatorProfile.channelName))
+                          ? 'bg-white/20 border border-white/25 text-white'
+                          : 'bg-gradient-to-r from-red-600 to-pink-500 text-white hover:brightness-110'
+                      }`}
+                    >
+                      {subscribedChannels.has(normalizeChannelKey(creatorProfile.channelName)) ? (
+                        <>
+                          <BellRing className="w-3.5 h-3.5 text-emerald-300" />
+                          <span>Inscrito</span>
+                        </>
+                      ) : (
+                        <>
+                          <Bell className="w-3.5 h-3.5" />
+                          <span>Inscrever-se</span>
+                        </>
+                      )}
+                    </button>
+
+                    {(creatorProfile.shorts.length > 0 || creatorProfile.videos.length > 0) && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handlePlayCreatorList(
+                            creatorProfile.shorts.length > 0
+                              ? creatorProfile.shorts
+                              : creatorProfile.videos,
+                            0
+                          )
+                        }
+                        className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 to-pink-500 text-black text-xs font-black flex items-center gap-1.5 shadow"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-black" />
+                        <span>Play Tudo</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {creatorProfile.description && (
+                  <p className="text-xs text-purple-100/80 line-clamp-2">
+                    {creatorProfile.description}
+                  </p>
+                )}
+
+                {/* Channel Tabs: Shorts vs Videos */}
+                <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreatorTab('shorts')}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-black transition ${
+                      creatorTab === 'shorts'
+                        ? 'bg-white text-black'
+                        : 'bg-white/10 text-purple-100 hover:bg-white/20'
+                    }`}
+                  >
+                    Reels / Shorts ({creatorProfile.shorts.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreatorTab('videos')}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-black transition ${
+                      creatorTab === 'videos'
+                        ? 'bg-white text-black'
+                        : 'bg-white/10 text-purple-100 hover:bg-white/20'
+                    }`}
+                  >
+                    Vídeos ({creatorProfile.videos.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Channel Videos Grid */}
+              <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 pb-6">
+                {creatorLoading ? (
+                  <div className="py-12 flex flex-col items-center justify-center gap-2 text-xs text-cyan-300 font-bold">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <span>Carregando canal de {creatorProfile.channelName}...</span>
+                  </div>
+                ) : (
+                  (() => {
+                    const list =
+                      creatorTab === 'shorts' ? creatorProfile.shorts : creatorProfile.videos;
+                    if (list.length === 0) {
+                      return (
+                        <div className="py-12 text-center text-xs text-purple-200/75">
+                          Nenhum conteúdo nesta aba do canal.
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        className={
+                          creatorTab === 'shorts'
+                            ? 'grid grid-cols-2 sm:grid-cols-3 gap-3'
+                            : 'grid grid-cols-1 sm:grid-cols-2 gap-3'
+                        }
+                      >
+                        {list.map((item, idx) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handlePlayCreatorList(list, idx)}
+                            className="group rounded-2xl overflow-hidden bg-white/[0.06] hover:bg-white/15 border border-white/15 text-left transition"
+                          >
+                            <div
+                              className={`relative bg-black overflow-hidden ${
+                                creatorTab === 'shorts' ? 'aspect-[9/16]' : 'aspect-video'
+                              }`}
+                            >
+                              <img
+                                src={item.poster_url || '/covers/album-official.jpg'}
+                                alt={item.title}
+                                loading="lazy"
+                                className="w-full h-full object-cover group-hover:scale-105 transition"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                              <span className="absolute inset-0 m-auto w-10 h-10 rounded-full bg-black/55 group-hover:bg-cyan-400 group-hover:text-black text-white flex items-center justify-center transition">
+                                <Play className="w-4 h-4 fill-current ml-0.5" />
+                              </span>
+                              {item.duration_text && (
+                                <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white">
+                                  {item.duration_text}
+                                </span>
+                              )}
+                            </div>
+                            <div className="p-2.5">
+                              <div className="text-xs font-black text-white line-clamp-2">
+                                {item.title}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
       <TargetCommentsModal
         open={Boolean(commentTarget)}
         onClose={() => setCommentTarget(null)}
         targetId={commentTarget?.id || ''}
         targetTitle={commentTarget?.title || ''}
+        youtubeId={commentTarget?.youtubeId || ''}
         user={user}
       />
     </div>

@@ -24,7 +24,9 @@ import {
   Crown,
   ArrowLeft,
   ChevronRight,
+  Download,
 } from 'lucide-react';
+import { triggerDirectFileDownload } from '../utils/offlineCache';
 import { MovieItem, SeriesEpisodeItem, SeriesSeasonInfo } from '../types';
 import {
   fetchMoviesDirectory,
@@ -210,6 +212,31 @@ export const MoviesView: React.FC<Props> = ({
   const [, setPrerollActive] = useState(false);
   const [cinemaQuality, setCinemaQuality] = useState<'auto' | 'large' | 'hd720' | 'hd1080' | 'hd2160'>('hd720');
   const [expandedView, setExpandedView] = useState(false);
+  const [downloadingMovie, setDownloadingMovie] = useState<{ pct: number; status: string } | null>(null);
+
+  const handleDownloadActiveMovie = async (movie: MovieItem) => {
+    if (downloadingMovie) return;
+    setDownloadingMovie({ pct: 8, status: 'Preparando download...' });
+    try {
+      const res = await triggerDirectFileDownload({
+        title: movie.title,
+        artist: movie.category || 'LENKYX Cinema',
+        directUrl: movie.videoStreamUrl || undefined,
+        kind: 'movie',
+        onProgress: (pct, loadedMb) => {
+          setDownloadingMovie({
+            pct,
+            status: `Baixando ${pct}%${loadedMb > 0 ? ` (${loadedMb} MB)` : ''}`,
+          });
+        },
+      });
+      setDownloadingMovie({ pct: 100, status: `✅ Baixado (${res.mb} MB)` });
+      window.setTimeout(() => setDownloadingMovie(null), 3200);
+    } catch {
+      setDownloadingMovie({ pct: 0, status: 'Indisponível para download direto' });
+      window.setTimeout(() => setDownloadingMovie(null), 3000);
+    }
+  };
 
   useEffect(() => {
     return registerMediaStopper('movies', () => setActiveMovie(null));
@@ -668,6 +695,21 @@ export const MoviesView: React.FC<Props> = ({
                   />
                 </div>
               )}
+
+              <button
+                type="button"
+                disabled={Boolean(downloadingMovie && downloadingMovie.pct > 0 && downloadingMovie.pct < 100)}
+                onClick={() => void handleDownloadActiveMovie(activeMovie)}
+                className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-100 text-[11px] font-black flex items-center gap-1 transition"
+                title="Baixar filme no aparelho"
+              >
+                {downloadingMovie && downloadingMovie.pct > 0 && downloadingMovie.pct < 100 ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                <span>{downloadingMovie ? downloadingMovie.status : 'Baixar'}</span>
+              </button>
 
               <button
                 onClick={() => void toggleExpandPlayer()}

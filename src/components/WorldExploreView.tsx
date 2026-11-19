@@ -10,7 +10,6 @@ import {
   ListMusic,
   UserCheck,
   Film,
-  RefreshCw,
   ArrowLeft,
   Disc3,
   BadgeCheck,
@@ -18,7 +17,9 @@ import {
   Bot,
   Bell,
   BellRing,
+  Download,
 } from 'lucide-react';
+import { triggerDirectFileDownload } from '../utils/offlineCache';
 import {
   fetchChannelSubscriptions,
   getClientSubscriberId,
@@ -154,8 +155,6 @@ export const WorldExploreView: React.FC<Props> = ({
   const [smartPicks, setSmartPicks] = useState<{ label: string; query: string }[]>(() => getSmartDiscoveryQueries());
   const [artistRegion, setArtistRegion] = useState<string>('all');
   const [loading, setLoading] = useState(false);
-  const [refreshingReleases, setRefreshingReleases] = useState(false);
-  const [lastUpdatedLabel, setLastUpdatedLabel] = useState('Atualizado');
   const [activeLabel, setActiveLabel] = useState('🔥 Em Alta');
   const [pickerTrackId, setPickerTrackId] = useState<string | null>(null);
   const [topArtists, setTopArtists] = useState<RankedArtistEntry[]>([]);
@@ -164,8 +163,32 @@ export const WorldExploreView: React.FC<Props> = ({
   const [sunoTracks, setSunoTracks] = useState<Track[]>([]);
   const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
   const [subscribedChannels, setSubscribedChannels] = useState<Set<string>>(new Set());
-  const [autoPlayOnArtistClick, setAutoPlayOnArtistClick] = useState(true);
+  const [downloadingRowId, setDownloadingRowId] = useState<string | null>(null);
+  const [downloadRowPct, setDownloadRowPct] = useState<number>(0);
   const resultsListRef = React.useRef<HTMLDivElement | null>(null);
+
+  const handleDownloadWorldRow = async (t: Track) => {
+    if (downloadingRowId) return;
+    setDownloadingRowId(t.id);
+    setDownloadRowPct(10);
+    try {
+      await triggerDirectFileDownload({
+        title: t.title,
+        artist: t.artist,
+        directUrl: t.audioUrl || t.audioUrlV2 || undefined,
+        kind: 'audio',
+        onProgress: (pct) => setDownloadRowPct(pct),
+      });
+      setDownloadRowPct(100);
+    } catch {
+      // fallback silently
+    } finally {
+      window.setTimeout(() => {
+        setDownloadingRowId(null);
+        setDownloadRowPct(0);
+      }, 1200);
+    }
+  };
   const subscriberId = useMemo(() => getClientSubscriberId(), []);
 
   useEffect(() => {
@@ -235,15 +258,11 @@ export const WorldExploreView: React.FC<Props> = ({
   };
 
   const refreshNewReleasesAI = async (force = false) => {
-    setRefreshingReleases(true);
     try {
       const rel = await getWorldNewReleases(force);
       if (rel.tracks?.length) setNewReleases(rel.tracks);
-      setLastUpdatedLabel(
-        `Atualizado · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-      );
-    } finally {
-      setRefreshingReleases(false);
+    } catch {
+      // ignore
     }
   };
 
@@ -253,9 +272,6 @@ export const WorldExploreView: React.FC<Props> = ({
         if (dir.artists?.length) setFamousArtists(dir.artists);
         if (dir.playlists?.length) setCuratedPlaylists(dir.playlists);
         if (dir.newReleases?.length) setNewReleases(dir.newReleases);
-        setLastUpdatedLabel(
-          `Atualizado · ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-        );
       })
       .catch(() => {});
 
@@ -281,7 +297,7 @@ export const WorldExploreView: React.FC<Props> = ({
 
   useEffect(() => {
     if (initialQuery && initialQuery.trim()) {
-      void runSearch(initialQuery, `🎤 ${initialQuery}`, false, searchNonce > 0 && autoPlayOnArtistClick);
+      void runSearch(initialQuery, `🎤 ${initialQuery}`, false, searchNonce > 0);
     } else {
       void runSearch('');
     }
@@ -338,15 +354,6 @@ export const WorldExploreView: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => void refreshNewReleasesAI(true)}
-            disabled={refreshingReleases}
-            className="px-3 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/15 border border-white/15 text-[11px] font-bold text-emerald-300 flex items-center gap-1.5 transition"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshingReleases ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{lastUpdatedLabel}</span>
-          </button>
-
           {results.length > 0 && (
             <button
               onClick={() => handlePlayRow(results[0])}
@@ -355,17 +362,6 @@ export const WorldExploreView: React.FC<Props> = ({
               <Play className="w-3.5 h-3.5 fill-current" /> Play Automático
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setAutoPlayOnArtistClick((v) => !v)}
-            className={`px-3 py-1.5 rounded-full border text-[11px] font-black transition ${
-              autoPlayOnArtistClick
-                ? 'bg-emerald-500/25 border-emerald-400/50 text-emerald-200'
-                : 'bg-white/10 border-white/15 text-slate-300'
-            }`}
-          >
-            {autoPlayOnArtistClick ? '⚡ Auto-Play: ON' : 'Auto-Play: OFF'}
-          </button>
         </div>
       </div>
 
@@ -526,7 +522,7 @@ export const WorldExploreView: React.FC<Props> = ({
               return (
                 <button
                   key={art.name}
-                  onClick={() => void runSearch(art.name, `🏆 #${art.rank} ${art.name}`, false, autoPlayOnArtistClick)}
+                  onClick={() => void runSearch(art.name, `🏆 #${art.rank} ${art.name}`, false, true)}
                   className={`group relative rounded-3xl overflow-hidden bg-[#0a0619] text-left transition duration-300 hover:-translate-y-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.65)] ${
                     art.rank === 1
                       ? 'border-2 border-amber-400/80 shadow-[0_0_34px_rgba(251,191,36,0.28)]'
@@ -747,7 +743,7 @@ export const WorldExploreView: React.FC<Props> = ({
           {filteredArtists.map((art) => (
             <button
               key={art.name}
-              onClick={() => void runSearch(art.name, `🎤 ${art.name}`, false, autoPlayOnArtistClick)}
+              onClick={() => void runSearch(art.name, `🎤 ${art.name}`, false, true)}
               className="group w-44 sm:w-52 shrink-0 rounded-3xl overflow-hidden bg-gradient-to-b from-white/[0.10] to-black/60 backdrop-blur-xl border border-white/15 hover:border-cyan-400/65 text-left snap-start transition duration-300 hover:-translate-y-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.65)]"
             >
               <div className="relative aspect-[4/4.5] w-full overflow-hidden bg-black">
@@ -988,6 +984,26 @@ export const WorldExploreView: React.FC<Props> = ({
                 </div>
 
                 <div className="flex items-center gap-1 relative">
+                  <button
+                    type="button"
+                    disabled={downloadingRowId === t.id}
+                    onClick={() => void handleDownloadWorldRow(t)}
+                    className="px-2 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-[10px] font-extrabold flex items-center gap-1 transition"
+                    title="Baixar música"
+                  >
+                    {downloadingRowId === t.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {downloadingRowId === t.id
+                        ? downloadRowPct >= 100
+                          ? 'Baixado!'
+                          : `${downloadRowPct}%`
+                        : 'Baixar'}
+                    </span>
+                  </button>
                   {t.youtubeVideoId && onWatchClip && (
                     <button
                       onClick={() => onWatchClip(t, results)}

@@ -15,6 +15,8 @@ import {
   Gauge,
   ShieldOff,
   DownloadCloud,
+  Download,
+  Loader2,
   CheckCircle2,
   Timer,
   Disc3,
@@ -32,6 +34,8 @@ interface Props {
   queue: Track[];
   isPlaying: boolean;
   isCurrentTrackOffline: boolean;
+  isDownloadingOffline?: boolean;
+  downloadPct?: number;
   currentTime: number;
   duration: number;
   volume: number;
@@ -56,6 +60,7 @@ interface Props {
   onTogglePip: () => void;
   onSetSleepMinutes: (minutes: number | null) => void;
   onToggleOffline: (track: Track) => void;
+  onDownloadFile?: (track: Track) => void;
   onEmergencyStop: () => void;
 }
 
@@ -73,6 +78,8 @@ export const MediaPlayerMenuModal: React.FC<Props> = ({
   queue,
   isPlaying,
   isCurrentTrackOffline,
+  isDownloadingOffline = false,
+  downloadPct = 0,
   currentTime,
   duration,
   volume,
@@ -97,6 +104,7 @@ export const MediaPlayerMenuModal: React.FC<Props> = ({
   onTogglePip,
   onSetSleepMinutes,
   onToggleOffline,
+  onDownloadFile,
   onEmergencyStop,
 }) => {
   const eqCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -310,18 +318,46 @@ export const MediaPlayerMenuModal: React.FC<Props> = ({
                 className="flex-1 accent-cyan-400 h-1.5 cursor-pointer"
               />
               {track && (
-                <button
-                  type="button"
-                  onClick={() => onToggleOffline(track)}
-                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-black flex items-center gap-1 shrink-0 transition ${
-                    isCurrentTrackOffline
-                      ? 'bg-emerald-500/20 border-emerald-400/45 text-emerald-200'
-                      : 'bg-white/10 hover:bg-white/20 border-white/15 text-white'
-                  }`}
-                >
-                  {isCurrentTrackOffline ? <CheckCircle2 className="w-3.5 h-3.5" /> : <DownloadCloud className="w-3.5 h-3.5" />}
-                  <span>{isCurrentTrackOffline ? 'Salva' : 'Offline'}</span>
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    disabled={isDownloadingOffline}
+                    onClick={() => onToggleOffline(track)}
+                    className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-black flex items-center gap-1 shrink-0 transition ${
+                      isDownloadingOffline
+                        ? 'bg-cyan-500/25 border-cyan-400/50 text-cyan-100'
+                        : isCurrentTrackOffline
+                          ? 'bg-emerald-500/20 border-emerald-400/45 text-emerald-200'
+                          : 'bg-white/10 hover:bg-white/20 border-white/15 text-white'
+                    }`}
+                  >
+                    {isDownloadingOffline ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
+                    ) : isCurrentTrackOffline ? (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    ) : (
+                      <DownloadCloud className="w-3.5 h-3.5" />
+                    )}
+                    <span>
+                      {isDownloadingOffline
+                        ? `${downloadPct > 0 ? `${downloadPct}%` : 'Baixando...'}`
+                        : isCurrentTrackOffline
+                          ? 'Salva'
+                          : 'Offline'}
+                    </span>
+                  </button>
+                  {onDownloadFile && (
+                    <button
+                      type="button"
+                      onClick={() => onDownloadFile(track)}
+                      className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-[11px] font-black flex items-center gap-1 shrink-0 transition"
+                      title="Baixar arquivo MP3 no aparelho"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Baixar</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>

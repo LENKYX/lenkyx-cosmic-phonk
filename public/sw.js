@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lenkyx-cosmic-phonk-v45';
+const CACHE_NAME = 'lenkyx-cosmic-phonk-v47';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -39,13 +39,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for static covers, JS/CSS assets, and local audio files
+  // Cache-first ONLY for content-hashed /assets/ and static /audio/
   if (
     url.origin === self.location.origin &&
-    (url.pathname.startsWith('/assets/') ||
-      url.pathname.startsWith('/covers/') ||
-      url.pathname.startsWith('/audio/') ||
-      url.pathname === '/manifest.json')
+    (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/audio/'))
   ) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
@@ -64,9 +61,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first with offline cache fallback for HTML & /api/state
+  // Network-first with offline cache fallback for HTML, /covers/, /manifest.json & /api/state
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: event.request.mode === 'navigate' ? 'no-cache' : 'default' })
       .then((res) => {
         if (res && res.ok && url.origin === self.location.origin) {
           const copy = res.clone();
@@ -89,5 +86,9 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  } else if (event.data && event.data.type === 'CLEAR_ALL_CACHES') {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).then(() => self.skipWaiting())
+    );
   }
 });

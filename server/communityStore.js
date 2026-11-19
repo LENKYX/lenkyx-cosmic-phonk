@@ -91,6 +91,9 @@ function readLocal() {
         comments: [],
         shorts: DEFAULT_SHORTS,
         lives: [],
+        channels: {},
+        shortLikes: {},
+        commentLikes: {},
       };
       fs.writeFileSync(LOCAL_FILE, JSON.stringify(seed, null, 2));
       return seed;
@@ -102,9 +105,19 @@ function readLocal() {
       shorts: Array.isArray(parsed.shorts) && parsed.shorts.length ? parsed.shorts : DEFAULT_SHORTS,
       lives: Array.isArray(parsed.lives) ? parsed.lives : [],
       channels: parsed.channels && typeof parsed.channels === 'object' ? parsed.channels : {},
+      shortLikes: parsed.shortLikes && typeof parsed.shortLikes === 'object' ? parsed.shortLikes : {},
+      commentLikes: parsed.commentLikes && typeof parsed.commentLikes === 'object' ? parsed.commentLikes : {},
     };
   } catch {
-    return { chat: DEFAULT_CHAT, comments: [], shorts: DEFAULT_SHORTS, lives: [], channels: {} };
+    return {
+      chat: DEFAULT_CHAT,
+      comments: [],
+      shorts: DEFAULT_SHORTS,
+      lives: [],
+      channels: {},
+      shortLikes: {},
+      commentLikes: {},
+    };
   }
 }
 
@@ -182,79 +195,140 @@ export async function postChatMessage({ roomId = 'global', authorName, authorCol
   return item;
 }
 
-export async function getCommentsForTarget(targetId, limit = 80) {
+export async function getCommentsForTarget(targetId, limit = 120, userId = '') {
   const cleanTarget = String(targetId || '').trim().slice(0, 100);
   if (!cleanTarget) return [];
+  const uid = String(userId || '').trim();
+  const local = readLocal();
+  const commentLikesMap = local.commentLikes || {};
+
+  let rows = [];
   if (HAS_SUPA) {
     try {
-      const rows = await supaReq('lenkyx_community_comments', {
+      const supaRows = await supaReq('lenkyx_community_comments', {
         query: `target_id=eq.${encodeURIComponent(cleanTarget)}&order=created_at.desc&limit=${limit}`,
       });
-      return Array.isArray(rows) ? rows : [];
+      if (Array.isArray(supaRows)) rows = supaRows;
     } catch {
       // fallback
     }
   }
-  const local = readLocal();
-  return local.comments.filter((c) => c.target_id === cleanTarget).slice(-limit).reverse();
+  if (rows.length === 0) {
+    rows = local.comments.filter((c) => c.target_id === cleanTarget).slice(-limit).reverse();
+  }
+
+  // Also merge any local replies/comments not yet in Supabase
+  const seenIds = new Set(rows.map((r) => r.id));
+  for (const lc of local.comments) {
+    if (lc.target_id === cleanTarget && !seenIds.has(lc.id)) {
+      rows.push(lc);
+    }
+  }
+
+  const normalized = rows.map((c) => {
+    const likedList = Array.isArray(commentLikesMap[c.id]) ? commentLikesMap[c.id] : [];
+    const likedByMe = Boolean(uid && likedList.includes(uid));
+    return {
+      ...c,
+      source: c.source || 'lenkyx',
+      liked_by_me: likedByMe,
+      likes: Math.max(Number(c.likes || 0), likedList.length),
+    };
+  });
+
+  // Nest replies under their parent_id
+  const replyMap = new Map();
+  const topLevel = [];
+  for (const item of normalized) {
+    if (item.parent_id) {
+      const arr = replyMap.get(item.parent_id) || [];
+      arr.push(item);
+      replyMap.set(item.parent_id, arr);
+    } else {
+      topLevel.push(item);
+    }
+  }
+  return topLevel.map((t) => ({
+    ...t,
+    replies: (replyMap.get(t.id) || []).sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ),
+  }));
 }
 
-export async function postComment({ targetId, authorName, authorColor, text }) {
+export async function postComment({ targetId, parentId = '', authorName, authorColor, text }) {
   const cleanTarget = String(targetId || '').trim().slice(0, 100);
-  const cleanText = String(text || '').trim().slice(0, 400);
+  const cleanParent = String(parentId || '').trim().slice(0, 60);
+  const cleanText = String(text || '').trim().slice(0, 500);
   if (!cleanTarget || !cleanText) throw new Error('Comentário inválido');
   const item = {
     id: `cmt-${crypto.randomUUID().slice(0, 12)}`,
     target_id: cleanTarget,
+    parent_id: cleanParent || undefined,
     author_name: String(authorName || 'Fã Cósmico').trim().slice(0, 40),
     author_color: String(authorColor || 'from-purple-500 to-pink-500').slice(0, 50),
     text: cleanText,
     likes: 0,
+    source: 'lenkyx',
     created_at: new Date().toISOString(),
   };
 
-  if (HAS_SUPA) {
+  if (HAS_SUPA && !cleanParent) {
     try {
       const inserted = await supaReq('lenkyx_community_comments', { method: 'POST', body: item });
-      if (Array.isArray(inserted) && inserted[0]) return inserted[0];
+      if (Array.isArray(inserted) && inserted[0]) return { ...inserted[0], replies: [], liked_by_me: false };
     } catch {
       // fallback
     }
   }
   const local = readLocal();
   local.comments.push(item);
-  if (local.comments.length > 1000) local.comments = local.comments.slice(-800);
+  if (local.comments.length > 1500) local.comments = local.comments.slice(-1200);
   writeLocal(local);
-  return item;
+  return { ...item, replies: [], liked_by_me: false };
 }
 
-export async function likeComment(commentId) {
+export async function likeComment(commentId, userId = '', baseLikesFallback = 0) {
   const id = String(commentId || '').trim();
+  const uid = String(userId || '').trim() || 'anon-guest';
   if (!id) return null;
-  if (HAS_SUPA) {
+
+  const local = readLocal();
+  if (!local.commentLikes || typeof local.commentLikes !== 'object') local.commentLikes = {};
+  const list = Array.isArray(local.commentLikes[id]) ? [...local.commentLikes[id]] : [];
+  const idx = list.indexOf(uid);
+  let liked = false;
+  if (idx >= 0) {
+    list.splice(idx, 1);
+    liked = false;
+  } else {
+    list.push(uid);
+    liked = true;
+  }
+  local.commentLikes[id] = list;
+
+  const c = local.comments.find((x) => x.id === id);
+  let finalLikes = Math.max(0, Number(baseLikesFallback || 0)) + (liked ? 1 : 0);
+  if (c) {
+    const base = Math.max(0, Number(c.baseLikes ?? c.likes ?? 0) - (idx >= 0 ? 1 : 0));
+    c.baseLikes = base;
+    c.likes = base + list.length;
+    finalLikes = c.likes;
+  }
+  writeLocal(local);
+
+  if (HAS_SUPA && !id.startsWith('ytc-')) {
     try {
-      const rows = await supaReq('lenkyx_community_comments', { query: `id=eq.${encodeURIComponent(id)}` });
-      if (rows?.[0]) {
-        const nextLikes = (rows[0].likes || 0) + 1;
-        const upd = await supaReq('lenkyx_community_comments', {
-          method: 'PATCH',
-          query: `id=eq.${encodeURIComponent(id)}`,
-          body: { likes: nextLikes },
-        });
-        return upd?.[0] || { ...rows[0], likes: nextLikes };
-      }
+      await supaReq('lenkyx_community_comments', {
+        method: 'PATCH',
+        query: `id=eq.${encodeURIComponent(id)}`,
+        body: { likes: finalLikes },
+      });
     } catch {
-      // fallback
+      // ignore
     }
   }
-  const local = readLocal();
-  const c = local.comments.find((x) => x.id === id);
-  if (c) {
-    c.likes = (c.likes || 0) + 1;
-    writeLocal(local);
-    return c;
-  }
-  return null;
+  return { id, likes: finalLikes, liked };
 }
 
 export async function getCommunityShorts() {
@@ -318,33 +392,80 @@ export async function createCommunityShort({
   return item;
 }
 
-export async function likeCommunityShort(shortId) {
+export function getUserLikedShortIds(userId = '') {
+  const uid = String(userId || '').trim();
+  if (!uid) return [];
+  const local = readLocal();
+  const map = local.shortLikes || {};
+  const liked = [];
+  for (const [sid, entry] of Object.entries(map)) {
+    if (Array.isArray(entry?.likedBy) && entry.likedBy.includes(uid)) {
+      liked.push(sid);
+    }
+  }
+  return liked;
+}
+
+export function applyShortLikeOverlay(items = [], userId = '') {
+  const uid = String(userId || '').trim();
+  const local = readLocal();
+  const map = local.shortLikes || {};
+  return items.map((item) => {
+    const entry = map[item.id];
+    if (!entry) return { ...item, liked_by_me: false };
+    const likedBy = Array.isArray(entry.likedBy) ? entry.likedBy : [];
+    return {
+      ...item,
+      likes: Number(entry.baseLikes ?? item.likes ?? 0) + likedBy.length,
+      liked_by_me: Boolean(uid && likedBy.includes(uid)),
+    };
+  });
+}
+
+export async function likeCommunityShort(shortId, userId = '', initialLikes = 0) {
   const id = String(shortId || '').trim();
+  const uid = String(userId || '').trim() || 'anon-guest';
   if (!id) return null;
-  if (HAS_SUPA) {
+
+  const local = readLocal();
+  if (!local.shortLikes || typeof local.shortLikes !== 'object') local.shortLikes = {};
+
+  const shortObj = local.shorts.find((x) => x.id === id);
+  const existing = local.shortLikes[id] || {
+    baseLikes: Math.max(0, Number(shortObj?.likes ?? initialLikes ?? 0)),
+    likedBy: [],
+  };
+  const likedBy = Array.isArray(existing.likedBy) ? [...existing.likedBy] : [];
+  const idx = likedBy.indexOf(uid);
+  let liked = false;
+  if (idx >= 0) {
+    // Already liked by this person -> toggle off (strict 1 like per person per video!)
+    likedBy.splice(idx, 1);
+    liked = false;
+  } else {
+    likedBy.push(uid);
+    liked = true;
+  }
+  const finalLikes = Math.max(0, Number(existing.baseLikes || 0)) + likedBy.length;
+  local.shortLikes[id] = { baseLikes: Math.max(0, Number(existing.baseLikes || 0)), likedBy };
+
+  if (shortObj) {
+    shortObj.likes = finalLikes;
+  }
+  writeLocal(local);
+
+  if (HAS_SUPA && !id.startsWith('wshort-')) {
     try {
-      const rows = await supaReq('lenkyx_community_shorts', { query: `id=eq.${encodeURIComponent(id)}` });
-      if (rows?.[0]) {
-        const nextLikes = (rows[0].likes || 0) + 1;
-        const upd = await supaReq('lenkyx_community_shorts', {
-          method: 'PATCH',
-          query: `id=eq.${encodeURIComponent(id)}`,
-          body: { likes: nextLikes },
-        });
-        return upd?.[0] || { ...rows[0], likes: nextLikes };
-      }
+      await supaReq('lenkyx_community_shorts', {
+        method: 'PATCH',
+        query: `id=eq.${encodeURIComponent(id)}`,
+        body: { likes: finalLikes },
+      });
     } catch {
       // fallback
     }
   }
-  const local = readLocal();
-  const s = local.shorts.find((x) => x.id === id);
-  if (s) {
-    s.likes = (s.likes || 0) + 1;
-    writeLocal(local);
-    return s;
-  }
-  return null;
+  return { id, likes: finalLikes, liked };
 }
 
 export async function getActiveLives() {

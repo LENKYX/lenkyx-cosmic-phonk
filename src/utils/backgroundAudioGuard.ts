@@ -129,10 +129,22 @@ export function syncBackgroundMediaSession(meta: MediaGuardMeta, handlers: Media
 
 let keepaliveCtx: AudioContext | null = null;
 let keepaliveOsc: OscillatorNode | null = null;
+let keepaliveAudioEl: HTMLAudioElement | null = null;
+
+// Tiny 1-second silent PCM WAV data URI to keep Android/iOS lock-screen audio focus alive
+const SILENT_WAV_DATA_URI =
+  'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
 export function setMobileBackgroundKeepalive(active: boolean): void {
   try {
     if (!active) {
+      if (keepaliveAudioEl) {
+        try {
+          keepaliveAudioEl.pause();
+        } catch {
+          // ignore
+        }
+      }
       if (keepaliveOsc) {
         try {
           keepaliveOsc.stop();
@@ -146,6 +158,17 @@ export function setMobileBackgroundKeepalive(active: boolean): void {
         keepaliveCtx = null;
       }
       return;
+    }
+
+    if (typeof Audio !== 'undefined') {
+      if (!keepaliveAudioEl) {
+        keepaliveAudioEl = new Audio(SILENT_WAV_DATA_URI);
+        keepaliveAudioEl.loop = true;
+        keepaliveAudioEl.volume = 0.001;
+      }
+      if (keepaliveAudioEl.paused) {
+        void keepaliveAudioEl.play().catch(() => {});
+      }
     }
 
     const AudioCtx =

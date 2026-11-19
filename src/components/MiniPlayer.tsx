@@ -62,6 +62,7 @@ interface Props {
   onToggleOffline: (track: Track) => void;
   onWatchClip?: () => void;
   onOpenMediaMenu?: () => void;
+  onOpenVisualizer?: () => void;
   onCloseMenu?: () => void;
 }
 
@@ -103,6 +104,7 @@ export const MiniPlayer: React.FC<Props> = ({
   onToggleOffline,
   onWatchClip,
   onOpenMediaMenu,
+  onOpenVisualizer,
   onCloseMenu,
 }) => {
   const [expanded, setExpanded] = useState(false);
@@ -231,7 +233,14 @@ export const MiniPlayer: React.FC<Props> = ({
                   </button>
                 </div>
 
-                <canvas ref={bigCanvasRef} width={360} height={28} className="w-full opacity-90 rounded-lg" />
+                <button
+                  type="button"
+                  onClick={onOpenVisualizer}
+                  className="w-full p-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 transition cursor-pointer"
+                  title="Abrir Efeitos Visuais do Som (Vento, Água, Fogo, Terra)"
+                >
+                  <canvas ref={bigCanvasRef} width={360} height={28} className="w-full opacity-95 rounded-lg" />
+                </button>
 
                 {/* Interactive Seek Bar */}
                 <div className="space-y-1">
@@ -318,7 +327,7 @@ export const MiniPlayer: React.FC<Props> = ({
                 </button>
               )}
 
-              {track.youtubeVideoId && onWatchClip ? (
+              {track.youtubeVideoId && onWatchClip && (
                 <button
                   type="button"
                   onClick={() => {
@@ -330,27 +339,29 @@ export const MiniPlayer: React.FC<Props> = ({
                   <Film className="w-4 h-4" />
                   <span>Vídeo</span>
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onToggleOffline(track)}
-                  disabled={isDownloadingOffline}
-                  className={`py-2.5 px-2 rounded-2xl text-[11px] font-black flex flex-col items-center justify-center gap-1 border transition ${
-                    isCurrentTrackOffline
+              )}
+
+              <button
+                type="button"
+                onClick={() => onToggleOffline(track)}
+                disabled={isDownloadingOffline}
+                className={`py-2.5 px-2 rounded-2xl text-[11px] font-black flex flex-col items-center justify-center gap-1 border transition ${
+                  isDownloadingOffline
+                    ? 'bg-cyan-500/25 border-cyan-400/50 text-cyan-100'
+                    : isCurrentTrackOffline
                       ? 'bg-emerald-500/25 border-emerald-400/50 text-emerald-200'
                       : 'bg-white/10 hover:bg-white/20 border-white/15 text-white'
-                  }`}
-                >
-                  {isDownloadingOffline ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : isCurrentTrackOffline ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : (
-                    <DownloadCloud className="w-4 h-4" />
-                  )}
-                  <span>{isCurrentTrackOffline ? 'Offline' : 'Baixar'}</span>
-                </button>
-              )}
+                }`}
+              >
+                {isDownloadingOffline ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-300" />
+                ) : isCurrentTrackOffline ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <DownloadCloud className="w-4 h-4" />
+                )}
+                <span>{isDownloadingOffline ? 'Baixando...' : isCurrentTrackOffline ? 'Offline' : 'Baixar'}</span>
+              </button>
 
               {onToggleBackgroundMode ? (
                 <button
@@ -449,7 +460,14 @@ export const MiniPlayer: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-1.5 justify-end shrink-0">
-            <canvas ref={canvasRef} width={32} height={18} className="hidden lg:block rounded opacity-85" />
+            <button
+              type="button"
+              onClick={onOpenVisualizer}
+              className="px-2 py-1.5 rounded-xl bg-white/10 hover:bg-cyan-500/25 border border-white/15 hover:border-cyan-400/50 transition cursor-pointer flex items-center"
+              title="Abrir Efeitos Visuais do Som (Fogo, Água, Vento, Terra)"
+            >
+              <canvas ref={canvasRef} width={34} height={18} className="rounded opacity-95" />
+            </button>
             {onOpenMediaMenu && (
               <button
                 onClick={onOpenMediaMenu}
