@@ -48,7 +48,9 @@ import {
   CheckCircle2,
   Music2,
   Download,
+  Languages,
 } from 'lucide-react';
+import { speakWithPreservedVoice, stopPreservedVoice } from './GlobalVoiceCallModal';
 import { triggerDirectFileDownload } from '../utils/offlineCache';
 import { Track, UserProfile } from '../types';
 import {
@@ -676,6 +678,8 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   const [shortsMuted, setShortsMuted] = useState(false);
   const [shortsRate, setShortsRate] = useState<number>(1);
   const [reelsExpanded, setReelsExpanded] = useState(false);
+  const [autoDubEnabled, setAutoDubEnabled] = useState(false);
+  const [dubSubtitle, setDubSubtitle] = useState('');
   const [downloadingShortId, setDownloadingShortId] = useState<string | null>(null);
   const [newShortDurationSec, setNewShortDurationSec] = useState<number>(0);
   const [likedShortIds, setLikedShortIds] = useState<Set<string>>(() => {
@@ -1449,6 +1453,54 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
   const activeShort = visibleShorts[activeIndex] || visibleShorts[0] || shorts[0] || null;
 
+  // === AUTOMATIC REELS VOICE-PRESERVING DUBBING ===
+  useEffect(() => {
+    if (!autoDubEnabled || !activeShort || !exclusiveShortsOpen) {
+      stopPreservedVoice();
+      setDubSubtitle('');
+      return;
+    }
+    let cancelled = false;
+    const targetLang = (() => {
+      try {
+        return localStorage.getItem('lenkyx_lang_v1') || 'pt';
+      } catch {
+        return 'pt';
+      }
+    })();
+
+    void fetch('/api/reels/auto-dub', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        videoId: activeShort.youtube_id || '',
+        title: activeShort.title,
+        description: activeShort.description || '',
+        creatorName: activeShort.creator_name,
+        targetLang,
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d?.ok || !d.dubbedText) return;
+        setDubSubtitle(d.dubbedText);
+        // Preserve speaker vocal texture/pitch smoothly while ducking original audio clash
+        const pitchByCreator =
+          (activeShort.creator_name || '').length % 2 === 0 ? 1.04 : 0.96;
+        speakWithPreservedVoice(d.dubbedText, targetLang, {
+          pitchRatio: pitchByCreator,
+          voiceEffect: 'studio',
+          rate: 1.02,
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+      stopPreservedVoice();
+    };
+  }, [autoDubEnabled, activeShort?.id, exclusiveShortsOpen]);
+
   const renderShortsStage = (isExclusiveModal: boolean) => {
     if (isExclusiveModal && activeShort) {
       return (
@@ -1595,6 +1647,15 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 </div>
               )}
 
+              {/* Dubbed Live Subtitle Banner when Auto-Dub is Active */}
+              {autoDubEnabled && dubSubtitle && (
+                <div className="absolute top-14 inset-x-4 z-30 pointer-events-none flex justify-center">
+                  <div className="px-3 py-1.5 rounded-2xl bg-black/75 border border-cyan-400/45 backdrop-blur-md text-[11px] font-bold text-cyan-100 text-center max-w-sm line-clamp-2 shadow-lg">
+                    🎙️ {dubSubtitle}
+                  </div>
+                </div>
+              )}
+
               {/* Isolated z-30 Bottom Clickable Creator Profile + Subscribe + Audio Bar (NEVER pauses video!) */}
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -1729,6 +1790,31 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   ) : (
                     <Download className="w-4 h-4 text-cyan-300" />
                   )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !autoDubEnabled;
+                    setAutoDubEnabled(next);
+                    if (next) {
+                      setShortsMuted(true);
+                      onToast('🎙️ Dublagem Automática ativada (voz preservada)');
+                    } else {
+                      stopPreservedVoice();
+                      setShortsMuted(false);
+                      setDubSubtitle('');
+                    }
+                  }}
+                  className={`w-11 h-11 rounded-full backdrop-blur-md border flex flex-col items-center justify-center transition active:scale-95 ${
+                    autoDubEnabled
+                      ? 'bg-cyan-400 text-black border-white shadow-[0_0_16px_rgba(34,211,238,0.65)]'
+                      : 'bg-black/45 hover:bg-black/70 text-white border-white/20'
+                  }`}
+                  title="Dublagem Automática"
+                >
+                  <Languages className="w-4 h-4" />
+                  <span className="text-[8px] font-black">Dub</span>
                 </button>
 
                 <button

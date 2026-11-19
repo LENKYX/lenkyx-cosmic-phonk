@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Bluetooth,
   X,
   Play,
   Pause,
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react';
 import { Track } from '../types';
 import { BassBoostLevel } from './MiniPlayer';
+import { BluetoothConnectModal } from './GlobalVoiceCallModal';
 
 interface Props {
   open: boolean;
@@ -108,6 +110,7 @@ export const MediaPlayerMenuModal: React.FC<Props> = ({
   onEmergencyStop,
 }) => {
   const eqCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [btModalOpen, setBtModalOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !eqCanvasRef.current) return;
@@ -357,6 +360,14 @@ export const MediaPlayerMenuModal: React.FC<Props> = ({
                       <span>Baixar</span>
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setBtModalOpen(true)}
+                    className="p-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/35 border border-blue-400/40 text-blue-200 shrink-0 transition"
+                    title="Bluetooth"
+                  >
+                    <Bluetooth className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               )}
             </div>
@@ -512,6 +523,12 @@ export const MediaPlayerMenuModal: React.FC<Props> = ({
           )}
         </div>
       </div>
+
+      <BluetoothConnectModal
+        open={btModalOpen}
+        onClose={() => setBtModalOpen(false)}
+        onToast={() => {}}
+      />
     </div>
   );
 };

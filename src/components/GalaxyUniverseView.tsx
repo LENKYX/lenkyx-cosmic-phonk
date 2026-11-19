@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three';
 import {
   AudioWaveform,
+  Bitcoin,
+  Bluetooth,
   Clapperboard,
   Compass,
   Crown,
@@ -11,12 +13,16 @@ import {
   ListMusic,
   MessageCircle,
   Music,
+  Newspaper,
+  PhoneCall,
   Plane,
   Plus,
   Radio,
   RefreshCw,
   Search,
   Send,
+  ShoppingBag,
+  Skull,
   Sparkles,
   Trophy,
   Users,
@@ -26,6 +32,8 @@ import {
   X,
 } from 'lucide-react';
 import { AppSettings, TabId, Track } from '../types';
+import { GalaxyWorldsModal, CustomIdeaPlanet, SpecialWorldKind } from './GalaxyWorldsModal';
+import { GlobalVoiceCallModal, BluetoothConnectModal } from './GlobalVoiceCallModal';
 
 export interface GalaxyAction {
   type: 'navigate' | 'play_track' | 'visualizer';
@@ -35,7 +43,9 @@ export interface GalaxyAction {
 
 interface PlanetSpec {
   id: string;
-  tabId: TabId;
+  tabId?: TabId;
+  specialWorld?: SpecialWorldKind;
+  customIdea?: CustomIdeaPlanet;
   label: string;
   planetName: string;
   orbitRadius: number;
@@ -51,7 +61,7 @@ interface PlanetSpec {
   hasClouds?: boolean;
   moons: number;
   hasSatellite?: boolean;
-  style: 'earth' | 'neon' | 'emerald' | 'saturn' | 'mars' | 'ice' | 'cyber' | 'amethyst' | 'arcade';
+  style: 'earth' | 'neon' | 'emerald' | 'saturn' | 'mars' | 'ice' | 'cyber' | 'amethyst' | 'arcade' | 'inferno' | 'gold';
   icon: React.ReactNode;
 }
 
@@ -224,6 +234,82 @@ const PLANET_SPECS: PlanetSpec[] = [
     style: 'arcade',
     icon: <Gamepad2 className="w-3.5 h-3.5" />,
   },
+  {
+    id: 'shopping',
+    specialWorld: 'shopping',
+    label: 'Compras',
+    planetName: 'Mercado Prime',
+    orbitRadius: 76,
+    orbitSpeed: 0.025,
+    orbitPhase: 0.65,
+    orbitTilt: -0.05,
+    radius: 2.35,
+    spinSpeed: 0.36,
+    accentHex: '#fb923c',
+    atmosphereHex: '#f97316',
+    hasRing: true,
+    ringColor: '#fdba74',
+    moons: 1,
+    style: 'gold',
+    icon: <ShoppingBag className="w-3.5 h-3.5" />,
+  },
+  {
+    id: 'news',
+    specialWorld: 'news',
+    label: 'Notícias',
+    planetName: 'Veritas Global',
+    orbitRadius: 82.5,
+    orbitSpeed: 0.022,
+    orbitPhase: 2.05,
+    orbitTilt: 0.06,
+    radius: 2.25,
+    spinSpeed: 0.3,
+    accentHex: '#38bdf8',
+    atmosphereHex: '#0284c7',
+    hasClouds: true,
+    moons: 1,
+    hasSatellite: true,
+    style: 'earth',
+    icon: <Newspaper className="w-3.5 h-3.5" />,
+  },
+  {
+    id: 'finance',
+    specialWorld: 'finance',
+    label: 'Bitcoin & Bolsa',
+    planetName: 'Apex Quantum',
+    orbitRadius: 89,
+    orbitSpeed: 0.019,
+    orbitPhase: 3.85,
+    orbitTilt: -0.07,
+    radius: 2.5,
+    spinSpeed: 0.42,
+    accentHex: '#facc15',
+    atmosphereHex: '#10b981',
+    hasRing: true,
+    ringColor: '#34d399',
+    moons: 2,
+    style: 'gold',
+    icon: <Bitcoin className="w-3.5 h-3.5" />,
+  },
+  {
+    id: 'darkweb',
+    specialWorld: 'darkweb',
+    label: 'Dark Web',
+    planetName: 'Abismo Inferno',
+    orbitRadius: 96,
+    orbitSpeed: 0.016,
+    orbitPhase: 5.35,
+    orbitTilt: 0.11,
+    radius: 2.45,
+    spinSpeed: 0.48,
+    accentHex: '#ef4444',
+    atmosphereHex: '#dc2626',
+    hasRing: true,
+    ringColor: '#991b1b',
+    moons: 1,
+    style: 'inferno',
+    icon: <Skull className="w-3.5 h-3.5" />,
+  },
 ];
 
 interface PortalSpec {
@@ -365,6 +451,8 @@ function createPlanetTextures(style: PlanetSpec['style']): { map: THREE.CanvasTe
     cyber: ['#050e1f', '#0d2240', '#06b6d4', '#fde047'],
     amethyst: ['#1d0738', '#4c1d95', '#a855f7', '#5eead4'],
     arcade: ['#051912', '#0f3d2e', '#16a34a', '#a3e635'],
+    inferno: ['#090103', '#2a0406', '#dc2626', '#fb923c'],
+    gold: ['#1f1402', '#6b4706', '#f59e0b', '#fef08a'],
   };
   const [c1, c2, c3, c4] = palettes[style];
 
@@ -377,7 +465,37 @@ function createPlanetTextures(style: PlanetSpec['style']): { map: THREE.CanvasTe
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, 1024, 512);
 
-  if (style === 'saturn' || style === 'neon' || style === 'ice' || style === 'amethyst') {
+  if (style === 'inferno') {
+    // Cracked obsidian & glowing crimson magma rivers
+    ctx.fillStyle = '#0a0204';
+    ctx.fillRect(0, 0, 1024, 512);
+    for (let i = 0; i < 64; i++) {
+      ctx.strokeStyle = i % 3 === 0 ? '#fef08a' : i % 2 === 0 ? '#fb923c' : '#ef4444';
+      ctx.lineWidth = 1.5 + Math.random() * 3.5;
+      ctx.globalAlpha = 0.78;
+      let cx = Math.random() * 1024;
+      let cy = Math.random() * 512;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      for (let s = 0; s < 7; s++) {
+        cx += (Math.random() - 0.5) * 90;
+        cy += (Math.random() - 0.5) * 65;
+        ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+    }
+    for (let i = 0; i < 36; i++) {
+      const gx = Math.random() * 1024;
+      const gy = 40 + Math.random() * 432;
+      const gr = ctx.createRadialGradient(gx, gy, 2, gx, gy, 42);
+      gr.addColorStop(0, 'rgba(239,68,68,0.85)');
+      gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gr;
+      ctx.beginPath();
+      ctx.arc(gx, gy, 42, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (style === 'saturn' || style === 'neon' || style === 'ice' || style === 'amethyst') {
     for (let y = 18; y < 494; y += 7 + Math.random() * 11) {
       ctx.fillStyle = Math.random() > 0.45 ? c3 : c4;
       ctx.globalAlpha = 0.12 + Math.random() * 0.25;
@@ -399,7 +517,7 @@ function createPlanetTextures(style: PlanetSpec['style']): { map: THREE.CanvasTe
       ctx.ellipse(sx, sy, 52, 20, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-  } else if (style === 'cyber' || style === 'arcade') {
+  } else if (style === 'cyber' || style === 'arcade' || style === 'gold') {
     ctx.strokeStyle = c3;
     ctx.lineWidth = 2;
     ctx.globalAlpha = 0.4;
@@ -617,7 +735,65 @@ function createSolarPanelTexture(): THREE.CanvasTexture {
   return new THREE.CanvasTexture(c);
 }
 
-/* === CUSTOM GLSL SHADERS FOR REALISTIC SUN, FRESNEL ATMOSPHERE & BLACK HOLE === */
+/* === CUSTOM GLSL SHADERS FOR REALISTIC SUN, NEBULA DOME, FRESNEL ATMOSPHERE & BLACK HOLE === */
+function createNebulaSkyDomeMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    uniforms: { u_time: { value: 0 } },
+    vertexShader: `
+      varying vec3 vDir;
+      void main() {
+        vDir = normalize(position);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float u_time;
+      varying vec3 vDir;
+      float hash(vec3 p) {
+        p = fract(p * 0.3183099 + 0.1);
+        p *= 17.0;
+        return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+      }
+      float noise(vec3 x) {
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
+              mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+          mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+              mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
+          f.z
+        );
+      }
+      float fbm(vec3 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 4; i++) {
+          v += a * noise(p);
+          p *= 2.05;
+          a *= 0.5;
+        }
+        return v;
+      }
+      void main() {
+        vec3 d = normalize(vDir);
+        float band = exp(-abs(d.y + d.x * 0.25) * 4.2);
+        float n1 = fbm(d * 3.2 + vec3(u_time * 0.008));
+        float n2 = fbm(d * 6.5 - vec3(u_time * 0.005));
+        vec3 deep = vec3(0.015, 0.006, 0.055);
+        vec3 cyanNeb = vec3(0.06, 0.34, 0.62) * smoothstep(0.35, 0.85, n1);
+        vec3 magentaNeb = vec3(0.45, 0.12, 0.42) * smoothstep(0.42, 0.88, n2);
+        vec3 goldDust = vec3(0.48, 0.28, 0.12) * band * smoothstep(0.5, 0.9, n1);
+        vec3 col = deep + (cyanNeb + magentaNeb) * (0.45 + 0.75 * band) + goldDust * 0.4;
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+}
+
 function createSunShaderMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
@@ -1000,7 +1176,48 @@ export const GalaxyUniverseView: React.FC<Props> = ({
   const [peopleMessages, setPeopleMessages] = useState<ChatMessageItem[]>([]);
   const [hubDrawerOpen, setHubDrawerOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState('');
+  const [customPlanets, setCustomPlanets] = useState<CustomIdeaPlanet[]>([]);
+  const [worldModal, setWorldModal] = useState<{
+    open: boolean;
+    world: SpecialWorldKind;
+    ideaPlanet?: CustomIdeaPlanet | null;
+  }>({ open: false, world: 'shopping', ideaPlanet: null });
+  const [callsOpen, setCallsOpen] = useState(false);
+  const [bluetoothOpen, setBluetoothOpen] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    fetch('/api/galaxy/planets')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.ok && Array.isArray(d.planets)) setCustomPlanets(d.planets);
+      })
+      .catch(() => {});
+  }, []);
+
+  const allPlanets = useMemo<PlanetSpec[]>(() => {
+    const customSpecs: PlanetSpec[] = customPlanets.map((cp, idx) => ({
+      id: cp.id,
+      specialWorld: 'idea',
+      customIdea: cp,
+      label: cp.name,
+      planetName: cp.topic || cp.name,
+      orbitRadius: 103 + idx * 6.5,
+      orbitSpeed: Math.max(0.008, 0.014 - idx * 0.001),
+      orbitPhase: (idx * 1.75) % (Math.PI * 2),
+      orbitTilt: idx % 2 === 0 ? 0.08 : -0.07,
+      radius: 2.15,
+      spinSpeed: 0.35,
+      accentHex: cp.accentHex || '#38bdf8',
+      atmosphereHex: cp.accentHex || '#38bdf8',
+      hasRing: cp.hasRing ?? true,
+      ringColor: cp.accentHex || '#38bdf8',
+      moons: 1,
+      style: 'cyber',
+      icon: <Sparkles className="w-3.5 h-3.5" />,
+    }));
+    return [...PLANET_SPECS, ...customSpecs];
+  }, [customPlanets]);
 
   const hoveredRef = useRef<string | null>(null);
   hoveredRef.current = hoveredId;
@@ -1212,6 +1429,13 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       disposables.push(t);
       return t;
     };
+
+    /* === GLSL VOLUMETRIC MILKY WAY NEBULA SKY DOME === */
+    const nebulaDomeMat = createNebulaSkyDomeMaterial();
+    const nebulaDomeGeo = new THREE.SphereGeometry(320, 48, 32);
+    disposables.push(nebulaDomeGeo, nebulaDomeMat);
+    const nebulaDome = new THREE.Mesh(nebulaDomeGeo, nebulaDomeMat);
+    scene.add(nebulaDome);
 
     /* === CENTRAL PHOTOREALISTIC GLSL PLASMA SUN === */
     const sunGroup = new THREE.Group();
@@ -1470,7 +1694,7 @@ export const GalaxyUniverseView: React.FC<Props> = ({
 
     const planetRuntimes: PlanetRuntime[] = [];
 
-    PLANET_SPECS.forEach((spec) => {
+    allPlanets.forEach((spec) => {
       const orbitPts: THREE.Vector3[] = [];
       for (let s = 0; s <= 128; s++) {
         const ang = (s / 128) * Math.PI * 2;
@@ -1623,7 +1847,21 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         camControlRef.current.warpTargetPos.copy(rt.pivot.position);
       }
       setWarpingMeta({ title: spec.label, subtitle: spec.planetName });
-      setTimeout(() => onNavigateTab(spec.tabId), 560);
+      if (spec.specialWorld) {
+        setTimeout(() => {
+          camControlRef.current.warpActive = false;
+          camera.fov = 56;
+          camera.updateProjectionMatrix();
+          setWarpingMeta(null);
+          setWorldModal({
+            open: true,
+            world: spec.specialWorld!,
+            ideaPlanet: spec.customIdea || null,
+          });
+        }, 420);
+      } else if (spec.tabId) {
+        setTimeout(() => onNavigateTab(spec.tabId!), 560);
+      }
     };
     triggerWarpRef.current = triggerWarp;
 
@@ -1634,9 +1872,10 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         camControlRef.current.warpActive = true;
         camControlRef.current.warpTargetPos.copy(rt.group.position);
       }
+      const tabPlanets = PLANET_SPECS.filter((p) => Boolean(p.tabId));
       const nextTab: TabId =
         portal.tabId === 'random'
-          ? PLANET_SPECS[Math.floor(Math.random() * PLANET_SPECS.length)].tabId
+          ? tabPlanets[Math.floor(Math.random() * tabPlanets.length)].tabId!
           : portal.tabId;
       setWarpingMeta({ title: portal.label, subtitle: 'MULTIVERSO LENKYX', portal: true });
       setTimeout(() => onNavigateTab(nextTab), 600);
@@ -1756,7 +1995,8 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       lastNow = now;
       simTime += dt;
 
-      // GLSL Sun plasma & beat pulse
+      // GLSL Nebula Sky + Sun plasma & beat pulse
+      nebulaDomeMat.uniforms.u_time.value = simTime;
       sunMat.uniforms.u_time.value = simTime;
       const pulse = isPlayingRef.current ? 1 + Math.sin(simTime * 7.5) * 0.14 : 1 + Math.sin(simTime * 2) * 0.04;
       sunMat.uniforms.u_pulse.value = pulse;
@@ -1947,7 +2187,7 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         container.removeChild(domEl);
       }
     };
-  }, [onNavigateTab, onOpenVisualizer]);
+  }, [allPlanets, onNavigateTab, onOpenVisualizer]);
 
   const activePersonaMeta = PERSONAS[activePersona];
   const activeMessages = commsMode === 'people' ? peopleMessages : entityChats[activePersona] || [];
@@ -2018,7 +2258,7 @@ export const GalaxyUniverseView: React.FC<Props> = ({
           );
         })}
 
-        {PLANET_SPECS.map((spec) => {
+        {allPlanets.map((spec) => {
           const tag = tags[spec.id];
           if (!tag?.visible) return null;
           const isHov = hoveredId === spec.id;
@@ -2078,22 +2318,50 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         <div className="pointer-events-auto flex items-center gap-1.5 shrink-0">
           <button
             type="button"
-            onClick={onOpenCreate}
-            className="px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-white text-[11px] font-black flex items-center gap-1 shadow-[0_0_16px_rgba(236,72,153,0.45)]"
-            title="Criar"
+            onClick={() => setWorldModal({ open: true, world: 'create_planet', ideaPlanet: null })}
+            className="px-2.5 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 text-white text-[11px] font-black flex items-center gap-1 shadow-[0_0_16px_rgba(56,189,248,0.45)]"
+            title="Novo Planeta / Nova Ideia"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Criar</span>
+            <span className="hidden sm:inline">Planeta</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenCreate}
+            className="px-2.5 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[11px] font-black flex items-center gap-1 shadow-[0_0_16px_rgba(236,72,153,0.45)]"
+            title="Criar Vídeo / Música"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Criar</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCallsOpen(true)}
+            className="px-2.5 py-1.5 rounded-full bg-emerald-500/25 hover:bg-emerald-500/40 border border-emerald-400/55 backdrop-blur-xl text-emerald-100 text-[11px] font-black flex items-center gap-1"
+            title="Chamada de Voz / Vídeo com Dublagem"
+          >
+            <PhoneCall className="w-3.5 h-3.5 text-emerald-300" />
+            <span className="hidden md:inline">Chamadas</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setBluetoothOpen(true)}
+            className="p-2 rounded-full bg-blue-500/25 hover:bg-blue-500/40 border border-blue-400/50 backdrop-blur-xl text-blue-200"
+            title="Bluetooth"
+          >
+            <Bluetooth className="w-4 h-4" />
           </button>
 
           <button
             type="button"
             onClick={() => setCommsOpen((v) => !v)}
-            className="px-3 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/50 backdrop-blur-xl text-emerald-100 text-[11px] font-black flex items-center gap-1.5"
+            className="p-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/50 backdrop-blur-xl text-cyan-200"
             title="Conversar com Seres & Pessoas"
           >
-            <MessageCircle className="w-3.5 h-3.5 text-emerald-300" />
-            <span className="hidden md:inline">Conversar</span>
+            <MessageCircle className="w-4 h-4" />
           </button>
 
           <button
@@ -2185,6 +2453,46 @@ export const GalaxyUniverseView: React.FC<Props> = ({
               className="py-2 px-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-black font-black col-span-2"
             >
               📲 Baixar App PC / Celular / TV
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHubDrawerOpen(false);
+                setWorldModal({ open: true, world: 'shopping', ideaPlanet: null });
+              }}
+              className="py-2 px-2 rounded-xl bg-orange-500/20 border border-orange-400/40 text-orange-200"
+            >
+              🛍️ Compras
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHubDrawerOpen(false);
+                setWorldModal({ open: true, world: 'news', ideaPlanet: null });
+              }}
+              className="py-2 px-2 rounded-xl bg-sky-500/20 border border-sky-400/40 text-sky-200"
+            >
+              📰 Notícias
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHubDrawerOpen(false);
+                setWorldModal({ open: true, world: 'finance', ideaPlanet: null });
+              }}
+              className="py-2 px-2 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-200"
+            >
+              ₿ Bitcoin & Bolsa
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHubDrawerOpen(false);
+                setWorldModal({ open: true, world: 'darkweb', ideaPlanet: null });
+              }}
+              className="py-2 px-2 rounded-xl bg-red-600/25 border border-red-500/50 text-red-200"
+            >
+              💀 Dark Web
             </button>
           </div>
         </div>
@@ -2353,6 +2661,35 @@ export const GalaxyUniverseView: React.FC<Props> = ({
           </div>
         </div>
       )}
+
+      {/* SPECIALIZED WORLDS (SHOPPING · NEWS · DARK WEB · BITCOIN/STOCKS · IDEA PLANETS) */}
+      <GalaxyWorldsModal
+        open={worldModal.open}
+        world={worldModal.world}
+        ideaPlanet={worldModal.ideaPlanet}
+        user={null}
+        onClose={() => setWorldModal((w) => ({ ...w, open: false }))}
+        onPlanetCreated={(newPlanet) => {
+          setCustomPlanets((prev) => [newPlanet, ...prev]);
+        }}
+        onToast={onToast}
+      />
+
+      {/* WHATSAPP-STYLE GLOBAL VOICE & VIDEO CALLS WITH LIVE DUBBING */}
+      <GlobalVoiceCallModal
+        open={callsOpen}
+        user={null}
+        onClose={() => setCallsOpen(false)}
+        onOpenBluetooth={() => setBluetoothOpen(true)}
+        onToast={onToast}
+      />
+
+      {/* BLUETOOTH DEVICE CONNECTION & AUDIO OUTPUT ROUTING */}
+      <BluetoothConnectModal
+        open={bluetoothOpen}
+        onClose={() => setBluetoothOpen(false)}
+        onToast={onToast}
+      />
     </div>
   );
 };

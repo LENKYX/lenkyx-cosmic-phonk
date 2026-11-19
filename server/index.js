@@ -45,6 +45,23 @@ import {
   readSafeWebPage,
 } from './webSearchAI.js';
 import {
+  fetchWorldNews,
+  fetchMarketsData,
+  getOrUpdateAutoPortfolio,
+  fetchShoppingProducts,
+  createInstantOrder,
+  getRecentOrders,
+  fetchDarkWebIntel,
+  postDarkWebChat,
+  inspectHostSecurity,
+  resolveIdeaPlanetContent,
+  registerCallPeer,
+  getCallDirectory,
+  pushCallSignal,
+  pollCallSignals,
+  startAutonomousWorldSync,
+} from './worldsAutonomous.js';
+import {
   getChatMessages,
   postChatMessage,
   getCommentsForTarget,
@@ -1680,6 +1697,66 @@ async function translateSingleText(text, targetLang) {
   return clean;
 }
 
+async function translateAnyText(text, sourceLang = 'auto', targetLang = 'pt') {
+  const clean = String(text || '').trim();
+  const sl = String(sourceLang || 'auto').trim() || 'auto';
+  const tlRaw = String(targetLang || 'pt').trim() || 'pt';
+  const tl = tlRaw === 'jw' ? 'jv' : tlRaw;
+  if (!clean) return '';
+  if (sl !== 'auto' && sl.split('-')[0] === tl.split('-')[0]) return clean;
+
+  const key = `${sl}->${tl}::${clean}`;
+  if (serverTransCache.has(key)) return serverTransCache.get(key);
+
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(
+      sl
+    )}&tl=${encodeURIComponent(tl)}&dt=t&q=${encodeURIComponent(clean)}`;
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      signal: AbortSignal.timeout(3500),
+    });
+    if (r.ok) {
+      const data = await r.json();
+      if (Array.isArray(data?.[0])) {
+        const out = data[0]
+          .map((seg) => (Array.isArray(seg) ? seg[0] || '' : ''))
+          .join('')
+          .trim();
+        if (out) {
+          if (serverTransCache.size > 12000) serverTransCache.clear();
+          serverTransCache.set(key, out);
+          return out;
+        }
+      }
+    }
+  } catch {
+    // fallback below
+  }
+
+  try {
+    const pairSl = sl === 'auto' ? 'en' : sl.split('-')[0];
+    const pairTl = tl === 'zh-CN' ? 'zh' : tl;
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(
+      clean
+    )}&langpair=${encodeURIComponent(pairSl)}|${encodeURIComponent(pairTl)}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(4500) });
+    if (r.ok) {
+      const data = await r.json();
+      const out = String(data?.responseData?.translatedText || '').trim();
+      if (out && !/^MYMEMORY WARNING/i.test(out)) {
+        if (serverTransCache.size > 12000) serverTransCache.clear();
+        serverTransCache.set(key, out);
+        return out;
+      }
+    }
+  } catch {
+    // fallback below
+  }
+
+  return clean;
+}
+
 app.post('/api/translate-batch', async (req, res) => {
   try {
     const targetLang = String(req.body?.targetLang || 'en').trim().slice(0, 12);
@@ -2725,6 +2802,252 @@ app.post('/api/galaxy/chat', async (req, res) => {
   }
 });
 
+// === REAL-TIME VOICE DUBBING & REELS AUTO-DUB ===
+app.post('/api/voice/translate-dub', async (req, res) => {
+  try {
+    const text = String(req.body?.text || '').trim().slice(0, 800);
+    const sourceLang = String(req.body?.sourceLang || 'auto').trim().slice(0, 12);
+    const targetLang = String(req.body?.targetLang || 'pt').trim().slice(0, 12);
+    const pitchRatio = Number(req.body?.pitchRatio || 1);
+    const voiceEffect = String(req.body?.voiceEffect || 'natural');
+    if (!text) return res.json({ ok: true, translatedText: '', sourceLang, targetLang, pitchRatio, voiceEffect });
+
+    const translatedText = await translateAnyText(text, sourceLang, targetLang);
+    res.json({
+      ok: true,
+      originalText: text,
+      translatedText,
+      sourceLang,
+      targetLang,
+      pitchRatio: Math.max(0.65, Math.min(1.55, pitchRatio)),
+      voiceEffect,
+    });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/reels/auto-dub', async (req, res) => {
+  try {
+    const videoId = String(req.body?.videoId || '').trim();
+    const title = String(req.body?.title || '').trim();
+    const description = String(req.body?.description || '').trim();
+    const creatorName = String(req.body?.creatorName || '').trim();
+    const targetLang = String(req.body?.targetLang || 'pt').trim().slice(0, 12);
+
+    let transcriptLines = [];
+    if (videoId && /^[a-zA-Z0-9_-]{8,15}$/.test(videoId)) {
+      for (const tryLang of ['en', 'es', 'pt', 'ja', 'fr']) {
+        try {
+          const r = await fetch(
+            `https://www.youtube.com/api/timedtext?lang=${tryLang}&v=${encodeURIComponent(videoId)}`,
+            { signal: AbortSignal.timeout(2500) }
+          );
+          if (r.ok) {
+            const xml = await r.text();
+            const matches = [...xml.matchAll(/<text[^>]*>([\s\S]*?)<\/text>/gi)].slice(0, 12);
+            if (matches.length > 0) {
+              transcriptLines = matches
+                .map((m) =>
+                  m[1]
+                    .replace(/&amp;/g, '&')
+                    .replace(/&#39;/g, "'")
+                    .replace(/&quot;/g, '"')
+                    .replace(/<[^>]+>/g, ' ')
+                    .trim()
+                )
+                .filter(Boolean);
+              break;
+            }
+          }
+        } catch {
+          // try next lang
+        }
+      }
+    }
+
+    const baseScript =
+      transcriptLines.length > 0
+        ? transcriptLines.join('. ')
+        : [title, description].filter(Boolean).join('. ') || 'Vídeo em reprodução na LENKYX.';
+
+    const dubbedText = await translateAnyText(baseScript.slice(0, 750), 'auto', targetLang);
+    res.json({
+      ok: true,
+      targetLang,
+      hasTranscript: transcriptLines.length > 0,
+      creatorName,
+      dubbedText,
+      segments: dubbedText
+        .split(/(?<=[.!?])\s+/)
+        .filter(Boolean)
+        .slice(0, 8),
+    });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+// === CUSTOM IDEA PLANETS (EVERY NEW IDEA BECOMES A NEW PLANET IN THE GALAXY) ===
+app.get('/api/galaxy/planets', (_req, res) => {
+  const db = readDb();
+  res.json({ ok: true, planets: Array.isArray(db.galaxyPlanets) ? db.galaxyPlanets : [] });
+});
+
+app.post('/api/galaxy/planets', async (req, res) => {
+  try {
+    const name = String(req.body?.name || '').trim().slice(0, 48);
+    const topic = String(req.body?.topic || name).trim().slice(0, 120);
+    const accentHex = /^#[0-9a-fA-F]{6}$/.test(String(req.body?.accentHex || ''))
+      ? req.body.accentHex
+      : '#38bdf8';
+    const hasRing = Boolean(req.body?.hasRing ?? true);
+    const style = String(req.body?.style || 'cyber').slice(0, 20);
+    const creatorName = String(req.body?.creatorName || 'Explorador').slice(0, 40);
+    if (!name) return res.status(400).json({ error: 'Nome do planeta é obrigatório.' });
+
+    const db = readDb();
+    const list = Array.isArray(db.galaxyPlanets) ? db.galaxyPlanets : [];
+    const planet = {
+      id: `idea_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      topic,
+      accentHex,
+      hasRing,
+      style,
+      creatorName,
+      createdAt: new Date().toISOString(),
+    };
+    db.galaxyPlanets = [planet, ...list].slice(0, 32);
+    writeDb(db);
+
+    const liveContent = await resolveIdeaPlanetContent(topic).catch(() => null);
+    res.status(201).json({ ok: true, planet, liveContent });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.delete('/api/galaxy/planets/:id', (req, res) => {
+  const db = readDb();
+  const list = Array.isArray(db.galaxyPlanets) ? db.galaxyPlanets : [];
+  db.galaxyPlanets = list.filter((p) => p.id !== req.params.id);
+  writeDb(db);
+  res.json({ ok: true });
+});
+
+app.get('/api/galaxy/planets/resolve', async (req, res) => {
+  try {
+    const topic = String(req.query.topic || '').trim();
+    const data = await resolveIdeaPlanetContent(topic);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+// === AUTONOMOUS WORLDS: NEWS, SHOPPING, DARK WEB, BITCOIN & STOCKS ===
+app.get('/api/worlds/news', async (req, res) => {
+  try {
+    const category = String(req.query.category || 'all');
+    const q = String(req.query.q || '');
+    const refresh = req.query.refresh === '1';
+    res.json(await fetchWorldNews(category, q, refresh));
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/worlds/markets', async (req, res) => {
+  try {
+    const refresh = req.query.refresh === '1';
+    const userId = String(req.query.userId || 'guest');
+    const markets = await fetchMarketsData(refresh);
+    const portfolio = getOrUpdateAutoPortfolio(userId);
+    res.json({ ...markets, portfolio });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/worlds/markets/portfolio', (req, res) => {
+  try {
+    const userId = String(req.body?.userId || 'guest');
+    const portfolio = getOrUpdateAutoPortfolio(userId, req.body);
+    res.json({ ok: true, portfolio });
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/worlds/shopping', async (req, res) => {
+  try {
+    const category = String(req.query.category || 'destaques');
+    const q = String(req.query.q || '');
+    const refresh = req.query.refresh === '1';
+    res.json(await fetchShoppingProducts(category, q, refresh));
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/worlds/shopping/checkout', (req, res) => {
+  try {
+    const order = createInstantOrder(req.body || {});
+    res.status(201).json({ ok: true, order });
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/worlds/shopping/orders', (_req, res) => {
+  res.json({ ok: true, orders: getRecentOrders() });
+});
+
+app.get('/api/worlds/darkweb', async (req, res) => {
+  try {
+    const refresh = req.query.refresh === '1';
+    res.json(await fetchDarkWebIntel(refresh));
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/worlds/darkweb/chat', (req, res) => {
+  const chat = postDarkWebChat(req.body?.handle, req.body?.text);
+  res.json({ ok: true, encryptedChat: chat });
+});
+
+app.get('/api/worlds/darkweb/inspect', async (req, res) => {
+  try {
+    const host = String(req.query.host || '');
+    res.json(await inspectHostSecurity(host));
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+// === GLOBAL WHATSAPP-STYLE VOICE & VIDEO CALLS SIGNALING ===
+app.post('/api/calls/register', (req, res) => {
+  registerCallPeer(req.body || {});
+  res.json({ ok: true });
+});
+
+app.get('/api/calls/directory', (req, res) => {
+  const selfPeerId = String(req.query.selfPeerId || '');
+  res.json({ ok: true, ...getCallDirectory(selfPeerId) });
+});
+
+app.post('/api/calls/signal', (req, res) => {
+  pushCallSignal(req.body || {});
+  res.json({ ok: true });
+});
+
+app.get('/api/calls/poll', (req, res) => {
+  const peerId = String(req.query.peerId || '');
+  res.json({ ok: true, signals: pollCallSignals(peerId) });
+});
+
 app.get('/tv', (_req, res) => {
   res.redirect(302, '/?tvMode=1');
 });
@@ -2784,11 +3107,12 @@ async function boot() {
     console.log(
       `Storage mode: ${isSupabaseEnabled() ? 'Supabase Cloud PostgreSQL + local cache' : 'Local JSON'} | Data dir: ${DATA_DIR}`
     );
-    // Warm up movies, series, animes & live sports caches in background
+    // Warm up movies, series, animes, live sports & autonomous worlds caches in background
     setTimeout(() => {
       void getMoviesDirectory().catch(() => {});
       void getSportsDirectory().catch(() => {});
     }, 2000);
+    startAutonomousWorldSync();
   });
 }
 
