@@ -46,6 +46,7 @@ public class MainActivity extends Activity {
     private View customVideoView;
     private WebChromeClient.CustomViewCallback customViewCallback;
     private FrameLayout rootContainer;
+    private volatile boolean backgroundPlaybackActive = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,7 +60,16 @@ public class MainActivity extends Activity {
 
         rootContainer = new FrameLayout(this);
         rootContainer.setBackgroundColor(Color.parseColor("#060310"));
-        webView = new WebView(this);
+        webView = new WebView(this) {
+            @Override
+            protected void onWindowVisibilityChanged(int visibility) {
+                if (visibility != View.VISIBLE && backgroundPlaybackActive) {
+                    super.onWindowVisibilityChanged(View.VISIBLE);
+                    return;
+                }
+                super.onWindowVisibilityChanged(visibility);
+            }
+        };
         webView.setBackgroundColor(Color.parseColor("#060310"));
         rootContainer.addView(webView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -384,6 +394,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void updateMediaState(final String title, final String artist, final String album, final boolean isPlaying) {
+            backgroundPlaybackActive = isPlaying;
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -399,6 +410,20 @@ public class MainActivity extends Activity {
                         } else {
                             startService(svc);
                         }
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void stopBackgroundPlayback() {
+            backgroundPlaybackActive = false;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        stopService(new Intent(MainActivity.this, MediaPlaybackService.class));
                     } catch (Exception ignored) {
                     }
                 }
