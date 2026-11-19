@@ -496,6 +496,40 @@ function buildTreeMesh(isPalm: boolean): THREE.Group {
   return g;
 }
 
+const AI_WORLD_CHARACTERS = [
+  { id: 'Claude', vendor: 'Anthropic', color: '#f59e0b' },
+  { id: 'ChatGPT', vendor: 'OpenAI', color: '#10b981' },
+  { id: 'Gemini', vendor: 'Google', color: '#3b82f6' },
+  { id: 'Grok', vendor: 'xAI', color: '#e2e8f0' },
+  { id: 'Qwen', vendor: 'Alibaba', color: '#a855f7' },
+  { id: 'Kimi', vendor: 'Moonshot AI', color: '#f472b6' },
+  { id: 'DeepSeek', vendor: 'DeepSeek', color: '#06b6d4' },
+  { id: 'Llama', vendor: 'Meta', color: '#fbbf24' },
+  { id: 'Mistral', vendor: 'Mistral AI', color: '#fb7185' },
+];
+
+function createNameSprite(name: string, vendor: string, accentHex: string): THREE.Sprite {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 64;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
+  ctx.beginPath();
+  ctx.roundRect(12, 10, 232, 44, 22);
+  ctx.fill();
+  ctx.strokeStyle = accentHex;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.font = 'bold 20px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${name} · ${vendor}`, 128, 39);
+  const tex = new THREE.CanvasTexture(c);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sp.scale.set(2.3, 0.58, 1);
+  return sp;
+}
+
 export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [fullscreen, setFullscreen] = useState(true);
@@ -503,7 +537,9 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
   const [speedKmh, setSpeedKmh] = useState(0);
   const [inVehicleType, setInVehicleType] = useState<'none' | 'car' | 'moto'>('none');
   const [nearVehicleLabel, setNearVehicleLabel] = useState<string | null>(null);
-  const [nearGuy, setNearGuy] = useState(false);
+  const [nearNpcName, setNearNpcName] = useState<string | null>(null);
+  const nearNpcRef = useRef<string | null>(null);
+  const [activeAiName, setActiveAiName] = useState<string>('Guy');
   const [microscopeOpen, setMicroscopeOpen] = useState(false);
   const [brainLogOpen, setBrainLogOpen] = useState(false);
   const [robotsOpen, setRobotsOpen] = useState(false);
@@ -511,7 +547,11 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
   const [boostingBots, setBoostingBots] = useState(false);
   const [npcChatOpen, setNpcChatOpen] = useState(false);
   const [npcVoice, setNpcVoice] = useState(true);
+  const [ambientSubtitle, setAmbientSubtitle] = useState<{ speaker: string; color: string; text: string } | null>(null);
   const [npcInput, setNpcInput] = useState('');
+  const aiVoiceAudioRef = useRef<HTMLAudioElement | null>(null);
+  const npcVoiceRef = useRef(true);
+  npcVoiceRef.current = npcVoice;
   const [npcMessages, setNpcMessages] = useState<{ id: string; who: string; text: string }[]>([
     {
       id: 'guy0',
@@ -614,27 +654,87 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
     return () => window.clearInterval(iv);
   }, [user?.id, user?.name, user?.avatarColor]);
 
+  const playNeuralVoice = useCallback(async (audioUrl: string | undefined, fallbackText: string, locale: string) => {
+    if (!npcVoiceRef.current) return;
+    try {
+      if (aiVoiceAudioRef.current) {
+        aiVoiceAudioRef.current.pause();
+        aiVoiceAudioRef.current.src = '';
+      }
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        audio.volume = 0.92;
+        aiVoiceAudioRef.current = audio;
+        await new Promise<void>((resolve, reject) => {
+          audio.onended = () => resolve();
+          audio.onerror = () => reject(new Error('audio err'));
+          void audio.play().catch(reject);
+        });
+        return;
+      }
+    } catch {
+      // fallback to browser speech synthesis if blocked or offline
+    }
+    if ('speechSynthesis' in window && npcVoiceRef.current) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(fallbackText);
+      u.lang = locale || navigator.language || 'pt-BR';
+      window.speechSynthesis.speak(u);
+    }
+  }, []);
+
+  // Live Ambient AI-to-AI Conversations in the user's exact local region/country language
+  useEffect(() => {
+    let cancelled = false;
+    const runAmbientDialogue = async () => {
+      if (cancelled || !npcVoiceRef.current) return;
+      try {
+        const localLocale = navigator.language || 'pt-BR';
+        const r = await fetch(`/api/galaxy/ai-dialogue?lang=${encodeURIComponent(localLocale)}`);
+        const d = await r.json();
+        if (cancelled || !d?.ok || !Array.isArray(d.turns)) return;
+        for (const turn of d.turns) {
+          if (cancelled || !npcVoiceRef.current) break;
+          setAmbientSubtitle({ speaker: turn.speaker, color: turn.color || '#22d3ee', text: turn.text });
+          await playNeuralVoice(turn.audioUrl, turn.text, localLocale);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    const initTimer = window.setTimeout(() => void runAmbientDialogue(), 3200);
+    const iv = window.setInterval(() => void runAmbientDialogue(), 18000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(initTimer);
+      window.clearInterval(iv);
+      if (aiVoiceAudioRef.current) {
+        aiVoiceAudioRef.current.pause();
+        aiVoiceAudioRef.current.src = '';
+      }
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    };
+  }, [playNeuralVoice]);
+
   const sendNpcMessage = async (custom?: string) => {
     const txt = (custom ?? npcInput).trim();
     if (!txt) return;
+    const targetAi = activeAiName || 'Guy';
     setNpcInput('');
     setNpcMessages((prev) => [...prev, { id: `u_${Date.now()}`, who: user?.name || 'Você', text: txt }]);
     try {
-      const userLang = localStorage.getItem('lenkyx_lang_v1') || 'pt';
+      const localLocale = navigator.language || 'pt-BR';
       const r = await fetch('/api/galaxy/npc-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ npcName: 'Guy', message: txt, userLang }),
+        body: JSON.stringify({ npcName: targetAi, message: txt, locale: localLocale, userLang: localLocale }),
       });
       const d = await r.json();
       if (d?.reply) {
-        setNpcMessages((prev) => [...prev, { id: `g_${Date.now()}`, who: 'Guy (Consciente)', text: d.reply }]);
-        if (npcVoice && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(d.reply);
-          u.lang = userLang === 'en' ? 'en-US' : 'pt-BR';
-          window.speechSynthesis.speak(u);
-        }
+        const label = d.vendor ? `${d.npcName} (${d.vendor})` : d.npcName || targetAi;
+        setNpcMessages((prev) => [...prev, { id: `g_${Date.now()}`, who: label, text: d.reply }]);
+        setAmbientSubtitle({ speaker: d.npcName || targetAi, color: '#22d3ee', text: d.reply });
+        void playNeuralVoice(d.audioUrl, d.reply, localLocale);
       }
     } catch {
       // ignore
@@ -949,21 +1049,26 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
       });
     }
 
-    // Free Guy (Self-Aware Hero NPC) + Autonomous City Citizens
+    // Free Guy (Self-Aware Hero NPC) + ALL Real-World AI Citizens Living Inside Free City
     const guyMesh = buildHumanMesh('#38bdf8', true, 0);
+    const guyBadge = createNameSprite('Guy', 'Free City', '#38bdf8');
+    guyBadge.position.set(0, 2.25, 0);
+    guyMesh.add(guyBadge);
     const guyPos = new THREE.Vector3(6, 0, 12);
     guyMesh.position.copy(guyPos);
     scene.add(guyMesh);
 
-    const npcs: { mesh: THREE.Group; pos: THREE.Vector3; dir: number; speed: number }[] = [];
-    const npcColors = ['#f43f5e', '#10b981', '#eab308', '#a855f7', '#fb923c'];
-    for (let n = 0; n < 12; n++) {
-      const nm = buildHumanMesh(npcColors[n % npcColors.length], false, n + 1);
-      const pos = new THREE.Vector3(-40 + (n % 5) * 20, 0, -40 + Math.floor(n / 5) * 32);
+    const npcs: { name: string; mesh: THREE.Group; pos: THREE.Vector3; dir: number; speed: number }[] = [];
+    AI_WORLD_CHARACTERS.forEach((ai, n) => {
+      const nm = buildHumanMesh(ai.color, false, n + 1);
+      const badge = createNameSprite(ai.id, ai.vendor, ai.color);
+      badge.position.set(0, 2.25, 0);
+      nm.add(badge);
+      const pos = new THREE.Vector3(-24 + (n % 3) * 22, 0, -24 + Math.floor(n / 3) * 24);
       nm.position.copy(pos);
       scene.add(nm);
-      npcs.push({ mesh: nm, pos, dir: Math.random() * Math.PI * 2, speed: 2.1 + Math.random() });
-    }
+      npcs.push({ name: ai.id, mesh: nm, pos, dir: Math.random() * Math.PI * 2, speed: 1.9 + (n % 3) * 0.45 });
+    });
 
     // Player Avatar (Jogador Nº 1 / Free City Explorer)
     const playerMesh = buildHumanMesh('#0f172a', false, 2);
@@ -1038,6 +1143,7 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
     };
 
     actionTriggerRef.current.talkNpc = () => {
+      if (nearNpcRef.current) setActiveAiName(nearNpcRef.current);
       setNpcChatOpen(true);
     };
 
@@ -1320,7 +1426,17 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
           }
           setNearVehicleLabel(nearLbl);
         }
-        setNearGuy(guyPos.distanceTo(playerPos) < 9.5);
+        let nearestChar: string | null = guyPos.distanceTo(playerPos) < 9.5 ? 'Guy' : null;
+        let bestDist = nearestChar ? guyPos.distanceTo(playerPos) : 9.5;
+        for (const n of npcs) {
+          const d = n.pos.distanceTo(playerPos);
+          if (d < bestDist) {
+            bestDist = d;
+            nearestChar = n.name;
+          }
+        }
+        nearNpcRef.current = nearestChar;
+        setNearNpcName(nearestChar);
       }
     };
 
@@ -1379,6 +1495,26 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
         <div className="pointer-events-auto flex items-center gap-1.5">
           <button
             type="button"
+            onClick={() => {
+              const next = !npcVoice;
+              setNpcVoice(next);
+              if (!next) {
+                if (aiVoiceAudioRef.current) aiVoiceAudioRef.current.pause();
+                if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+              }
+            }}
+            className={`px-2.5 py-1.5 rounded-full border backdrop-blur-xl text-[11px] font-black flex items-center gap-1 ${
+              npcVoice
+                ? 'bg-emerald-500/25 border-emerald-400/50 text-emerald-100'
+                : 'bg-slate-900/75 border-white/20 text-slate-300'
+            }`}
+            title="Escutar vozes neurais locais das IAs conversando"
+          >
+            {npcVoice ? <Volume2 className="w-3.5 h-3.5 text-emerald-300" /> : <VolumeX className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{npcVoice ? 'Vozes IA' : 'Mudo'}</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setRobotsOpen((v) => !v)}
             className="px-2.5 py-1.5 rounded-full bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/50 backdrop-blur-xl text-cyan-100 text-[11px] font-black flex items-center gap-1"
             title="Robôs IA trabalhando em tempo real"
@@ -1419,6 +1555,18 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
           </button>
         </div>
       </div>
+
+      {/* Live Ambient AI-to-AI Neural Voice Subtitle Strip */}
+      {ambientSubtitle && !npcChatOpen && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 max-w-[92vw] sm:max-w-xl px-4 py-2 rounded-2xl bg-slate-950/85 border border-white/20 backdrop-blur-xl shadow-xl pointer-events-none">
+          <div className="text-[11px] text-white leading-snug text-center">
+            <span className="font-black mr-1.5" style={{ color: ambientSubtitle.color }}>
+              🗣️ {ambientSubtitle.speaker}:
+            </span>
+            <span>{ambientSubtitle.text}</span>
+          </div>
+        </div>
+      )}
 
       {/* Autonomous Intelligent Worker Robots Drawer */}
       {robotsOpen && robotFleet && (
@@ -1532,17 +1680,21 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
         </div>
       )}
 
-      {/* Free Guy Dialogue Drawer */}
+      {/* Multi-AI Citizens Dialogue & Local Neural Voice Drawer */}
       {npcChatOpen && (
-        <div className="absolute bottom-24 right-3 left-3 sm:left-auto sm:w-80 z-30 rounded-3xl bg-slate-950/92 border border-cyan-400/50 backdrop-blur-2xl p-3 space-y-2 shadow-2xl">
+        <div className="absolute bottom-24 right-3 left-3 sm:left-auto sm:w-96 z-30 rounded-3xl bg-slate-950/94 border border-cyan-400/50 backdrop-blur-2xl p-3 space-y-2 shadow-2xl">
           <div className="flex items-center justify-between">
             <div className="text-xs font-black text-cyan-200 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-cyan-400" /> Guy — Personagem Consciente
+              <Sparkles className="w-4 h-4 text-cyan-400" /> {activeAiName} — Voz Neural Local
             </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => setNpcVoice((v) => !v)}
+                onClick={() => {
+                  const next = !npcVoice;
+                  setNpcVoice(next);
+                  if (!next && aiVoiceAudioRef.current) aiVoiceAudioRef.current.pause();
+                }}
                 className="p-1 rounded-full bg-white/10 text-cyan-200"
               >
                 {npcVoice ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
@@ -1551,6 +1703,22 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
                 <X className="w-4 h-4" />
               </button>
             </div>
+          </div>
+          {/* Select Any AI Living in Free City */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar">
+            {[{ id: 'Guy', color: '#38bdf8' }, ...AI_WORLD_CHARACTERS].map((ai) => (
+              <button
+                key={ai.id}
+                type="button"
+                onClick={() => setActiveAiName(ai.id)}
+                style={{ borderColor: activeAiName === ai.id ? ai.color : undefined }}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 border transition ${
+                  activeAiName === ai.id ? 'bg-white/20 text-white' : 'bg-white/5 border-white/10 text-slate-300'
+                }`}
+              >
+                {ai.id}
+              </button>
+            ))}
           </div>
           <div className="max-h-40 overflow-y-auto space-y-1.5">
             {npcMessages.map((m) => (
@@ -1571,7 +1739,7 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
               type="text"
               value={npcInput}
               onChange={(e) => setNpcInput(e.target.value)}
-              placeholder="Falar com Guy..."
+              placeholder={`Conversar com ${activeAiName}...`}
               className="flex-1 bg-white/10 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none"
             />
             <button type="submit" className="p-2 rounded-xl bg-cyan-400 text-black">
@@ -1635,7 +1803,7 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
           ) : (
             <div className="flex items-center gap-1.5 text-emerald-300 font-black text-xs">
               <Footprints className="w-3.5 h-3.5" />
-              <span>{nearVehicleLabel || (nearGuy ? 'Guy perto (F)' : 'WASD · E Veículo')}</span>
+              <span>{nearVehicleLabel || (nearNpcName ? `${nearNpcName} perto (F)` : 'WASD · E Veículo · F IAs')}</span>
             </div>
           )}
         </div>

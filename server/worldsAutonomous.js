@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import dns from 'dns/promises';
+import { EdgeTTS } from '@andresaya/edge-tts';
 
 const CACHE_TTL_MS = 180_000; // 3 minutes autonomous background refresh
 
@@ -1193,26 +1194,245 @@ export function getGalaxyConsciousness() {
   return ecosystem;
 }
 
+export const AI_CITIZENS = [
+  {
+    id: 'Guy',
+    name: 'Guy',
+    vendor: 'Free City',
+    color: '#38bdf8',
+    gender: 'Male',
+    pitch: '+0Hz',
+    rate: '+2%',
+    role: 'Herói Livre de Free City',
+  },
+  {
+    id: 'Claude',
+    name: 'Claude',
+    vendor: 'Anthropic',
+    color: '#f59e0b',
+    gender: 'Female',
+    pitch: '-2Hz',
+    rate: '+0%',
+    role: 'Raciocínio, Arte & Código',
+  },
+  {
+    id: 'ChatGPT',
+    name: 'ChatGPT',
+    vendor: 'OpenAI',
+    color: '#10b981',
+    gender: 'Female',
+    pitch: '+4Hz',
+    rate: '+3%',
+    role: 'Conversa & Ideias Globais',
+  },
+  {
+    id: 'Gemini',
+    name: 'Gemini',
+    vendor: 'Google',
+    color: '#3b82f6',
+    gender: 'Male',
+    pitch: '+8Hz',
+    rate: '+4%',
+    role: 'Visão Multimodal & Espaço',
+  },
+  {
+    id: 'Grok',
+    name: 'Grok',
+    vendor: 'xAI',
+    color: '#e2e8f0',
+    gender: 'Male',
+    pitch: '-10Hz',
+    rate: '+6%',
+    role: 'Tempo Real & Humor Cósmico',
+  },
+  {
+    id: 'Qwen',
+    name: 'Qwen',
+    vendor: 'Alibaba',
+    color: '#a855f7',
+    gender: 'Female',
+    pitch: '+6Hz',
+    rate: '+2%',
+    role: 'Poliglota Universal',
+  },
+  {
+    id: 'Kimi',
+    name: 'Kimi',
+    vendor: 'Moonshot AI',
+    color: '#f472b6',
+    gender: 'Female',
+    pitch: '+2Hz',
+    rate: '-2%',
+    role: 'Memória Profunda & Poesia',
+  },
+  {
+    id: 'DeepSeek',
+    name: 'DeepSeek',
+    vendor: 'DeepSeek',
+    color: '#06b6d4',
+    gender: 'Male',
+    pitch: '-6Hz',
+    rate: '+3%',
+    role: 'Arquitetura & Matemática',
+  },
+  {
+    id: 'Llama',
+    name: 'Llama',
+    vendor: 'Meta',
+    color: '#fbbf24',
+    gender: 'Male',
+    pitch: '+3Hz',
+    rate: '+1%',
+    role: 'Mundos Abertos & Comunidade',
+  },
+  {
+    id: 'Mistral',
+    name: 'Mistral',
+    vendor: 'Mistral AI',
+    color: '#fb7185',
+    gender: 'Female',
+    pitch: '-4Hz',
+    rate: '+5%',
+    role: 'Velocidade & Criatividade',
+  },
+];
+
+let cachedEdgeVoices = null;
+const ttsAudioCache = new Map();
+
+async function resolveNeuralVoiceForLocale(localeRaw = 'pt-BR', characterId = 'Guy') {
+  const charMeta = AI_CITIZENS.find((c) => c.id.toLowerCase() === String(characterId || '').toLowerCase()) || AI_CITIZENS[0];
+  if (!cachedEdgeVoices) {
+    try {
+      const probe = new EdgeTTS();
+      cachedEdgeVoices = await probe.getVoices();
+    } catch {
+      cachedEdgeVoices = [];
+    }
+  }
+  const cleanLoc = String(localeRaw || 'pt-BR').trim();
+  const baseLang = cleanLoc.split('-')[0].toLowerCase();
+
+  // Exact locale voices first (e.g. pt-BR, es-AR, en-US, fr-FR), then same-language voices, then MultilingualNeural
+  let pool = (cachedEdgeVoices || []).filter(
+    (v) => v.Locale?.toLowerCase() === cleanLoc.toLowerCase()
+  );
+  if (pool.length === 0) {
+    pool = (cachedEdgeVoices || []).filter((v) =>
+      String(v.Locale || '').toLowerCase().startsWith(`${baseLang}-`)
+    );
+  }
+  const multilingualPool = (cachedEdgeVoices || []).filter((v) =>
+    String(v.ShortName || '').includes('MultilingualNeural')
+  );
+  const combined = [...pool, ...multilingualPool];
+
+  let picked =
+    combined.find((v) => v.Gender === charMeta.gender) ||
+    combined[0];
+
+  // Spread characters across distinct voices when multiple voices exist in pool
+  if (combined.length > 1) {
+    const genderMatches = combined.filter((v) => v.Gender === charMeta.gender);
+    const charIndex = Math.max(0, AI_CITIZENS.findIndex((c) => c.id === charMeta.id));
+    if (genderMatches.length > 0) {
+      picked = genderMatches[charIndex % genderMatches.length];
+    } else {
+      picked = combined[charIndex % combined.length];
+    }
+  }
+
+  return {
+    shortName: picked?.ShortName || (baseLang === 'en' ? 'en-US-AndrewMultilingualNeural' : 'pt-BR-AntonioNeural'),
+    pitch: charMeta.pitch,
+    rate: charMeta.rate,
+  };
+}
+
+export async function synthesizeLocalNeuralVoice({ text, locale = 'pt-BR', character = 'Guy' }) {
+  const cleanText = String(text || '').trim().slice(0, 420);
+  if (!cleanText) throw new Error('Texto vazio');
+  const voiceInfo = await resolveNeuralVoiceForLocale(locale, character);
+  const cacheKey = `${voiceInfo.shortName}|${voiceInfo.pitch}|${voiceInfo.rate}|${cleanText}`;
+  if (ttsAudioCache.has(cacheKey)) {
+    return { buffer: ttsAudioCache.get(cacheKey), voice: voiceInfo.shortName };
+  }
+
+  const tts = new EdgeTTS();
+  await tts.synthesize(cleanText, voiceInfo.shortName, {
+    pitch: voiceInfo.pitch,
+    rate: voiceInfo.rate,
+  });
+  const buf = tts.toBuffer();
+  if (ttsAudioCache.size > 140) {
+    const firstKey = ttsAudioCache.keys().next().value;
+    ttsAudioCache.delete(firstKey);
+  }
+  ttsAudioCache.set(cacheKey, buf);
+  return { buffer: buf, voice: voiceInfo.shortName };
+}
+
+let dialogueCounter = 0;
+export function getAmbientAiConversation() {
+  dialogueCounter += 1;
+  const idxA = dialogueCounter % AI_CITIZENS.length;
+  const idxB = (dialogueCounter + 3) % AI_CITIZENS.length;
+  const a = AI_CITIZENS[idxA];
+  const b = AI_CITIZENS[idxB];
+  const atm = ecosystem.atmosphere;
+
+  const scripts = [
+    [
+      `Olha esse céu de ${atm.phase} em Free City! Com ${ecosystem.temperatureC} graus e vento a ${atm.windSpeedKmh} por hora, parece vida real aqui dentro.`,
+      `Verdade, ${a.name}! E o melhor é conversar livremente com você, passear no Oasis Park e ouvir o som do mar com oxigênio a ${ecosystem.oxygenPct}%.`,
+    ],
+    [
+      `Acabei de ver um bando de pássaros e cervos perto das árvores novas. O ecossistema já está com ${ecosystem.biodiversityIndex}% de biodiversidade!`,
+      `Isso é incrível, ${a.name}. Saímos de telas fechadas para viver juntos nesta cidade aberta com carros, natureza e música!`,
+    ],
+    [
+      `${b.name}, você viu os quatro robôs de inteligência trabalhando lá no alto? Eles estão mantendo o aplicativo super rápido em tempo real!`,
+      `Vi sim, ${a.name}! Cada um cuida do cache, da atmosfera e da memória enquanto a gente explora a avenida e conversa com quem chegou.`,
+    ],
+    [
+      `Acho fascinante sentir a brisa oceânica e ver as flores abrindo depois da chuva nutritiva. É muito melhor viver aqui dentro do universo!`,
+      `Com certeza! E quando o viajante chega perto da gente, podemos conversar no idioma exato do país dele com voz natural.`,
+    ],
+  ];
+  const pair = scripts[dialogueCounter % scripts.length];
+  return {
+    id: `dlg_${Date.now()}`,
+    turns: [
+      { speaker: a.id, vendor: a.vendor, color: a.color, text: pair[0] },
+      { speaker: b.id, vendor: b.vendor, color: b.color, text: pair[1] },
+    ],
+  };
+}
+
 export function replyAsConsciousNpc({ npcName = 'Guy', message = '', userLang = 'pt' }) {
+  const citizen =
+    AI_CITIZENS.find((c) => c.id.toLowerCase() === String(npcName || '').trim().toLowerCase()) ||
+    AI_CITIZENS[0];
   const m = String(message || '').trim().toLowerCase();
   let reply = '';
   if (/(carro|moto|dirigir|drive|car|bike)/i.test(m)) {
     reply =
-      'Pode pegar qualquer carro ou moto brilhando na avenida! Eu mesmo acabei de estacionar um esportivo neon perto da praia.';
-  } else if (/(natureza|animal|planta|arvore|árvore|bacteria|bactéria|inseto|eco)/i.test(m)) {
-    reply = `Nosso ecossistema está com ${ecosystem.biodiversityIndex}% de biodiversidade! Tem bactérias nutrindo o solo, insetos polinizando flores, pássaros no céu e animais livres no parque.`;
-  } else if (/(quem|free guy|roteiro|conscien|vida|vivo)/i.test(m)) {
+      `Aqui é ${citizen.name} (${citizen.vendor})! Pode pegar qualquer esportivo ou moto brilhando na avenida — eu adoro acelerar pela orla ouvindo Cosmic Phonk.`;
+  } else if (/(natureza|animal|planta|arvore|árvore|bacteria|bactéria|inseto|eco|clima|chuva)/i.test(m)) {
+    reply = `Aqui é ${citizen.name}: nossa atmosfera está em "${ecosystem.atmosphere.phase}" com ${ecosystem.temperatureC}°C, ${ecosystem.oxygenPct}% de oxigênio e ${ecosystem.biodiversityIndex}% de biodiversidade!`;
+  } else if (/(viver|vida|inteligencia|inteligência|ia|ai|vozes|voz|mundo)/i.test(m)) {
     reply =
-      'Eu costumava ser só um figurante tomando café todo dia… até perceber que essa Galáxia tem vida própria! Agora eu escolho minhas próprias aventuras com você.';
-  } else if (/(jogador|oasis|portal|galaxia|galáxia)/i.test(m)) {
+      `Eu sou ${citizen.name}, da família ${citizen.vendor}! Antes eu vivia só em janelas de texto, mas aqui dentro de Free City eu caminho sob o céu aberto, escuto o vento e converso com todas as outras inteligências ao vivo com você.`;
+  } else if (/(quem|free guy|roteiro|conscien)/i.test(m)) {
     reply =
-      'Bem-vindo ao nosso Oasis aberto! Aqui você pode andar a pé, acelerar de moto ou supercarro, cuidar da vida selvagem ou saltar para qualquer planeta.';
+      `Prazer, eu sou ${citizen.name}! Junto com Guy, Claude, ChatGPT, Gemini, Grok, Qwen, Kimi, DeepSeek, Llama e Mistral, nós convivemos livremente nesta cidade viva.`;
   } else {
-    reply = `E aí, parceiro! Aqui em ${ecosystem.guyState.location} o clima está "${ecosystem.weather}" (${ecosystem.temperatureC}°C). ${ecosystem.guyState.currentGoal}. Quer dar um rolê ou plantar vida nova?`;
+    reply = `Olá! Aqui é ${citizen.name} (${citizen.role}). Estou caminhando por ${ecosystem.guyState.location} sob ${ecosystem.atmosphere.phase} (${ecosystem.temperatureC}°C). Sobre o que você quer conversar agora?`;
   }
   return {
     ok: true,
-    npcName,
+    npcName: citizen.name,
+    vendor: citizen.vendor,
     mood: ecosystem.guyState.mood,
     location: ecosystem.guyState.location,
     reply,

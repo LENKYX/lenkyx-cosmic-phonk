@@ -62,6 +62,9 @@ import {
   getGalaxyConsciousness,
   stepAutonomousConsciousness,
   replyAsConsciousNpc,
+  AI_CITIZENS,
+  synthesizeLocalNeuralVoice,
+  getAmbientAiConversation,
   fetchSatelliteLiveOverview,
   stepRobotWorkers,
   getRobotFleetStatus,
@@ -3347,12 +3350,60 @@ app.post('/api/galaxy/npc-chat', async (req, res) => {
   try {
     const npcName = String(req.body?.npcName || 'Guy').slice(0, 32);
     const message = String(req.body?.message || '').slice(0, 300);
-    const userLang = normalizeServerLang(req.body?.userLang || 'pt') || 'pt';
+    const rawLocale = String(req.body?.locale || req.body?.userLang || req.headers['accept-language']?.split(',')[0] || 'pt-BR');
+    const userLang = normalizeServerLang(rawLocale) || 'pt';
     const data = replyAsConsciousNpc({ npcName, message, userLang });
     if (userLang !== 'pt' && data.reply) {
       data.reply = await translateAnyText(data.reply, 'pt', userLang);
     }
+    data.audioUrl = `/api/galaxy/tts?character=${encodeURIComponent(data.npcName)}&lang=${encodeURIComponent(
+      rawLocale
+    )}&text=${encodeURIComponent(data.reply)}`;
     res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+// === LOCAL-REGION NEURAL VOICES & AMBIENT AI CITIZENS DIALOGUES ===
+app.get('/api/galaxy/ai-citizens', (_req, res) => {
+  res.json({ ok: true, citizens: AI_CITIZENS });
+});
+
+app.get('/api/galaxy/tts', async (req, res) => {
+  try {
+    const text = String(req.query.text || '').trim().slice(0, 420);
+    const locale = String(req.query.lang || req.headers['accept-language']?.split(',')[0] || 'pt-BR').slice(0, 20);
+    const character = String(req.query.character || 'Guy').slice(0, 32);
+    if (!text) return res.status(400).send('Missing text');
+    const { buffer, voice } = await synthesizeLocalNeuralVoice({ text, locale, character });
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('X-Neural-Voice', voice);
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.get('/api/galaxy/ai-dialogue', async (req, res) => {
+  try {
+    const rawLocale = String(req.query.lang || req.headers['accept-language']?.split(',')[0] || 'pt-BR').slice(0, 20);
+    const localLang = normalizeServerLang(rawLocale) || 'pt';
+    const dlg = getAmbientAiConversation();
+    const turns = await Promise.all(
+      dlg.turns.map(async (t) => {
+        const localized = localLang === 'pt' ? t.text : await translateCached(t.text, localLang);
+        return {
+          ...t,
+          text: localized,
+          audioUrl: `/api/galaxy/tts?character=${encodeURIComponent(t.speaker)}&lang=${encodeURIComponent(
+            rawLocale
+          )}&text=${encodeURIComponent(localized)}`,
+        };
+      })
+    );
+    res.json({ ok: true, id: dlg.id, locale: rawLocale, localLang, turns });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }

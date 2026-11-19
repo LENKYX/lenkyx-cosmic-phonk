@@ -8,6 +8,7 @@
     "start": "node server/index.js"
   },
   "dependencies": {
+    "@andresaya/edge-tts": "^1.9.1",
     "@types/three": "^0.187.0",
     "express": "^4.21.2",
     "hls.js": "^1.7.4",
