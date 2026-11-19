@@ -574,20 +574,38 @@ export function startAutoDomTranslator(langCode: string): () => void {
     return () => {};
   }
 
+  const queuedNodes = new Set<Node>();
+  let mutationTimer: number | null = null;
+
+  const processQueuedMutations = () => {
+    mutationTimer = null;
+    const nodes = Array.from(queuedNodes);
+    queuedNodes.clear();
+    if (!nodes.length) return;
+    nodes.forEach((n) => {
+      if (document.body.contains(n)) scanSubtree(n, activeLang);
+    });
+    if (pendingStrings.size > 0) scheduleFlush(activeLang, 220);
+  };
+
   activeObserver = new MutationObserver((mutations) => {
     for (const m of mutations) {
       if (m.type === 'characterData' && m.target.nodeType === Node.TEXT_NODE) {
         const textNode = m.target as Text;
         const val = textNode.nodeValue || '';
+        const trimmed = val.trim();
+        if (!trimmed || shouldSkipText(trimmed)) continue;
         const cache = getLangCache(activeLang);
-        if (val.trim() && cache[val.trim()]) continue;
+        if (cache[trimmed]) continue;
         originalTextMap.set(textNode, val);
-        scanSubtree(textNode, activeLang);
+        queuedNodes.add(textNode);
       } else if (m.type === 'childList') {
-        m.addedNodes.forEach((n) => scanSubtree(n, activeLang));
+        m.addedNodes.forEach((n) => queuedNodes.add(n));
       }
     }
-    if (pendingStrings.size > 0) scheduleFlush(activeLang, 220);
+    if (queuedNodes.size > 0 && mutationTimer === null) {
+      mutationTimer = window.setTimeout(processQueuedMutations, 90);
+    }
   });
 
   activeObserver.observe(document.body, {
@@ -597,6 +615,8 @@ export function startAutoDomTranslator(langCode: string): () => void {
   });
 
   return () => {
+    if (mutationTimer !== null) window.clearTimeout(mutationTimer);
+    queuedNodes.clear();
     activeObserver?.disconnect();
     activeObserver = null;
   };

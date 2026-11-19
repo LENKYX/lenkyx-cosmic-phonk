@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import { Readable } from 'stream';
 import { fileURLToPath } from 'url';
 import { CATALOG_VERSION, SUNO_PLAYLIST_ID, getInitialDb } from './seed.js';
 import { createAuthManager } from './auth.js';
@@ -1319,7 +1320,7 @@ app.get('/api/tv-proxy', async (req, res) => {
   }
 });
 
-// Safe CORS Audio/Media Proxy for Offline Device Downloads (Suno, Audius & Archive.org CDNs only)
+// Safe Streaming CORS & Range Audio/Media Proxy (Suno, Audius, Archive, iTunes, Jamendo CDNs)
 app.get('/api/audio-proxy', async (req, res) => {
   const rawUrl = String(req.query.url || '').trim();
   if (!rawUrl) return res.status(400).json({ error: 'Missing url' });
@@ -1338,28 +1339,56 @@ app.get('/api/audio-proxy', async (req, res) => {
       host.endsWith('.audius.co') ||
       host.includes('audius') ||
       host === 'archive.org' ||
-      host.endsWith('.archive.org'));
+      host.endsWith('.archive.org') ||
+      host.endsWith('.mzstatic.com') ||
+      host.endsWith('.itunes.apple.com') ||
+      host.endsWith('.jamendo.com'));
   if (!allowed) {
-    return res.status(403).json({ error: 'Host not permitted for offline caching' });
+    return res.status(403).json({ error: 'Host not permitted for audio proxy' });
   }
   try {
+    const reqHeaders = { 'User-Agent': 'Mozilla/5.0 LENKYX-AudioStream/2.0' };
+    if (req.headers.range) {
+      reqHeaders.Range = String(req.headers.range);
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25000);
+    req.on('close', () => controller.abort());
+
     const upstream = await fetch(rawUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 LENKYX-OfflineCache/1.0' },
+      headers: reqHeaders,
       redirect: 'follow',
+      signal: controller.signal,
     });
-    if (!upstream.ok || !upstream.body) {
+    clearTimeout(timer);
+
+    if ((!upstream.ok && upstream.status !== 206) || !upstream.body) {
       return res.status(502).json({ error: 'Upstream media unavailable' });
     }
+
     const ct = upstream.headers.get('content-type') || 'audio/mpeg';
     const cl = upstream.headers.get('content-length');
+    const cr = upstream.headers.get('content-range');
+    const ar = upstream.headers.get('accept-ranges') || 'bytes';
+
+    res.status(upstream.status === 206 ? 206 : 200);
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
     res.setHeader('Content-Type', ct);
+    res.setHeader('Accept-Ranges', ar);
     if (cl) res.setHeader('Content-Length', cl);
+    if (cr) res.setHeader('Content-Range', cr);
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    const buf = Buffer.from(await upstream.arrayBuffer());
-    return res.send(buf);
+
+    const nodeStream = Readable.fromWeb(upstream.body);
+    nodeStream.on('error', () => {
+      if (!res.headersSent) res.status(502).end();
+      else res.end();
+    });
+    return nodeStream.pipe(res);
   } catch {
-    return res.status(502).json({ error: 'Proxy download failed' });
+    if (!res.headersSent) return res.status(502).json({ error: 'Proxy stream failed' });
+    return res.end();
   }
 });
 

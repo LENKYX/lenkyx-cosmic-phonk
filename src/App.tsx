@@ -339,6 +339,10 @@ export function App() {
   const [playQueue, setPlayQueue] = useState<Track[]>([]);
   const playQueueRef = useRef<Track[]>([]);
   const currentTrackRef = useRef<Track | null>(null);
+  const playSeqRef = useRef(0);
+  const directAudioRawUrlRef = useRef('');
+  const audioProxyRetriedRef = useRef(false);
+  const ytStallTimerRef = useRef<number | null>(null);
   const handlePlayTrackRef = useRef<
     ((track: Track, requestedVersion?: AudioVersion, customQueue?: Track[]) => Promise<void>) | null
   >(null);
@@ -644,15 +648,24 @@ export function App() {
     })();
   }, [showToast]);
 
-  // Setup persistent global <audio> element
+  // Setup persistent global <audio> element with anti-freeze & automatic stream recovery
   useEffect(() => {
     const audio = new Audio();
-    audio.crossOrigin = 'anonymous';
+    audio.preload = 'auto';
     audio.volume = volume;
     audioRef.current = audio;
 
     let lastAudioSec = -1;
+    let stallTimer: number | null = null;
+    const clearStallTimer = () => {
+      if (stallTimer !== null) {
+        window.clearTimeout(stallTimer);
+        stallTimer = null;
+      }
+    };
+
     const onTime = () => {
+      clearStallTimer();
       const sec = Math.floor(audio.currentTime || 0);
       if (sec !== lastAudioSec) {
         lastAudioSec = sec;
@@ -661,10 +674,20 @@ export function App() {
     };
     const onLoaded = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const onPlay = () => {
+      clearStallTimer();
       setIsPlaying(true);
       isPlayingRef.current = true;
     };
+    const onPlaying = () => {
+      clearStallTimer();
+      setIsPlaying(true);
+      isPlayingRef.current = true;
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+      }
+    };
     const onPause = () => {
+      clearStallTimer();
       if (document.hidden && !userPausedRef.current && backgroundModeRef.current && audio.src && !audio.ended) {
         window.setTimeout(() => {
           if (!userPausedRef.current && backgroundModeRef.current && audio.paused && audio.src) {
@@ -678,17 +701,96 @@ export function App() {
       isPlayingRef.current = false;
     };
 
+    const recoverOrAdvance = (reason: 'error' | 'stalled') => {
+      clearStallTimer();
+      if (userPausedRef.current) return;
+      const rawUrl = directAudioRawUrlRef.current;
+      // 1st automatic recovery: if direct HTTPS stream failed/stalled, retry once via streaming /api/audio-proxy
+      if (
+        !audioProxyRetriedRef.current &&
+        rawUrl &&
+        rawUrl.startsWith('https://') &&
+        !audio.src.includes('/api/audio-proxy')
+      ) {
+        audioProxyRetriedRef.current = true;
+        audio.removeAttribute('crossorigin');
+        audio.src = `/api/audio-proxy?url=${encodeURIComponent(rawUrl)}`;
+        audio.load();
+        void audio.play().catch(() => {});
+        return;
+      }
+      // 2nd automatic recovery: resolve clean backup audio or skip to next track so playback never hangs
+      const cur = currentTrackRef.current;
+      if (cur && !audioProxyRetriedRef.current && cur.title) {
+        audioProxyRetriedRef.current = true;
+        void prefetchVideoAudioBackup(cur.title, cur.artist || '').then((backup) => {
+          if (backup && currentTrackRef.current?.id === cur.id && !userPausedRef.current) {
+            audio.removeAttribute('crossorigin');
+            audio.src = backup;
+            audio.load();
+            void audio.play().catch(() => {});
+            return;
+          }
+          if (reason === 'error') {
+            const list = playQueueRef.current.length ? playQueueRef.current : [];
+            if (list.length > 1 && handlePlayTrackRef.current) {
+              const idx = list.findIndex((t) => t.id === cur.id);
+              const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
+              if (next && next.id !== cur.id) {
+                showToast('Fonte indisponível — pulando para a próxima...');
+                void handlePlayTrackRef.current(next, 'v1', list);
+              }
+            }
+          }
+        });
+        return;
+      }
+      if (reason === 'error' && cur) {
+        const list = playQueueRef.current;
+        if (list.length > 1 && handlePlayTrackRef.current) {
+          const idx = list.findIndex((t) => t.id === cur.id);
+          const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
+          if (next && next.id !== cur.id) {
+            showToast('Áudio instável — avançando para a próxima...');
+            void handlePlayTrackRef.current(next, 'v1', list);
+          }
+        }
+      }
+    };
+
+    const armStallWatchdog = () => {
+      if (userPausedRef.current || !audio.src || audio.paused) return;
+      if (stallTimer !== null) return;
+      stallTimer = window.setTimeout(() => {
+        stallTimer = null;
+        if (!userPausedRef.current && audio.src && !audio.paused && audio.readyState < 3) {
+          recoverOrAdvance('stalled');
+        }
+      }, 7500);
+    };
+
+    const onError = () => recoverOrAdvance('error');
+
     audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('loadedmetadata', onLoaded);
     audio.addEventListener('play', onPlay);
+    audio.addEventListener('playing', onPlaying);
     audio.addEventListener('pause', onPause);
+    audio.addEventListener('stalled', armStallWatchdog);
+    audio.addEventListener('waiting', armStallWatchdog);
+    audio.addEventListener('error', onError);
 
     return () => {
+      clearStallTimer();
       audio.pause();
       audio.removeEventListener('timeupdate', onTime);
       audio.removeEventListener('loadedmetadata', onLoaded);
       audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('playing', onPlaying);
       audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('stalled', armStallWatchdog);
+      audio.removeEventListener('waiting', armStallWatchdog);
+      audio.removeEventListener('error', onError);
     };
   }, []);
 
@@ -744,9 +846,25 @@ export function App() {
           },
           onError: () => {
             if (!currentTrackRef.current?.youtubeVideoId) return;
+            const cur = currentTrackRef.current;
+            // Try direct audio fallback first before skipping the song
+            const fallbackUrl = bgBackupUrlRef.current;
+            if (fallbackUrl && audioRef.current && !bgHandoffActiveRef.current) {
+              bgHandoffActiveRef.current = true;
+              directAudioRawUrlRef.current = fallbackUrl;
+              const el = audioRef.current;
+              el.removeAttribute('crossorigin');
+              el.src = fallbackUrl;
+              el.volume = muted ? 0 : volume;
+              el.muted = muted;
+              el.playbackRate = playbackSpeed;
+              el.load();
+              void el.play().catch(() => {});
+              showToast('🎵 Tocando versão áudio direta!');
+              return;
+            }
             showToast('Este clipe bloqueou player embutido — pulando para o próximo...');
             const list = playQueueRef.current.length ? playQueueRef.current : tracks;
-            const cur = currentTrackRef.current;
             if (cur && list.length > 1) {
               const idx = list.findIndex((t) => t.id === cur.id);
               const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
@@ -911,14 +1029,15 @@ export function App() {
     const audio = audioRef.current;
     if (audio && (!currentTrackRef.current?.youtubeVideoId || Boolean(currentTrackRef.current?.audioUrl))) {
       const curSrc = audio.currentSrc || audio.src || '';
-      const isSameOriginOrBlob =
-        !curSrc ||
-        curSrc.startsWith('blob:') ||
-        curSrc.startsWith('data:') ||
-        curSrc.startsWith(window.location.origin) ||
-        curSrc.startsWith('/');
+      const isSafeForWebAudio =
+        Boolean(curSrc) &&
+        (curSrc.startsWith('blob:') ||
+          curSrc.startsWith('data:') ||
+          curSrc.startsWith(window.location.origin) ||
+          curSrc.startsWith('/') ||
+          audio.crossOrigin === 'anonymous');
 
-      if (level > 0 && isSameOriginOrBlob && !bassAudioCtxRef.current) {
+      if (level > 0 && isSafeForWebAudio && !bassAudioCtxRef.current) {
         try {
           const AudioCtx =
             window.AudioContext ||
@@ -1015,8 +1134,14 @@ export function App() {
     async (track: Track, requestedVersion?: AudioVersion, customQueue?: Track[]) => {
       const audio = audioRef.current;
       if (!audio) return;
+      const mySeq = ++playSeqRef.current;
       userPausedRef.current = false;
       bgHandoffActiveRef.current = false;
+      audioProxyRetriedRef.current = false;
+      if (ytStallTimerRef.current !== null) {
+        window.clearTimeout(ytStallTimerRef.current);
+        ytStallTimerRef.current = null;
+      }
       setMusicMenuOpen(true);
 
       if (track.source === 'world_full' || track.source === 'world_preview') {
@@ -1082,6 +1207,7 @@ export function App() {
       if (track.youtubeVideoId && !track.audioUrl) {
         audio.pause();
         audio.removeAttribute('src');
+        directAudioRawUrlRef.current = '';
         setIsPlayingFromOffline(false);
         setCurrentTime(0);
         setDuration(track.durationSec || 0);
@@ -1101,6 +1227,27 @@ export function App() {
         } else {
           ytPendingVideoRef.current = track.youtubeVideoId;
         }
+
+        // If YouTube player stays blocked/unstarted after 4.5s, seamlessly fall back to direct audio stream!
+        ytStallTimerRef.current = window.setTimeout(() => {
+          ytStallTimerRef.current = null;
+          if (playSeqRef.current !== mySeq || userPausedRef.current || currentTrackRef.current?.id !== track.id) {
+            return;
+          }
+          const st = ytPlayerRef.current?.getPlayerState?.();
+          if (st !== 1 && bgBackupUrlRef.current && !clipTheaterOpenRef.current) {
+            bgHandoffActiveRef.current = true;
+            directAudioRawUrlRef.current = bgBackupUrlRef.current;
+            audio.removeAttribute('crossorigin');
+            audio.src = bgBackupUrlRef.current;
+            audio.volume = muted ? 0 : volume;
+            audio.muted = muted;
+            audio.playbackRate = playbackSpeed;
+            audio.loop = loopTrackRef.current;
+            audio.load();
+            void audio.play().catch(() => {});
+          }
+        }, 4500);
         return;
       }
 
@@ -1108,13 +1255,35 @@ export function App() {
       setClipTheaterOpen(false);
 
       const resolved = await resolvePlayableAudioUrl(track, finalVersion);
+      if (playSeqRef.current !== mySeq) return; // User clicked another track while resolving
+
       setIsPlayingFromOffline(resolved.fromOffline);
-      const playableSrc =
+      directAudioRawUrlRef.current = resolved.url;
+
+      // Play directly from CDN/offline cache for instant Range streaming; only route via proxy when Bass Boost needs CORS or on error fallback
+      const needsCorsProxy =
         !resolved.fromOffline &&
+        bassBoostLevel > 0 &&
         resolved.url.startsWith('https://') &&
-        (resolved.url.includes('audius') || resolved.url.includes('archive.org') || resolved.url.includes('suno'))
-          ? `/api/audio-proxy?url=${encodeURIComponent(resolved.url)}`
-          : resolved.url;
+        !resolved.url.includes('suno.ai') &&
+        !resolved.url.includes('audius');
+
+      const playableSrc = needsCorsProxy
+        ? `/api/audio-proxy?url=${encodeURIComponent(resolved.url)}`
+        : resolved.url;
+
+      if (
+        bassBoostLevel > 0 &&
+        (resolved.fromOffline ||
+          playableSrc.startsWith('/') ||
+          playableSrc.includes('suno.ai') ||
+          playableSrc.includes('audius'))
+      ) {
+        audio.crossOrigin = 'anonymous';
+      } else {
+        audio.removeAttribute('crossorigin');
+      }
+
       audio.src = playableSrc;
       audio.volume = muted ? 0 : volume;
       audio.muted = muted;
@@ -1126,6 +1295,7 @@ export function App() {
       }
       try {
         await audio.play();
+        if (playSeqRef.current !== mySeq) return;
         if (!track.source || track.source === 'lenkyx') {
           authFetch(`/api/tracks/${track.id}/play`, { method: 'POST' })
             .then((r) => (r.ok ? r.json() : null))
@@ -1136,15 +1306,34 @@ export function App() {
             })
             .catch(() => {});
         }
-      } catch {
+      } catch (err) {
+        if (playSeqRef.current !== mySeq) return;
+        const errName = (err as { name?: string })?.name || '';
+        if (errName === 'AbortError') return; // superseded by rapid click or load
+        if (
+          !audioProxyRetriedRef.current &&
+          resolved.url.startsWith('https://') &&
+          !playableSrc.includes('/api/audio-proxy')
+        ) {
+          audioProxyRetriedRef.current = true;
+          audio.removeAttribute('crossorigin');
+          audio.src = `/api/audio-proxy?url=${encodeURIComponent(resolved.url)}`;
+          audio.load();
+          try {
+            await audio.play();
+            return;
+          } catch {
+            // fall through to toast
+          }
+        }
         showToast(
           !navigator.onLine && !resolved.fromOffline
             ? 'Sem internet — baixe a música Offline antes para ouvir sem conexão.'
-            : 'Toque em Play novamente para iniciar o áudio.'
+            : 'Toque em Play novamente para liberar o áudio.'
         );
       }
     },
-    [currentTrack?.id, activeVersion, volume, muted, showToast]
+    [currentTrack?.id, activeVersion, volume, muted, bassBoostLevel, playbackSpeed, applyBassBoostGain, showToast]
   );
 
   useEffect(() => {
@@ -2988,7 +3177,7 @@ export function App() {
             ? `fixed inset-0 z-[9995] bg-black flex items-center justify-center ${
                 clipFitMode === 'fullscreen' ? 'p-0' : 'p-0 sm:p-4'
               }`
-            : 'fixed bottom-1 right-1 w-2 h-2 opacity-[0.01] pointer-events-none z-0 overflow-hidden'
+            : 'fixed bottom-0 right-0 w-[220px] h-[140px] opacity-[0.02] pointer-events-none z-0 overflow-hidden'
         }
       >
         <div
