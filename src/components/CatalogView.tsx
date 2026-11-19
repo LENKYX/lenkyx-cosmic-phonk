@@ -178,10 +178,10 @@ export const CatalogView: React.FC<Props> = ({
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <h1 className="font-display text-sm sm:text-base font-black text-white truncate">
-                LENKYX · Músicas & Artistas
+                LENKYX · Mídia & Som dos Cria
               </h1>
-              <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500/25 via-amber-500/20 to-emerald-500/25 border border-amber-400/35 text-[9px] font-black text-amber-200">
-                🎄 Natal Brasil 🇧🇷
+              <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-cyan-500/25 via-pink-500/20 to-emerald-500/25 border border-cyan-400/40 text-[9px] font-black text-cyan-200">
+                🤖 Favela Tech 3D · Brasil 🇧🇷
               </span>
             </div>
             <div className="text-[11px] text-cyan-200/80 flex items-center gap-2">
@@ -201,9 +201,9 @@ export const CatalogView: React.FC<Props> = ({
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => tracks[0] && onPlayTrack(tracks[0], 'v1')}
-            className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 hover:brightness-110 text-white font-extrabold text-xs flex items-center gap-1.5 shadow transition active:scale-95"
+            className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400 hover:brightness-110 text-black font-black text-xs flex items-center gap-1.5 shadow transition active:scale-95"
           >
-            <Play className="w-3.5 h-3.5 fill-white" /> Tocar Tudo
+            <Play className="w-3.5 h-3.5 fill-black" /> Soltar o Som
           </button>
           <button
             onClick={onDownloadAllOffline}

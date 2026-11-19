@@ -99,6 +99,7 @@ export type TabId =
   | 'search'
   | 'explore'
   | 'reels'
+  | 'shop'
   | 'movies'
   | 'sports'
   | 'offline'

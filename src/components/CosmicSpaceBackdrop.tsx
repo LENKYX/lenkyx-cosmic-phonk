@@ -1,33 +1,122 @@
 import React from 'react';
 
 const SNOWFLAKES = [
-  { left: '6%', dur: '11s', delay: '0s', size: 5, op: 0.45 },
-  { left: '16%', dur: '14s', delay: '-3s', size: 4, op: 0.35 },
-  { left: '28%', dur: '9.5s', delay: '-6s', size: 6, op: 0.4 },
-  { left: '41%', dur: '13s', delay: '-2s', size: 4, op: 0.32 },
-  { left: '54%', dur: '10.5s', delay: '-7s', size: 5, op: 0.42 },
-  { left: '67%', dur: '15s', delay: '-4s', size: 4, op: 0.3 },
-  { left: '79%', dur: '12s', delay: '-1s', size: 6, op: 0.42 },
-  { left: '91%', dur: '10s', delay: '-5s', size: 5, op: 0.38 },
+  { left: '8%', dur: '12s', delay: '0s', size: 4, op: 0.3 },
+  { left: '24%', dur: '15s', delay: '-4s', size: 3, op: 0.25 },
+  { left: '42%', dur: '10.5s', delay: '-2s', size: 4, op: 0.3 },
+  { left: '61%', dur: '13.5s', delay: '-6s', size: 3, op: 0.28 },
+  { left: '78%', dur: '11s', delay: '-1s', size: 4, op: 0.3 },
+  { left: '92%', dur: '14s', delay: '-5s', size: 3, op: 0.24 },
 ];
 
 export const CosmicSpaceBackdrop: React.FC<{ intense?: boolean; paused?: boolean }> = () => {
   return (
     <div
-      className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#0a060d]"
+      className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#040814]"
       style={{
         backgroundImage: [
-          'radial-gradient(ellipse 80% 50% at 15% 0%, rgba(220, 38, 38, 0.22), transparent 65%)',
-          'radial-gradient(ellipse 80% 50% at 88% 4%, rgba(22, 163, 74, 0.22), transparent 65%)',
-          'radial-gradient(ellipse 65% 45% at 50% 35%, rgba(234, 179, 8, 0.10), transparent 70%)',
-          'radial-gradient(ellipse 75% 40% at 50% 100%, rgba(185, 28, 28, 0.14), transparent 70%)',
+          'radial-gradient(ellipse 80% 50% at 14% 4%, rgba(0, 245, 255, 0.17), transparent 62%)',
+          'radial-gradient(ellipse 75% 45% at 88% 8%, rgba(236, 72, 153, 0.15), transparent 62%)',
+          'radial-gradient(ellipse 65% 45% at 50% 48%, rgba(16, 185, 129, 0.12), transparent 68%)',
+          'radial-gradient(ellipse 70% 40% at 20% 95%, rgba(245, 158, 11, 0.13), transparent 65%)',
         ].join(', '),
       }}
     >
-      {/* Subtle Festive Top Garland Glow */}
-      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500 opacity-75" />
+      {/* Futuristic Cyber-Robot Circuit Grid */}
+      <div
+        className="absolute inset-0 opacity-[0.14]"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, rgba(34,211,238,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(34,211,238,0.18) 1px, transparent 1px)',
+          backgroundSize: '44px 44px',
+          maskImage: 'radial-gradient(ellipse 92% 85% at 50% 35%, black 35%, transparent 100%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 92% 85% at 50% 35%, black 35%, transparent 100%)',
+        }}
+      />
 
-      {/* Gentle Snowfall */}
+      {/* Favela Street-Art Graffiti Layer (Spray Tags + Neon Murals) */}
+      <svg
+        className="absolute inset-0 w-full h-full opacity-[0.11] select-none"
+        viewBox="0 0 1440 900"
+        preserveAspectRatio="xMidYMid slice"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="grafCyanPink" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#00f5ff" />
+            <stop offset="50%" stopColor="#ec4899" />
+            <stop offset="100%" stopColor="#facc15" />
+          </linearGradient>
+          <linearGradient id="grafBr" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#10b981" />
+            <stop offset="50%" stopColor="#facc15" />
+            <stop offset="100%" stopColor="#38bdf8" />
+          </linearGradient>
+        </defs>
+
+        {/* Spray Paint Splashes */}
+        <circle cx="190" cy="180" r="110" fill="#ec4899" opacity="0.22" />
+        <circle cx="1240" cy="240" r="140" fill="#00f5ff" opacity="0.2" />
+        <circle cx="960" cy="760" r="160" fill="#facc15" opacity="0.16" />
+
+        {/* Stylized Street Graffiti Typography */}
+        <text
+          x="90"
+          y="230"
+          transform="rotate(-11 90 230)"
+          fontFamily="Impact, Arial Black, sans-serif"
+          fontWeight="900"
+          fontSize="118"
+          letterSpacing="6"
+          fill="none"
+          stroke="url(#grafCyanPink)"
+          strokeWidth="5"
+        >
+          FAVELA
+        </text>
+        <text
+          x="940"
+          y="780"
+          transform="rotate(-7 940 780)"
+          fontFamily="Impact, Arial Black, sans-serif"
+          fontWeight="900"
+          fontSize="110"
+          letterSpacing="8"
+          fill="none"
+          stroke="url(#grafBr)"
+          strokeWidth="5"
+        >
+          OS CRIA
+        </text>
+        <text
+          x="1050"
+          y="175"
+          transform="rotate(9 1050 175)"
+          fontFamily="Impact, Arial Black, sans-serif"
+          fontWeight="900"
+          fontSize="74"
+          fill="url(#grafBr)"
+          opacity="0.45"
+        >
+          BRASIL 100%
+        </text>
+
+        {/* Graffiti Drip Lines */}
+        <path
+          d="M110 245 v38 M180 235 v52 M295 215 v44 M1010 795 v42 M1150 785 v55"
+          stroke="url(#grafCyanPink)"
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
+      </svg>
+
+      {/* Robotic Top Laser Telemetry Bar */}
+      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-cyan-400 via-pink-500 to-emerald-400 opacity-90 shadow-[0_0_16px_rgba(34,211,238,0.85)]" />
+
+      {/* Moving HUD Scanline */}
+      <div className="robot-hud-scanline" aria-hidden="true" />
+
+      {/* Light Festive Snow Particles */}
       {SNOWFLAKES.map((sf, i) => (
         <span
           key={i}

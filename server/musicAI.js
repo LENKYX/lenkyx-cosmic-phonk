@@ -721,6 +721,21 @@ const WORLD_SHORTS_POOLS = {
     'pegadinhas humor viral brasil #shorts',
     'stand up memes brasil #shorts',
   ],
+  memes: [
+    'memes brasileiros engracados virais #shorts',
+    'diogo defante casimiro orochinho memes brasil #shorts',
+    'videos engracados brasil memes #shorts',
+  ],
+  pegadinhas: [
+    'pegadinhas engracadas brasil desafios #shorts',
+    'enaldinho renato garcia pegadinha brasil #shorts',
+    'pegadinha camera escondida brasil #shorts',
+  ],
+  creators: [
+    'whindersson nunes enaldinho renato garcia #shorts',
+    'julio cocielo lucas rangel camila loures #shorts',
+    'diogo defante casimiro loud coringa #shorts',
+  ],
   games: [
     'free fire gta 5 minecraft roblox brasil #shorts',
     'melhores jogadas brasil games #shorts',
@@ -1924,6 +1939,155 @@ export async function fetchCreatorProfile({ creatorName = '', youtubeId = '', ch
     };
   }
 }
+
+export const BR_YOUTUBERS_DIRECTORY = [
+  {
+    id: 'br-whindersson',
+    name: 'Whindersson Nunes',
+    handle: '@whindersson',
+    category: 'Stand-up, Humor & Música',
+    badge: '🥇 TOP #1 BRASIL',
+    subscribersText: '44,7M inscritos',
+    youtubeUrl: 'https://www.youtube.com/@whindersson',
+    shortsQuery: 'Whindersson Nunes humor stand up #shorts',
+    baseScore: 9850,
+    gradient: 'from-amber-400 via-yellow-400 to-orange-500',
+  },
+  {
+    id: 'br-enaldinho',
+    name: 'Enaldinho',
+    handle: '@enaldinho',
+    category: 'Pegadinhas, Desafios & Shorts',
+    badge: '🥈 TOP #2 BRASIL',
+    subscribersText: '40,2M inscritos',
+    youtubeUrl: 'https://www.youtube.com/@enaldinho',
+    shortsQuery: 'Enaldinho desafios pegadinhas #shorts',
+    baseScore: 9420,
+    gradient: 'from-cyan-400 via-sky-400 to-blue-500',
+  },
+  {
+    id: 'br-renatogarcia',
+    name: 'Renato Garcia',
+    handle: '@renatogarciayt',
+    category: 'Pegadinhas, Carros & Vlog',
+    badge: '🥉 TOP #3 BRASIL',
+    subscribersText: '29,5M inscritos',
+    youtubeUrl: 'https://www.youtube.com/@renatogarciayt',
+    shortsQuery: 'Renato Garcia pegadinha vlog #shorts',
+    baseScore: 8910,
+    gradient: 'from-emerald-400 via-teal-400 to-cyan-500',
+  },
+  {
+    id: 'br-defante',
+    name: 'Diogo Defante',
+    handle: '@diogodefante',
+    category: 'Memes & Humor Repórter',
+    badge: '🔥 TOP #4 BRASIL',
+    subscribersText: '2,8M inscritos',
+    youtubeUrl: 'https://www.youtube.com/@diogodefante',
+    shortsQuery: 'Diogo Defante memes humor #shorts',
+    baseScore: 8450,
+    gradient: 'from-pink-500 via-purple-500 to-indigo-500',
+  },
+  {
+    id: 'br-cocielo',
+    name: 'Júlio Cocielo (Canal Canalha)',
+    handle: '@cocielo',
+    category: 'Comédia, Memes & Pegadinhas',
+    badge: '⚡ TOP #5 BRASIL',
+    subscribersText: '21,6M inscritos',
+    youtubeUrl: 'https://www.youtube.com/@cocielo',
+    shortsQuery: 'Julio Cocielo Canal Canalha memes #shorts',
+    baseScore: 8120,
+    gradient: 'from-violet-400 via-fuchsia-500 to-pink-500',
+  },
+  {
+    id: 'br-camilaloures',
+    name: 'Camila Loures',
+    handle: '@camilaloures',
+    category: 'Desafios, Pegadinhas & Música',
+    badge: 'DESTAQUE BR',
+    subscribersText: '15,8M inscritos',
+    youtubeUrl: 'https://www.youtube.com/@camilaloures',
+    shortsQuery: 'Camila Loures pegadinha desafio #shorts',
+    baseScore: 7600,
+    gradient: 'from-rose-400 to-pink-500',
+  },
+  {
+    id: 'br-lucas-rangel',
+    name: 'Lucas Rangel',
+    handle: '@LucasRangel',
+    category: 'Memes, Esquetes & Comédia',
+    badge: 'DESTAQUE BR',
+    subscribersText: '12,1M inscritos',
+    youtubeUrl: 'https://www.youtube.com/@LucasRangel',
+    shortsQuery: 'Lucas Rangel esquetes memes #shorts',
+    baseScore: 7350,
+    gradient: 'from-cyan-400 to-indigo-500',
+  },
+  {
+    id: 'br-casimiro',
+    name: 'Casimiro (Cortes & Memes)',
+    handle: '@CortesdoCasimito',
+    category: 'Reacts, Memes & Futebol BR',
+    badge: 'DESTAQUE BR',
+    subscribersText: '6,4M inscritos',
+    youtubeUrl: 'https://www.youtube.com/@CortesdoCasimito',
+    shortsQuery: 'Casimiro memes reacts engracados #shorts',
+    baseScore: 7190,
+    gradient: 'from-emerald-400 to-cyan-500',
+  },
+  {
+    id: 'br-loud-coringa',
+    name: 'LOUD Coringa',
+    handle: '@LOUDCoringa',
+    category: 'Entretenimento, Memes & Clips',
+    badge: 'DESTAQUE BR',
+    subscribersText: '8,2M inscritos',
+    youtubeUrl: 'https://www.youtube.com/@LOUDCoringa',
+    shortsQuery: 'LOUD Coringa memes clipes #shorts',
+    baseScore: 6940,
+    gradient: 'from-lime-400 to-emerald-500',
+  },
+  {
+    id: 'br-orochinho',
+    name: 'Tio Orochi / Memes BR',
+    handle: '@orochidois',
+    category: 'Humor Ácido & Memes',
+    badge: 'DESTAQUE BR',
+    subscribersText: '4,1M inscritos',
+    youtubeUrl: 'https://www.youtube.com/@orochidois',
+    shortsQuery: 'Orochinho humor memes brasil #shorts',
+    baseScore: 6680,
+    gradient: 'from-purple-400 to-cyan-400',
+  },
+];
+
+const brCreatorVotes = new Map();
+
+export function getBrCreatorsRanked() {
+  const ranked = BR_YOUTUBERS_DIRECTORY.map((c) => {
+    const extra = brCreatorVotes.get(c.id) || 0;
+    return {
+      ...c,
+      votes: c.baseScore + extra,
+      userVotes: extra,
+    };
+  }).sort((a, b) => b.votes - a.votes);
+  return {
+    top5: ranked.slice(0, 5),
+    allCreators: ranked,
+  };
+}
+
+export function voteBrCreator(creatorId) {
+  const found = BR_YOUTUBERS_DIRECTORY.find((c) => c.id === creatorId);
+  if (!found) return null;
+  const next = (brCreatorVotes.get(creatorId) || 0) + 1;
+  brCreatorVotes.set(creatorId, next);
+  return getBrCreatorsRanked();
+}
+
 
 
 

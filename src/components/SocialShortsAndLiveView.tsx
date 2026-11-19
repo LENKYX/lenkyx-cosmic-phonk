@@ -50,6 +50,9 @@ import {
   Download,
   MoreVertical,
   Bookmark,
+  Crown,
+  ExternalLink,
+  Trophy,
 } from 'lucide-react';
 import { triggerDirectFileDownload } from '../utils/offlineCache';
 import { Track, UserProfile } from '../types';
@@ -88,9 +91,12 @@ interface Props {
   user: UserProfile | null;
   initialAction?: 'shorts' | 'create_reel' | 'go_live';
   actionNonce?: number;
+  initialShortsQuery?: string;
+  initialShortsNonce?: number;
   onPlayTrack: (track: Track) => void;
   onPauseCatalogPlayer: () => void;
   onOpenUserAuth: () => void;
+  onOpenPartners?: () => void;
   onOpenTvCast?: (media: {
     title: string;
     artist?: string;
@@ -106,15 +112,18 @@ type SubTab = 'shorts' | 'live' | 'studio';
 type LiveEffectId = 'studio_hd' | 'cosmic_aurora' | 'cyber_glitch' | 'jbl_pulse' | 'galaxy_portal';
 
 const SHORT_CATEGORIES: { id: string; label: string }[] = [
-  { id: 'all', label: '🇧🇷 Brasil · Todos' },
+  { id: 'all', label: '🇧🇷 Tudo dos Cria' },
+  { id: 'memes', label: '😂 Memes da Quebrada' },
+  { id: 'pegadinhas', label: '🎭 Pegadinhas BR' },
+  { id: 'creators', label: '🏆 YouTubers Top BR' },
   { id: 'viral', label: '🔥 Virais Brasil' },
-  { id: 'humor', label: '😂 Humor & Memes' },
-  { id: 'music', label: '🎵 Música & Clipes' },
-  { id: 'football', label: '⚽ Futebol' },
+  { id: 'humor', label: '🤣 Humor & Stand-up' },
+  { id: 'music', label: '🎵 Som & Clipes' },
+  { id: 'football', label: '⚽ Futebol dos Cria' },
   { id: 'cinema', label: '🎬 Cinema & Animes' },
-  { id: 'tech', label: '🚗 Carros & Tech' },
+  { id: 'tech', label: '🏍️ Motos & Carros' },
   { id: 'live', label: '🔴 Ao Vivo Agora' },
-  { id: 'community', label: '📱 Comunidade' },
+  { id: 'community', label: '📱 Da Galera' },
 ];
 
 const LIVE_EFFECTS: { id: LiveEffectId; label: string; desc: string }[] = [
@@ -608,9 +617,12 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   user,
   initialAction,
   actionNonce = 0,
+  initialShortsQuery = '',
+  initialShortsNonce = 0,
   onPlayTrack,
   onPauseCatalogPlayer,
   onOpenUserAuth,
+  onOpenPartners,
   onOpenTvCast,
   onToast,
 }) => {
@@ -816,11 +828,62 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     }
   };
 
+  interface BrCreatorRank {
+    id: string;
+    name: string;
+    handle: string;
+    category: string;
+    badge: string;
+    subscribersText: string;
+    youtubeUrl: string;
+    shortsQuery: string;
+    votes: number;
+    gradient: string;
+  }
+  const [brTop5, setBrTop5] = useState<BrCreatorRank[]>([]);
+  const [brAllCreators, setBrAllCreators] = useState<BrCreatorRank[]>([]);
+  const [selectedCreatorFilter, setSelectedCreatorFilter] = useState<string>('');
+
+  const handleVoteBrCreator = async (creatorId: string, name: string) => {
+    try {
+      const r = await fetch('/api/community/br-creators/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creatorId }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        if (Array.isArray(d?.top5)) setBrTop5(d.top5);
+        if (Array.isArray(d?.allCreators)) setBrAllCreators(d.allCreators);
+        onToast(`🏆 Boa, cria! +1 reconhecimento pra ${name}!`);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     void loadShorts('all', '');
     void fetchActiveLives().then(setLives);
     void fetchWorldShorts('live', '', [], false, subscriberId, localCountryCode).then(setYtLives);
+    fetch('/api/community/br-creators')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (Array.isArray(d?.top5)) setBrTop5(d.top5);
+        if (Array.isArray(d?.allCreators)) setBrAllCreators(d.allCreators);
+      })
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!initialShortsNonce || !initialShortsQuery.trim()) return;
+    setSubTab('shorts');
+    setExclusiveShortsOpen(false);
+    setShortCategory('creators');
+    setShortSearch(initialShortsQuery);
+    void loadShorts('creators', initialShortsQuery, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialShortsNonce, initialShortsQuery]);
 
   useEffect(() => {
     return registerMediaStopper('reels', () => {
@@ -1837,6 +1900,119 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
     return (
       <div className="space-y-4">
+        {/* 🏆 TOP 1 AO TOP 5 · YOUTUBERS BRASILEIROS (MEMES & PEGADINHAS) */}
+        {brTop5.length > 0 && (
+          <section className="rounded-3xl cosmic-card-3d p-3.5 sm:p-4 space-y-3 border border-cyan-400/35">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300 flex items-center gap-1.5">
+                  <Crown className="w-3.5 h-3.5" /> TOP 1 AO TOP 5 · YOUTUBERS BRASILEIROS DE MEMES & PEGADINHAS
+                </div>
+                <h3 className="font-display text-sm sm:text-base font-black text-white">
+                  Mídia dos Cria no YouTube Brasil 🇧🇷 (Toque para assistir & reconhecer!)
+                </h3>
+              </div>
+              {onOpenPartners && (
+                <button
+                  type="button"
+                  onClick={onOpenPartners}
+                  className="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-[11px] font-black flex items-center gap-1 shadow shrink-0"
+                >
+                  <Share2 className="w-3 h-3" /> Convidar Canais & Patrocínio
+                </button>
+              )}
+            </div>
+
+            <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+              {brTop5.map((c, idx) => {
+                const isSelected = selectedCreatorFilter === c.id;
+                return (
+                  <div
+                    key={c.id}
+                    className={`w-56 shrink-0 rounded-2xl p-3 border transition flex flex-col justify-between gap-2 ${
+                      isSelected
+                        ? 'bg-cyan-500/20 border-cyan-300 shadow-[0_0_24px_rgba(34,211,238,0.35)]'
+                        : 'bg-black/45 border-white/15 hover:border-cyan-400/50'
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className={`px-2 py-0.5 rounded-full bg-gradient-to-r ${c.gradient} text-black text-[9px] font-black`}
+                        >
+                          TOP #{idx + 1}
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-300 font-bold">
+                          🏆 {c.votes.toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                      <div className="text-xs font-black text-white truncate">{c.name}</div>
+                      <div className="text-[10px] text-cyan-300 font-mono truncate">
+                        {c.handle} · {c.subscribersText}
+                      </div>
+                      <div className="text-[10px] text-slate-300 truncate">{c.category}</div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCreatorFilter(c.id);
+                          setShortCategory('creators');
+                          setShortSearch(c.shortsQuery);
+                          void loadShorts('creators', c.shortsQuery, true);
+                          onToast(`🔥 Puxando os Shorts de ${c.name}, cria!`);
+                        }}
+                        className="flex-1 py-1.5 px-2 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black text-[10px] font-black flex items-center justify-center gap-1"
+                      >
+                        <Play className="w-3 h-3 fill-black" /> Ver Reels
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleVoteBrCreator(c.id, c.name)}
+                        className="py-1.5 px-2 rounded-xl bg-amber-400/20 hover:bg-amber-400 hover:text-black border border-amber-400/40 text-amber-200 text-[10px] font-black"
+                        title="Reconhecer este criador no Top 5"
+                      >
+                        +1 🏆
+                      </button>
+                      <a
+                        href={c.youtubeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/35 text-red-200"
+                        title={`Abrir canal oficial ${c.handle}`}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {brAllCreators.length > 5 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
+                <span className="text-[10px] font-black text-slate-400 shrink-0">Mais Cria BR:</span>
+                {brAllCreators.slice(5).map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCreatorFilter(c.id);
+                      setShortCategory('creators');
+                      setShortSearch(c.shortsQuery);
+                      void loadShorts('creators', c.shortsQuery, true);
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-cyan-400 hover:text-black border border-white/10 text-[10px] font-bold text-slate-200 whitespace-nowrap transition shrink-0"
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Clean Grid Filter & Controls (Zero Duplicates) */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -1845,7 +2021,35 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-black text-cyan-200 flex items-center gap-1.5 transition"
             >
               <Search className="w-3.5 h-3.5" />
-              {shortsMenuOpen ? 'Fechar' : 'Categorias'}
+              {shortsMenuOpen ? 'Fechar' : 'Categorias BR'}
+            </button>
+            <button
+              onClick={() => {
+                setShortCategory('memes');
+                setShortSearch('');
+                void loadShorts('memes', '', true);
+              }}
+              className={`px-3 py-1.5 rounded-full text-[11px] font-black transition ${
+                shortCategory === 'memes'
+                  ? 'bg-amber-400 text-black'
+                  : 'bg-white/[0.08] border border-white/15 text-amber-200 hover:bg-white/15'
+              }`}
+            >
+              😂 Memes BR
+            </button>
+            <button
+              onClick={() => {
+                setShortCategory('pegadinhas');
+                setShortSearch('');
+                void loadShorts('pegadinhas', '', true);
+              }}
+              className={`px-3 py-1.5 rounded-full text-[11px] font-black transition ${
+                shortCategory === 'pegadinhas'
+                  ? 'bg-pink-400 text-black'
+                  : 'bg-white/[0.08] border border-white/15 text-pink-200 hover:bg-white/15'
+              }`}
+            >
+              🎭 Pegadinhas
             </button>
             <button
               onClick={() => setShortsFilterSubscribed((v) => !v)}
@@ -1874,9 +2078,9 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
           {visibleShorts.length > 0 && (
             <button
               onClick={() => openShortIndividual(activeIndex)}
-              className="px-4 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black text-xs font-black flex items-center gap-1.5 shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:brightness-110 transition"
+              className="px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 text-black text-xs font-black flex items-center gap-1.5 shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:brightness-110 transition"
             >
-              <Play className="w-3.5 h-3.5 fill-black" /> Assistir Shorts
+              <Play className="w-3.5 h-3.5 fill-black" /> Soltar os Reels
             </button>
           )}
         </div>

@@ -53,6 +53,9 @@ import {
   Compass,
   Bell,
   User,
+  ShoppingBag,
+  Mic,
+  Handshake,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
@@ -104,6 +107,13 @@ import { PlaylistsView } from './components/PlaylistsView';
 import { CosmicSpaceBackdrop } from './components/CosmicSpaceBackdrop';
 import { LenkyxEdgeLogo } from './components/LenkyxEdgeLogo';
 import { playLenkyxStartupSound } from './utils/startupSound';
+import { ShopCriaView } from './components/ShopCriaView';
+import {
+  FuturisticFeaturesModal,
+  FuturisticTab,
+  recordPlayHistoryItem,
+} from './components/FuturisticFeaturesModal';
+import { LyricsKaraokeModal } from './components/LyricsKaraokeModal';
 const MoviesView = React.lazy(() => import('./components/MoviesView').then((m) => ({ default: m.MoviesView })));
 const SportsArenaView = React.lazy(() =>
   import('./components/SportsArenaView').then((m) => ({ default: m.SportsArenaView }))
@@ -283,6 +293,32 @@ export function App() {
   // Clean Edge-3D Opening Splash + Cool Startup Chime on Launch
   const [showEntrySplash, setShowEntrySplash] = useState(true);
   const [entrySplashExiting, setEntrySplashExiting] = useState(false);
+
+  // v62: Futuristic Robot HUD Features (Shazam, Jam, Wrapped, YouTubers & Sponsors) + Autoplay + Crossfade
+  const [futuristicModalOpen, setFuturisticModalOpen] = useState(false);
+  const [futuristicTab, setFuturisticTab] = useState<FuturisticTab>('shazam');
+  const [initialJamCode, setInitialJamCode] = useState('');
+  const [shortsTriggerQuery, setShortsTriggerQuery] = useState('');
+  const [shortsTriggerNonce, setShortsTriggerNonce] = useState(0);
+  const [autoplayInfinite] = useState(true);
+
+  const openFuturisticFeature = useCallback((t: FuturisticTab) => {
+    setFuturisticTab(t);
+    setFuturisticModalOpen(true);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const jam = new URLSearchParams(window.location.search).get('jam');
+      if (jam && jam.trim()) {
+        setInitialJamCode(jam.trim().toUpperCase());
+        setFuturisticTab('jam');
+        setFuturisticModalOpen(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const dismissEntrySplash = useCallback((withSound = true) => {
     if (withSound) {
@@ -582,6 +618,36 @@ export function App() {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => setToast(null), 3500);
   }, []);
+
+  const handleVoiceSearch = useCallback(() => {
+    const SR =
+      (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: any }).webkitSpeechRecognition;
+    if (!SR) {
+      openFuturisticFeature('shazam');
+      return;
+    }
+    try {
+      const rec = new SR();
+      rec.lang = 'pt-BR';
+      rec.interimResults = false;
+      showToast('🎙️ Fala aí, cria! Pode dizer o nome da música ou artista...');
+      rec.onresult = (ev: any) => {
+        const spoken = String(ev?.results?.[0]?.[0]?.transcript || '').trim();
+        if (spoken) {
+          setGlobalSearch(spoken);
+          setWorldTriggerQuery(spoken);
+          setWorldSearchNonce((n) => n + 1);
+          navigateTab('explore');
+          showToast(`🔎 Buscando "${spoken}"!`);
+        }
+      };
+      rec.onerror = () => openFuturisticFeature('shazam');
+      rec.start();
+    } catch {
+      openFuturisticFeature('shazam');
+    }
+  }, [navigateTab, openFuturisticFeature, showToast]);
 
   // Fast Automatic Platform Update Listener + Manual 1-Click Update
   useEffect(() => {
@@ -1361,6 +1427,7 @@ export function App() {
       currentTrackRef.current = track;
       setActiveVersion(finalVersion);
       bgBackupUrlRef.current = '';
+      recordPlayHistoryItem(track);
 
       if (track.artist) {
         void recordRankingHit({
@@ -1649,12 +1716,42 @@ export function App() {
         if (fullNext) void handlePlayTrack(fullNext, 'v1', list);
         return;
       }
-      const next = list[(idx + 1) % list.length];
+      // Autoplay Infinito: quando chega ao fim, continua automaticamente sem silêncio
+      let next = list[(idx + 1) % list.length];
+      if (autoplayInfinite && idx >= list.length - 1 && tracks.length > 1) {
+        const alt = tracks.find((t) => t.id !== currentTrack.id);
+        if (alt) next = alt;
+      }
       if (next) void handlePlayTrack(next, 'v1', list);
     };
     audio.addEventListener('ended', onEnded);
     return () => audio.removeEventListener('ended', onEnded);
-  }, [currentTrack, tracks, handlePlayTrack]);
+  }, [currentTrack, tracks, handlePlayTrack, autoplayInfinite]);
+
+  // PC Keyboard Shortcuts (Espaço = Play/Pause, Setas = ±10s, M = Mudo, Shift+N/P = Próxima/Anterior)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.code === 'Space' && currentTrackRef.current) {
+        e.preventDefault();
+        void handleTogglePlay();
+      } else if (e.code === 'ArrowRight' && audioRef.current) {
+        audioRef.current.currentTime = Math.min(audioRef.current.duration || 0, audioRef.current.currentTime + 10);
+      } else if (e.code === 'ArrowLeft' && audioRef.current) {
+        audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+      } else if (e.key.toLowerCase() === 'm') {
+        setMuted((v) => !v);
+      } else if (e.shiftKey && e.key.toLowerCase() === 'n') {
+        handlePrevNext(1);
+      } else if (e.shiftKey && e.key.toLowerCase() === 'p') {
+        handlePrevNext(-1);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSelectVersion = (ver: AudioVersion) => {
     if (!currentTrack) return;
@@ -2127,14 +2224,15 @@ export function App() {
   };
 
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'catalog', label: 'Início', icon: <Home className="w-4 h-4" /> },
-    { id: 'reels', label: 'Shorts & Lives', icon: <Film className="w-4 h-4" /> },
-    { id: 'explore', label: 'Explorar', icon: <Compass className="w-4 h-4" /> },
+    { id: 'catalog', label: 'Início · Quebrada', icon: <Home className="w-4 h-4" /> },
+    { id: 'reels', label: 'Reels & Memes BR', icon: <Film className="w-4 h-4" /> },
+    { id: 'explore', label: 'Explorar Clipes', icon: <Compass className="w-4 h-4" /> },
+    { id: 'shop', label: 'Loja dos Cria', icon: <ShoppingBag className="w-4 h-4" /> },
     { id: 'movies', label: 'Cinema & Séries', icon: <Clapperboard className="w-4 h-4" /> },
     { id: 'sports', label: 'Futebol & UFC', icon: <Trophy className="w-4 h-4" /> },
-    { id: 'offline', label: 'Downloads Offline', icon: <Car className="w-4 h-4" /> },
+    { id: 'offline', label: 'Som Offline', icon: <Car className="w-4 h-4" /> },
     { id: 'search', label: 'Pesquisar', icon: <Search className="w-4 h-4" /> },
-    { id: 'playlists', label: 'Você · Playlists', icon: <ListMusic className="w-4 h-4" /> },
+    { id: 'playlists', label: 'Você · Listas', icon: <ListMusic className="w-4 h-4" /> },
   ];
 
   const clipSuggestions = useMemo(() => {
@@ -2181,9 +2279,9 @@ export function App() {
               <div className="font-logo text-2xl sm:text-3xl font-black tracking-[0.22em] text-white drop-shadow-[0_0_24px_rgba(34,211,238,0.55)]">
                 LENKYX
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-red-500/20 via-amber-400/20 to-emerald-500/20 border border-cyan-400/40 text-[11px] font-black text-cyan-100">
-                <span>🎄</span>
-                <span>Especial de Natal · Brasil 🇧🇷</span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500/20 via-pink-500/20 to-emerald-500/20 border border-cyan-400/50 text-[11px] font-black text-cyan-100">
+                <span>🤖</span>
+                <span>Salve, cria! Favela Tech 3D · Brasil 🇧🇷</span>
               </div>
             </div>
             <button
@@ -2192,9 +2290,9 @@ export function App() {
                 e.stopPropagation();
                 dismissEntrySplash(true);
               }}
-              className="mt-1 px-5 py-2 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-black text-xs font-black shadow-[0_0_26px_rgba(34,211,238,0.55)] hover:brightness-110 transition active:scale-95"
+              className="mt-1 px-5 py-2 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400 text-black text-xs font-black shadow-[0_0_26px_rgba(34,211,238,0.55)] hover:brightness-110 transition active:scale-95"
             >
-              Entrar · Som 3D ✨
+              Entrar no Baile · Som 3D ✨
             </button>
           </div>
         </div>
@@ -2204,15 +2302,15 @@ export function App() {
         <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
         <div
           onClick={handleBrandTap}
-          className="h-16 px-3.5 flex items-center justify-between border-b border-white/[0.08] cursor-pointer hover:bg-white/[0.03] select-none"
+          className="h-16 px-3.5 flex items-center justify-between border-b border-cyan-400/20 cursor-pointer hover:bg-white/[0.03] select-none"
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <LenkyxEdgeLogo size="sm" className="shrink-0" />
             <div className="min-w-0">
-              <span className="font-display text-sm font-black tracking-[0.14em] text-white block leading-none">
+              <span className="font-logo text-sm font-black tracking-[0.14em] text-white block leading-none">
                 LENKYX
               </span>
-              <span className="text-[9px] font-bold text-cyan-300/90">🎄 Natal Brasil 🇧🇷</span>
+              <span className="text-[9px] font-bold text-cyan-300/90">🤖 Favela Tech · Brasil 🇧🇷</span>
             </div>
           </div>
         </div>
@@ -2252,8 +2350,45 @@ export function App() {
               }`}
             >
               <Wand2 className="w-4 h-4 text-cyan-300" />
-              <span>Criar Música · Suno×DistroKid</span>
+              <span>Criar Som · IA</span>
             </button>
+          </div>
+
+          {/* Robô HUD Recursos Pro */}
+          <div className="space-y-1 pt-2 border-t border-cyan-400/15">
+            <div className="px-3 text-[9px] font-extrabold uppercase tracking-[0.2em] text-cyan-300/85 mb-1">
+              🤖 Central dos Cria
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 px-1">
+              <button
+                type="button"
+                onClick={() => openFuturisticFeature('shazam')}
+                className="py-1.5 px-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-400 hover:text-black border border-cyan-400/30 text-[10px] font-black text-cyan-100 transition truncate"
+              >
+                🎙️ Radar Som
+              </button>
+              <button
+                type="button"
+                onClick={() => openFuturisticFeature('jam')}
+                className="py-1.5 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-400 hover:text-black border border-emerald-400/30 text-[10px] font-black text-emerald-100 transition truncate"
+              >
+                🎧 Ouvir Junto
+              </button>
+              <button
+                type="button"
+                onClick={() => openFuturisticFeature('wrapped')}
+                className="py-1.5 px-2 rounded-xl bg-amber-500/15 hover:bg-amber-400 hover:text-black border border-amber-400/30 text-[10px] font-black text-amber-100 transition truncate"
+              >
+                📊 Seu Top BR
+              </button>
+              <button
+                type="button"
+                onClick={() => openFuturisticFeature('partners')}
+                className="py-1.5 px-2 rounded-xl bg-pink-500/15 hover:bg-pink-400 hover:text-black border border-pink-400/30 text-[10px] font-black text-pink-100 transition truncate"
+              >
+                🤝 Patrocínio
+              </button>
+            </div>
           </div>
 
           {/* Playlists Quick List */}
@@ -2400,6 +2535,14 @@ export function App() {
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
+              <button
+                type="button"
+                onClick={handleVoiceSearch}
+                className="p-1.5 rounded-full hover:bg-cyan-400/20 text-cyan-300 shrink-0 transition"
+                title="Busca por Voz (Fala aí, cria!)"
+              >
+                <Mic className="w-4 h-4" />
+              </button>
               <button
                 type="button"
                 onClick={() => openWebSearch(globalSearch || 'LENKYX', true)}
@@ -2551,6 +2694,50 @@ export function App() {
                     type="button"
                     onClick={() => {
                       setTopOverflowOpen(false);
+                      openFuturisticFeature('shazam');
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
+                  >
+                    <Mic className="w-4 h-4 text-cyan-300" />
+                    <span>Identificar Som (Radar)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTopOverflowOpen(false);
+                      openFuturisticFeature('jam');
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
+                  >
+                    <Radio className="w-4 h-4 text-emerald-300" />
+                    <span>Ouvir Junto (Sala Festa)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTopOverflowOpen(false);
+                      openFuturisticFeature('wrapped');
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
+                  >
+                    <Trophy className="w-4 h-4 text-amber-300" />
+                    <span>Seu Top Brasil & Histórico</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTopOverflowOpen(false);
+                      openFuturisticFeature('partners');
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
+                  >
+                    <Handshake className="w-4 h-4 text-pink-300" />
+                    <span>Convidar Canais & Patrocínio</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTopOverflowOpen(false);
                       void handleOneClickPcDownload();
                     }}
                     className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
@@ -2593,13 +2780,14 @@ export function App() {
           <div className="max-w-[1380px] mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar">
             {(
               [
-                { id: 'catalog' as TabId, label: 'Tudo' },
-                { id: 'reels' as TabId, label: 'Shorts' },
-                { id: 'explore' as TabId, label: 'Explorar' },
+                { id: 'catalog' as TabId, label: 'Tudo dos Cria' },
+                { id: 'reels' as TabId, label: 'Reels & Memes' },
+                { id: 'explore' as TabId, label: 'Clipes HD' },
+                { id: 'shop' as TabId, label: '🛍️ Loja dos Cria' },
                 { id: 'movies' as TabId, label: 'Cinema' },
                 { id: 'sports' as TabId, label: 'Ao Vivo' },
                 { id: 'offline' as TabId, label: 'Offline' },
-                { id: 'playlists' as TabId, label: 'Inscrições & Listas' },
+                { id: 'playlists' as TabId, label: 'Você' },
               ] as { id: TabId; label: string }[]
             ).map((chip) => {
               const active = activeTab === chip.id;
@@ -2700,7 +2888,7 @@ export function App() {
                       setEditingTrack(null);
                       setUploadModalOpen(true);
                     }}
-                    lyricsTrack={lyricsTrack}
+                    lyricsTrack={null}
                     onSetLyricsTrack={setLyricsTrack}
                     onCommentTrack={(t) =>
                       setCommentTarget({ id: `track:${t.id}`, title: `${t.title} — ${t.artist}` })
@@ -2715,7 +2903,7 @@ export function App() {
                   <Suspense
                     fallback={
                       <div className="py-16 text-center text-xs text-cyan-300 font-semibold">
-                        Carregando Reels & Lives...
+                        Carregando Reels & Memes dos Cria...
                       </div>
                     }
                   >
@@ -2725,13 +2913,18 @@ export function App() {
                       user={null}
                       initialAction={reelsAction}
                       actionNonce={reelsActionNonce}
+                      initialShortsQuery={shortsTriggerQuery}
+                      initialShortsNonce={shortsTriggerNonce}
                       onPlayTrack={(t) => void handlePlayTrack(t, 'v1', allTracksPool)}
                       onPauseCatalogPlayer={pauseCatalogPlayer}
                       onOpenUserAuth={() => setChatModalOpen(true)}
+                      onOpenPartners={() => openFuturisticFeature('partners')}
                       onToast={showToast}
                     />
                   </Suspense>
                 )}
+
+                {activeTab === 'shop' && <ShopCriaView onToast={showToast} />}
 
                 {activeTab === 'explore' && (
                   <WorldExploreView
@@ -3900,6 +4093,35 @@ export function App() {
         targetId={commentTarget?.id || ''}
         targetTitle={commentTarget?.title || ''}
         user={null}
+      />
+
+      <LyricsKaraokeModal
+        track={lyricsTrack}
+        currentTime={currentTime}
+        isPlaying={isPlaying}
+        onSeek={handleSeek}
+        onClose={() => setLyricsTrack(null)}
+      />
+
+      <FuturisticFeaturesModal
+        open={futuristicModalOpen}
+        initialTab={futuristicTab}
+        initialJamCode={initialJamCode}
+        user={null}
+        tracks={allTracksPool}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        officialSiteUrl={officialSiteUrl}
+        onClose={() => setFuturisticModalOpen(false)}
+        onPlayTrack={(t) => void handlePlayTrack(t, 'v1', allTracksPool)}
+        onSearchWorld={triggerWorldSearchDirect}
+        onOpenBrCreatorShorts={(q, label) => {
+          setShortsTriggerQuery(q);
+          setShortsTriggerNonce((n) => n + 1);
+          navigateTab('reels');
+          showToast(`🔥 Puxando ${label}!`);
+        }}
+        onToast={showToast}
       />
 
       {toast && (

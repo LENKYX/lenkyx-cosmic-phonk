@@ -35,6 +35,8 @@ import {
   OFFLINE_GENRE_FOLDERS,
   getOfflineGenrePack,
   CURATED_PLAYLISTS,
+  getBrCreatorsRanked,
+  voteBrCreator,
 } from './musicAI.js';
 import { getMoviesDirectory, searchMovies, getSeriesSeasonsAndEpisodes } from './moviesAI.js';
 import { getSportsDirectory, searchSports } from './sportsAI.js';
@@ -3481,6 +3483,125 @@ app.get('/tv/:code', (req, res) => {
 
 app.get('/app', (_req, res) => {
   res.redirect(302, '/?install=1');
+});
+
+// === v62: BRAZILIAN YOUTUBERS (MEMES & PEGADINHAS) TOP 1-5 ===
+app.get('/api/community/br-creators', (_req, res) => {
+  res.json(getBrCreatorsRanked());
+});
+
+app.post('/api/community/br-creators/vote', (req, res) => {
+  const id = String(req.body?.creatorId || '').trim();
+  const updated = voteBrCreator(id);
+  if (!updated) return res.status(404).json({ error: 'Criador não encontrado' });
+  return res.json(updated);
+});
+
+// === v62: SYNCED KARAOKE LYRICS RESOLVER (LRCLIB + Fallback) ===
+const lyricsApiCache = new Map();
+app.get('/api/lyrics', async (req, res) => {
+  const artist = String(req.query.artist || '').trim().slice(0, 100);
+  const title = String(req.query.title || '').trim().slice(0, 120);
+  if (!title) return res.json({ syncedLyrics: '', plainLyrics: '' });
+  const key = `${artist.toLowerCase()}|${title.toLowerCase()}`;
+  const cached = lyricsApiCache.get(key);
+  if (cached && Date.now() - cached.ts < 30 * 60 * 1000) {
+    return res.json(cached.data);
+  }
+  try {
+    const q = encodeURIComponent(`${artist} ${title}`.trim());
+    const r = await fetch(`https://lrclib.net/api/search?q=${q}`, {
+      headers: { 'User-Agent': 'LENKYX-App/6.2' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (r.ok) {
+      const arr = await r.json();
+      const first = Array.isArray(arr)
+        ? arr.find((x) => x?.syncedLyrics) || arr.find((x) => x?.plainLyrics) || arr[0]
+        : null;
+      const payload = {
+        syncedLyrics: String(first?.syncedLyrics || ''),
+        plainLyrics: String(first?.plainLyrics || ''),
+        trackName: String(first?.trackName || title),
+        artistName: String(first?.artistName || artist),
+      };
+      lyricsApiCache.set(key, { ts: Date.now(), data: payload });
+      return res.json(payload);
+    }
+  } catch {
+    // ignore network error
+  }
+  return res.json({ syncedLyrics: '', plainLyrics: '', trackName: title, artistName: artist });
+});
+
+// === v62: OUVIR JUNTO (SALA FESTA / JAM BRASIL) ===
+const jamRooms = new Map();
+
+app.post('/api/jam/create', (req, res) => {
+  const hostName = String(req.body?.hostName || 'Anfitrião BR').trim().slice(0, 40);
+  const track = req.body?.track || null;
+  const code = `LX-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  const room = {
+    code,
+    hostName,
+    track,
+    isPlaying: Boolean(track),
+    positionSec: Number(req.body?.positionSec || 0),
+    updatedAt: Date.now(),
+    queue: [],
+    members: [hostName],
+    messages: [
+      {
+        id: `jm-${Date.now()}`,
+        author: '🤖 LENKYX HUD',
+        text: `Sala ${code} criada por ${hostName}! Compartilhe o código para ouvir junto no Brasil.`,
+        ts: new Date().toISOString(),
+      },
+    ],
+  };
+  jamRooms.set(code, room);
+  return res.json(room);
+});
+
+app.get('/api/jam/:code', (req, res) => {
+  const code = String(req.params.code || '').toUpperCase().trim();
+  const room = jamRooms.get(code);
+  if (!room) return res.status(404).json({ error: 'Sala Jam não encontrada' });
+  return res.json(room);
+});
+
+app.post('/api/jam/:code/sync', (req, res) => {
+  const code = String(req.params.code || '').toUpperCase().trim();
+  const room = jamRooms.get(code);
+  if (!room) return res.status(404).json({ error: 'Sala Jam não encontrada' });
+  const { memberName, track, isPlaying, positionSec, addToQueue, chatText } = req.body || {};
+  if (memberName) {
+    const cleanMember = String(memberName).trim().slice(0, 32);
+    if (cleanMember && !room.members.includes(cleanMember)) {
+      room.members = [...room.members.slice(-29), cleanMember];
+    }
+  }
+  if (track !== undefined) room.track = track;
+  if (typeof isPlaying === 'boolean') room.isPlaying = isPlaying;
+  if (typeof positionSec === 'number' && Number.isFinite(positionSec)) room.positionSec = positionSec;
+  if (addToQueue && addToQueue.id) {
+    if (!room.queue.some((t) => t.id === addToQueue.id)) {
+      room.queue = [...room.queue.slice(-24), addToQueue];
+    }
+  }
+  if (chatText && String(chatText).trim()) {
+    room.messages = [
+      ...room.messages.slice(-49),
+      {
+        id: `jm-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        author: String(memberName || 'Ouvinte BR').slice(0, 32),
+        text: String(chatText).trim().slice(0, 260),
+        ts: new Date().toISOString(),
+      },
+    ];
+  }
+  room.updatedAt = Date.now();
+  return res.json(room);
 });
 
 // Serve built frontend with optimized mobile/desktop HTTP caching
