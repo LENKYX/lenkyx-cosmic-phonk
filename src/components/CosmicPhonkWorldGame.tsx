@@ -200,70 +200,269 @@ function buildMotorcycleMesh(colorHex: string): THREE.Group {
   return g;
 }
 
-function buildHumanMesh(shirtColor: string, isGuy = false): THREE.Group {
+const SKIN_TONES = ['#f5cfa0', '#e0ac69', '#c68642', '#8d5524', '#f1c27d', '#d2996c'];
+const HAIR_TONES = ['#18181b', '#3f2a1d', '#78350f', '#d97706', '#0f172a'];
+
+function buildHumanMesh(shirtColor: string, isGuy = false, variantIdx = 0): THREE.Group {
   const g = new THREE.Group();
-  const skin = new THREE.MeshStandardMaterial({ color: '#f1c27d', roughness: 0.65 });
+  const skinHex = isGuy ? '#f1c27d' : SKIN_TONES[variantIdx % SKIN_TONES.length];
+  const hairHex = isGuy ? '#3b2416' : HAIR_TONES[(variantIdx * 2) % HAIR_TONES.length];
+  const skin = new THREE.MeshStandardMaterial({ color: skinHex, roughness: 0.56, metalness: 0.04 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: hairHex, roughness: 0.72 });
   const shirt = new THREE.MeshStandardMaterial({
     color: shirtColor,
+    roughness: 0.68,
     emissive: isGuy ? new THREE.Color('#0284c7') : new THREE.Color('#000000'),
-    emissiveIntensity: isGuy ? 0.28 : 0,
+    emissiveIntensity: isGuy ? 0.16 : 0,
   });
-  const pants = new THREE.MeshStandardMaterial({ color: isGuy ? '#d6c096' : '#1e293b' });
+  const pants = new THREE.MeshStandardMaterial({
+    color: isGuy ? '#c8b288' : variantIdx % 2 === 0 ? '#1e293b' : '#334155',
+    roughness: 0.78,
+  });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: isGuy ? '#f8fafc' : '#0f172a', roughness: 0.5 });
 
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.78, 0.34), shirt);
-  torso.position.y = 1.15;
-  g.add(torso);
+  // Torso / Chest / Hips / Collar
+  const upperBody = new THREE.Group();
+  upperBody.name = 'torso';
+  upperBody.position.y = 0.88;
+  g.add(upperBody);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 14), skin);
-  head.position.y = 1.78;
-  g.add(head);
+  const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.145, 0.16, 14), pants);
+  pelvis.scale.set(1.25, 1, 0.82);
+  pelvis.position.y = 0.04;
+  upperBody.add(pelvis);
 
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.74, 0.24), pants);
-  legL.position.set(-0.16, 0.38, 0);
-  legL.name = 'legL';
-  g.add(legL);
+  const belt = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.16, 0.05, 14),
+    new THREE.MeshStandardMaterial({ color: '#09090b', roughness: 0.35, metalness: 0.4 })
+  );
+  belt.scale.set(1.25, 1, 0.84);
+  belt.position.y = 0.12;
+  upperBody.add(belt);
 
-  const legR = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.74, 0.24), pants);
-  legR.position.set(0.16, 0.38, 0);
-  legR.name = 'legR';
-  g.add(legR);
+  const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.195, 0.15, 0.44, 16), shirt);
+  chest.scale.set(1.28, 1, 0.78);
+  chest.position.y = 0.35;
+  upperBody.add(chest);
+
+  const shoulders = new THREE.Mesh(new THREE.SphereGeometry(0.21, 14, 12), shirt);
+  shoulders.scale.set(1.32, 0.5, 0.76);
+  shoulders.position.y = 0.54;
+  upperBody.add(shoulders);
 
   if (isGuy) {
+    const tie = new THREE.Mesh(
+      new THREE.BoxGeometry(0.055, 0.28, 0.03),
+      new THREE.MeshStandardMaterial({ color: '#1e3a8a', roughness: 0.5 })
+    );
+    tie.position.set(0, 0.39, 0.155);
+    upperBody.add(tie);
+  }
+
+  // Neck & Sculpted Realistic Head
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.072, 0.12, 12), skin);
+  neck.position.y = 0.62;
+  upperBody.add(neck);
+
+  const headPivot = new THREE.Group();
+  headPivot.name = 'head';
+  headPivot.position.y = 0.76;
+  upperBody.add(headPivot);
+
+  const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.145, 20, 18), skin);
+  cranium.scale.set(0.92, 1.12, 0.98);
+  headPivot.add(cranium);
+
+  const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.105, 14, 12), skin);
+  jaw.scale.set(0.88, 0.78, 0.92);
+  jaw.position.set(0, -0.06, 0.035);
+  headPivot.add(jaw);
+
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.055, 8), skin);
+  nose.rotation.x = Math.PI * 0.42;
+  nose.position.set(0, -0.005, 0.148);
+  headPivot.add(nose);
+
+  [-0.135, 0.135].forEach((ex) => {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 8), skin);
+    ear.scale.set(0.45, 1, 0.7);
+    ear.position.set(ex, 0.0, 0);
+    headPivot.add(ear);
+  });
+
+  // Eyes (sclera + iris) & Eyebrows & Mouth
+  const scleraMat = new THREE.MeshBasicMaterial({ color: '#f8fafc' });
+  const irisMat = new THREE.MeshBasicMaterial({ color: isGuy ? '#0ea5e9' : '#27272a' });
+  [-0.048, 0.048].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 10), scleraMat);
+    eye.position.set(ex, 0.025, 0.125);
+    headPivot.add(eye);
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 8), irisMat);
+    iris.position.set(ex, 0.025, 0.139);
+    headPivot.add(iris);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.01, 0.014), hairMat);
+    brow.position.set(ex, 0.056, 0.13);
+    headPivot.add(brow);
+  });
+
+  const mouth = new THREE.Mesh(
+    new THREE.BoxGeometry(0.052, 0.011, 0.012),
+    new THREE.MeshStandardMaterial({ color: '#9f4a44', roughness: 0.5 })
+  );
+  mouth.position.set(0, -0.065, 0.132);
+  headPivot.add(mouth);
+
+  // Hair Crown + Front Volume
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.152, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.56), hairMat);
+  hairCap.scale.set(0.95, 1.08, 1.02);
+  hairCap.position.set(0, 0.025, -0.01);
+  headPivot.add(hairCap);
+  const hairFront = new THREE.Mesh(new THREE.BoxGeometry(0.21, 0.055, 0.11), hairMat);
+  hairFront.position.set(0, 0.12, 0.065);
+  hairFront.rotation.x = -0.22;
+  headPivot.add(hairFront);
+
+  if (isGuy) {
+    // Realistic sunglasses & subtle Ground Aura
+    const glassFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.048, 0.03),
+      new THREE.MeshStandardMaterial({ color: '#09090b', metalness: 0.9, roughness: 0.15 })
+    );
+    glassFrame.position.set(0, 0.028, 0.145);
+    headPivot.add(glassFrame);
+
     const aura = new THREE.Mesh(
       new THREE.RingGeometry(0.55, 0.72, 24),
-      new THREE.MeshBasicMaterial({ color: '#38bdf8', side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+      new THREE.MeshBasicMaterial({ color: '#38bdf8', side: THREE.DoubleSide, transparent: true, opacity: 0.75 })
     );
     aura.rotation.x = Math.PI / 2;
     aura.position.y = 0.05;
     g.add(aura);
   }
+
+  // Articulated Arms (Shoulder Pivot -> Upper Arm -> Forearm -> Hand)
+  [-1, 1].forEach((side) => {
+    const armPivot = new THREE.Group();
+    armPivot.name = side < 0 ? 'armL' : 'armR';
+    armPivot.position.set(side * 0.27, 0.52, 0);
+    upperBody.add(armPivot);
+
+    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.048, 0.28, 10), shirt);
+    upperArm.position.y = -0.14;
+    armPivot.add(upperArm);
+
+    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.036, 0.25, 10), skin);
+    forearm.position.y = -0.39;
+    armPivot.add(forearm);
+
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.042, 10, 10), skin);
+    hand.scale.set(0.85, 1.15, 0.65);
+    hand.position.y = -0.53;
+    armPivot.add(hand);
+  });
+
+  // Articulated Legs (Hip Pivot -> Thigh -> Calf -> Sneaker)
+  [-1, 1].forEach((side) => {
+    const legPivot = new THREE.Group();
+    legPivot.name = side < 0 ? 'legL' : 'legR';
+    legPivot.position.set(side * 0.115, 0.88, 0);
+    g.add(legPivot);
+
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.066, 0.42, 12), pants);
+    thigh.position.y = -0.21;
+    legPivot.add(thigh);
+
+    const calf = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.048, 0.40, 12), pants);
+    calf.position.y = -0.61;
+    legPivot.add(calf);
+
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.09, 0.23), shoeMat);
+    shoe.position.set(0, -0.835, 0.045);
+    legPivot.add(shoe);
+  });
+
   return g;
+}
+
+function animateHumanRig(mesh: THREE.Group, walkSpeed: number, simTime: number, phaseOffset = 0) {
+  const legL = mesh.getObjectByName('legL');
+  const legR = mesh.getObjectByName('legR');
+  const armL = mesh.getObjectByName('armL');
+  const armR = mesh.getObjectByName('armR');
+  const torso = mesh.getObjectByName('torso');
+  const head = mesh.getObjectByName('head');
+
+  if (walkSpeed > 0.1) {
+    const stride = Math.sin(simTime * (6 + walkSpeed * 0.5) + phaseOffset);
+    const amp = Math.min(0.62, 0.25 + walkSpeed * 0.035);
+    if (legL) legL.rotation.x = stride * amp;
+    if (legR) legR.rotation.x = -stride * amp;
+    if (armL) armL.rotation.x = -stride * amp * 0.85;
+    if (armR) armR.rotation.x = stride * amp * 0.85;
+    if (torso) torso.position.y = 0.88 + Math.abs(stride) * 0.03;
+  } else {
+    if (legL) legL.rotation.x *= 0.85;
+    if (legR) legR.rotation.x *= 0.85;
+    if (armL) armL.rotation.x = Math.sin(simTime * 1.4 + phaseOffset) * 0.04;
+    if (armR) armR.rotation.x = -Math.sin(simTime * 1.4 + phaseOffset) * 0.04;
+    if (torso) torso.position.y = 0.88 + Math.sin(simTime * 2.1 + phaseOffset) * 0.008;
+    if (head) head.rotation.y = Math.sin(simTime * 0.9 + phaseOffset) * 0.16;
+  }
 }
 
 function buildAnimalMesh(kind: 'dog' | 'deer' | 'wolf'): THREE.Group {
   const g = new THREE.Group();
   const color = kind === 'deer' ? '#b45309' : kind === 'wolf' ? '#64748b' : '#d97706';
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.75 });
+  const bellyColor = kind === 'deer' ? '#fde68a' : kind === 'wolf' ? '#cbd5e1' : '#f3e8d2';
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.72 });
+  const bellyMat = new THREE.MeshStandardMaterial({ color: bellyColor, roughness: 0.75 });
   const scale = kind === 'deer' ? 1.25 : kind === 'wolf' ? 1.05 : 0.75;
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.45 * scale, 0.42 * scale, 0.95 * scale), mat);
-  body.position.y = 0.55 * scale;
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.21 * scale, 0.62 * scale, 8, 14), mat);
+  body.rotation.x = Math.PI / 2;
+  body.position.y = 0.56 * scale;
   g.add(body);
 
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.32 * scale, 0.32 * scale, 0.42 * scale), mat);
-  head.position.set(0, (kind === 'deer' ? 1.05 : 0.82) * scale, 0.52 * scale);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * scale, 0.14 * scale, 0.34 * scale, 10), mat);
+  neck.position.set(0, (kind === 'deer' ? 0.86 : 0.72) * scale, 0.38 * scale);
+  neck.rotation.x = 0.35;
+  g.add(neck);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.155 * scale, 14, 12), mat);
+  head.scale.set(0.85, 0.88, 1.25);
+  head.position.set(0, (kind === 'deer' ? 1.05 : 0.84) * scale, 0.52 * scale);
   g.add(head);
 
-  const legGeo = new THREE.BoxGeometry(0.12 * scale, 0.48 * scale, 0.12 * scale);
+  const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.055 * scale, 0.08 * scale, 0.16 * scale, 10), bellyMat);
+  snout.rotation.x = Math.PI / 2;
+  snout.position.set(0, (kind === 'deer' ? 1.01 : 0.81) * scale, 0.67 * scale);
+  g.add(snout);
+
+  [-0.085, 0.085].forEach((ex) => {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.045 * scale, 0.14 * scale, 6), mat);
+    ear.position.set(ex * scale, (kind === 'deer' ? 1.18 : 0.98) * scale, 0.46 * scale);
+    g.add(ear);
+  });
+
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * scale, 0.045 * scale, 0.34 * scale, 8), mat);
+  tail.rotation.x = -0.75;
+  tail.position.set(0, 0.62 * scale, -0.48 * scale);
+  g.add(tail);
+
+  const legGeo = new THREE.CylinderGeometry(0.052 * scale, 0.038 * scale, 0.48 * scale, 10);
   [
-    [-0.14, 0.24, 0.32],
-    [0.14, 0.24, 0.32],
-    [-0.14, 0.24, -0.32],
-    [0.14, 0.24, -0.32],
-  ].forEach(([x, y, z]) => {
+    [-0.13, 0.46, 0.28],
+    [0.13, 0.46, 0.28],
+    [-0.13, 0.46, -0.28],
+    [0.13, 0.46, -0.28],
+  ].forEach(([x, y, z], idx) => {
+    const legPivot = new THREE.Group();
+    legPivot.name = `leg${idx}`;
+    legPivot.position.set(x * scale, y * scale, z * scale);
     const leg = new THREE.Mesh(legGeo, mat);
-    leg.position.set(x * scale, y * scale, z * scale);
-    g.add(leg);
+    leg.position.y = -0.22 * scale;
+    legPivot.add(leg);
+    g.add(legPivot);
   });
   return g;
 }
@@ -751,7 +950,7 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
     }
 
     // Free Guy (Self-Aware Hero NPC) + Autonomous City Citizens
-    const guyMesh = buildHumanMesh('#0ea5e9', true);
+    const guyMesh = buildHumanMesh('#38bdf8', true, 0);
     const guyPos = new THREE.Vector3(6, 0, 12);
     guyMesh.position.copy(guyPos);
     scene.add(guyMesh);
@@ -759,7 +958,7 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
     const npcs: { mesh: THREE.Group; pos: THREE.Vector3; dir: number; speed: number }[] = [];
     const npcColors = ['#f43f5e', '#10b981', '#eab308', '#a855f7', '#fb923c'];
     for (let n = 0; n < 12; n++) {
-      const nm = buildHumanMesh(npcColors[n % npcColors.length], false);
+      const nm = buildHumanMesh(npcColors[n % npcColors.length], false, n + 1);
       const pos = new THREE.Vector3(-40 + (n % 5) * 20, 0, -40 + Math.floor(n / 5) * 32);
       nm.position.copy(pos);
       scene.add(nm);
@@ -767,7 +966,7 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
     }
 
     // Player Avatar (Jogador Nº 1 / Free City Explorer)
-    const playerMesh = buildHumanMesh('#22d3ee', false);
+    const playerMesh = buildHumanMesh('#0f172a', false, 2);
     const playerPos = new THREE.Vector3(0, 0, 16);
     let playerYaw = Math.PI;
     playerMesh.position.copy(playerPos);
@@ -941,12 +1140,9 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
           playerPos.z += Math.cos(playerYaw) * walkSpd * moveMag * dt;
           playerPos.x = Math.max(-105, Math.min(105, playerPos.x));
           playerPos.z = Math.max(-105, Math.min(85, playerPos.z));
-          const lL = playerMesh.getObjectByName('legL');
-          const lR = playerMesh.getObjectByName('legR');
-          if (lL && lR) {
-            lL.rotation.x = Math.sin(sim * 10) * 0.55;
-            lR.rotation.x = -Math.sin(sim * 10) * 0.55;
-          }
+          animateHumanRig(playerMesh, walkSpd * moveMag, sim, 0);
+        } else {
+          animateHumanRig(playerMesh, 0, sim, 0);
         }
         playerMesh.position.copy(playerPos);
         playerMesh.rotation.y = playerYaw;
@@ -967,19 +1163,21 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
         v.mesh.position.copy(v.pos);
       }
 
-      // Free Guy & Citizens Autonomous Life
+      // Free Guy & Citizens Autonomous Life (Realistic Walking + Arm Swing)
       const guyAng = sim * 0.25;
       guyPos.set(6 + Math.cos(guyAng) * 10, 0, 12 + Math.sin(guyAng) * 10);
       guyMesh.position.copy(guyPos);
       guyMesh.rotation.y = -guyAng;
+      animateHumanRig(guyMesh, 2.5, sim, 1.2);
 
-      for (const n of npcs) {
+      npcs.forEach((n, idx) => {
         n.pos.x += Math.sin(n.dir) * n.speed * dt;
         n.pos.z += Math.cos(n.dir) * n.speed * dt;
         if (Math.abs(n.pos.x) > 85 || Math.abs(n.pos.z) > 72) n.dir += Math.PI * 0.85;
         n.mesh.position.copy(n.pos);
         n.mesh.rotation.y = n.dir;
-      }
+        animateHumanRig(n.mesh, n.speed, sim, idx * 0.7);
+      });
 
       // Living Ecosystem Animations (Insects, Birds, Animals, Fish)
       for (const ins of insects) {
@@ -998,7 +1196,8 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
         );
         bd.group.rotation.y = -a;
       }
-      for (const an of animals) {
+      for (let i = 0; i < animals.length; i++) {
+        const an = animals[i];
         const distPlayer = an.pos.distanceTo(playerPos);
         if (distPlayer < 6.5 && activeVehicle && Math.abs(activeVehicle.speed) > 4) {
           an.dir = Math.atan2(an.pos.x - playerPos.x, an.pos.z - playerPos.z);
@@ -1010,6 +1209,15 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
         }
         an.mesh.position.copy(an.pos);
         an.mesh.rotation.y = an.dir;
+        const g0 = an.mesh.getObjectByName('leg0');
+        const g1 = an.mesh.getObjectByName('leg1');
+        const g2 = an.mesh.getObjectByName('leg2');
+        const g3 = an.mesh.getObjectByName('leg3');
+        const gait = Math.sin(sim * 7 + i) * 0.42;
+        if (g0) g0.rotation.x = gait;
+        if (g1) g1.rotation.x = -gait;
+        if (g2) g2.rotation.x = -gait;
+        if (g3) g3.rotation.x = gait;
       }
       for (const fi of fishes) {
         fi.mesh.position.x = fi.x0 + Math.sin(sim * 0.9 + fi.phase) * 6;
