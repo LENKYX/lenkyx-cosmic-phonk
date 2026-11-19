@@ -12,22 +12,25 @@ import {
   Mountain,
   Sparkles,
   Shuffle,
+  Eye,
+  EyeOff,
+  ChevronRight,
 } from 'lucide-react';
 import { Track } from '../types';
 
 export type VisualizerThemeId =
-  | 'galaxy_spectrum'
+  | 'galaxy_nebula'
   | 'galaxy_portal'
   | 'fire_solar'
   | 'fire_lava'
-  | 'fire_embers'
+  | 'fire_plasma'
   | 'water_ocean'
   | 'water_rain'
   | 'water_storm'
   | 'wind_aurora'
-  | 'wind_tornado'
-  | 'wind_petals'
-  | 'earth_crystals'
+  | 'wind_vortex'
+  | 'wind_stream'
+  | 'earth_crystal'
   | 'earth_forest'
   | 'earth_dunes';
 
@@ -35,24 +38,25 @@ interface ThemeDef {
   id: VisualizerThemeId;
   label: string;
   element: 'galaxy' | 'fire' | 'water' | 'wind' | 'earth';
-  accent: string;
+  shaderMode: number; // 0=galaxy, 1=fire, 2=water, 3=wind, 4=earth
+  variant: number; // 0, 1, 2
 }
 
 const THEMES: ThemeDef[] = [
-  { id: 'galaxy_spectrum', label: 'Galáxia Neon', element: 'galaxy', accent: '#38bdf8' },
-  { id: 'galaxy_portal', label: 'Portal 3D', element: 'galaxy', accent: '#ec4899' },
-  { id: 'fire_solar', label: 'Chama Solar', element: 'fire', accent: '#f97316' },
-  { id: 'fire_lava', label: 'Lava Vulcânica', element: 'fire', accent: '#ef4444' },
-  { id: 'fire_embers', label: 'Brasas Vivas', element: 'fire', accent: '#fb923c' },
-  { id: 'water_ocean', label: 'Ondas Oceano', element: 'water', accent: '#06b6d4' },
-  { id: 'water_rain', label: 'Chuva Neon', element: 'water', accent: '#3b82f6' },
-  { id: 'water_storm', label: 'Tempestade', element: 'water', accent: '#60a5fa' },
-  { id: 'wind_aurora', label: 'Aurora Boreal', element: 'wind', accent: '#34d399' },
-  { id: 'wind_tornado', label: 'Vórtice Vento', element: 'wind', accent: '#a7f3d0' },
-  { id: 'wind_petals', label: 'Brisa Cósmica', element: 'wind', accent: '#f472b6' },
-  { id: 'earth_crystals', label: 'Cristais Terra', element: 'earth', accent: '#a855f7' },
-  { id: 'earth_forest', label: 'Floresta Luz', element: 'earth', accent: '#4ade80' },
-  { id: 'earth_dunes', label: 'Dunas Douradas', element: 'earth', accent: '#facc15' },
+  { id: 'galaxy_nebula', label: 'Nebulosa Quântica', element: 'galaxy', shaderMode: 0, variant: 0 },
+  { id: 'galaxy_portal', label: 'Horizonte de Eventos 3D', element: 'galaxy', shaderMode: 0, variant: 1 },
+  { id: 'fire_solar', label: 'Tempestade Solar', element: 'fire', shaderMode: 1, variant: 0 },
+  { id: 'fire_lava', label: 'Magma Vulcânico', element: 'fire', shaderMode: 1, variant: 1 },
+  { id: 'fire_plasma', label: 'Plasma Azul', element: 'fire', shaderMode: 1, variant: 2 },
+  { id: 'water_ocean', label: 'Oceano Bioluminescente', element: 'water', shaderMode: 2, variant: 0 },
+  { id: 'water_rain', label: 'Reflexo Chuva 4K', element: 'water', shaderMode: 2, variant: 1 },
+  { id: 'water_storm', label: 'Tempestade Elétrica', element: 'water', shaderMode: 2, variant: 2 },
+  { id: 'wind_aurora', label: 'Aurora Boreal 3D', element: 'wind', shaderMode: 3, variant: 0 },
+  { id: 'wind_vortex', label: 'Túnel Aerodinâmico', element: 'wind', shaderMode: 3, variant: 1 },
+  { id: 'wind_stream', label: 'Correntes Estratosféricas', element: 'wind', shaderMode: 3, variant: 2 },
+  { id: 'earth_crystal', label: 'Prismas de Quartzo', element: 'earth', shaderMode: 4, variant: 0 },
+  { id: 'earth_forest', label: 'Floresta Bioluminescente', element: 'earth', shaderMode: 4, variant: 1 },
+  { id: 'earth_dunes', label: 'Dunas Douradas', element: 'earth', shaderMode: 4, variant: 2 },
 ];
 
 const ELEMENTS: { id: ThemeDef['element']; label: string; icon: React.ReactNode }[] = [
@@ -63,6 +67,259 @@ const ELEMENTS: { id: ThemeDef['element']; label: string; icon: React.ReactNode 
   { id: 'earth', label: 'Terra', icon: <Mountain className="w-3.5 h-3.5" /> },
 ];
 
+const VERTEX_SHADER = `
+attribute vec2 a_pos;
+varying vec2 v_uv;
+void main() {
+  v_uv = a_pos * 0.5 + 0.5;
+  gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+`;
+
+// Photorealistic High-Tech Procedural Volumetric & Fluid Shader (FBM, Caustics, Accretion Disk, Aurora, Refraction)
+const FRAGMENT_SHADER = `
+#ifdef GL_ES
+precision highp float;
+#endif
+
+varying vec2 v_uv;
+uniform vec2 u_res;
+uniform float u_time;
+uniform float u_bass;
+uniform float u_mid;
+uniform float u_treble;
+uniform float u_mode;
+uniform float u_variant;
+uniform float u_hueShift;
+uniform vec2 u_pointer;
+uniform float u_pointerGlow;
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+  for (int i = 0; i < 5; i++) {
+    v += a * noise(p);
+    p = rot * p * 2.04 + vec2(1.7, 9.2);
+    a *= 0.5;
+  }
+  return v;
+}
+
+vec3 hsl2rgb(vec3 c) {
+  vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+  return c.z + c.y * (rgb - 0.5) * (1.0 - abs(2.0 * c.z - 1.0));
+}
+
+vec3 hueRotate(vec3 col, float angle) {
+  float s = sin(angle);
+  float c = cos(angle);
+  vec3 k = vec3(0.57735);
+  return col * c + cross(k, col) * s + k * dot(k, col) * (1.0 - c);
+}
+
+void main() {
+  vec2 uv = (gl_FragCoord.xy - 0.5 * u_res) / min(u_res.x, u_res.y);
+  vec2 ptr = (u_pointer - vec2(0.5)) * (u_res / min(u_res.x, u_res.y));
+  float pDist = length(uv - ptr);
+  float ptrForce = exp(-pDist * 3.2) * u_pointerGlow;
+
+  // Gravitational/acoustic warp from pointer + bass
+  vec2 warpDir = normalize(uv - ptr + vec2(0.0001));
+  vec2 p = uv - warpDir * ptrForce * 0.14;
+
+  float t = u_time;
+  float bass = u_bass;
+  float mid = u_mid;
+  float treble = u_treble;
+  vec3 col = vec3(0.0);
+
+  if (u_mode < 0.5) {
+    // === 0: GALAXY NEBULA / QUANTUM BLACK HOLE ===
+    float r = length(p);
+    float ang = atan(p.y, p.x);
+    float swirl = ang + (1.2 / (r + 0.25)) + t * (0.28 + bass * 0.35);
+    vec2 q = vec2(cos(swirl), sin(swirl)) * r;
+    float n1 = fbm(q * 2.8 - vec2(t * 0.22, 0.0));
+    float n2 = fbm(p * 4.5 + vec2(n1 * 1.4, t * 0.18));
+    float nebula = smoothstep(0.18, 0.88, n1 * 0.6 + n2 * 0.55);
+
+    vec3 cA = vec3(0.05, 0.65, 0.98);
+    vec3 cB = vec3(0.88, 0.18, 0.72);
+    vec3 cC = vec3(0.22, 0.95, 0.78);
+    col = mix(vec3(0.01, 0.01, 0.04), mix(cA, cB, n2), nebula * (0.65 + bass * 0.75));
+    col += cC * pow(nebula, 3.0) * (0.4 + treble * 0.9);
+
+    if (u_variant > 0.5) {
+      // Event Horizon 3D Black Hole Ring
+      float ringR = 0.24 + bass * 0.08 + ptrForce * 0.05;
+      float ring = exp(-abs(r - ringR) * (24.0 - bass * 10.0));
+      float hole = smoothstep(ringR * 0.75, ringR * 0.98, r);
+      col *= hole;
+      col += vec3(0.95, 0.68, 1.0) * ring * (1.2 + bass * 1.4);
+      col += vec3(0.15, 0.85, 1.0) * exp(-abs(r - ringR * 1.35) * 18.0) * (0.5 + mid);
+    }
+
+    // Crisp Starfield + Spectral Rays
+    float stars = pow(hash21(floor(uv * 180.0 + floor(t * 0.2))), 24.0);
+    col += vec3(0.9, 0.95, 1.0) * stars * (0.8 + treble * 2.2);
+    float ray = pow(max(0.0, sin(ang * 12.0 + t * 2.0)), 8.0) * exp(-r * 2.6);
+    col += mix(cA, cB, 0.5) * ray * (0.25 + bass * 0.85);
+
+  } else if (u_mode < 1.5) {
+    // === 1: PHOTOREALISTIC TURBULENT FIRE / MAGMA / BLUE PLASMA ===
+    vec2 fp = p * vec2(1.4, 0.85);
+    fp.y += 0.35;
+    float turb = fbm(fp * 3.2 - vec2(0.0, t * (1.35 + bass * 1.1)));
+    float turb2 = fbm(fp * 6.4 - vec2(turb * 1.6, t * 2.1));
+    float flame = clamp((1.15 - (fp.y + 0.45)) * 0.95 + (turb * 0.72 + turb2 * 0.48 - 0.55) + bass * 0.35, 0.0, 1.4);
+    float core = smoothstep(0.45, 1.15, flame);
+    float outer = smoothstep(0.15, 0.75, flame);
+
+    if (u_variant > 1.5) {
+      // Blue Ion Plasma Flame
+      col = mix(vec3(0.01, 0.02, 0.06), vec3(0.05, 0.42, 0.98), outer);
+      col = mix(col, vec3(0.38, 0.95, 1.0), core);
+      col += vec3(0.92, 0.98, 1.0) * pow(core, 3.0) * (0.8 + bass);
+    } else if (u_variant > 0.5) {
+      // Volcanic Magma Cracks
+      float crack = abs(turb - 0.5) * 2.0;
+      float glow = exp(-crack * (8.0 - bass * 4.0));
+      col = vec3(0.04, 0.01, 0.01) + vec3(1.0, 0.22, 0.02) * glow * (1.1 + bass * 1.2);
+      col += vec3(1.0, 0.88, 0.35) * pow(glow, 3.0) * (0.6 + treble);
+    } else {
+      // Solar Fire Plume
+      col = mix(vec3(0.04, 0.01, 0.01), vec3(0.95, 0.18, 0.02), outer);
+      col = mix(col, vec3(1.0, 0.62, 0.08), core);
+      col += vec3(1.0, 0.96, 0.75) * pow(core, 3.4) * (0.9 + bass * 1.1);
+    }
+
+    // Incandescent Rising Embers
+    vec2 euv = uv * vec2(26.0, 14.0) - vec2(sin(t + uv.y * 4.0) * 0.6, t * 2.6);
+    float ember = pow(hash21(floor(euv)), 18.0) * smoothstep(0.35, 0.0, length(fract(euv) - vec2(0.5)));
+    col += vec3(1.0, 0.72, 0.25) * ember * (1.4 + treble * 2.5);
+
+  } else if (u_mode < 2.5) {
+    // === 2: REALISTIC WATER OCEAN / CAUSTICS / ELECTRIC STORM ===
+    float horizon = 0.08 + sin(p.x * 1.6 + t * 0.4) * 0.02;
+    if (p.y < horizon || u_variant > 0.5 && u_variant < 1.5) {
+      // Deep realistic ocean caustics + reflective waves
+      vec2 wp = vec2(p.x / (0.28 + abs(p.y - horizon)), 1.0 / (0.14 + abs(p.y - horizon)));
+      float w1 = fbm(wp * 0.9 + vec2(t * 0.45, -t * 0.75));
+      float w2 = fbm(wp * 1.9 - vec2(t * 0.62, t * 0.5));
+      float caustic = pow(clamp(1.0 - abs(w1 - w2) * 3.2, 0.0, 1.0), 3.0);
+      float spec = pow(max(0.0, 1.0 - abs(p.x) * 1.8), 4.0) * smoothstep(0.45, 0.95, w1);
+
+      vec3 deepSea = vec3(0.01, 0.07, 0.16);
+      vec3 cyanWave = vec3(0.04, 0.58, 0.82);
+      col = mix(deepSea, cyanWave, w1 * 0.55 + bass * 0.25);
+      col += vec3(0.38, 0.95, 1.0) * caustic * (0.65 + bass * 1.15);
+      col += vec3(0.85, 0.97, 1.0) * spec * (0.55 + mid * 0.85);
+    } else {
+      // Bioluminescent Night Sky & Moonlit Atmosphere
+      float skyN = fbm(p * 3.0 + vec2(t * 0.08, 0.0));
+      col = mix(vec3(0.01, 0.03, 0.09), vec3(0.04, 0.16, 0.34), skyN);
+      float moon = exp(-length(p - vec2(0.0, 0.26)) * (7.5 - bass * 2.0));
+      col += vec3(0.45, 0.86, 1.0) * moon * (0.9 + bass * 0.8);
+    }
+
+    // Touch / Beat Water Ripples
+    float ripple = sin(pDist * 42.0 - t * 9.0) * exp(-pDist * 4.5) * (0.25 + ptrForce + bass * 0.4);
+    col += vec3(0.35, 0.92, 1.0) * max(0.0, ripple);
+
+    if (u_variant > 1.5) {
+      // Electric Storm Lightning Bolt Flash on Bass Drops
+      float boltX = p.x + fbm(vec2(p.y * 5.0, floor(t * 6.0))) * 0.28 - 0.14;
+      float bolt = exp(-abs(boltX) * 48.0) * smoothstep(0.42, 0.95, bass);
+      col += vec3(0.75, 0.92, 1.0) * bolt * 1.8;
+    }
+
+  } else if (u_mode < 3.5) {
+    // === 3: VOLUMETRIC WIND / AURORA BOREALIS / AERODYNAMIC STREAM ===
+    if (u_variant < 0.5) {
+      // Realistic 3D Volumetric Aurora Borealis Curtains
+      vec3 sky = mix(vec3(0.01, 0.02, 0.06), vec3(0.02, 0.08, 0.14), p.y + 0.5);
+      col = sky;
+      for (int i = 0; i < 4; i++) {
+        float fi = float(i);
+        float curve = sin(p.x * (2.2 + fi * 0.5) + t * (0.45 + fi * 0.12)) * 0.22
+                    + fbm(vec2(p.x * 2.0 + t * 0.18, fi * 3.1)) * 0.35;
+        float dist = abs(p.y - (curve - 0.05 + fi * 0.06));
+        float curtain = exp(-dist * (8.5 - bass * 3.2)) * smoothstep(-0.35, 0.45, p.y + 0.25);
+        vec3 aurCol = mix(vec3(0.08, 0.95, 0.58), vec3(0.45, 0.35, 0.98), fi / 3.0 + mid * 0.4);
+        col += aurCol * curtain * (0.48 + bass * 0.65);
+      }
+    } else {
+      // High-Tech Aerodynamic Wind Tunnel / Vortex Ribbons
+      float ang = atan(p.y, p.x);
+      float r = length(p);
+      float spiral = u_variant < 1.5
+        ? sin(r * 18.0 - t * (3.5 + bass * 3.0) + ang * 3.0)
+        : sin((p.y + fbm(p * 2.5 - vec2(t * 1.4, 0.0)) * 0.45) * 16.0);
+      float ribbon = pow(max(0.0, spiral), 4.0);
+      vec3 wCol = mix(vec3(0.05, 0.78, 0.85), vec3(0.65, 0.98, 0.85), treble);
+      col = vec3(0.01, 0.04, 0.08) + wCol * ribbon * (0.6 + bass * 0.9);
+      col += vec3(0.85, 0.45, 0.98) * exp(-r * 3.0) * (0.3 + bass * 0.7);
+    }
+
+  } else {
+    // === 4: EARTH / QUARTZ CRYSTALS / BIOLUMINESCENT FOREST / GOLDEN DUNES ===
+    if (u_variant < 0.5) {
+      // Specular 3D Faceted Quartz Crystals
+      vec2 cp = p * (3.2 - bass * 0.6);
+      float cell = fbm(floor(cp * 2.0) * 0.7 + t * 0.08);
+      float facet = abs(sin(cp.x * 3.1 + cell * 4.0) * cos(cp.y * 3.1 - t * 0.4));
+      float edge = exp(-facet * 10.0);
+      vec3 c1 = vec3(0.42, 0.14, 0.92);
+      vec3 c2 = vec3(0.12, 0.88, 0.95);
+      col = mix(vec3(0.03, 0.01, 0.08), mix(c1, c2, cell), 0.45 + bass * 0.45);
+      col += vec3(0.95, 0.88, 1.0) * edge * (0.75 + treble * 1.2);
+    } else if (u_variant < 1.5) {
+      // Bioluminescent Light Forest + Volumetric God Rays
+      float canopy = fbm(p * 3.5 + vec2(t * 0.15, 0.0));
+      float rays = pow(max(0.0, sin((p.x + p.y * 0.45) * 9.0 + canopy * 2.5)), 5.0);
+      col = mix(vec3(0.01, 0.05, 0.03), vec3(0.06, 0.48, 0.24), canopy);
+      col += vec3(0.32, 0.98, 0.58) * rays * (0.45 + bass * 0.75);
+      float spores = pow(hash21(floor(uv * 55.0 - vec2(0.0, t * 1.5))), 16.0);
+      col += vec3(0.75, 1.0, 0.45) * spores * (1.2 + treble * 2.0);
+    } else {
+      // Sculpted Golden Desert Dunes
+      float d1 = fbm(vec2(p.x * 2.2 - t * 0.25, p.y * 4.0));
+      float ridge = smoothstep(0.42, 0.58, d1 + sin(p.x * 4.0 - t * 0.6) * 0.08);
+      col = mix(vec3(0.12, 0.05, 0.02), vec3(0.96, 0.64, 0.18), ridge * (0.7 + bass * 0.45));
+      col += vec3(1.0, 0.92, 0.65) * pow(ridge, 4.0) * (0.35 + treble * 0.65);
+    }
+  }
+
+  // Interactive Pointer Energy Glow + Subtle Dynamic Color Shift
+  col += hsl2rgb(vec3(fract(u_hueShift * 0.15), 0.9, 0.62)) * ptrForce * 0.85;
+  col = hueRotate(col, u_hueShift * 0.35);
+
+  // Cinematic Vignette + Tone Mapping
+  float vig = 1.0 - dot(uv, uv) * 0.32;
+  col *= clamp(vig, 0.35, 1.0);
+  col = col / (1.0 + col * 0.35);
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -72,18 +329,6 @@ interface Props {
   onTogglePlay: () => void;
   onPrev: () => void;
   onNext: () => void;
-}
-
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  life: number;
-  maxLife: number;
-  hue: number;
-  seed: number;
 }
 
 export const AudioVisualizerModal: React.FC<Props> = ({
@@ -97,553 +342,357 @@ export const AudioVisualizerModal: React.FC<Props> = ({
   onNext,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [themeId, setThemeId] = useState<VisualizerThemeId>('wind_aurora');
+  const [themeId, setThemeId] = useState<VisualizerThemeId>('water_ocean');
   const [autoCycle, setAutoCycle] = useState(true);
-  const [activeElement, setActiveElement] = useState<ThemeDef['element'] | 'all'>('all');
+  const [hudHidden, setHudHidden] = useState(false);
 
-  const themeRef = useRef<VisualizerThemeId>(themeId);
-  themeRef.current = themeId;
+  const activeTheme = THEMES.find((t) => t.id === themeId) || THEMES[0];
+  const themeRef = useRef(activeTheme);
+  themeRef.current = activeTheme;
+
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
   const analyserRef = useRef(analyser);
   analyserRef.current = analyser;
-  const pointerRef = useRef<{ x: number; y: number; active: boolean; speed: number }>({
+  const autoCycleRef = useRef(autoCycle);
+  autoCycleRef.current = autoCycle;
+
+  const pointerRef = useRef<{ x: number; y: number; glow: number }>({
     x: 0.5,
     y: 0.5,
-    active: false,
-    speed: 0,
+    glow: 0,
   });
 
-  // Auto-cycle smoothly across themes & colors while music plays
+  // Smooth Auto-Cycle across effects & color harmonies when enabled
   useEffect(() => {
     if (!open || !autoCycle || !isPlaying) return;
-    const pool =
-      activeElement === 'all' ? THEMES : THEMES.filter((t) => t.element === activeElement);
-    if (pool.length <= 1) return;
     const timer = window.setInterval(() => {
       setThemeId((cur) => {
-        const idx = pool.findIndex((t) => t.id === cur);
-        return pool[(idx + 1) % pool.length].id;
+        const curObj = THEMES.find((t) => t.id === cur);
+        const sameElement = THEMES.filter((t) => t.element === curObj?.element);
+        if (sameElement.length > 1) {
+          const i = sameElement.findIndex((t) => t.id === cur);
+          return sameElement[(i + 1) % sameElement.length].id;
+        }
+        const idx = THEMES.findIndex((t) => t.id === cur);
+        return THEMES[(idx + 1) % THEMES.length].id;
       });
-    }, 9000);
+    }, 10000);
     return () => window.clearInterval(timer);
-  }, [open, autoCycle, isPlaying, activeElement]);
+  }, [open, autoCycle, isPlaying]);
 
-  // Main Fullscreen 60fps Audio-Reactive & Interactive Canvas Engine
+  const handleSelectElement = (el: ThemeDef['element']) => {
+    const group = THEMES.filter((t) => t.element === el);
+    if (!group.length) return;
+    if (activeTheme.element === el) {
+      const idx = group.findIndex((t) => t.id === activeTheme.id);
+      setThemeId(group[(idx + 1) % group.length].id);
+    } else {
+      setThemeId(group[0].id);
+    }
+  };
+
+  const handleCycleVariant = () => {
+    const group = THEMES.filter((t) => t.element === activeTheme.element);
+    const idx = group.findIndex((t) => t.id === activeTheme.id);
+    setThemeId(group[(idx + 1) % group.length].id);
+  };
+
+  // GPU WebGL Shader Render Loop (with smooth 2D fallback if WebGL context is unavailable)
   useEffect(() => {
     if (!open) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+
+    const gl =
+      canvas.getContext('webgl2', { antialias: false, powerPreference: 'high-performance' }) ||
+      canvas.getContext('webgl', { antialias: false, powerPreference: 'high-performance' });
 
     let raf = 0;
-    let phase = 0;
-    let hueShift = 0;
+    let timeAcc = 0;
+    let hueAcc = 0;
+    let smoothBass = 0;
+    let smoothMid = 0;
+    let smoothTreble = 0;
     const freqData = new Uint8Array(64);
-    const particles: Particle[] = [];
 
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.floor(window.innerWidth * dpr);
-      canvas.height = Math.floor(window.innerHeight * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    const spawn = (x: number, y: number, vx: number, vy: number, size: number, hue: number, maxLife = 80) => {
-      if (particles.length > 260) particles.shift();
-      particles.push({ x, y, vx, vy, size, life: 0, maxLife, hue, seed: Math.random() * 10 });
-    };
-
-    const render = () => {
-      raf = requestAnimationFrame(render);
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      const playing = isPlayingRef.current;
-      const mode = themeRef.current;
-
-      // Sample real audio frequencies or dynamic beat envelope
-      let bass = 0;
-      let mid = 0;
-      let treble = 0;
-      const an = analyserRef.current;
-      if (an && playing) {
-        an.getByteFrequencyData(freqData);
-        for (let i = 0; i < 8; i++) bass += freqData[i];
-        for (let i = 8; i < 24; i++) mid += freqData[i];
-        for (let i = 24; i < 48; i++) treble += freqData[i];
-        bass /= 8 * 255;
-        mid /= 16 * 255;
-        treble /= 24 * 255;
-      }
-
-      // Fallback energetic beat synthesis if external stream (e.g. YouTube iframe) lacks CORS AudioContext access
-      if (playing && bass < 0.03) {
-        const beat = Math.pow(Math.abs(Math.sin(phase * 2.1)), 3);
-        bass = 0.25 + beat * 0.65;
-        mid = 0.2 + Math.abs(Math.sin(phase * 1.4 + 1)) * 0.5;
-        treble = 0.15 + Math.abs(Math.cos(phase * 3.2)) * 0.45;
-        for (let i = 0; i < 64; i++) {
-          const wave = Math.abs(Math.sin(phase * 2.4 + i * 0.35)) * Math.abs(Math.cos(phase * 0.9 - i * 0.12));
-          freqData[i] = Math.min(255, Math.floor((0.25 + wave * 0.75) * 240));
+    if (gl) {
+      const compile = (type: number, src: string) => {
+        const s = gl.createShader(type);
+        if (!s) return null;
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+          gl.deleteShader(s);
+          return null;
         }
-      } else if (!playing) {
-        bass *= 0.9;
-        mid *= 0.9;
-        treble *= 0.9;
+        return s;
+      };
+
+      const vs = compile(gl.VERTEX_SHADER, VERTEX_SHADER);
+      const fs = compile(gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+      const prog = gl.createProgram();
+      let linked = false;
+      if (vs && fs && prog) {
+        gl.attachShader(prog, vs);
+        gl.attachShader(prog, fs);
+        gl.linkProgram(prog);
+        linked = Boolean(gl.getProgramParameter(prog, gl.LINK_STATUS));
       }
+      if (vs && fs && prog && linked) {
+        gl.useProgram(prog);
 
-      phase += playing ? 0.035 + bass * 0.05 : 0.008;
-      hueShift = (hueShift + (playing ? 0.5 + bass * 1.6 : 0.1)) % 360;
+        const buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+          gl.STATIC_DRAW
+        );
+        const aPos = gl.getAttribLocation(prog, 'a_pos');
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
-      // Motion-blur trail clear
-      ctx.fillStyle = mode.startsWith('fire')
-        ? 'rgba(14, 4, 2, 0.22)'
-        : mode.startsWith('water')
-          ? 'rgba(2, 10, 24, 0.2)'
-          : mode.startsWith('wind')
-            ? 'rgba(4, 14, 18, 0.2)'
-            : mode.startsWith('earth')
-              ? 'rgba(10, 8, 18, 0.22)'
-              : 'rgba(6, 3, 18, 0.22)';
+        const uRes = gl.getUniformLocation(prog, 'u_res');
+        const uTime = gl.getUniformLocation(prog, 'u_time');
+        const uBass = gl.getUniformLocation(prog, 'u_bass');
+        const uMid = gl.getUniformLocation(prog, 'u_mid');
+        const uTreble = gl.getUniformLocation(prog, 'u_treble');
+        const uMode = gl.getUniformLocation(prog, 'u_mode');
+        const uVariant = gl.getUniformLocation(prog, 'u_variant');
+        const uHueShift = gl.getUniformLocation(prog, 'u_hueShift');
+        const uPointer = gl.getUniformLocation(prog, 'u_pointer');
+        const uPointerGlow = gl.getUniformLocation(prog, 'u_pointerGlow');
+
+        const resize = () => {
+          const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+          canvas.width = Math.floor(window.innerWidth * dpr);
+          canvas.height = Math.floor(window.innerHeight * dpr);
+          gl.viewport(0, 0, canvas.width, canvas.height);
+        };
+        resize();
+        window.addEventListener('resize', resize);
+
+        const frame = () => {
+          raf = requestAnimationFrame(frame);
+          const playing = isPlayingRef.current;
+          let b = 0;
+          let m = 0;
+          let tr = 0;
+          const an = analyserRef.current;
+          if (an && playing) {
+            an.getByteFrequencyData(freqData);
+            for (let i = 0; i < 8; i++) b += freqData[i];
+            for (let i = 8; i < 24; i++) m += freqData[i];
+            for (let i = 24; i < 48; i++) tr += freqData[i];
+            b /= 8 * 255;
+            m /= 16 * 255;
+            tr /= 24 * 255;
+          }
+          if (playing && b < 0.03) {
+            const pulse = Math.pow(Math.abs(Math.sin(timeAcc * 2.2)), 3);
+            b = 0.25 + pulse * 0.65;
+            m = 0.22 + Math.abs(Math.sin(timeAcc * 1.45 + 0.9)) * 0.5;
+            tr = 0.18 + Math.abs(Math.cos(timeAcc * 3.1)) * 0.45;
+          }
+
+          smoothBass = smoothBass * 0.78 + b * 0.22;
+          smoothMid = smoothMid * 0.8 + m * 0.2;
+          smoothTreble = smoothTreble * 0.76 + tr * 0.24;
+
+          timeAcc += playing ? 0.016 + smoothBass * 0.028 : 0.005;
+          if (autoCycleRef.current && playing) {
+            hueAcc += 0.006 + smoothBass * 0.014;
+          }
+          pointerRef.current.glow *= 0.94;
+
+          const cur = themeRef.current;
+          gl.uniform2f(uRes, canvas.width, canvas.height);
+          gl.uniform1f(uTime, timeAcc);
+          gl.uniform1f(uBass, smoothBass);
+          gl.uniform1f(uMid, smoothMid);
+          gl.uniform1f(uTreble, smoothTreble);
+          gl.uniform1f(uMode, cur.shaderMode);
+          gl.uniform1f(uVariant, cur.variant);
+          gl.uniform1f(uHueShift, hueAcc);
+          gl.uniform2f(uPointer, pointerRef.current.x, 1.0 - pointerRef.current.y);
+          gl.uniform1f(uPointerGlow, pointerRef.current.glow);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+        };
+
+        raf = requestAnimationFrame(frame);
+        return () => {
+          cancelAnimationFrame(raf);
+          window.removeEventListener('resize', resize);
+        };
+      }
+    }
+
+    // Minimal 2D Fallback if WebGL disabled
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const draw2d = () => {
+      raf = requestAnimationFrame(draw2d);
+      const w = (canvas.width = window.innerWidth);
+      const h = (canvas.height = window.innerHeight);
+      timeAcc += 0.025;
+      const g = ctx.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, Math.max(w, h) * 0.6);
+      g.addColorStop(0, `hsla(${(timeAcc * 40) % 360}, 90%, 52%, 0.45)`);
+      g.addColorStop(1, '#04020e');
+      ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
-
-      const cx = w / 2;
-      const cy = h / 2;
-
-      // Pointer interactive bursts
-      if (pointerRef.current.active) {
-        const px = pointerRef.current.x * w;
-        const py = pointerRef.current.y * h;
-        const baseHue = mode.startsWith('fire')
-          ? 18
-          : mode.startsWith('water')
-            ? 198
-            : mode.startsWith('wind')
-              ? 155
-              : mode.startsWith('earth')
-                ? 48
-                : hueShift;
-        for (let k = 0; k < 3; k++) {
-          const ang = Math.random() * Math.PI * 2;
-          const spd = 1.5 + Math.random() * 3.5 + bass * 4;
-          spawn(px, py, Math.cos(ang) * spd, Math.sin(ang) * spd, 2.5 + bass * 5, baseHue + Math.random() * 40, 55);
-        }
-      }
-
-      // === RENDER ELEMENT-SPECIFIC AUDIO-REACTIVE ART ===
-      if (mode === 'fire_solar' || mode === 'fire_lava' || mode === 'fire_embers') {
-        // Rising flame tongues + ember particles
-        const count = mode === 'fire_embers' ? 4 : 3;
-        for (let i = 0; i < count + Math.floor(bass * 6); i++) {
-          const sx = mode === 'fire_solar' ? cx + (Math.random() - 0.5) * 180 : Math.random() * w;
-          const sy = mode === 'fire_solar' ? cy + (Math.random() - 0.5) * 120 : h + 10;
-          const hue = mode === 'fire_lava' ? (Math.random() * 25) : 10 + Math.random() * 35;
-          spawn(
-            sx,
-            sy,
-            (Math.random() - 0.5) * (1.8 + mid * 3),
-            -(2.2 + Math.random() * 4 + bass * 7),
-            3 + Math.random() * 6 + bass * 6,
-            hue,
-            70 + Math.random() * 40
-          );
-        }
-        // Flame wave ribbons at bottom
-        for (let layer = 0; layer < 3; layer++) {
-          ctx.beginPath();
-          ctx.moveTo(0, h);
-          for (let x = 0; x <= w; x += 24) {
-            const idx = Math.floor((x / w) * 48) % 64;
-            const amp = (freqData[idx] / 255) * (120 + layer * 45) * (0.6 + bass);
-            const y = h - 40 - layer * 35 - amp - Math.sin(x * 0.015 + phase * (2 + layer)) * 25;
-            ctx.lineTo(x, y);
-          }
-          ctx.lineTo(w, h);
-          ctx.closePath();
-          const g = ctx.createLinearGradient(0, h - 260, 0, h);
-          g.addColorStop(0, `hsla(${15 + layer * 14}, 100%, 58%, ${0.28 + bass * 0.25})`);
-          g.addColorStop(1, 'hsla(0, 90%, 25%, 0.05)');
-          ctx.fillStyle = g;
-          ctx.fill();
-        }
-      } else if (mode === 'water_ocean' || mode === 'water_rain' || mode === 'water_storm') {
-        if (mode === 'water_rain' || mode === 'water_storm') {
-          for (let i = 0; i < 4 + Math.floor(treble * 8); i++) {
-            spawn(
-              Math.random() * w,
-              -10,
-              -1.5 - mid * 2,
-              9 + Math.random() * 8 + bass * 8,
-              1.6 + Math.random() * 2,
-              195 + Math.random() * 30,
-              65
-            );
-          }
-          if (mode === 'water_storm' && bass > 0.72 && Math.random() > 0.72) {
-            // Lightning bolt flash!
-            ctx.save();
-            ctx.strokeStyle = 'rgba(186, 230, 253, 0.85)';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            let lx = Math.random() * w;
-            let ly = 0;
-            ctx.moveTo(lx, ly);
-            while (ly < h * 0.65) {
-              lx += (Math.random() - 0.5) * 70;
-              ly += 28 + Math.random() * 35;
-              ctx.lineTo(lx, ly);
-            }
-            ctx.stroke();
-            ctx.restore();
-          }
-        }
-        // Flowing bioluminescent ocean waves
-        for (let layer = 0; layer < 4; layer++) {
-          ctx.beginPath();
-          ctx.moveTo(0, h);
-          const baseY = h * (0.48 + layer * 0.11);
-          for (let x = 0; x <= w; x += 18) {
-            const fIdx = Math.floor((x / w) * 40) % 64;
-            const fBoost = (freqData[fIdx] / 255) * (65 + bass * 65);
-            const y =
-              baseY +
-              Math.sin(x * 0.008 + phase * (1.5 + layer * 0.4) + layer) * (24 + mid * 45) -
-              fBoost * 0.45;
-            ctx.lineTo(x, y);
-          }
-          ctx.lineTo(w, h);
-          ctx.closePath();
-          const wg = ctx.createLinearGradient(0, baseY - 60, 0, h);
-          wg.addColorStop(0, `hsla(${188 + layer * 10 + (hueShift % 20)}, 92%, 58%, ${0.26 + bass * 0.2})`);
-          wg.addColorStop(1, 'hsla(215, 85%, 18%, 0.08)');
-          ctx.fillStyle = wg;
-          ctx.fill();
-        }
-      } else if (mode === 'wind_aurora' || mode === 'wind_tornado' || mode === 'wind_petals') {
-        if (mode === 'wind_aurora') {
-          // Flowing northern lights curtains
-          for (let c = 0; c < 4; c++) {
-            ctx.beginPath();
-            for (let x = 0; x <= w; x += 22) {
-              const fIdx = Math.floor((x / w) * 50) % 64;
-              const amp = (freqData[fIdx] / 255) * (95 + bass * 90);
-              const y =
-                h * (0.28 + c * 0.12) +
-                Math.sin(x * 0.006 + phase * (1.2 + c * 0.3)) * 55 -
-                amp * 0.6;
-              if (x === 0) ctx.moveTo(x, y);
-              else ctx.lineTo(x, y);
-            }
-            ctx.strokeStyle = `hsla(${(145 + c * 35 + hueShift * 0.4) % 360}, 95%, 64%, ${0.35 + bass * 0.35})`;
-            ctx.lineWidth = 14 + bass * 22;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-          }
-        } else if (mode === 'wind_tornado') {
-          for (let ring = 0; ring < 14; ring++) {
-            const y = h * 0.15 + (ring / 14) * h * 0.72;
-            const r = (35 + ring * 22) * (0.75 + bass * 0.6);
-            ctx.beginPath();
-            ctx.ellipse(
-              cx + Math.sin(phase * 2 + ring * 0.5) * (35 + mid * 45),
-              y,
-              r,
-              r * 0.25,
-              Math.sin(phase + ring * 0.2) * 0.2,
-              0,
-              Math.PI * 2
-            );
-            ctx.strokeStyle = `hsla(${(165 + ring * 10 + hueShift * 0.5) % 360}, 90%, 66%, ${0.35 + bass * 0.35})`;
-            ctx.lineWidth = 2.5 + bass * 3;
-            ctx.stroke();
-          }
-        } else {
-          for (let i = 0; i < 3 + Math.floor(mid * 5); i++) {
-            spawn(
-              -10,
-              Math.random() * h,
-              3.5 + Math.random() * 4 + bass * 6,
-              (Math.random() - 0.5) * 2.5,
-              4 + Math.random() * 5,
-              310 + Math.random() * 60,
-              95
-            );
-          }
-        }
-      } else if (mode === 'earth_crystals' || mode === 'earth_forest' || mode === 'earth_dunes') {
-        if (mode === 'earth_crystals') {
-          // Geometric rotating crystal ring reacting to bass
-          const shards = 24;
-          for (let i = 0; i < shards; i++) {
-            const ang = (i / shards) * Math.PI * 2 + phase * 0.35;
-            const amp = (freqData[i % 48] / 255) * (110 + bass * 110);
-            const r1 = 80 + bass * 40;
-            const r2 = r1 + 35 + amp;
-            ctx.beginPath();
-            ctx.moveTo(cx + Math.cos(ang - 0.08) * r1, cy + Math.sin(ang - 0.08) * r1);
-            ctx.lineTo(cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
-            ctx.lineTo(cx + Math.cos(ang + 0.08) * r1, cy + Math.sin(ang + 0.08) * r1);
-            ctx.closePath();
-            ctx.fillStyle = `hsla(${(265 + i * 8 + hueShift * 0.3) % 360}, 88%, 64%, 0.55)`;
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-          }
-        } else if (mode === 'earth_forest') {
-          for (let i = 0; i < 2 + Math.floor(treble * 5); i++) {
-            spawn(
-              Math.random() * w,
-              h - Math.random() * h * 0.5,
-              (Math.random() - 0.5) * 1.4,
-              -0.8 - Math.random() * 2 - bass * 2,
-              3 + Math.random() * 5 + bass * 4,
-              110 + Math.random() * 55,
-              90
-            );
-          }
-          // Glowing forest hills
-          for (let l = 0; l < 3; l++) {
-            ctx.beginPath();
-            ctx.moveTo(0, h);
-            for (let x = 0; x <= w; x += 28) {
-              const f = (freqData[Math.floor((x / w) * 32)] / 255) * 55;
-              const y = h * (0.62 + l * 0.1) - Math.sin(x * 0.005 + l * 2 + phase * 0.3) * 45 - f * bass;
-              ctx.lineTo(x, y);
-            }
-            ctx.lineTo(w, h);
-            ctx.closePath();
-            ctx.fillStyle = `hsla(${135 + l * 15}, 75%, ${36 - l * 7}%, 0.38)`;
-            ctx.fill();
-          }
-        } else {
-          // Golden desert dunes undulating to bass
-          for (let l = 0; l < 4; l++) {
-            ctx.beginPath();
-            ctx.moveTo(0, h);
-            for (let x = 0; x <= w; x += 24) {
-              const f = (freqData[Math.floor((x / w) * 40)] / 255) * 65 * (0.5 + bass);
-              const y = h * (0.52 + l * 0.11) + Math.sin(x * 0.007 - phase * 0.7 + l) * 35 - f;
-              ctx.lineTo(x, y);
-            }
-            ctx.lineTo(w, h);
-            ctx.closePath();
-            ctx.fillStyle = `hsla(${36 + l * 6}, 90%, ${55 - l * 9}%, 0.34)`;
-            ctx.fill();
-          }
-        }
-      } else {
-        // Galaxy Spectrum / Portal 3D
-        const bars = 48;
-        const baseRadius = Math.min(w, h) * 0.17 + bass * 38;
-        for (let i = 0; i < bars; i++) {
-          const ang = (i / bars) * Math.PI * 2 + (mode === 'galaxy_portal' ? phase * 0.6 : 0);
-          const mag = (freqData[i % 64] / 255) * (95 + bass * 130);
-          const x1 = cx + Math.cos(ang) * baseRadius;
-          const y1 = cy + Math.sin(ang) * baseRadius;
-          const x2 = cx + Math.cos(ang) * (baseRadius + 16 + mag);
-          const y2 = cy + Math.sin(ang) * (baseRadius + 16 + mag);
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.strokeStyle = `hsla(${(hueShift + i * 6) % 360}, 95%, 64%, 0.9)`;
-          ctx.lineWidth = Math.max(3, (w / 220) * (mode === 'galaxy_portal' ? 1.2 : 1));
-          ctx.lineCap = 'round';
-          ctx.stroke();
-        }
-        ctx.beginPath();
-        ctx.arc(cx, cy, baseRadius * 0.85, 0, Math.PI * 2);
-        ctx.strokeStyle = `hsla(${(hueShift + 180) % 360}, 95%, 65%, ${0.35 + bass * 0.5})`;
-        ctx.lineWidth = 3 + bass * 4;
-        ctx.stroke();
-      }
-
-      // Update & draw all active particles
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.life++;
-        if (p.life >= p.maxLife) {
-          particles.splice(i, 1);
-          continue;
-        }
-        p.x += p.vx;
-        p.y += p.vy;
-        const alpha = 1 - p.life / p.maxLife;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * (0.5 + alpha * 0.7), 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${(p.hue + hueShift * 0.25) % 360}, 95%, 64%, ${alpha * 0.88})`;
-        ctx.fill();
-      }
     };
-
-    raf = requestAnimationFrame(render);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
-    };
+    raf = requestAnimationFrame(draw2d);
+    return () => cancelAnimationFrame(raf);
   }, [open]);
 
   if (!open) return null;
 
-  const visibleThemes =
-    activeElement === 'all' ? THEMES : THEMES.filter((t) => t.element === activeElement);
-
   return createPortal(
     <div className="fixed inset-0 z-[9995] bg-[#04020e] flex flex-col justify-between overflow-hidden select-none">
-      {/* Interactive Fullscreen Canvas */}
+      {/* GPU High-Tech Shader Stage */}
       <canvas
         ref={canvasRef}
         onPointerMove={(e) => {
           pointerRef.current = {
             x: e.clientX / Math.max(1, window.innerWidth),
             y: e.clientY / Math.max(1, window.innerHeight),
-            active: true,
-            speed: 1,
+            glow: 1.0,
           };
         }}
         onPointerDown={(e) => {
           pointerRef.current = {
             x: e.clientX / Math.max(1, window.innerWidth),
             y: e.clientY / Math.max(1, window.innerHeight),
-            active: true,
-            speed: 1.5,
+            glow: 1.6,
           };
-        }}
-        onPointerUp={() => {
-          pointerRef.current.active = false;
-        }}
-        onPointerLeave={() => {
-          pointerRef.current.active = false;
         }}
         className="absolute inset-0 w-full h-full touch-none cursor-crosshair"
       />
 
-      {/* Top Clean Controls */}
-      <div className="relative z-10 p-3 sm:p-5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          {track && (
-            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-xl border border-white/15 min-w-0">
-              <img
-                src={track.coverUrl}
-                alt={track.title}
-                className="w-7 h-7 rounded-full object-cover shrink-0"
-              />
-              <div className="min-w-0">
-                <div className="text-xs font-black text-white truncate max-w-[160px] sm:max-w-[260px]">
-                  {track.title}
-                </div>
-                <div className="text-[10px] text-cyan-200/80 truncate">{track.artist}</div>
+      {/* Minimal Top Bar */}
+      <div className="relative z-10 p-3 sm:p-5 flex items-center justify-between gap-3">
+        {!hudHidden && track ? (
+          <div className="flex items-center gap-2.5 pl-1.5 pr-3.5 py-1.5 rounded-full bg-black/45 backdrop-blur-2xl border border-white/15 shadow-xl min-w-0">
+            <img
+              src={track.coverUrl}
+              alt={track.title}
+              className={`w-8 h-8 rounded-full object-cover shrink-0 ${isPlaying ? 'animate-spin' : ''}`}
+              style={{ animationDuration: '9s' }}
+            />
+            <div className="min-w-0">
+              <div className="text-xs font-black text-white truncate max-w-[160px] sm:max-w-[260px]">
+                {track.title}
               </div>
+              <div className="text-[10px] font-semibold text-cyan-200/85 truncate">{track.artist}</div>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div />
+        )}
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {!hudHidden && (
+            <button
+              type="button"
+              onClick={() => setAutoCycle((v) => !v)}
+              className={`px-3 py-1.5 rounded-full text-[11px] font-black flex items-center gap-1.5 border backdrop-blur-2xl transition ${
+                autoCycle
+                  ? 'bg-emerald-400/20 border-emerald-400/55 text-emerald-200'
+                  : 'bg-black/45 border-white/15 text-slate-200 hover:bg-white/10'
+              }`}
+            >
+              <Shuffle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{autoCycle ? 'Auto: ON' : 'Auto'}</span>
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setAutoCycle((v) => !v)}
-            className={`px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 border backdrop-blur-md transition ${
-              autoCycle
-                ? 'bg-emerald-400/25 border-emerald-400/60 text-emerald-200'
-                : 'bg-black/45 border-white/15 text-slate-200'
-            }`}
+            onClick={() => setHudHidden((v) => !v)}
+            className="p-2 rounded-full bg-black/45 hover:bg-white/15 backdrop-blur-2xl border border-white/15 text-white/90 transition"
+            title={hudHidden ? 'Mostrar Menu' : 'Ocultar Menu'}
           >
-            <Shuffle className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{autoCycle ? 'Auto Cores: ON' : 'Auto Cores'}</span>
+            {hudHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full bg-black/55 hover:bg-rose-500/80 backdrop-blur-md border border-white/20 text-white transition"
+            className="p-2 rounded-full bg-black/50 hover:bg-rose-500/80 backdrop-blur-2xl border border-white/20 text-white transition"
             title="Fechar"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Bottom Element & Playback Controls */}
-      <div className="relative z-10 p-3 sm:p-5 space-y-2.5 bg-gradient-to-t from-black/85 via-black/45 to-transparent">
-        {/* Element Family Filter */}
-        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setActiveElement('all')}
-            className={`px-3 py-1 rounded-full text-[11px] font-black transition ${
-              activeElement === 'all'
-                ? 'bg-white text-black'
-                : 'bg-white/10 text-purple-100 hover:bg-white/20'
-            }`}
-          >
-            Todos
-          </button>
-          {ELEMENTS.map((el) => (
-            <button
-              key={el.id}
-              type="button"
-              onClick={() => {
-                setActiveElement(el.id);
-                const first = THEMES.find((t) => t.element === el.id);
-                if (first) setThemeId(first.id);
-              }}
-              className={`px-3 py-1 rounded-full text-[11px] font-black flex items-center gap-1 transition ${
-                activeElement === el.id
-                  ? 'bg-gradient-to-r from-cyan-400 to-pink-500 text-black'
-                  : 'bg-white/10 text-purple-100 hover:bg-white/20'
-              }`}
-            >
-              {el.icon}
-              <span>{el.label}</span>
-            </button>
-          ))}
-        </div>
+      {/* Unified Realistic Glass Dock (Zero Scrollbars, Zero Stacked Clutter) */}
+      {!hudHidden && (
+        <div className="relative z-10 px-3 pb-4 sm:pb-6 flex justify-center">
+          <div className="w-full max-w-2xl rounded-3xl bg-[#070514]/70 backdrop-blur-2xl border border-white/15 shadow-[0_24px_70px_rgba(0,0,0,0.85)] px-3.5 py-3 flex flex-col gap-3">
+            {/* Row 1: 5 Clean Element Buttons + Active Preset Cycle */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                {ELEMENTS.map((el) => {
+                  const active = activeTheme.element === el.id;
+                  return (
+                    <button
+                      key={el.id}
+                      type="button"
+                      onClick={() => handleSelectElement(el.id)}
+                      className={`px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] font-black flex items-center gap-1.5 transition ${
+                        active
+                          ? 'bg-white text-black shadow-[0_0_18px_rgba(255,255,255,0.4)]'
+                          : 'bg-white/[0.07] hover:bg-white/15 text-slate-200 border border-white/10'
+                      }`}
+                    >
+                      {el.icon}
+                      <span>{el.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-        {/* Specific Variation Chips */}
-        <div className="flex items-center justify-start sm:justify-center gap-1.5 overflow-x-auto pb-1">
-          {visibleThemes.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setThemeId(t.id)}
-              className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap border transition shrink-0 ${
-                themeId === t.id
-                  ? 'bg-white/25 border-white text-white shadow'
-                  : 'bg-black/45 border-white/15 text-purple-100/80 hover:bg-white/15'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+              <button
+                type="button"
+                onClick={handleCycleVariant}
+                className="px-3 py-1.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-100 text-[11px] font-bold flex items-center gap-1 transition shrink-0"
+                title="Trocar variação deste elemento"
+              >
+                <span>{activeTheme.label}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-cyan-300" />
+              </button>
+            </div>
 
-        {/* Playback Transport */}
-        <div className="flex items-center justify-center gap-4 pt-1">
-          <button
-            type="button"
-            onClick={onPrev}
-            className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition"
-          >
-            <SkipBack className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onTogglePlay}
-            className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-[0_0_28px_rgba(255,255,255,0.4)] hover:scale-105 transition"
-          >
-            {isPlaying ? <Pause className="w-5 h-5 fill-black" /> : <Play className="w-5 h-5 fill-black ml-0.5" />}
-          </button>
-          <button
-            type="button"
-            onClick={onNext}
-            className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition"
-          >
-            <SkipForward className="w-4 h-4" />
-          </button>
+            {/* Row 2: Sleek Centered Playback Controls */}
+            <div className="flex items-center justify-center gap-5 pt-0.5 border-t border-white/10">
+              <button
+                type="button"
+                onClick={onPrev}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+                title="Anterior"
+              >
+                <SkipBack className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onTogglePlay}
+                className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center shadow-[0_0_24px_rgba(255,255,255,0.45)] hover:scale-105 transition"
+                title={isPlaying ? 'Pausar' : 'Tocar'}
+              >
+                {isPlaying ? <Pause className="w-5 h-5 fill-black" /> : <Play className="w-5 h-5 fill-black ml-0.5" />}
+              </button>
+              <button
+                type="button"
+                onClick={onNext}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+                title="Próxima"
+              >
+                <SkipForward className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>,
     document.body
   );
