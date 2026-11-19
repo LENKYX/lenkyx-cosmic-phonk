@@ -111,6 +111,12 @@ const CosmicSearchView = React.lazy(() =>
 const OfflineTravelView = React.lazy(() =>
   import('./components/OfflineTravelView').then((m) => ({ default: m.OfflineTravelView }))
 );
+const GalaxyUniverseView = React.lazy(() =>
+  import('./components/GalaxyUniverseView').then((m) => ({ default: m.GalaxyUniverseView }))
+);
+const ArcadeView = React.lazy(() =>
+  import('./components/ArcadeView').then((m) => ({ default: m.ArcadeView }))
+);
 import { BassBoostLevel, MiniPlayer } from './components/MiniPlayer';
 import { LegalTermsModal } from './components/LegalTermsModal';
 import { MobileIosSearchModal } from './components/MobileIosSearchModal';
@@ -177,7 +183,7 @@ export function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabId>('catalog');
+  const [activeTab, setActiveTab] = useState<TabId>('galaxy');
   const [tabHistory, setTabHistory] = useState<TabId[]>([]);
 
   // Real-time online listeners & Daily PIX Goal
@@ -275,7 +281,7 @@ export function App() {
       setTabHistory((h) => [...h.slice(-15), prev]);
       return next;
     });
-    if (['reels', 'movies', 'sports', 'studio', 'search', 'arcade'].includes(next)) {
+    if (['galaxy', 'reels', 'movies', 'sports', 'studio', 'search', 'arcade'].includes(next)) {
       setMusicMenuOpen(false);
     }
     window.requestAnimationFrame(() => {
@@ -290,7 +296,7 @@ export function App() {
         setActiveTab(last);
         return h.slice(0, -1);
       }
-      setActiveTab('catalog');
+      setActiveTab('galaxy');
       return h;
     });
   }, []);
@@ -2079,10 +2085,13 @@ export function App() {
   };
 
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
+    { id: 'galaxy', label: 'Galáxia 3D', icon: <Sparkles className="w-4 h-4" /> },
     { id: 'catalog', label: 'Som LENKYX', icon: <Music className="w-4 h-4" /> },
+    { id: 'reels', label: 'Reels & Lives', icon: <Film className="w-4 h-4" /> },
     { id: 'explore', label: 'Artistas & Clipes', icon: <Globe2 className="w-4 h-4" /> },
     { id: 'movies', label: 'Cinema & Séries', icon: <Clapperboard className="w-4 h-4" /> },
     { id: 'sports', label: 'Futebol & UFC', icon: <Trophy className="w-4 h-4" /> },
+    { id: 'arcade', label: 'Jogos Arcade', icon: <Gamepad2 className="w-4 h-4" /> },
     { id: 'offline', label: 'Viagem & Offline', icon: <Car className="w-4 h-4" /> },
     { id: 'search', label: 'Busca Rápida', icon: <Search className="w-4 h-4" /> },
     { id: 'playlists', label: 'Minhas Playlists', icon: <ListMusic className="w-4 h-4" /> },
@@ -2285,7 +2294,7 @@ export function App() {
         {/* TOP HEADER (YouTube Mobile & Desktop Clean Clockwork Architecture) */}
         <header className="shrink-0 z-30 mx-2.5 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-2.5 sm:px-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 shrink-0 min-w-0">
-            {(tabHistory.length > 0 || activeTab !== 'catalog') && (
+            {(tabHistory.length > 0 || activeTab !== 'galaxy') && (
               <button
                 onClick={goBackTab}
                 className="p-1.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition shrink-0"
@@ -2509,6 +2518,7 @@ export function App() {
           <div className="max-w-[1380px] mx-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {(
               [
+                { id: 'galaxy' as TabId, label: '🌌 Galáxia' },
                 { id: 'catalog' as TabId, label: '🎵 Músicas' },
                 { id: 'reels' as TabId, label: '🎬 Reels & Lives' },
                 { id: 'explore' as TabId, label: '🌍 Clipes & Artistas' },
@@ -2583,6 +2593,24 @@ export function App() {
               </div>
             ) : (
               <>
+                {activeTab === 'galaxy' && (
+                  <Suspense
+                    fallback={
+                      <div className="py-24 text-center text-xs text-cyan-300 font-semibold">
+                        Entrando na Galáxia LENKYX...
+                      </div>
+                    }
+                  >
+                    <GalaxyUniverseView
+                      currentTrack={currentTrack}
+                      isPlaying={isPlaying}
+                      onNavigateTab={navigateTab}
+                      onOpenVisualizer={() => setVisualizerOpen(true)}
+                      onToast={showToast}
+                    />
+                  </Suspense>
+                )}
+
                 {activeTab === 'catalog' && (
                   <CatalogView
                     tracks={globalSearch.trim() ? tracks : rankTracksBySmartTaste(tracks)}
@@ -2760,6 +2788,8 @@ export function App() {
                       onToast={showToast}
                     />
                   )}
+
+                  {activeTab === 'arcade' && <ArcadeView user={null} onToast={showToast} />}
                 </Suspense>
               </>
             )}
@@ -2768,7 +2798,7 @@ export function App() {
       </div>
 
       {/* ON-DEMAND MUSIC PLAYER BAR: Shown ONLY when actively playing music in music sections! */}
-      {!watchingMovie && isPlayerAllowedTab && !['reels', 'movies', 'sports', 'studio', 'search', 'arcade'].includes(activeTab) && currentTrack && isPlaying && musicMenuOpen && (
+      {!watchingMovie && isPlayerAllowedTab && !['galaxy', 'reels', 'movies', 'sports', 'studio', 'search', 'arcade'].includes(activeTab) && currentTrack && isPlaying && musicMenuOpen && (
         <MiniPlayer
           track={currentTrack}
           activeVersion={activeVersion}
@@ -2838,7 +2868,7 @@ export function App() {
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#070312]/96 backdrop-blur-2xl border-t border-white/10 grid grid-cols-5 px-2">
           {(
             [
-              { id: 'catalog' as TabId, label: 'Início', icon: <Music className="w-4 h-4" /> },
+              { id: 'galaxy' as TabId, label: 'Galáxia', icon: <Sparkles className="w-4 h-4" /> },
               { id: 'reels' as TabId, label: 'Reels', icon: <Film className="w-4 h-4" /> },
               { id: 'studio' as TabId, label: 'Criar', icon: <Plus className="w-5 h-5 stroke-[2.8]" />, center: true },
               { id: 'movies' as TabId, label: 'Cinema', icon: <Clapperboard className="w-4 h-4" /> },
@@ -3027,7 +3057,13 @@ export function App() {
         track={currentTrack}
         isPlaying={isPlaying}
         analyser={audioAnalyserRef.current}
-        onTogglePlay={() => void handleTogglePlay()}
+        onTogglePlay={() => {
+          if (!currentTrack && tracks.length > 0) {
+            void handlePlayTrack(tracks[0], 'v1', tracks);
+          } else {
+            void handleTogglePlay();
+          }
+        }}
         onPrev={() => handlePrevNext(-1)}
         onNext={() => handlePrevNext(1)}
       />
