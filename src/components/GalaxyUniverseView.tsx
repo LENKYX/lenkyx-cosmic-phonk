@@ -1,21 +1,37 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import {
   AudioWaveform,
-  Compass,
   Clapperboard,
+  Compass,
+  Crown,
   Film,
   Gamepad2,
   Globe2,
   ListMusic,
+  MessageCircle,
   Music,
   Plane,
+  Plus,
   Radio,
+  RefreshCw,
+  Search,
+  Send,
   Sparkles,
   Trophy,
+  Users,
+  Volume2,
+  VolumeX,
   Wand2,
+  X,
 } from 'lucide-react';
-import { TabId, Track } from '../types';
+import { AppSettings, TabId, Track } from '../types';
+
+export interface GalaxyAction {
+  type: 'navigate' | 'play_track' | 'visualizer';
+  tab?: TabId;
+  trackId?: string;
+}
 
 interface PlanetSpec {
   id: string;
@@ -45,12 +61,12 @@ const PLANET_SPECS: PlanetSpec[] = [
     tabId: 'catalog',
     label: 'Músicas',
     planetName: 'Terra Sonora',
-    orbitRadius: 15,
-    orbitSpeed: 0.16,
-    orbitPhase: 0.4,
+    orbitRadius: 15.5,
+    orbitSpeed: 0.14,
+    orbitPhase: 0.35,
     orbitTilt: 0.06,
     radius: 2.35,
-    spinSpeed: 0.35,
+    spinSpeed: 0.34,
     accentHex: '#38bdf8',
     atmosphereHex: '#60a5fa',
     hasClouds: true,
@@ -64,12 +80,12 @@ const PLANET_SPECS: PlanetSpec[] = [
     tabId: 'reels',
     label: 'Reels & Lives',
     planetName: 'Nova Pulse',
-    orbitRadius: 21,
-    orbitSpeed: 0.125,
-    orbitPhase: 1.55,
+    orbitRadius: 21.5,
+    orbitSpeed: 0.11,
+    orbitPhase: 1.5,
     orbitTilt: -0.09,
     radius: 2.15,
-    spinSpeed: 0.55,
+    spinSpeed: 0.52,
     accentHex: '#f472b6',
     atmosphereHex: '#ec4899',
     hasRing: true,
@@ -83,9 +99,9 @@ const PLANET_SPECS: PlanetSpec[] = [
     tabId: 'explore',
     label: 'Artistas & Clipes',
     planetName: 'Aethelgard',
-    orbitRadius: 27.5,
-    orbitSpeed: 0.098,
-    orbitPhase: 2.85,
+    orbitRadius: 28,
+    orbitSpeed: 0.088,
+    orbitPhase: 2.75,
     orbitTilt: 0.08,
     radius: 2.45,
     spinSpeed: 0.28,
@@ -101,12 +117,12 @@ const PLANET_SPECS: PlanetSpec[] = [
     tabId: 'movies',
     label: 'Cinema & Séries',
     planetName: 'Saturnia HD',
-    orbitRadius: 35,
-    orbitSpeed: 0.075,
-    orbitPhase: 4.05,
+    orbitRadius: 35.5,
+    orbitSpeed: 0.068,
+    orbitPhase: 3.95,
     orbitTilt: -0.06,
     radius: 2.95,
-    spinSpeed: 0.26,
+    spinSpeed: 0.25,
     accentHex: '#fbbf24',
     atmosphereHex: '#f59e0b',
     hasRing: true,
@@ -120,12 +136,12 @@ const PLANET_SPECS: PlanetSpec[] = [
     tabId: 'sports',
     label: 'Futebol & UFC',
     planetName: 'Ares Arena',
-    orbitRadius: 42.5,
-    orbitSpeed: 0.062,
-    orbitPhase: 5.2,
+    orbitRadius: 43,
+    orbitSpeed: 0.056,
+    orbitPhase: 5.1,
     orbitTilt: 0.1,
     radius: 2.25,
-    spinSpeed: 0.34,
+    spinSpeed: 0.33,
     accentHex: '#fb7185',
     atmosphereHex: '#ef4444',
     moons: 2,
@@ -137,12 +153,12 @@ const PLANET_SPECS: PlanetSpec[] = [
     tabId: 'studio',
     label: 'Criar IA',
     planetName: 'Genesis Forge',
-    orbitRadius: 49.5,
-    orbitSpeed: 0.052,
-    orbitPhase: 0.95,
+    orbitRadius: 50,
+    orbitSpeed: 0.047,
+    orbitPhase: 0.9,
     orbitTilt: -0.07,
     radius: 2.4,
-    spinSpeed: 0.42,
+    spinSpeed: 0.4,
     accentHex: '#22d3ee',
     atmosphereHex: '#06b6d4',
     hasRing: true,
@@ -157,12 +173,12 @@ const PLANET_SPECS: PlanetSpec[] = [
     tabId: 'offline',
     label: 'Viagem & Offline',
     planetName: 'Cryo Nova',
-    orbitRadius: 56,
-    orbitSpeed: 0.044,
-    orbitPhase: 2.25,
+    orbitRadius: 56.5,
+    orbitSpeed: 0.04,
+    orbitPhase: 2.2,
     orbitTilt: 0.05,
     radius: 2.2,
-    spinSpeed: 0.25,
+    spinSpeed: 0.24,
     accentHex: '#7dd3fc',
     atmosphereHex: '#38bdf8',
     hasRing: true,
@@ -176,12 +192,12 @@ const PLANET_SPECS: PlanetSpec[] = [
     tabId: 'playlists',
     label: 'Playlists',
     planetName: 'Nebula Vault',
-    orbitRadius: 62.5,
-    orbitSpeed: 0.038,
-    orbitPhase: 3.5,
+    orbitRadius: 63,
+    orbitSpeed: 0.034,
+    orbitPhase: 3.45,
     orbitTilt: -0.08,
     radius: 2.1,
-    spinSpeed: 0.31,
+    spinSpeed: 0.3,
     accentHex: '#c084fc',
     atmosphereHex: '#a855f7',
     moons: 1,
@@ -193,12 +209,12 @@ const PLANET_SPECS: PlanetSpec[] = [
     tabId: 'arcade',
     label: 'Jogos',
     planetName: 'Cybertron',
-    orbitRadius: 69,
-    orbitSpeed: 0.032,
-    orbitPhase: 4.75,
+    orbitRadius: 69.5,
+    orbitSpeed: 0.029,
+    orbitPhase: 4.7,
     orbitTilt: 0.07,
     radius: 2.25,
-    spinSpeed: 0.48,
+    spinSpeed: 0.45,
     accentHex: '#a3e635',
     atmosphereHex: '#22c55e',
     hasRing: true,
@@ -210,136 +226,239 @@ const PLANET_SPECS: PlanetSpec[] = [
   },
 ];
 
-/* === PROCEDURAL HIGH-DETAIL COSMIC TEXTURE GENERATORS === */
-function createSunTexture(): THREE.CanvasTexture {
-  const c = document.createElement('canvas');
-  c.width = 512;
-  c.height = 256;
-  const ctx = c.getContext('2d')!;
-  const grad = ctx.createLinearGradient(0, 0, 512, 256);
-  grad.addColorStop(0, '#ff8800');
-  grad.addColorStop(0.5, '#ffbb24');
-  grad.addColorStop(1, '#ff6a00');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 512, 256);
-
-  for (let i = 0; i < 650; i++) {
-    const x = Math.random() * 512;
-    const y = Math.random() * 256;
-    const r = 3 + Math.random() * 22;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    const hot = Math.random() > 0.3;
-    g.addColorStop(0, hot ? 'rgba(255,255,215,0.62)' : 'rgba(180,35,0,0.45)');
-    g.addColorStop(1, 'rgba(255,140,0,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
-  return tex;
+interface PortalSpec {
+  id: string;
+  label: string;
+  tabId: TabId | 'random';
+  color1: string;
+  color2: string;
+  pos: [number, number, number];
+  rotY: number;
 }
 
-function createPlanetTexture(style: PlanetSpec['style']): THREE.CanvasTexture {
+const PORTAL_SPECS: PortalSpec[] = [
+  {
+    id: 'portal-multiverse',
+    label: 'Portal Multiverso',
+    tabId: 'movies',
+    color1: '#fb923c',
+    color2: '#fef08a',
+    pos: [-24, 9.5, -18],
+    rotY: 0.5,
+  },
+  {
+    id: 'portal-quantum',
+    label: 'Portal Quântico',
+    tabId: 'studio',
+    color1: '#22d3ee',
+    color2: '#34d399',
+    pos: [26, 8, -22],
+    rotY: -0.55,
+  },
+  {
+    id: 'portal-chaos',
+    label: 'Portal Surpresa',
+    tabId: 'random',
+    color1: '#f43f5e',
+    color2: '#fbbf24',
+    pos: [2, 12.5, 29],
+    rotY: 0.1,
+  },
+];
+
+type PersonaId = 'zylar' | 'nova' | 'solis' | 'sentinel' | 'blackhole';
+
+interface PersonaMeta {
+  id: PersonaId;
+  name: string;
+  role: string;
+  emoji: string;
+  color: string;
+  greeting: string;
+  quickPrompts: string[];
+}
+
+const PERSONAS: Record<PersonaId, PersonaMeta> = {
+  zylar: {
+    id: 'zylar',
+    name: 'Comandante Zylar',
+    role: 'Nave Alienígena Alpha',
+    emoji: '🛸',
+    color: '#34d399',
+    greeting: 'Saudações, viajante! Os propulsores quânticos estão quentes. Quer ouvir um som pesado ou saltar para algum planeta?',
+    quickPrompts: ['Toca uma música', 'Abre Cinema', 'Abrir Jogos', 'Quero ver o Espectro'],
+  },
+  nova: {
+    id: 'nova',
+    name: 'N.O.V.A. Arcana',
+    role: 'Guardiã dos Portais',
+    emoji: '🔮',
+    color: '#fb923c',
+    greeting: 'Os anéis do Multiverso estão girando para você. Peça qualquer realidade e eu abro o portal agora mesmo!',
+    quickPrompts: ['Abre um portal surpresa', 'Cinema & Séries', 'Reels & Lives', 'Criar música IA'],
+  },
+  solis: {
+    id: 'solis',
+    name: 'Solis LENKYX',
+    role: 'Coração Solar Vivo',
+    emoji: '☀️',
+    color: '#fbbf24',
+    greeting: 'Eu pulso no ritmo de cada grave! Toque no Espectro ou peça uma música para iluminar toda a galáxia.',
+    quickPrompts: ['Toca uma música', 'Abrir Espectro 3D', 'Artistas & Clipes'],
+  },
+  sentinel: {
+    id: 'sentinel',
+    name: 'Satélite S-7',
+    role: 'Inteligência Orbital',
+    emoji: '🛰️',
+    color: '#38bdf8',
+    greeting: 'Satélite S-7 online! Sinais de Futebol, UFC, downloads offline e áudio 4K sem anúncios prontos para você.',
+    quickPrompts: ['Futebol & UFC ao vivo', 'Modo Offline', 'Toca uma música'],
+  },
+  blackhole: {
+    id: 'blackhole',
+    name: 'Oráculo Singular',
+    role: 'Buraco Negro Gargantua',
+    emoji: '🕳️',
+    color: '#f59e0b',
+    greeting: 'Aqui a gravidade dobra o tempo e abre caminhos para qualquer dimensão. Para qual universo deseja saltar?',
+    quickPrompts: ['Me leva para outro universo', 'Abrir Cinema', 'Abrir Espectro'],
+  },
+};
+
+/* === PHOTOREALISTIC PROCEDURAL TEXTURE & GLSL SHADERS === */
+function createStarSpriteTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
-  c.width = 512;
-  c.height = 256;
+  c.width = 64;
+  c.height = 64;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.18, 'rgba(255,255,255,0.92)');
+  g.addColorStop(0.45, 'rgba(186,230,253,0.35)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
+function createPlanetTextures(style: PlanetSpec['style']): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } {
+  const c = document.createElement('canvas');
+  c.width = 1024;
+  c.height = 512;
   const ctx = c.getContext('2d')!;
 
+  const b = document.createElement('canvas');
+  b.width = 512;
+  b.height = 256;
+  const btx = b.getContext('2d')!;
+  btx.fillStyle = '#808080';
+  btx.fillRect(0, 0, 512, 256);
+
   const palettes: Record<PlanetSpec['style'], [string, string, string, string]> = {
-    earth: ['#0b3b75', '#1565c0', '#2e7d32', '#e2f1ff'],
-    neon: ['#240046', '#7b2cbf', '#ff007f', '#00f5d4'],
-    emerald: ['#053b3f', '#0d7377', '#32e0c4', '#fde68a'],
-    saturn: ['#925e2b', '#d9a45b', '#f3d28f', '#78350f'],
-    mars: ['#5c140e', '#a8331c', '#e06d3b', '#ffba82'],
-    ice: ['#0c2d57', '#1d6fa5', '#7dd3fc', '#f0f9ff'],
-    cyber: ['#071326', '#0f294d', '#06b6d4', '#facc15'],
-    amethyst: ['#240b42', '#5b21b6', '#c084fc', '#5eead4'],
-    arcade: ['#071e16', '#114232', '#22c55e', '#bef264'],
+    earth: ['#062d5e', '#0d569e', '#226b3a', '#eaf4ff'],
+    neon: ['#1f003d', '#6d28d9', '#f43f5e', '#22d3ee'],
+    emerald: ['#042f36', '#0e7490', '#10b981', '#fef08a'],
+    saturn: ['#7c4d21', '#ca8a3e', '#f4d38c', '#5c2b0e'],
+    mars: ['#4a100a', '#992d17', '#d96236', '#f7b277'],
+    ice: ['#0a2547', '#1d689e', '#7dd3fc', '#f8fafc'],
+    cyber: ['#050e1f', '#0d2240', '#06b6d4', '#fde047'],
+    amethyst: ['#1d0738', '#4c1d95', '#a855f7', '#5eead4'],
+    arcade: ['#051912', '#0f3d2e', '#16a34a', '#a3e635'],
   };
   const [c1, c2, c3, c4] = palettes[style];
 
-  const base = ctx.createLinearGradient(0, 0, 0, 256);
+  const base = ctx.createLinearGradient(0, 0, 0, 512);
   base.addColorStop(0, c4);
-  base.addColorStop(0.14, c1);
+  base.addColorStop(0.11, c1);
   base.addColorStop(0.5, c2);
-  base.addColorStop(0.86, c1);
+  base.addColorStop(0.89, c1);
   base.addColorStop(1, c4);
   ctx.fillStyle = base;
-  ctx.fillRect(0, 0, 512, 256);
+  ctx.fillRect(0, 0, 1024, 512);
 
   if (style === 'saturn' || style === 'neon' || style === 'ice' || style === 'amethyst') {
-    // Gas giant atmospheric storm bands & Great Spots
-    for (let y = 12; y < 244; y += 6 + Math.random() * 8) {
-      ctx.fillStyle = Math.random() > 0.5 ? c3 : c4;
-      ctx.globalAlpha = 0.14 + Math.random() * 0.28;
-      ctx.fillRect(0, y, 512, 2 + Math.random() * 7);
+    for (let y = 18; y < 494; y += 7 + Math.random() * 11) {
+      ctx.fillStyle = Math.random() > 0.45 ? c3 : c4;
+      ctx.globalAlpha = 0.12 + Math.random() * 0.25;
+      ctx.fillRect(0, y, 1024, 3 + Math.random() * 10);
+      btx.fillStyle = Math.random() > 0.5 ? '#9c9c9c' : '#646464';
+      btx.globalAlpha = 0.25;
+      btx.fillRect(0, y * 0.5, 512, 2 + Math.random() * 5);
     }
-    ctx.globalAlpha = 0.55;
-    for (let i = 0; i < 8; i++) {
-      const sx = Math.random() * 512;
-      const sy = 40 + Math.random() * 176;
-      const g = ctx.createRadialGradient(sx, sy, 2, sx, sy, 26);
+    ctx.globalAlpha = 0.52;
+    for (let i = 0; i < 12; i++) {
+      const sx = Math.random() * 1024;
+      const sy = 70 + Math.random() * 372;
+      const g = ctx.createRadialGradient(sx, sy, 3, sx, sy, 48);
       g.addColorStop(0, c4);
       g.addColorStop(0.5, c3);
       g.addColorStop(1, 'transparent');
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.ellipse(sx, sy, 28, 12, 0, 0, Math.PI * 2);
+      ctx.ellipse(sx, sy, 52, 20, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.globalAlpha = 1;
   } else if (style === 'cyber' || style === 'arcade') {
-    // Futuristic illuminated orbital grid & neural circuit continents
     ctx.strokeStyle = c3;
-    ctx.lineWidth = 1.2;
-    ctx.globalAlpha = 0.42;
-    for (let x = 0; x < 512; x += 24) {
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.4;
+    for (let x = 0; x < 1024; x += 32) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, 256);
+      ctx.lineTo(x, 512);
       ctx.stroke();
     }
-    for (let y = 0; y < 256; y += 20) {
+    for (let y = 0; y < 512; y += 28) {
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(512, y);
+      ctx.lineTo(1024, y);
       ctx.stroke();
     }
-    ctx.globalAlpha = 0.85;
-    for (let i = 0; i < 42; i++) {
-      const x = Math.random() * 512;
-      const y = 30 + Math.random() * 196;
-      ctx.fillStyle = i % 3 === 0 ? c4 : c3;
-      ctx.fillRect(x, y, 6 + Math.random() * 18, 2 + Math.random() * 5);
-    }
-    ctx.globalAlpha = 1;
-  } else {
-    // Organic rocky continents, craters, polar caps
+    ctx.globalAlpha = 0.9;
     for (let i = 0; i < 85; i++) {
-      const x = Math.random() * 512;
-      const y = 26 + Math.random() * 204;
-      const rx = 12 + Math.random() * 44;
-      const ry = 8 + Math.random() * 24;
+      const x = Math.random() * 1024;
+      const y = 50 + Math.random() * 412;
+      ctx.fillStyle = i % 3 === 0 ? c4 : c3;
+      const rw = 8 + Math.random() * 26;
+      const rh = 3 + Math.random() * 7;
+      ctx.fillRect(x, y, rw, rh);
+      btx.fillStyle = '#d4d4d4';
+      btx.fillRect(x * 0.5, y * 0.5, rw * 0.5, rh * 0.5);
+    }
+  } else {
+    for (let i = 0; i < 160; i++) {
+      const x = Math.random() * 1024;
+      const y = 44 + Math.random() * 424;
+      const rx = 18 + Math.random() * 76;
+      const ry = 12 + Math.random() * 38;
       const g = ctx.createRadialGradient(x, y, 2, x, y, rx);
       g.addColorStop(0, c3);
-      g.addColorStop(0.7, c2);
+      g.addColorStop(0.68, c2);
       g.addColorStop(1, 'transparent');
-      ctx.globalAlpha = 0.72;
+      ctx.globalAlpha = 0.7;
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.ellipse(x, y, rx, ry, Math.random() * Math.PI, 0, Math.PI * 2);
       ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  }
 
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
-  return tex;
+      btx.fillStyle = Math.random() > 0.25 ? '#c8c8c8' : '#4a4a4a';
+      btx.globalAlpha = 0.45;
+      btx.beginPath();
+      btx.ellipse(x * 0.5, y * 0.5, rx * 0.45, ry * 0.45, 0, 0, Math.PI * 2);
+      btx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+  btx.globalAlpha = 1;
+
+  const map = new THREE.CanvasTexture(c);
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.ClampToEdgeWrapping;
+  const bump = new THREE.CanvasTexture(b);
+  bump.wrapS = THREE.RepeatWrapping;
+  bump.wrapT = THREE.ClampToEdgeWrapping;
+  return { map, bump };
 }
 
 function createCloudTexture(): THREE.CanvasTexture {
@@ -347,14 +466,13 @@ function createCloudTexture(): THREE.CanvasTexture {
   c.width = 512;
   c.height = 256;
   const ctx = c.getContext('2d')!;
-  ctx.clearRect(0, 0, 512, 256);
-  for (let i = 0; i < 140; i++) {
+  for (let i = 0; i < 170; i++) {
     const x = Math.random() * 512;
     const y = 16 + Math.random() * 224;
     const rx = 14 + Math.random() * 42;
-    const ry = 5 + Math.random() * 14;
+    const ry = 4 + Math.random() * 13;
     const g = ctx.createRadialGradient(x, y, 1, x, y, rx);
-    g.addColorStop(0, 'rgba(255,255,255,0.58)');
+    g.addColorStop(0, 'rgba(255,255,255,0.62)');
     g.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -373,15 +491,15 @@ function createMoonTexture(): THREE.CanvasTexture {
   const ctx = c.getContext('2d')!;
   ctx.fillStyle = '#cbd5e1';
   ctx.fillRect(0, 0, 256, 128);
-  for (let i = 0; i < 65; i++) {
+  for (let i = 0; i < 85; i++) {
     const x = Math.random() * 256;
     const y = Math.random() * 128;
-    const r = 2 + Math.random() * 10;
-    ctx.fillStyle = 'rgba(71,85,105,0.45)';
+    const r = 2 + Math.random() * 11;
+    ctx.fillStyle = 'rgba(51,65,85,0.52)';
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(248,250,252,0.5)';
+    ctx.strokeStyle = 'rgba(248,250,252,0.55)';
     ctx.lineWidth = 1;
     ctx.stroke();
   }
@@ -390,16 +508,16 @@ function createMoonTexture(): THREE.CanvasTexture {
 
 function createRingTexture(colorHex: string): THREE.CanvasTexture {
   const c = document.createElement('canvas');
-  c.width = 256;
+  c.width = 512;
   c.height = 32;
   const ctx = c.getContext('2d')!;
-  for (let x = 0; x < 256; x++) {
-    const n = x / 256;
-    const band = Math.sin(n * 42) * 0.5 + 0.5;
+  for (let x = 0; x < 512; x++) {
+    const n = x / 512;
+    const band = Math.sin(n * 54) * 0.5 + 0.5;
     const edgeFade = Math.sin(n * Math.PI);
-    const cassiniGap = n > 0.58 && n < 0.65 ? 0.12 : 1;
+    const cassiniGap = n > 0.58 && n < 0.65 ? 0.08 : 1;
     ctx.fillStyle = colorHex;
-    ctx.globalAlpha = Math.max(0.04, band * edgeFade * cassiniGap * 0.85);
+    ctx.globalAlpha = Math.max(0.03, band * edgeFade * cassiniGap * 0.88);
     ctx.fillRect(x, 0, 1, 32);
   }
   return new THREE.CanvasTexture(c);
@@ -410,7 +528,7 @@ function createGlowSpriteTexture(innerColor: string, midColor: string): THREE.Ca
   c.width = 256;
   c.height = 256;
   const ctx = c.getContext('2d')!;
-  const g = ctx.createRadialGradient(128, 128, 4, 128, 128, 128);
+  const g = ctx.createRadialGradient(128, 128, 3, 128, 128, 128);
   g.addColorStop(0, innerColor);
   g.addColorStop(0.28, midColor);
   g.addColorStop(1, 'rgba(0,0,0,0)');
@@ -419,12 +537,68 @@ function createGlowSpriteTexture(innerColor: string, midColor: string): THREE.Ca
   return new THREE.CanvasTexture(c);
 }
 
+function createArcaneMandalaTexture(c1: string, c2: string): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 512;
+  const ctx = c.getContext('2d')!;
+  const cx = 256;
+  const cy = 256;
+
+  // Fiery outer glow ring
+  const bg = ctx.createRadialGradient(cx, cy, 80, cx, cy, 252);
+  bg.addColorStop(0, 'rgba(0,0,0,0)');
+  bg.addColorStop(0.62, `${c1}22`);
+  bg.addColorStop(0.84, `${c1}bb`);
+  bg.addColorStop(0.93, `${c2}ff`);
+  bg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Sacred geometry Doctor-Strange style concentric circles, squares, triangles & runes
+  ctx.strokeStyle = c2;
+  ctx.lineWidth = 3;
+  [185, 210, 224, 240].forEach((r, idx) => {
+    ctx.globalAlpha = idx === 2 ? 0.95 : 0.72;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+
+  // Inscribed rotating polygons
+  ctx.strokeStyle = c1;
+  ctx.lineWidth = 2.5;
+  ctx.globalAlpha = 0.85;
+  for (let rot = 0; rot < 2; rot++) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((rot * Math.PI) / 4);
+    ctx.strokeRect(-146, -146, 292, 292);
+    ctx.restore();
+  }
+
+  // Arcane rune ticks around perimeter
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 48; i++) {
+    const a = (i / 48) * Math.PI * 2;
+    const r1 = 190;
+    const r2 = i % 2 === 0 ? 208 : 200;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+    ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  return new THREE.CanvasTexture(c);
+}
+
 function createSolarPanelTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 128;
   c.height = 64;
   const ctx = c.getContext('2d')!;
-  ctx.fillStyle = '#072448';
+  ctx.fillStyle = '#062145';
   ctx.fillRect(0, 0, 128, 64);
   ctx.strokeStyle = '#38bdf8';
   ctx.lineWidth = 1.5;
@@ -443,19 +617,154 @@ function createSolarPanelTexture(): THREE.CanvasTexture {
   return new THREE.CanvasTexture(c);
 }
 
-/* === 3D SATELLITE BUILDER === */
+/* === CUSTOM GLSL SHADERS FOR REALISTIC SUN, FRESNEL ATMOSPHERE & BLACK HOLE === */
+function createSunShaderMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      u_time: { value: 0 },
+      u_pulse: { value: 1 },
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      varying vec3 vPos;
+      varying vec3 vViewDir;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vPos = position;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vViewDir = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      uniform float u_time;
+      uniform float u_pulse;
+      varying vec3 vNormal;
+      varying vec3 vPos;
+      varying vec3 vViewDir;
+
+      float hash(vec3 p) {
+        p = fract(p * 0.3183099 + 0.1);
+        p *= 17.0;
+        return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+      }
+      float noise(vec3 x) {
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
+              mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+          mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+              mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
+          f.z
+        );
+      }
+      float fbm(vec3 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 4; i++) {
+          v += a * noise(p);
+          p *= 2.1;
+          a *= 0.5;
+        }
+        return v;
+      }
+      void main() {
+        vec3 p = normalize(vPos) * 3.4 + vec3(u_time * 0.18, -u_time * 0.12, u_time * 0.14);
+        float n = fbm(p);
+        float n2 = fbm(p * 2.2 - vec3(u_time * 0.25));
+        float plasma = clamp(n * 0.65 + n2 * 0.45, 0.0, 1.0);
+        float rim = 1.0 - max(0.0, dot(vNormal, vViewDir));
+        vec3 deep = vec3(0.85, 0.22, 0.02);
+        vec3 mid = vec3(1.0, 0.62, 0.08);
+        vec3 hot = vec3(1.0, 0.96, 0.78);
+        vec3 col = mix(deep, mid, smoothstep(0.2, 0.6, plasma));
+        col = mix(col, hot, smoothstep(0.55, 0.92, plasma));
+        col += vec3(1.0, 0.45, 0.08) * pow(rim, 2.2) * 0.95 * u_pulse;
+        gl_FragColor = vec4(col * (0.95 + 0.15 * u_pulse), 1.0);
+      }
+    `,
+  });
+}
+
+function createAtmosphereMaterial(colorHex: string): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: { u_color: { value: new THREE.Color(colorHex) } },
+    vertexShader: `
+      varying vec3 vNormal;
+      varying vec3 vViewDir;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vViewDir = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 u_color;
+      varying vec3 vNormal;
+      varying vec3 vViewDir;
+      void main() {
+        float fresnel = pow(1.0 - max(0.0, dot(vNormal, vViewDir)), 3.2);
+        gl_FragColor = vec4(u_color, fresnel * 0.85);
+      }
+    `,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    side: THREE.BackSide,
+    depthWrite: false,
+  });
+}
+
+function createAccretionDiskMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: { u_time: { value: 0 } },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float u_time;
+      varying vec2 vUv;
+      void main() {
+        vec2 p = vUv - 0.5;
+        float r = length(p) * 2.0;
+        if (r < 0.34 || r > 1.0) discard;
+        float ang = atan(p.y, p.x);
+        float swirl = sin(ang * 5.0 - u_time * 3.8 + r * 18.0) * 0.5 + 0.5;
+        float bands = sin(r * 44.0 - u_time * 2.4) * 0.5 + 0.5;
+        float intensity = smoothstep(0.34, 0.44, r) * (1.0 - smoothstep(0.68, 1.0, r));
+        vec3 innerCol = vec3(1.0, 0.96, 0.82);
+        vec3 outerCol = vec3(0.98, 0.38, 0.08);
+        vec3 col = mix(innerCol, outerCol, smoothstep(0.38, 0.88, r));
+        float alpha = intensity * (0.55 + 0.45 * swirl * bands);
+        gl_FragColor = vec4(col * 1.4, alpha);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+}
+
+/* === 3D SPACECRAFT & CREATURE BUILDERS === */
 function buildSatelliteMesh(solarTex: THREE.Texture): THREE.Group {
   const g = new THREE.Group();
   const body = new THREE.Mesh(
     new THREE.CylinderGeometry(0.18, 0.2, 0.52, 6),
-    new THREE.MeshStandardMaterial({ color: '#fbbf24', metalness: 0.88, roughness: 0.22 })
+    new THREE.MeshStandardMaterial({ color: '#fbbf24', metalness: 0.88, roughness: 0.2 })
   );
   body.rotation.z = Math.PI / 2;
   g.add(body);
 
   const dish = new THREE.Mesh(
     new THREE.ConeGeometry(0.22, 0.16, 16, 1, true),
-    new THREE.MeshStandardMaterial({ color: '#e2e8f0', metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide })
+    new THREE.MeshStandardMaterial({ color: '#e2e8f0', metalness: 0.72, roughness: 0.28, side: THREE.DoubleSide })
   );
   dish.position.set(0, 0.22, 0);
   dish.rotation.x = Math.PI;
@@ -466,7 +775,7 @@ function buildSatelliteMesh(solarTex: THREE.Texture): THREE.Group {
     metalness: 0.55,
     roughness: 0.25,
     emissive: new THREE.Color('#0284c7'),
-    emissiveIntensity: 0.25,
+    emissiveIntensity: 0.28,
   });
   const wingGeo = new THREE.BoxGeometry(0.1, 0.03, 1.15);
   const leftWing = new THREE.Mesh(wingGeo, wingMat);
@@ -477,7 +786,7 @@ function buildSatelliteMesh(solarTex: THREE.Texture): THREE.Group {
   g.add(rightWing);
 
   const beacon = new THREE.Mesh(
-    new THREE.SphereGeometry(0.06, 8, 8),
+    new THREE.SphereGeometry(0.065, 8, 8),
     new THREE.MeshBasicMaterial({ color: '#22d3ee' })
   );
   beacon.position.set(0.3, 0, 0);
@@ -487,19 +796,16 @@ function buildSatelliteMesh(solarTex: THREE.Texture): THREE.Group {
   return g;
 }
 
-/* === 3D ALIEN UFO STARSHIP BUILDER === */
 function buildUfoMesh(beamColor: string): THREE.Group {
   const ufo = new THREE.Group();
-
-  // Metallic saucer disc
   const hull = new THREE.Mesh(
     new THREE.CylinderGeometry(0.65, 1.35, 0.32, 28),
     new THREE.MeshStandardMaterial({
-      color: '#94a3b8',
+      color: '#cbd5e1',
       metalness: 0.92,
-      roughness: 0.18,
+      roughness: 0.16,
       emissive: new THREE.Color('#0f172a'),
-      emissiveIntensity: 0.4,
+      emissiveIntensity: 0.35,
     })
   );
   ufo.add(hull);
@@ -511,7 +817,6 @@ function buildUfoMesh(beamColor: string): THREE.Group {
   underHull.position.y = -0.26;
   ufo.add(underHull);
 
-  // Translucent glass cockpit + glowing alien silhouette inside
   const dome = new THREE.Mesh(
     new THREE.SphereGeometry(0.62, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55),
     new THREE.MeshPhysicalMaterial({
@@ -533,7 +838,6 @@ function buildUfoMesh(beamColor: string): THREE.Group {
   alienHead.position.y = 0.32;
   ufo.add(alienHead);
 
-  // Rotating plasma ring lights around the saucer
   const rimLights = new THREE.Group();
   rimLights.name = 'rimLights';
   for (let i = 0; i < 10; i++) {
@@ -547,47 +851,77 @@ function buildUfoMesh(beamColor: string): THREE.Group {
   }
   ufo.add(rimLights);
 
-  // Volumetric Tractor Beam cone underneath
   const beam = new THREE.Mesh(
     new THREE.ConeGeometry(1.25, 4.2, 24, 1, true),
     new THREE.MeshBasicMaterial({
       color: beamColor,
       transparent: true,
-      opacity: 0.18,
+      opacity: 0.16,
       side: THREE.DoubleSide,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     })
   );
   beam.position.y = -2.35;
-  beam.name = 'tractorBeam';
   ufo.add(beam);
 
   return ufo;
 }
 
-function playAlienChirp() {
+function buildSpaceLeviathan(colorHex: string): THREE.Group {
+  const manta = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.ConeGeometry(0.45, 2.2, 12),
+    new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.85 })
+  );
+  body.rotation.x = Math.PI / 2;
+  manta.add(body);
+
+  const wingGeo = new THREE.PlaneGeometry(2.8, 1.1, 8, 2);
+  const wingMat = new THREE.MeshBasicMaterial({
+    color: colorHex,
+    transparent: true,
+    opacity: 0.42,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const wings = new THREE.Mesh(wingGeo, wingMat);
+  wings.rotation.x = Math.PI / 2;
+  wings.name = 'wings';
+  manta.add(wings);
+  return manta;
+}
+
+function playCosmicSound(kind: 'alien' | 'portal') {
   try {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'sine';
     const now = ctx.currentTime;
-    osc.frequency.setValueAtTime(520, now);
-    osc.frequency.exponentialRampToValueAtTime(1180, now + 0.14);
-    osc.frequency.exponentialRampToValueAtTime(420, now + 0.34);
+    if (kind === 'alien') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(1180, now + 0.14);
+      osc.frequency.exponentialRampToValueAtTime(420, now + 0.34);
+    } else {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(190, now);
+      osc.frequency.exponentialRampToValueAtTime(640, now + 0.25);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.45);
+    }
     gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.06, now + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+    gain.gain.linearRampToValueAtTime(0.055, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.46);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(now);
-    osc.stop(now + 0.38);
-    setTimeout(() => void ctx.close().catch(() => {}), 500);
+    osc.stop(now + 0.48);
+    setTimeout(() => void ctx.close().catch(() => {}), 600);
   } catch {
-    // ignore audio policy
+    // ignore
   }
 }
 
@@ -600,40 +934,86 @@ interface ProjectedTag {
   depth: number;
 }
 
+interface ChatMessageItem {
+  id: string;
+  sender: 'user' | 'entity' | 'person';
+  author: string;
+  text: string;
+  color?: string;
+}
+
 interface Props {
+  settings: AppSettings;
+  tracks: Track[];
   currentTrack: Track | null;
   isPlaying: boolean;
+  userLang: string;
   onNavigateTab: (tab: TabId) => void;
   onOpenVisualizer: () => void;
+  onPlayTrack: (track: Track) => void;
+  onOpenSearch: (query?: string) => void;
+  onOpenCreate: () => void;
+  onOpenLang: () => void;
+  onOpenPix: (tab?: 'donate' | 'ranking' | 'collection') => void;
+  onOpenInstall: () => void;
+  onOpenUpdates: () => void;
+  onBrandTap: () => void;
   onToast: (msg: string) => void;
 }
 
 export const GalaxyUniverseView: React.FC<Props> = ({
+  tracks,
   currentTrack,
   isPlaying,
+  userLang,
   onNavigateTab,
   onOpenVisualizer,
+  onPlayTrack,
+  onOpenSearch,
+  onOpenCreate,
+  onOpenLang,
+  onOpenPix,
+  onOpenInstall,
+  onOpenUpdates,
+  onBrandTap,
   onToast,
 }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [warpingTo, setWarpingTo] = useState<PlanetSpec | null>(null);
-  const [ufoBanner, setUfoBanner] = useState<string | null>(null);
+  const [warpingMeta, setWarpingMeta] = useState<{ title: string; subtitle: string; portal?: boolean } | null>(null);
   const [tags, setTags] = useState<Record<string, ProjectedTag>>({});
+
+  // Living Multiverse Comms Drawer (Talk to Entities OR Real People Online)
+  const [commsOpen, setCommsOpen] = useState(false);
+  const [commsMode, setCommsMode] = useState<'entity' | 'people'>('entity');
+  const [activePersona, setActivePersona] = useState<PersonaId>('zylar');
+  const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+  const [entityChats, setEntityChats] = useState<Record<PersonaId, ChatMessageItem[]>>({
+    zylar: [{ id: 'g-z', sender: 'entity', author: PERSONAS.zylar.name, text: PERSONAS.zylar.greeting }],
+    nova: [{ id: 'g-n', sender: 'entity', author: PERSONAS.nova.name, text: PERSONAS.nova.greeting }],
+    solis: [{ id: 'g-s', sender: 'entity', author: PERSONAS.solis.name, text: PERSONAS.solis.greeting }],
+    sentinel: [{ id: 'g-se', sender: 'entity', author: PERSONAS.sentinel.name, text: PERSONAS.sentinel.greeting }],
+    blackhole: [{ id: 'g-b', sender: 'entity', author: PERSONAS.blackhole.name, text: PERSONAS.blackhole.greeting }],
+  });
+  const [peopleMessages, setPeopleMessages] = useState<ChatMessageItem[]>([]);
+  const [hubDrawerOpen, setHubDrawerOpen] = useState(false);
+  const [searchDraft, setSearchDraft] = useState('');
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   const hoveredRef = useRef<string | null>(null);
   hoveredRef.current = hoveredId;
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
 
-  // Camera spherical state & warp lock refs so controls feel buttery-smooth
   const camControlRef = useRef({
     theta: 0.45,
     phi: 1.06,
-    radius: 56,
+    radius: 54,
     targetTheta: 0.45,
     targetPhi: 1.06,
-    targetRadius: 56,
+    targetRadius: 54,
     lookTarget: new THREE.Vector3(0, 0, 0),
     desiredLook: new THREE.Vector3(0, 0, 0),
     warpActive: false,
@@ -641,16 +1021,153 @@ export const GalaxyUniverseView: React.FC<Props> = ({
     reset: () => {
       camControlRef.current.targetTheta = 0.45;
       camControlRef.current.targetPhi = 1.06;
-      camControlRef.current.targetRadius = window.innerWidth < 768 ? 68 : 54;
+      camControlRef.current.targetRadius = window.innerWidth < 768 ? 68 : 52;
       camControlRef.current.desiredLook.set(0, 0, 0);
     },
   });
 
-  const planetMeshesRef = useRef<Map<string, THREE.Group>>(new Map());
   const triggerWarpRef = useRef<(spec: PlanetSpec) => void>(() => {});
+  const triggerPortalRef = useRef<(portal: PortalSpec) => void>(() => {});
+  const openCommsForRef = useRef<(persona: PersonaId) => void>(() => {});
 
-  const handleWarpToPlanet = (spec: PlanetSpec) => {
-    triggerWarpRef.current(spec);
+  openCommsForRef.current = (persona: PersonaId) => {
+    setActivePersona(persona);
+    setCommsMode('entity');
+    setCommsOpen(true);
+  };
+
+  // Load real online people chat when switching to People tab
+  const loadPeopleChat = useCallback(async () => {
+    try {
+      const res = await fetch('/api/community/chat?room=global');
+      if (!res.ok) return;
+      const data = await res.json();
+      const rows = Array.isArray(data?.messages) ? data.messages : [];
+      setPeopleMessages(
+        rows.map((m: { id?: string; authorName?: string; message?: string; authorColor?: string }) => ({
+          id: m.id || String(Math.random()),
+          sender: 'person',
+          author: m.authorName || 'Viajante',
+          text: m.message || '',
+          color: m.authorColor,
+        }))
+      );
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!commsOpen || commsMode !== 'people') return;
+    void loadPeopleChat();
+    const t = setInterval(() => void loadPeopleChat(), 5000);
+    return () => clearInterval(t);
+  }, [commsOpen, commsMode, loadPeopleChat]);
+
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [entityChats, peopleMessages, commsMode, activePersona, commsOpen]);
+
+  const speakText = useCallback(
+    (text: string) => {
+      if (!voiceReplyEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.lang = userLang === 'en' ? 'en-US' : userLang === 'es' ? 'es-ES' : 'pt-BR';
+        utt.rate = 1.05;
+        utt.pitch = 1.0;
+        window.speechSynthesis.speak(utt);
+      } catch {
+        // ignore
+      }
+    },
+    [voiceReplyEnabled, userLang]
+  );
+
+  const executeGalaxyAction = useCallback(
+    (action?: GalaxyAction | null) => {
+      if (!action) return;
+      if (action.type === 'visualizer') {
+        setTimeout(() => onOpenVisualizer(), 350);
+      } else if (action.type === 'play_track') {
+        const found = tracks.find((t) => t.id === action.trackId) || tracks[0];
+        if (found) onPlayTrack(found);
+      } else if (action.type === 'navigate' && action.tab) {
+        const spec = PLANET_SPECS.find((p) => p.tabId === action.tab);
+        if (spec) {
+          setTimeout(() => triggerWarpRef.current(spec), 450);
+        } else {
+          setTimeout(() => onNavigateTab(action.tab!), 450);
+        }
+      }
+    },
+    [onNavigateTab, onOpenVisualizer, onPlayTrack, tracks]
+  );
+
+  const handleSendComms = async (customText?: string) => {
+    const text = (customText ?? chatInput).trim();
+    if (!text || sendingChat) return;
+    setChatInput('');
+
+    if (commsMode === 'people') {
+      setSendingChat(true);
+      try {
+        const authorName = localStorage.getItem('lenkyx_user_name') || 'Viajante Cósmico';
+        const res = await fetch('/api/community/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomId: 'global', authorName, authorColor: '#22d3ee', message: text }),
+        });
+        if (res.ok) {
+          await loadPeopleChat();
+        }
+      } catch {
+        onToast('Sem conexão no momento.');
+      } finally {
+        setSendingChat(false);
+      }
+      return;
+    }
+
+    const pId = activePersona;
+    setEntityChats((prev) => ({
+      ...prev,
+      [pId]: [...(prev[pId] || []), { id: `u-${Date.now()}`, sender: 'user', author: 'Você', text }],
+    }));
+    setSendingChat(true);
+
+    try {
+      const res = await fetch('/api/galaxy/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personaId: pId,
+          message: text,
+          userLang,
+          currentTrackTitle: currentTrack?.title || '',
+        }),
+      });
+      if (!res.ok) throw new Error('fallback');
+      const data = await res.json();
+      const replyText = String(data?.reply || PERSONAS[pId].greeting);
+      setEntityChats((prev) => ({
+        ...prev,
+        [pId]: [...(prev[pId] || []), { id: `e-${Date.now()}`, sender: 'entity', author: PERSONAS[pId].name, text: replyText }],
+      }));
+      speakText(replyText);
+      if (data?.action) executeGalaxyAction(data.action as GalaxyAction);
+    } catch {
+      const fallback = PERSONAS[pId].greeting;
+      setEntityChats((prev) => ({
+        ...prev,
+        [pId]: [...(prev[pId] || []), { id: `e-${Date.now()}`, sender: 'entity', author: PERSONAS[pId].name, text: fallback }],
+      }));
+    } finally {
+      setSendingChat(false);
+    }
   };
 
   useEffect(() => {
@@ -658,15 +1175,14 @@ export const GalaxyUniverseView: React.FC<Props> = ({
     if (!container) return;
 
     const width = container.clientWidth || window.innerWidth;
-    const height = container.clientHeight || window.innerHeight - 120;
-    camControlRef.current.targetRadius = width < 768 ? 68 : 54;
+    const height = container.clientHeight || window.innerHeight;
+    camControlRef.current.targetRadius = width < 768 ? 68 : 52;
     camControlRef.current.radius = camControlRef.current.targetRadius;
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2('#07041a', 0.0028);
+    scene.fog = new THREE.FogExp2('#050214', 0.0024);
 
-    const camera = new THREE.PerspectiveCamera(56, width / height, 0.2, 650);
-
+    const camera = new THREE.PerspectiveCamera(56, width / height, 0.2, 700);
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -676,19 +1192,19 @@ export const GalaxyUniverseView: React.FC<Props> = ({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.24;
+    renderer.toneMappingExposure = 1.28;
     container.appendChild(renderer.domElement);
 
-    /* === BRIGHT COSMIC ILLUMINATION (Sun + Hemisphere + Rim) === */
-    const sunLight = new THREE.PointLight('#fff4d6', 4.6, 260, 0.35);
+    /* === REALISTIC SPACE ILLUMINATION === */
+    const sunLight = new THREE.PointLight('#fff6db', 5.2, 280, 0.3);
     sunLight.position.set(0, 0, 0);
     scene.add(sunLight);
 
-    const hemiLight = new THREE.HemisphereLight('#a5f3fc', '#3b0764', 1.15);
+    const hemiLight = new THREE.HemisphereLight('#bae6fd', '#3b0764', 1.25);
     scene.add(hemiLight);
 
-    const rimLight = new THREE.DirectionalLight('#c084fc', 0.85);
-    rimLight.position.set(-40, 35, -35);
+    const rimLight = new THREE.DirectionalLight('#c084fc', 0.9);
+    rimLight.position.set(-45, 35, -35);
     scene.add(rimLight);
 
     const disposables: { dispose: () => void }[] = [];
@@ -697,82 +1213,53 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       return t;
     };
 
-    /* === CENTRAL PHOTOREALISTIC SUN === */
+    /* === CENTRAL PHOTOREALISTIC GLSL PLASMA SUN === */
     const sunGroup = new THREE.Group();
-    const sunTex = trackTex(createSunTexture());
-    const sunGeo = new THREE.SphereGeometry(5.6, 48, 48);
-    const sunMat = new THREE.MeshBasicMaterial({ map: sunTex });
+    const sunMat = createSunShaderMaterial();
+    const sunGeo = new THREE.SphereGeometry(5.6, 52, 52);
     disposables.push(sunGeo, sunMat);
     const sunMesh = new THREE.Mesh(sunGeo, sunMat);
     sunMesh.userData = { kind: 'sun' };
     sunGroup.add(sunMesh);
 
-    const coronaTex1 = trackTex(createGlowSpriteTexture('rgba(255,250,210,0.95)', 'rgba(251,146,60,0.48)'));
+    const coronaTex1 = trackTex(createGlowSpriteTexture('rgba(255,250,210,0.95)', 'rgba(251,146,60,0.5)'));
     const coronaSprite = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: coronaTex1,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        depthWrite: false,
-      })
+      new THREE.SpriteMaterial({ map: coronaTex1, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })
     );
-    coronaSprite.scale.set(22, 22, 1);
+    coronaSprite.scale.set(24, 24, 1);
     sunGroup.add(coronaSprite);
 
-    const coronaTex2 = trackTex(createGlowSpriteTexture('rgba(103,232,249,0.55)', 'rgba(236,72,153,0.22)'));
+    const coronaTex2 = trackTex(createGlowSpriteTexture('rgba(103,232,249,0.45)', 'rgba(236,72,153,0.18)'));
     const coronaOuter = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: coronaTex2,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        depthWrite: false,
-      })
+      new THREE.SpriteMaterial({ map: coronaTex2, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })
     );
-    coronaOuter.scale.set(34, 34, 1);
+    coronaOuter.scale.set(38, 38, 1);
     sunGroup.add(coronaOuter);
-
-    // Solar prominence energy arcs
-    const solarRingGeo = new THREE.TorusGeometry(6.7, 0.08, 12, 90);
-    const solarRingMat = new THREE.MeshBasicMaterial({
-      color: '#fde047',
-      transparent: true,
-      opacity: 0.45,
-      blending: THREE.AdditiveBlending,
-    });
-    disposables.push(solarRingGeo, solarRingMat);
-    const solarRing1 = new THREE.Mesh(solarRingGeo, solarRingMat);
-    solarRing1.rotation.x = 0.7;
-    sunGroup.add(solarRing1);
-    const solarRing2 = new THREE.Mesh(solarRingGeo, solarRingMat);
-    solarRing2.rotation.y = 0.9;
-    solarRing2.rotation.x = -0.45;
-    sunGroup.add(solarRing2);
     scene.add(sunGroup);
 
-    /* === SPIRAL GALAXY STARS + VOLUMETRIC NEBULA CLOUDS === */
-    const starCount = 4600;
+    /* === ROUND OPTICAL STAR SPRITE FIELD (ZERO SQUARE PIXELS!) === */
+    const starSpriteTex = trackTex(createStarSpriteTexture());
+    const starCount = 5200;
     const starPos = new Float32Array(starCount * 3);
     const starCols = new Float32Array(starCount * 3);
     const starPalette = [
       new THREE.Color('#ffffff'),
       new THREE.Color('#bae6fd'),
       new THREE.Color('#fef08a'),
-      new THREE.Color('#f9a8d4'),
-      new THREE.Color('#c4b5fd'),
+      new THREE.Color('#fbcfe8'),
+      new THREE.Color('#ddd6fe'),
     ];
     for (let i = 0; i < starCount; i++) {
       const i3 = i * 3;
-      if (i < 2600) {
-        // Spiral galactic arms
+      if (i < 2900) {
         const arm = i % 3;
-        const r = 18 + Math.pow(Math.random(), 0.85) * 185;
-        const angle = arm * ((Math.PI * 2) / 3) + r * 0.036 + (Math.random() - 0.5) * 0.85;
+        const r = 18 + Math.pow(Math.random(), 0.85) * 190;
+        const angle = arm * ((Math.PI * 2) / 3) + r * 0.036 + (Math.random() - 0.5) * 0.9;
         starPos[i3] = Math.cos(angle) * r;
-        starPos[i3 + 1] = (Math.random() - 0.5) * (12 + r * 0.14);
+        starPos[i3 + 1] = (Math.random() - 0.5) * (10 + r * 0.14);
         starPos[i3 + 2] = Math.sin(angle) * r;
       } else {
-        // Spherical deep-space stars all around camera
-        const r = 90 + Math.random() * 190;
+        const r = 95 + Math.random() * 200;
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(2 * Math.random() - 1);
         starPos[i3] = r * Math.sin(phi) * Math.cos(theta);
@@ -788,10 +1275,12 @@ export const GalaxyUniverseView: React.FC<Props> = ({
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
     starGeo.setAttribute('color', new THREE.BufferAttribute(starCols, 3));
     const starMat = new THREE.PointsMaterial({
-      size: 0.72,
+      size: 1.35,
+      map: starSpriteTex,
       vertexColors: true,
       transparent: true,
-      opacity: 0.92,
+      opacity: 0.95,
+      alphaTest: 0.01,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -799,10 +1288,10 @@ export const GalaxyUniverseView: React.FC<Props> = ({
     const starField = new THREE.Points(starGeo, starMat);
     scene.add(starField);
 
-    // Nebula luminous clouds floating around the galactic plane
+    // Volumetric Nebula Glows
     const nebTexPink = trackTex(createGlowSpriteTexture('rgba(236,72,153,0.22)', 'rgba(139,92,246,0.08)'));
     const nebTexCyan = trackTex(createGlowSpriteTexture('rgba(56,189,248,0.22)', 'rgba(16,185,129,0.08)'));
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 20; i++) {
       const sp = new THREE.Sprite(
         new THREE.SpriteMaterial({
           map: i % 2 === 0 ? nebTexPink : nebTexCyan,
@@ -811,36 +1300,163 @@ export const GalaxyUniverseView: React.FC<Props> = ({
           depthWrite: false,
         })
       );
-      const a = (i / 18) * Math.PI * 2;
+      const a = (i / 20) * Math.PI * 2;
       const dist = 48 + (i % 3) * 28;
       sp.position.set(Math.cos(a) * dist, ((i % 5) - 2) * 5, Math.sin(a) * dist);
-      const sz = 44 + (i % 4) * 14;
+      const sz = 46 + (i % 4) * 14;
       sp.scale.set(sz, sz, 1);
       scene.add(sp);
     }
 
-    /* === ASTEROID BELT BETWEEN INNER & OUTER WORLDS === */
-    const asteroidCount = 480;
+    /* === SOFT ROUND ASTEROID DUST BELT === */
+    const asteroidCount = 460;
     const astPos = new Float32Array(asteroidCount * 3);
     for (let i = 0; i < asteroidCount; i++) {
       const a = Math.random() * Math.PI * 2;
-      const r = 30.5 + (Math.random() - 0.5) * 3.6;
+      const r = 31.2 + (Math.random() - 0.5) * 3.6;
       astPos[i * 3] = Math.cos(a) * r;
       astPos[i * 3 + 1] = (Math.random() - 0.5) * 1.4;
       astPos[i * 3 + 2] = Math.sin(a) * r;
     }
     const astGeo = new THREE.BufferGeometry();
     astGeo.setAttribute('position', new THREE.BufferAttribute(astPos, 3));
-    const astMat = new THREE.PointsMaterial({ color: '#cbd5e1', size: 0.34, transparent: true, opacity: 0.78 });
+    const astMat = new THREE.PointsMaterial({
+      color: '#e2e8f0',
+      size: 0.52,
+      map: starSpriteTex,
+      transparent: true,
+      opacity: 0.72,
+      alphaTest: 0.01,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
     disposables.push(astGeo, astMat);
     const asteroidBelt = new THREE.Points(astGeo, astMat);
     scene.add(asteroidBelt);
 
-    /* === BUILD ALL 9 PLANETS + ORBITS + MOONS + SATELLITES === */
+    /* === GARGANTUA 3D BLACK HOLE WITH GLSL ACCRETION DISK === */
+    const blackHoleGroup = new THREE.Group();
+    blackHoleGroup.position.set(-34, -4, 24);
+    const bhHorizon = new THREE.Mesh(
+      new THREE.SphereGeometry(2.6, 36, 36),
+      new THREE.MeshBasicMaterial({ color: '#000000' })
+    );
+    bhHorizon.userData = { kind: 'blackhole' };
+    blackHoleGroup.add(bhHorizon);
+
+    const diskMat = createAccretionDiskMaterial();
+    disposables.push(diskMat);
+    const bhDisk = new THREE.Mesh(new THREE.PlaneGeometry(15.5, 15.5), diskMat);
+    bhDisk.rotation.x = Math.PI / 2 - 0.25;
+    bhDisk.userData = { kind: 'blackhole' };
+    blackHoleGroup.add(bhDisk);
+
+    // Gravitational lensing vertical photon ring
+    const lensRing = new THREE.Mesh(
+      new THREE.RingGeometry(2.68, 3.65, 64),
+      new THREE.MeshBasicMaterial({
+        color: '#fb923c',
+        transparent: true,
+        opacity: 0.65,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    blackHoleGroup.add(lensRing);
+
+    const bhHaloTex = trackTex(createGlowSpriteTexture('rgba(251,146,60,0.45)', 'rgba(249,115,22,0.12)'));
+    const bhHalo = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: bhHaloTex, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })
+    );
+    bhHalo.scale.set(17, 17, 1);
+    blackHoleGroup.add(bhHalo);
+    scene.add(blackHoleGroup);
+
+    /* === DOCTOR STRANGE ARCANE MULTIVERSE PORTALS + SHATTERED SHARDS === */
+    interface PortalRuntime {
+      spec: PortalSpec;
+      group: THREE.Group;
+      outerMandala: THREE.Mesh;
+      innerMandala: THREE.Mesh;
+      shards: THREE.Group;
+    }
+    const portalRuntimes: PortalRuntime[] = [];
+    const clickableObjects: THREE.Object3D[] = [sunMesh, bhHorizon, bhDisk];
+
+    PORTAL_SPECS.forEach((pSpec) => {
+      const pg = new THREE.Group();
+      pg.position.set(...pSpec.pos);
+      pg.rotation.y = pSpec.rotY;
+
+      const mandalaTex = trackTex(createArcaneMandalaTexture(pSpec.color1, pSpec.color2));
+      const outerMat = new THREE.MeshBasicMaterial({
+        map: mandalaTex,
+        transparent: true,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const outerGeo = new THREE.PlaneGeometry(8.5, 8.5);
+      disposables.push(outerGeo, outerMat);
+      const outerMandala = new THREE.Mesh(outerGeo, outerMat);
+      outerMandala.userData = { kind: 'portal', portal: pSpec };
+      pg.add(outerMandala);
+
+      const innerMat = new THREE.MeshBasicMaterial({
+        map: mandalaTex,
+        transparent: true,
+        opacity: 0.78,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const innerGeo = new THREE.PlaneGeometry(6.2, 6.2);
+      disposables.push(innerGeo, innerMat);
+      const innerMandala = new THREE.Mesh(innerGeo, innerMat);
+      innerMandala.position.z = 0.08;
+      pg.add(innerMandala);
+
+      const coreTex = trackTex(createGlowSpriteTexture(`${pSpec.color2}66`, `${pSpec.color1}22`));
+      const coreSprite = new THREE.Sprite(
+        new THREE.SpriteMaterial({ map: coreTex, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })
+      );
+      coreSprite.scale.set(7.5, 7.5, 1);
+      pg.add(coreSprite);
+
+      // Shattered Multiverse Mirror Shards floating around portal (Doctor Strange style!)
+      const shards = new THREE.Group();
+      const shardGeo = new THREE.TetrahedronGeometry(0.45, 0);
+      const shardMat = new THREE.MeshPhysicalMaterial({
+        color: pSpec.color2,
+        emissive: new THREE.Color(pSpec.color1),
+        emissiveIntensity: 0.45,
+        transparent: true,
+        opacity: 0.72,
+        roughness: 0.08,
+        metalness: 0.35,
+      });
+      disposables.push(shardGeo, shardMat);
+      for (let s = 0; s < 12; s++) {
+        const a = (s / 12) * Math.PI * 2;
+        const shard = new THREE.Mesh(shardGeo, shardMat);
+        shard.position.set(Math.cos(a) * (4.1 + (s % 3) * 0.5), Math.sin(a) * (4.1 + (s % 2) * 0.5), ((s % 3) - 1) * 0.6);
+        shard.scale.set(1.3, 0.6, 0.35);
+        shard.rotation.set(s, s * 0.7, s * 1.2);
+        shards.add(shard);
+      }
+      pg.add(shards);
+
+      scene.add(pg);
+      clickableObjects.push(outerMandala);
+      portalRuntimes.push({ spec: pSpec, group: pg, outerMandala, innerMandala, shards });
+    });
+
+    /* === ALL 9 PLANETS WITH BUMP RELIEF + GLSL FRESNEL ATMOSPHERE === */
     const moonTex = trackTex(createMoonTexture());
     const cloudTex = trackTex(createCloudTexture());
     const solarPanelTex = trackTex(createSolarPanelTexture());
-    const sphereGeoShared = new THREE.SphereGeometry(1, 36, 36);
+    const sphereGeoShared = new THREE.SphereGeometry(1, 44, 44);
     disposables.push(sphereGeoShared);
 
     interface PlanetRuntime {
@@ -850,15 +1466,11 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       clouds?: THREE.Mesh;
       moons: THREE.Group[];
       satellite?: THREE.Group;
-      hitTarget: THREE.Mesh;
     }
 
     const planetRuntimes: PlanetRuntime[] = [];
-    const clickableObjects: THREE.Object3D[] = [sunMesh];
-    planetMeshesRef.current.clear();
 
     PLANET_SPECS.forEach((spec) => {
-      // Glowing thin orbit ring
       const orbitPts: THREE.Vector3[] = [];
       for (let s = 0; s <= 128; s++) {
         const ang = (s / 128) * Math.PI * 2;
@@ -871,25 +1483,24 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         );
       }
       const orbitGeo = new THREE.BufferGeometry().setFromPoints(orbitPts);
-      const orbitMat = new THREE.LineBasicMaterial({
-        color: spec.accentHex,
-        transparent: true,
-        opacity: 0.24,
-      });
+      const orbitMat = new THREE.LineBasicMaterial({ color: spec.accentHex, transparent: true, opacity: 0.22 });
       disposables.push(orbitGeo, orbitMat);
       scene.add(new THREE.Line(orbitGeo, orbitMat));
 
       const pivot = new THREE.Group();
       scene.add(pivot);
-      planetMeshesRef.current.set(spec.id, pivot);
 
-      const pTex = trackTex(createPlanetTexture(spec.style));
+      const { map: pTex, bump: pBump } = createPlanetTextures(spec.style);
+      trackTex(pTex);
+      trackTex(pBump);
       const pMat = new THREE.MeshStandardMaterial({
         map: pTex,
-        roughness: spec.style === 'ice' || spec.style === 'cyber' ? 0.35 : 0.65,
-        metalness: spec.style === 'cyber' || spec.style === 'arcade' ? 0.45 : 0.1,
+        bumpMap: pBump,
+        bumpScale: 0.14,
+        roughness: spec.style === 'ice' || spec.style === 'cyber' ? 0.32 : 0.62,
+        metalness: spec.style === 'cyber' || spec.style === 'arcade' ? 0.45 : 0.12,
         emissive: new THREE.Color(spec.accentHex),
-        emissiveIntensity: 0.14,
+        emissiveIntensity: 0.12,
       });
       disposables.push(pMat);
       const surface = new THREE.Mesh(sphereGeoShared, pMat);
@@ -898,7 +1509,6 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       pivot.add(surface);
       clickableObjects.push(surface);
 
-      // Invisible generous raycast hitbox for effortless finger tap on mobile
       const hitMat = new THREE.MeshBasicMaterial({ visible: false });
       disposables.push(hitMat);
       const hitTarget = new THREE.Mesh(sphereGeoShared, hitMat);
@@ -907,27 +1517,16 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       pivot.add(hitTarget);
       clickableObjects.push(hitTarget);
 
-      // Atmospheric halo sprite
-      const haloTex = trackTex(createGlowSpriteTexture(`${spec.atmosphereHex}66`, `${spec.atmosphereHex}18`));
-      const halo = new THREE.Sprite(
-        new THREE.SpriteMaterial({
-          map: haloTex,
-          blending: THREE.AdditiveBlending,
-          transparent: true,
-          depthWrite: false,
-        })
-      );
-      halo.scale.setScalar(spec.radius * 3.4);
-      pivot.add(halo);
+      // GLSL Fresnel Atmospheric Rim
+      const atmoMat = createAtmosphereMaterial(spec.atmosphereHex);
+      disposables.push(atmoMat);
+      const atmoMesh = new THREE.Mesh(sphereGeoShared, atmoMat);
+      atmoMesh.scale.setScalar(spec.radius * 1.14);
+      pivot.add(atmoMesh);
 
       let clouds: THREE.Mesh | undefined;
       if (spec.hasClouds) {
-        const cMat = new THREE.MeshStandardMaterial({
-          map: cloudTex,
-          transparent: true,
-          opacity: 0.65,
-          depthWrite: false,
-        });
+        const cMat = new THREE.MeshStandardMaterial({ map: cloudTex, transparent: true, opacity: 0.68, depthWrite: false });
         disposables.push(cMat);
         clouds = new THREE.Mesh(sphereGeoShared, cMat);
         clouds.scale.setScalar(spec.radius * 1.03);
@@ -935,13 +1534,13 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       }
 
       if (spec.hasRing) {
-        const rGeo = new THREE.RingGeometry(spec.radius * 1.38, spec.radius * 2.28, 72);
+        const rGeo = new THREE.RingGeometry(spec.radius * 1.38, spec.radius * 2.32, 84);
         const rTex = trackTex(createRingTexture(spec.ringColor || spec.accentHex));
         const rMat = new THREE.MeshBasicMaterial({
           map: rTex,
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.92,
           depthWrite: false,
         });
         disposables.push(rGeo, rMat);
@@ -951,62 +1550,64 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         pivot.add(ring);
       }
 
-      // Orbiting Moons
       const moons: THREE.Group[] = [];
       for (let m = 0; m < spec.moons; m++) {
         const moonPivot = new THREE.Group();
-        const mMat = new THREE.MeshStandardMaterial({ map: moonTex, roughness: 0.88, metalness: 0.05 });
+        const mMat = new THREE.MeshStandardMaterial({ map: moonTex, bumpMap: moonTex, bumpScale: 0.06, roughness: 0.85 });
         disposables.push(mMat);
         const moonMesh = new THREE.Mesh(sphereGeoShared, mMat);
-        moonMesh.scale.setScalar(0.32 + m * 0.08);
-        moonMesh.position.set(spec.radius * (1.7 + m * 0.65), 0.25 * (m === 0 ? 1 : -1), 0);
+        moonMesh.scale.setScalar(0.34 + m * 0.08);
+        moonMesh.position.set(spec.radius * (1.72 + m * 0.68), 0.25 * (m === 0 ? 1 : -1), 0);
         moonPivot.add(moonMesh);
         moonPivot.rotation.z = 0.2 * (m + 1);
         pivot.add(moonPivot);
         moons.push(moonPivot);
       }
 
-      // Orbiting Satellite
       let satellite: THREE.Group | undefined;
       if (spec.hasSatellite) {
         satellite = buildSatelliteMesh(solarPanelTex);
-        satellite.scale.setScalar(0.75);
-        satellite.userData = { kind: 'satellite', name: `Satélite ${spec.planetName}` };
+        satellite.scale.setScalar(0.78);
+        satellite.userData = { kind: 'satellite', persona: 'sentinel' as PersonaId };
         pivot.add(satellite);
         clickableObjects.push(satellite);
       }
 
-      planetRuntimes.push({ spec, pivot, surface, clouds, moons, satellite, hitTarget });
+      planetRuntimes.push({ spec, pivot, surface, clouds, moons, satellite });
     });
 
-    /* === DEEP-SPACE CRUISING ALIEN UFO STARSHIPS === */
+    /* === LIVING ALIEN UFOS & COSMIC LEVIATHANS === */
     const ufo1 = buildUfoMesh('#34d399');
     ufo1.scale.setScalar(1.35);
-    ufo1.userData = { kind: 'ufo', label: '🛸 Nave Alienígena Alpha — Scan Galáctico' };
+    ufo1.userData = { kind: 'ufo', persona: 'zylar' as PersonaId };
     scene.add(ufo1);
     clickableObjects.push(ufo1);
 
     const ufo2 = buildUfoMesh('#22d3ee');
     ufo2.scale.setScalar(1.1);
-    ufo2.userData = { kind: 'ufo', label: '🛸 Explorador Cósmico Omega — Setor 7' };
+    ufo2.userData = { kind: 'ufo', persona: 'zylar' as PersonaId };
     scene.add(ufo2);
     clickableObjects.push(ufo2);
 
-    /* === SHOOTING STARS (METEOR STREAKS) === */
+    const manta1 = buildSpaceLeviathan('#38bdf8');
+    scene.add(manta1);
+    const manta2 = buildSpaceLeviathan('#f472b6');
+    scene.add(manta2);
+
+    /* === SHOOTING STARS === */
     const meteorGeo = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(4.5, -1.6, 1.2),
+      new THREE.Vector3(5.2, -1.8, 1.4),
     ]);
-    const meteorMat = new THREE.LineBasicMaterial({ color: '#e0f2fe', transparent: true, opacity: 0.85 });
+    const meteorMat = new THREE.LineBasicMaterial({ color: '#f0f9ff', transparent: true, opacity: 0.9 });
     disposables.push(meteorGeo, meteorMat);
-    const meteors = Array.from({ length: 4 }, (_, idx) => {
+    const meteors = Array.from({ length: 5 }, (_, idx) => {
       const line = new THREE.Line(meteorGeo, meteorMat);
-      line.position.set((idx - 2) * 30, 18 + idx * 6, -45);
       scene.add(line);
-      return { line, speed: 34 + idx * 11, phase: idx * 2.1 };
+      return { line, phase: idx * 1.9 };
     });
 
-    /* === INTERACTION: ORBIT DRAG, WHEEL ZOOM, PINCH, RAYCAST TAP === */
+    /* === INTERACTION & WARP === */
     let dragging = false;
     let pointerDownPos = { x: 0, y: 0 };
     let lastPointer = { x: 0, y: 0 };
@@ -1021,12 +1622,26 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         camControlRef.current.warpActive = true;
         camControlRef.current.warpTargetPos.copy(rt.pivot.position);
       }
-      setWarpingTo(spec);
-      setTimeout(() => {
-        onNavigateTab(spec.tabId);
-      }, 560);
+      setWarpingMeta({ title: spec.label, subtitle: spec.planetName });
+      setTimeout(() => onNavigateTab(spec.tabId), 560);
     };
     triggerWarpRef.current = triggerWarp;
+
+    const triggerPortal = (portal: PortalSpec) => {
+      playCosmicSound('portal');
+      const rt = portalRuntimes.find((p) => p.spec.id === portal.id);
+      if (rt) {
+        camControlRef.current.warpActive = true;
+        camControlRef.current.warpTargetPos.copy(rt.group.position);
+      }
+      const nextTab: TabId =
+        portal.tabId === 'random'
+          ? PLANET_SPECS[Math.floor(Math.random() * PLANET_SPECS.length)].tabId
+          : portal.tabId;
+      setWarpingMeta({ title: portal.label, subtitle: 'MULTIVERSO LENKYX', portal: true });
+      setTimeout(() => onNavigateTab(nextTab), 600);
+    };
+    triggerPortalRef.current = triggerPortal;
 
     const handlePointerDown = (e: PointerEvent) => {
       dragging = true;
@@ -1039,7 +1654,6 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       const rect = renderer.domElement.getBoundingClientRect();
       mouseNdc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouseNdc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
       if (!dragging) return;
       const dx = e.clientX - lastPointer.x;
       const dy = e.clientY - lastPointer.y;
@@ -1052,7 +1666,6 @@ export const GalaxyUniverseView: React.FC<Props> = ({
     const handlePointerUp = (e: PointerEvent) => {
       dragging = false;
       if (movedDist > 10 || Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y) > 10) return;
-
       const rect = renderer.domElement.getBoundingClientRect();
       const ndc = new THREE.Vector2(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -1061,29 +1674,26 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       raycaster.setFromCamera(ndc, camera);
       const hits = raycaster.intersectObjects(clickableObjects, true);
       if (!hits.length) return;
-
       let obj: THREE.Object3D | null = hits[0].object;
-      while (obj && !obj.userData?.kind) {
-        obj = obj.parent;
-      }
+      while (obj && !obj.userData?.kind) obj = obj.parent;
       if (!obj) return;
-      const { kind, spec, label, name } = obj.userData as {
+      const { kind, spec, portal, persona } = obj.userData as {
         kind?: string;
         spec?: PlanetSpec;
-        label?: string;
-        name?: string;
+        portal?: PortalSpec;
+        persona?: PersonaId;
       };
-      if (kind === 'planet' && spec) {
-        triggerWarp(spec);
-      } else if (kind === 'sun') {
-        onOpenVisualizer();
-      } else if (kind === 'ufo') {
-        playAlienChirp();
-        setUfoBanner(label || '🛸 Contato Alienígena Detectado!');
-        onToast('🛸 Nave Alienígena escaneou sua galáxia! Escolha qualquer planeta para explorar.');
-        setTimeout(() => setUfoBanner(null), 3200);
+      if (kind === 'planet' && spec) triggerWarp(spec);
+      else if (kind === 'portal' && portal) triggerPortal(portal);
+      else if (kind === 'sun') onOpenVisualizer();
+      else if (kind === 'ufo') {
+        playCosmicSound('alien');
+        openCommsForRef.current(persona || 'zylar');
       } else if (kind === 'satellite') {
-        onToast(`🛰️ ${name || 'Satélite Orbital LENKYX'} transmitindo em 4K sem anúncios!`);
+        openCommsForRef.current('sentinel');
+      } else if (kind === 'blackhole') {
+        playCosmicSound('portal');
+        openCommsForRef.current('blackhole');
       }
     };
 
@@ -1125,19 +1735,18 @@ export const GalaxyUniverseView: React.FC<Props> = ({
     const handleResize = () => {
       if (!container) return;
       const w = container.clientWidth || window.innerWidth;
-      const h = container.clientHeight || window.innerHeight - 120;
+      const h = container.clientHeight || window.innerHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
     window.addEventListener('resize', handleResize);
 
-    /* === 60FPS ANIMATION LOOP === */
+    /* === 60FPS COSMIC SIMULATION LOOP === */
     let raf = 0;
     let simTime = 0;
     let lastNow = performance.now();
     let tagFrameSkip = 0;
-
     const tempVec = new THREE.Vector3();
 
     const animate = () => {
@@ -1147,19 +1756,32 @@ export const GalaxyUniverseView: React.FC<Props> = ({
       lastNow = now;
       simTime += dt;
 
-      // Sun rotation & audio-reactive corona pulse
-      sunMesh.rotation.y += dt * 0.16;
-      solarRing1.rotation.z += dt * 0.45;
-      solarRing2.rotation.z -= dt * 0.35;
-      const pulse = isPlayingRef.current ? 1 + Math.sin(simTime * 7.5) * 0.1 : 1 + Math.sin(simTime * 2) * 0.03;
-      coronaSprite.scale.set(22 * pulse, 22 * pulse, 1);
-      coronaOuter.scale.set(34 * pulse, 34 * pulse, 1);
+      // GLSL Sun plasma & beat pulse
+      sunMat.uniforms.u_time.value = simTime;
+      const pulse = isPlayingRef.current ? 1 + Math.sin(simTime * 7.5) * 0.14 : 1 + Math.sin(simTime * 2) * 0.04;
+      sunMat.uniforms.u_pulse.value = pulse;
+      coronaSprite.scale.set(24 * pulse, 24 * pulse, 1);
+      coronaOuter.scale.set(38 * pulse, 38 * pulse, 1);
 
-      // Gentle drift on galactic starfield & asteroid belt
-      starField.rotation.y += dt * 0.008;
-      asteroidBelt.rotation.y += dt * 0.035;
+      // Black Hole swirl + gravitational billboard ring
+      diskMat.uniforms.u_time.value = simTime;
+      lensRing.lookAt(camera.position);
 
-      // Planets orbit + axial spin + moons + satellites
+      // Arcane Portals + shattered glass shards
+      for (const pr of portalRuntimes) {
+        pr.outerMandala.rotation.z += dt * 0.55;
+        pr.innerMandala.rotation.z -= dt * 0.85;
+        pr.shards.rotation.z += dt * 0.25;
+        pr.shards.children.forEach((sh, i) => {
+          sh.rotation.x += dt * (0.4 + i * 0.04);
+          sh.rotation.y += dt * 0.5;
+        });
+      }
+
+      starField.rotation.y += dt * 0.007;
+      asteroidBelt.rotation.y += dt * 0.032;
+
+      // Orbiting Planets, Clouds, Moons & Satellites
       for (const rt of planetRuntimes) {
         const ang = rt.spec.orbitPhase + simTime * rt.spec.orbitSpeed;
         rt.pivot.position.set(
@@ -1169,7 +1791,10 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         );
         const isHov = hoveredRef.current === rt.spec.id;
         const targetScale = isHov ? 1.14 : 1;
-        rt.surface.scale.lerp(new THREE.Vector3(rt.spec.radius * targetScale, rt.spec.radius * targetScale, rt.spec.radius * targetScale), 0.12);
+        rt.surface.scale.lerp(
+          new THREE.Vector3(rt.spec.radius * targetScale, rt.spec.radius * targetScale, rt.spec.radius * targetScale),
+          0.12
+        );
         rt.surface.rotation.y += dt * rt.spec.spinSpeed;
         if (rt.clouds) {
           rt.clouds.rotation.y += dt * (rt.spec.spinSpeed * 1.28);
@@ -1186,45 +1811,60 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         }
       }
 
-      // Alien UFO Starships flying 3D Lissajous paths across the galaxy
+      // Alien UFOs + Cosmic Leviathans
       const u1t = simTime * 0.34;
-      ufo1.position.set(Math.cos(u1t) * 26, Math.sin(u1t * 2.1) * 7.5 + 3.5, Math.sin(u1t * 0.8) * 24);
+      ufo1.position.set(Math.cos(u1t) * 25, Math.sin(u1t * 2.1) * 7.5 + 3.5, Math.sin(u1t * 0.8) * 23);
       ufo1.rotation.y += dt * 1.4;
       ufo1.rotation.z = Math.sin(u1t * 2) * 0.12;
       const rim1 = ufo1.getObjectByName('rimLights');
       if (rim1) rim1.rotation.y -= dt * 3.5;
 
       const u2t = simTime * 0.24 + 2.5;
-      ufo2.position.set(Math.sin(u2t) * 44, Math.cos(u2t * 1.7) * 9 - 2, Math.cos(u2t * 0.9) * 40);
+      ufo2.position.set(Math.sin(u2t) * 43, Math.cos(u2t * 1.7) * 9 - 2, Math.cos(u2t * 0.9) * 39);
       ufo2.rotation.y -= dt * 1.7;
-      ufo2.rotation.x = Math.cos(u2t * 1.5) * 0.1;
       const rim2 = ufo2.getObjectByName('rimLights');
       if (rim2) rim2.rotation.y += dt * 3.8;
 
-      // Shooting stars
+      const m1t = simTime * 0.19;
+      manta1.position.set(Math.cos(m1t) * 38, Math.sin(m1t * 1.5) * 9 + 6, Math.sin(m1t * 1.2) * 32);
+      manta1.lookAt(
+        Math.cos(m1t + 0.1) * 38,
+        Math.sin((m1t + 0.1) * 1.5) * 9 + 6,
+        Math.sin((m1t + 0.1) * 1.2) * 32
+      );
+      const w1 = manta1.getObjectByName('wings');
+      if (w1) w1.rotation.z = Math.sin(simTime * 5) * 0.25;
+
+      const m2t = simTime * 0.15 + 3.1;
+      manta2.position.set(Math.sin(m2t) * 52, Math.cos(m2t * 1.4) * 11 - 5, Math.cos(m2t) * 46);
+      manta2.lookAt(
+        Math.sin(m2t + 0.1) * 52,
+        Math.cos((m2t + 0.1) * 1.4) * 11 - 5,
+        Math.cos(m2t + 0.1) * 46
+      );
+      const w2 = manta2.getObjectByName('wings');
+      if (w2) w2.rotation.z = Math.sin(simTime * 4.5 + 1) * 0.28;
+
       meteors.forEach((m) => {
         const cycle = ((simTime + m.phase) % 5.5) / 5.5;
-        m.line.position.x = -75 + cycle * 155;
-        m.line.position.y = 32 - cycle * 44;
+        m.line.position.x = -80 + cycle * 165;
+        m.line.position.y = 35 - cycle * 48;
+        m.line.position.z = -35 + cycle * 20;
         m.line.visible = cycle < 0.25;
       });
 
-      // Camera smooth physics + warp hyper-jump
       const ctrl = camControlRef.current;
       if (ctrl.warpActive) {
         camera.position.lerp(ctrl.warpTargetPos, 0.12);
-        camera.fov = THREE.MathUtils.lerp(camera.fov, 92, 0.12);
+        camera.fov = THREE.MathUtils.lerp(camera.fov, 94, 0.12);
         camera.updateProjectionMatrix();
         camera.lookAt(ctrl.warpTargetPos);
       } else {
-        if (!dragging) {
-          ctrl.targetTheta += dt * 0.022; // gentle cosmic drift so you feel inside space
-        }
+        if (!dragging) ctrl.targetTheta += dt * 0.022;
         ctrl.theta = THREE.MathUtils.lerp(ctrl.theta, ctrl.targetTheta, 0.085);
         ctrl.phi = THREE.MathUtils.lerp(ctrl.phi, ctrl.targetPhi, 0.085);
         ctrl.radius = THREE.MathUtils.lerp(ctrl.radius, ctrl.targetRadius, 0.085);
         ctrl.lookTarget.lerp(ctrl.desiredLook, 0.085);
-
         camera.position.set(
           ctrl.lookTarget.x + ctrl.radius * Math.sin(ctrl.phi) * Math.cos(ctrl.theta),
           ctrl.lookTarget.y + ctrl.radius * Math.cos(ctrl.phi),
@@ -1233,7 +1873,6 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         camera.lookAt(ctrl.lookTarget);
       }
 
-      // Hover raycast check (desktop pointer)
       if (!dragging && mouseNdc.x > -2) {
         raycaster.setFromCamera(mouseNdc, camera);
         const hits = raycaster.intersectObjects(clickableObjects, true);
@@ -1253,45 +1892,40 @@ export const GalaxyUniverseView: React.FC<Props> = ({
 
       renderer.render(scene, camera);
 
-      // Update projected 2D holographic labels at ~30fps so React stays silky-light
       tagFrameSkip = (tagFrameSkip + 1) % 2;
       if (tagFrameSkip === 0) {
         const w = domEl.clientWidth || width;
         const h = domEl.clientHeight || height;
         const nextTags: Record<string, ProjectedTag> = {};
 
-        // Sun label
-        tempVec.set(0, 6.8, 0).project(camera);
-        nextTags['sun'] = {
-          id: 'sun',
-          x: (tempVec.x * 0.5 + 0.5) * w,
-          y: (-tempVec.y * 0.5 + 0.5) * h,
-          visible: tempVec.z < 1 && tempVec.z > -1,
-          scale: 1,
-          depth: tempVec.z,
-        };
-
-        for (const rt of planetRuntimes) {
-          tempVec.copy(rt.pivot.position);
-          tempVec.y += rt.spec.radius + 1.35;
-          const dist = camera.position.distanceTo(rt.pivot.position);
+        const projectItem = (id: string, pos: THREE.Vector3, yOffset: number) => {
+          tempVec.copy(pos);
+          tempVec.y += yOffset;
+          const dist = camera.position.distanceTo(pos);
           tempVec.project(camera);
           const onScreen =
             tempVec.z < 1 &&
             tempVec.z > -1 &&
-            tempVec.x >= -0.95 &&
-            tempVec.x <= 0.95 &&
-            tempVec.y >= -0.95 &&
-            tempVec.y <= 0.95;
-          nextTags[rt.spec.id] = {
-            id: rt.spec.id,
+            tempVec.x >= -0.94 &&
+            tempVec.x <= 0.94 &&
+            tempVec.y >= -0.92 &&
+            tempVec.y <= 0.92;
+          nextTags[id] = {
+            id,
             x: (tempVec.x * 0.5 + 0.5) * w,
             y: (-tempVec.y * 0.5 + 0.5) * h,
             visible: onScreen,
-            scale: Math.max(0.76, Math.min(1.12, 48 / Math.max(20, dist))),
+            scale: Math.max(0.75, Math.min(1.12, 48 / Math.max(20, dist))),
             depth: dist,
           };
-        }
+        };
+
+        projectItem('sun', new THREE.Vector3(0, 0, 0), 6.8);
+        projectItem('blackhole', blackHoleGroup.position, 4.8);
+        projectItem('ufo1', ufo1.position, 2.2);
+        portalRuntimes.forEach((pr) => projectItem(pr.spec.id, pr.group.position, 4.9));
+        planetRuntimes.forEach((rt) => projectItem(rt.spec.id, rt.pivot.position, rt.spec.radius + 1.35));
+
         setTags(nextTags);
       }
     };
@@ -1313,30 +1947,76 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         container.removeChild(domEl);
       }
     };
-  }, [onNavigateTab, onOpenVisualizer, onToast]);
+  }, [onNavigateTab, onOpenVisualizer]);
 
-  const sortedPlanetsForDock = useMemo(() => PLANET_SPECS, []);
+  const activePersonaMeta = PERSONAS[activePersona];
+  const activeMessages = commsMode === 'people' ? peopleMessages : entityChats[activePersona] || [];
 
   return (
-    <div className="relative w-full h-[calc(100dvh-132px)] md:h-[calc(100dvh-90px)] min-h-[460px] rounded-3xl overflow-hidden border border-cyan-400/20 shadow-[0_0_60px_rgba(56,189,248,0.16)] bg-[#060318]">
-      {/* 3D WebGL Space Viewport */}
+    <div className="fixed inset-0 z-20 overflow-hidden bg-[#040112] select-none">
+      {/* FULLSCREEN 3D REALISTIC GALAXY */}
       <div ref={mountRef} className="absolute inset-0 w-full h-full touch-none" />
 
-      {/* 3D-Projected Holographic Planet Labels (Clean, Zero Clutter) */}
+      {/* 3D PROJECTED HOLOGRAPHIC LABELS INSIDE SPACE */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {tags['sun']?.visible && (
           <button
             type="button"
             onClick={onOpenVisualizer}
-            style={{
-              transform: `translate(-50%, -50%) translate3d(${tags['sun'].x}px, ${tags['sun'].y}px, 0)`,
-            }}
-            className="pointer-events-auto absolute top-0 left-0 px-2.5 py-1 rounded-full bg-amber-400/20 hover:bg-amber-400/35 border border-amber-300/60 backdrop-blur-md text-[10px] font-black text-amber-100 flex items-center gap-1.5 shadow-[0_0_18px_rgba(251,191,36,0.45)] transition-colors"
+            style={{ transform: `translate(-50%, -50%) translate3d(${tags['sun'].x}px, ${tags['sun'].y}px, 0)` }}
+            className="pointer-events-auto absolute top-0 left-0 px-2.5 py-1 rounded-full bg-amber-500/20 hover:bg-amber-400/35 border border-amber-300/60 backdrop-blur-md text-[10px] font-black text-amber-100 flex items-center gap-1.5 shadow-[0_0_22px_rgba(251,191,36,0.5)]"
           >
             <AudioWaveform className={`w-3 h-3 text-amber-300 ${isPlaying ? 'animate-pulse' : ''}`} />
             <span>{isPlaying && currentTrack ? currentTrack.title : 'Sol LENKYX'}</span>
           </button>
         )}
+
+        {tags['blackhole']?.visible && (
+          <button
+            type="button"
+            onClick={() => openCommsForRef.current('blackhole')}
+            style={{
+              transform: `translate(-50%, -50%) translate3d(${tags['blackhole'].x}px, ${tags['blackhole'].y}px, 0) scale(${tags['blackhole'].scale})`,
+            }}
+            className="pointer-events-auto absolute top-0 left-0 px-2.5 py-1 rounded-full bg-orange-950/70 hover:bg-orange-500/30 border border-orange-400/55 backdrop-blur-md text-[10px] font-black text-orange-100 flex items-center gap-1 shadow-[0_0_18px_rgba(251,146,60,0.4)]"
+          >
+            <span>🕳️ Buraco Negro</span>
+          </button>
+        )}
+
+        {tags['ufo1']?.visible && (
+          <button
+            type="button"
+            onClick={() => {
+              playCosmicSound('alien');
+              openCommsForRef.current('zylar');
+            }}
+            style={{
+              transform: `translate(-50%, -50%) translate3d(${tags['ufo1'].x}px, ${tags['ufo1'].y}px, 0) scale(${tags['ufo1'].scale})`,
+            }}
+            className="pointer-events-auto absolute top-0 left-0 px-2.5 py-1 rounded-full bg-emerald-950/75 hover:bg-emerald-500/35 border border-emerald-400/65 backdrop-blur-md text-[10px] font-black text-emerald-100 flex items-center gap-1 shadow-[0_0_18px_rgba(52,211,153,0.45)]"
+          >
+            <span>🛸 Conversar</span>
+          </button>
+        )}
+
+        {PORTAL_SPECS.map((portal) => {
+          const tag = tags[portal.id];
+          if (!tag?.visible) return null;
+          return (
+            <button
+              key={portal.id}
+              type="button"
+              onClick={() => triggerPortalRef.current(portal)}
+              style={{
+                transform: `translate(-50%, -50%) translate3d(${tag.x}px, ${tag.y}px, 0) scale(${tag.scale})`,
+              }}
+              className="pointer-events-auto absolute top-0 left-0 px-2.5 py-1 rounded-full bg-amber-950/70 hover:bg-amber-400 hover:text-black border border-amber-400/70 backdrop-blur-md text-[10px] font-black text-amber-100 flex items-center gap-1 shadow-[0_0_20px_rgba(251,146,60,0.5)] transition"
+            >
+              <span>✨ {portal.label}</span>
+            </button>
+          );
+        })}
 
         {PLANET_SPECS.map((spec) => {
           const tag = tags[spec.id];
@@ -1346,7 +2026,7 @@ export const GalaxyUniverseView: React.FC<Props> = ({
             <button
               key={spec.id}
               type="button"
-              onClick={() => handleWarpToPlanet(spec)}
+              onClick={() => triggerWarpRef.current(spec)}
               onMouseEnter={() => setHoveredId(spec.id)}
               onMouseLeave={() => setHoveredId(null)}
               style={{
@@ -1356,7 +2036,7 @@ export const GalaxyUniverseView: React.FC<Props> = ({
               className={`pointer-events-auto absolute top-0 left-0 px-2.5 py-1 rounded-full backdrop-blur-md border transition-colors flex items-center gap-1.5 whitespace-nowrap shadow-lg ${
                 isHov
                   ? 'bg-white text-black border-white shadow-[0_0_22px_rgba(255,255,255,0.6)]'
-                  : 'bg-slate-950/65 hover:bg-slate-900/85 text-white border-white/25'
+                  : 'bg-slate-950/60 hover:bg-slate-900/85 text-white border-white/25'
               }`}
             >
               <span style={{ color: isHov ? '#000' : spec.accentHex }}>{spec.icon}</span>
@@ -1366,83 +2046,313 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         })}
       </div>
 
-      {/* Minimal Top Floating Controls (Icon-Driven, Zero Instruction Text) */}
-      <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-10">
-        <div className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-950/65 border border-cyan-300/35 backdrop-blur-xl shadow-lg">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
-          <span className="font-display text-[11px] font-black tracking-[0.16em] text-white">GALÁXIA 3D</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+      {/* FLOATING INSIDE-SPACE HOLOGRAPHIC TOP BAR (NO OUTER FRAME!) */}
+      <div className="absolute top-3 inset-x-3 z-20 flex items-center justify-between gap-2 pointer-events-none">
+        <div
+          onClick={onBrandTap}
+          className="pointer-events-auto flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-slate-950/55 border border-white/15 backdrop-blur-xl cursor-pointer shrink-0"
+        >
+          <img src="/covers/icon-192.png?v=43" alt="LENKYX" className="w-7 h-7 object-contain lenkyx-logo-3d" />
+          <span className="font-display text-xs font-black tracking-widest text-white hidden sm:inline">LENKYX</span>
         </div>
 
-        <div className="pointer-events-auto flex items-center gap-1.5">
+        {/* Floating Space Search Pill */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onOpenSearch(searchDraft);
+          }}
+          className="pointer-events-auto flex-1 max-w-md flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/55 border border-white/15 focus-within:border-cyan-400/70 backdrop-blur-xl"
+        >
+          <Search className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+          <input
+            type="text"
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
+            placeholder="Buscar na galáxia..."
+            className="w-full bg-transparent text-xs text-white placeholder-slate-400 focus:outline-none"
+          />
+        </form>
+
+        {/* Compact Action Orbs */}
+        <div className="pointer-events-auto flex items-center gap-1.5 shrink-0">
           <button
             type="button"
-            onClick={onOpenVisualizer}
-            className="px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400/25 to-pink-500/25 hover:from-amber-400/40 hover:to-pink-500/40 border border-amber-300/45 backdrop-blur-xl text-amber-100 text-[11px] font-black flex items-center gap-1.5 shadow-lg transition"
-            title="Espectro Cósmico"
+            onClick={onOpenCreate}
+            className="px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-white text-[11px] font-black flex items-center gap-1 shadow-[0_0_16px_rgba(236,72,153,0.45)]"
+            title="Criar"
           >
-            <AudioWaveform className="w-3.5 h-3.5 text-amber-300" />
-            <span className="hidden sm:inline">Espectro</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Criar</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCommsOpen((v) => !v)}
+            className="px-3 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/50 backdrop-blur-xl text-emerald-100 text-[11px] font-black flex items-center gap-1.5"
+            title="Conversar com Seres & Pessoas"
+          >
+            <MessageCircle className="w-3.5 h-3.5 text-emerald-300" />
+            <span className="hidden md:inline">Conversar</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setHubDrawerOpen((v) => !v)}
+            className="p-2 rounded-full bg-slate-950/55 hover:bg-white/15 border border-white/20 backdrop-blur-xl text-amber-300"
+            title="Estação Cósmica"
+          >
+            <Crown className="w-4 h-4" />
           </button>
 
           <button
             type="button"
             onClick={() => camControlRef.current.reset()}
-            className="p-2 rounded-full bg-slate-950/65 hover:bg-white/15 border border-white/20 backdrop-blur-xl text-cyan-200 transition shadow-lg"
-            title="Centralizar Galáxia"
+            className="p-2 rounded-full bg-slate-950/55 hover:bg-white/15 border border-white/20 backdrop-blur-xl text-cyan-200"
+            title="Centralizar"
           >
             <Compass className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* UFO Scan Badge (only appears briefly when tapping an alien ship) */}
-      {ufoBanner && (
-        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 rounded-full bg-emerald-500/25 border border-emerald-300/60 backdrop-blur-xl text-emerald-100 text-xs font-black flex items-center gap-2 shadow-[0_0_25px_rgba(52,211,153,0.45)] animate-pulse">
-          <Radio className="w-3.5 h-3.5 text-emerald-300" />
-          <span>{ufoBanner}</span>
-        </div>
-      )}
-
-      {/* Hyper-Warp Transition Overlay when flying into a planet */}
-      {warpingTo && (
-        <div
-          className="absolute inset-0 z-30 flex items-center justify-center backdrop-blur-[2px] pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(circle at 50% 50%, rgba(34,211,238,0.34), rgba(30,27,75,0.75) 55%, rgba(0,0,0,0.92))',
-          }}
-        >
-          <div className="text-center space-y-2 animate-pulse">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 border border-white/35 text-xs font-black tracking-widest text-white">
-              {warpingTo.icon}
-              <span>{warpingTo.planetName.toUpperCase()}</span>
-            </div>
-            <div className="font-display text-lg sm:text-2xl font-black tracking-[0.2em] text-cyan-200">
-              {warpingTo.label.toUpperCase()}
-            </div>
+      {/* COSMIC STATION MINI POPOVER (PIX · Ranking · Bonequinhos · Idioma · Atualizar · App) */}
+      {hubDrawerOpen && (
+        <div className="absolute top-16 right-3 z-30 w-64 rounded-2xl bg-slate-950/85 border border-white/20 backdrop-blur-2xl p-3 space-y-2 shadow-[0_12px_40px_rgba(0,0,0,0.75)]">
+          <div className="flex items-center justify-between text-xs font-black text-white pb-1 border-b border-white/10">
+            <span>Estação LENKYX</span>
+            <button type="button" onClick={() => setHubDrawerOpen(false)} className="text-slate-400 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 text-[11px] font-bold">
+            <button
+              type="button"
+              onClick={() => {
+                setHubDrawerOpen(false);
+                onOpenPix('donate');
+              }}
+              className="py-2 px-2 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-100"
+            >
+              💚 PIX QR
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHubDrawerOpen(false);
+                onOpenPix('ranking');
+              }}
+              className="py-2 px-2 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-100"
+            >
+              👑 Ranking
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHubDrawerOpen(false);
+                onOpenPix('collection');
+              }}
+              className="py-2 px-2 rounded-xl bg-purple-500/20 border border-purple-400/40 text-purple-100 col-span-2"
+            >
+              👾 Meus Bonequinhos (1.000)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHubDrawerOpen(false);
+                onOpenLang();
+              }}
+              className="py-2 px-2 rounded-xl bg-white/10 border border-white/15 text-white flex items-center justify-center gap-1"
+            >
+              <Globe2 className="w-3.5 h-3.5 text-cyan-300" /> Idioma
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHubDrawerOpen(false);
+                onOpenUpdates();
+              }}
+              className="py-2 px-2 rounded-xl bg-white/10 border border-white/15 text-white flex items-center justify-center gap-1"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-300" /> Atualizar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHubDrawerOpen(false);
+                onOpenInstall();
+              }}
+              className="py-2 px-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-black font-black col-span-2"
+            >
+              📲 Baixar App PC / Celular / TV
+            </button>
           </div>
         </div>
       )}
 
-      {/* Sleek Bottom Quick-Orbit Planet Dock */}
-      <div className="absolute bottom-3 inset-x-3 z-10 flex justify-center pointer-events-none">
-        <div className="pointer-events-auto max-w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-slate-950/70 border border-white/15 backdrop-blur-xl overflow-x-auto no-scrollbar shadow-[0_8px_32px_rgba(0,0,0,0.55)]">
-          {sortedPlanetsForDock.map((spec) => (
+      {/* LIVING MULTIVERSE CONVERSATION DRAWER (AI ENTITIES + REAL USERS ONLINE) */}
+      {commsOpen && (
+        <div className="absolute bottom-4 right-3 left-3 sm:left-auto sm:w-[370px] z-30 rounded-3xl bg-slate-950/82 border border-cyan-400/40 backdrop-blur-2xl shadow-[0_16px_55px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[68dvh]">
+          {/* Header + Mode Switch */}
+          <div className="p-3 border-b border-white/10 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCommsMode('entity')}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-black flex items-center gap-1 transition ${
+                  commsMode === 'entity' ? 'bg-cyan-400 text-black' : 'bg-white/10 text-slate-200'
+                }`}
+              >
+                <Sparkles className="w-3 h-3" /> Seres Vivos
+              </button>
+              <button
+                type="button"
+                onClick={() => setCommsMode('people')}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-black flex items-center gap-1 transition ${
+                  commsMode === 'people' ? 'bg-emerald-400 text-black' : 'bg-white/10 text-slate-200'
+                }`}
+              >
+                <Users className="w-3 h-3" /> Pessoas Online
+              </button>
+            </div>
+            <div className="flex items-center gap-1">
+              {commsMode === 'entity' && (
+                <button
+                  type="button"
+                  onClick={() => setVoiceReplyEnabled((v) => !v)}
+                  className={`p-1.5 rounded-full border ${
+                    voiceReplyEnabled
+                      ? 'bg-emerald-500/25 border-emerald-400 text-emerald-200'
+                      : 'bg-white/5 border-white/15 text-slate-400'
+                  }`}
+                  title="Voz"
+                >
+                  {voiceReplyEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setCommsOpen(false)}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Entity Avatar Picker */}
+          {commsMode === 'entity' && (
+            <div className="px-3 py-2 border-b border-white/10 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {(Object.values(PERSONAS) as PersonaMeta[]).map((p) => {
+                const active = activePersona === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setActivePersona(p.id)}
+                    className={`px-2.5 py-1 rounded-xl text-[10px] font-black whitespace-nowrap flex items-center gap-1 border transition ${
+                      active
+                        ? 'bg-white text-black border-white'
+                        : 'bg-white/5 text-slate-200 border-white/10 hover:bg-white/15'
+                    }`}
+                  >
+                    <span>{p.emoji}</span>
+                    <span>{p.name.split(' ')[0]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Chat Feed */}
+          <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-3 space-y-2.5 min-h-[160px]">
+            {commsMode === 'people' && activeMessages.length === 0 && (
+              <div className="text-center text-[11px] text-slate-400 py-6">
+                Conectando viajantes online na galáxia...
+              </div>
+            )}
+            {activeMessages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+              >
+                <span className="text-[9px] font-bold text-slate-400 mb-0.5 px-1">{msg.author}</span>
+                <div
+                  className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
+                    msg.sender === 'user'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-br-sm'
+                      : 'bg-white/10 border border-white/10 text-slate-100 rounded-bl-sm'
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick-Action Chips for Entity */}
+          {commsMode === 'entity' && (
+            <div className="px-3 pb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {activePersonaMeta.quickPrompts.map((qp) => (
+                <button
+                  key={qp}
+                  type="button"
+                  onClick={() => void handleSendComms(qp)}
+                  className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-cyan-400 hover:text-black border border-white/15 text-[10px] font-bold text-cyan-200 whitespace-nowrap transition shrink-0"
+                >
+                  {qp}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Input */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSendComms();
+            }}
+            className="p-2.5 border-t border-white/10 flex items-center gap-2 bg-black/35"
+          >
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder={commsMode === 'people' ? 'Falar com pessoas online...' : `Falar com ${activePersonaMeta.name}...`}
+              className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
+            />
             <button
-              key={spec.id}
-              type="button"
-              onClick={() => handleWarpToPlanet(spec)}
-              onMouseEnter={() => setHoveredId(spec.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              className="px-2.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/20 border border-white/10 text-[11px] font-bold text-white flex items-center gap-1.5 whitespace-nowrap transition shrink-0"
+              type="submit"
+              disabled={sendingChat || !chatInput.trim()}
+              className="p-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-black disabled:opacity-40"
             >
-              <span style={{ color: spec.accentHex }}>{spec.icon}</span>
-              <span>{spec.label}</span>
+              <Send className="w-4 h-4" />
             </button>
-          ))}
+          </form>
         </div>
-      </div>
+      )}
+
+      {/* HYPER-WARP / MULTIVERSE PORTAL SHATTER TRANSITION */}
+      {warpingMeta && (
+        <div
+          className="absolute inset-0 z-40 flex items-center justify-center backdrop-blur-[3px] pointer-events-none"
+          style={{
+            background: warpingMeta.portal
+              ? 'radial-gradient(circle at 50% 50%, rgba(251,146,60,0.48), rgba(236,72,153,0.3) 45%, rgba(0,0,0,0.92))'
+              : 'radial-gradient(circle at 50% 50%, rgba(34,211,238,0.42), rgba(30,27,75,0.75) 55%, rgba(0,0,0,0.92))',
+          }}
+        >
+          <div className="text-center space-y-2 animate-pulse">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 border border-white/35 text-xs font-black tracking-widest text-white">
+              <Radio className="w-3.5 h-3.5 text-amber-300" />
+              <span>{warpingMeta.subtitle.toUpperCase()}</span>
+            </div>
+            <div className="font-display text-xl sm:text-3xl font-black tracking-[0.2em] text-amber-200">
+              {warpingMeta.title.toUpperCase()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -2127,8 +2127,9 @@ export function App() {
     <div className="h-dvh overflow-hidden bg-[#05020d] text-white flex relative">
       <CosmicSpaceBackdrop />
 
-      {/* === DESKTOP & SMART TV LEFT SIDEBAR === */}
-      <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
+      {/* === DESKTOP & SMART TV LEFT SIDEBAR (Hidden inside 3D Galaxy Hub so space fills 100% edge-to-edge) === */}
+      {activeTab !== 'galaxy' && (
+        <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
         {/* Brand Monument (tap 5x secretly for Creator access) */}
         <div
           onClick={handleBrandTap}
@@ -2288,21 +2289,25 @@ export function App() {
           )}
         </div>
       </aside>
+      )}
 
       {/* === MAIN CONTENT SHELL === */}
-      <div className="relative z-10 flex-1 md:pl-60 lg:pl-64 min-w-0 h-full overflow-hidden flex flex-col">
-        {/* TOP HEADER (YouTube Mobile & Desktop Clean Clockwork Architecture) */}
+      <div
+        className={`relative z-10 flex-1 min-w-0 h-full overflow-hidden flex flex-col ${
+          activeTab === 'galaxy' ? '' : 'md:pl-60 lg:pl-64'
+        }`}
+      >
+        {/* TOP HEADER (YouTube Mobile & Desktop Clean Clockwork Architecture — hidden inside full-bleed 3D Galaxy) */}
+        {activeTab !== 'galaxy' && (
         <header className="shrink-0 z-30 mx-2.5 sm:mx-5 mt-2 rounded-2xl glass-panel h-14 px-2.5 sm:px-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 shrink-0 min-w-0">
-            {(tabHistory.length > 0 || activeTab !== 'galaxy') && (
-              <button
-                onClick={goBackTab}
-                className="p-1.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition shrink-0"
-                title="Voltar"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={goBackTab}
+              className="p-1.5 sm:p-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition shrink-0"
+              title="Voltar"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
 
             <div
               onClick={handleBrandTap}
@@ -2512,8 +2517,10 @@ export function App() {
             )}
           </div>
         </header>
+        )}
 
         {/* MOBILE-ONLY SCROLLABLE QUICK-ACCESS CHIP BAR (Desktop uses the left Sidebar) */}
+        {activeTab !== 'galaxy' && (
         <div className="md:hidden shrink-0 z-20 px-2.5 pt-2 pb-1">
           <div className="max-w-[1380px] mx-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {(
@@ -2548,10 +2555,11 @@ export function App() {
             })}
           </div>
         </div>
+        )}
 
         {/* ACTIVE VIEW CONTAINER */}
         <main id="lenkyx-main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full">
-          <div className="w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-3">
+          <div className={activeTab === 'galaxy' ? 'w-full h-full' : 'w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-3'}>
             {appUpdateInfo && (
               <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
                 <div className="min-w-0">
@@ -2602,10 +2610,30 @@ export function App() {
                     }
                   >
                     <GalaxyUniverseView
+                      settings={settings}
+                      tracks={tracks}
                       currentTrack={currentTrack}
                       isPlaying={isPlaying}
+                      userLang={userLang}
                       onNavigateTab={navigateTab}
                       onOpenVisualizer={() => setVisualizerOpen(true)}
+                      onPlayTrack={(t) => void handlePlayTrack(t, 'v1', tracks)}
+                      onOpenSearch={(q) => {
+                        if (q && q.trim()) {
+                          openWebSearch(q.trim(), searchViewPrivate);
+                        } else {
+                          setMobileIosSearchOpen(true);
+                        }
+                      }}
+                      onOpenCreate={() => setCreateMenuOpen(true)}
+                      onOpenLang={() => setLangModalOpen(true)}
+                      onOpenPix={(tab) => {
+                        setPixInitialTab(tab || 'donate');
+                        setPixOpen(true);
+                      }}
+                      onOpenInstall={() => void handleInstantInstall()}
+                      onOpenUpdates={() => void handleForceAppUpdate()}
+                      onBrandTap={handleBrandTap}
                       onToast={showToast}
                     />
                   </Suspense>
@@ -2863,8 +2891,8 @@ export function App() {
         />
       )}
 
-      {/* YOUTUBE-STYLE 5-TAB MOBILE BOTTOM NAVIGATION BAR WITH CENTER + CREATE BUTTON */}
-      {!watchingMovie && (
+      {/* YOUTUBE-STYLE 5-TAB MOBILE BOTTOM NAVIGATION BAR WITH CENTER + CREATE BUTTON (Hidden inside full-screen 3D Galaxy) */}
+      {!watchingMovie && activeTab !== 'galaxy' && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#070312]/96 backdrop-blur-2xl border-t border-white/10 grid grid-cols-5 px-2">
           {(
             [

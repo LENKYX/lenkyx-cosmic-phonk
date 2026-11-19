@@ -2598,6 +2598,100 @@ app.post('/api/arcade/world/chat', (req, res) => {
   }
 });
 
+app.post('/api/galaxy/chat', async (req, res) => {
+  try {
+    const personaId = String(req.body?.personaId || 'zylar').trim().toLowerCase();
+    const message = String(req.body?.message || '').trim().slice(0, 400);
+    const targetLang = normalizeServerLang(req.body?.userLang || 'pt') || 'pt';
+    const currentTrackTitle = String(req.body?.currentTrackTitle || '').trim();
+    const low = message.toLowerCase();
+
+    const db = readDb();
+    const publishedTracks = (db.tracks || []).filter((t) => t && t.published !== false);
+    const sampleTrack = publishedTracks.length
+      ? publishedTracks[Math.floor(Math.random() * publishedTracks.length)]
+      : null;
+
+    let action = null;
+    let replyPt = '';
+
+    if (/(toca|tocar|play|som|música|musica|music|song|beat|phonk|ouvir|listen)/i.test(low)) {
+      if (sampleTrack) {
+        action = { type: 'play_track', trackId: sampleTrack.id, trackTitle: sampleTrack.title, artist: sampleTrack.artist };
+        replyPt = `Soltei nos alto-falantes da nave: "${sampleTrack.title}" de ${sampleTrack.artist}! A energia da galáxia já subiu.`;
+      } else {
+        action = { type: 'navigate', tab: 'catalog' };
+        replyPt = 'Abrindo o planeta Terra Sonora para você escolher qualquer música agora!';
+      }
+    } else if (/(espectro|visual|efeito|luz|cores|fogo|agua|água|vento|terra|visualizer)/i.test(low)) {
+      action = { type: 'visualizer' };
+      replyPt = 'Ativando o Espectro Cósmico em WebGL direto do núcleo do Sol LENKYX!';
+    } else if (/(filme|serie|série|anime|cinema|movie|watch|assistir)/i.test(low)) {
+      action = { type: 'navigate', tab: 'movies' };
+      replyPt = 'Abrindo o Portal Dourado para Saturnia HD — Cinema, Séries e Animes completos sem anúncios!';
+    } else if (/(reel|short|live|vídeo|video|tiktok)/i.test(low)) {
+      action = { type: 'navigate', tab: 'reels' };
+      replyPt = 'Saltando para Nova Pulse! Reels infinitos e Lives em tempo real aguardando você.';
+    } else if (/(futebol|ufc|luta|jogo ao vivo|esporte|sport|placar|soccer|mma)/i.test(low)) {
+      action = { type: 'navigate', tab: 'sports' };
+      replyPt = 'Conectando os sensores ao planeta Ares Arena — Futebol e UFC ao vivo na tela!';
+    } else if (/(game|jogo|jogar|arcade|fliperama)/i.test(low)) {
+      action = { type: 'navigate', tab: 'arcade' };
+      replyPt = 'Portal aberto para Cybertron Arcade! Hora de acelerar nos jogos.';
+    } else if (/(criar|ia|estúdio|estudio|studio|produzir|gerar)/i.test(low)) {
+      action = { type: 'navigate', tab: 'studio' };
+      replyPt = 'Entrando na Forja Genesis! Crie sua própria música com IA gratuitamente.';
+    } else if (/(offline|baixar|download|viagem)/i.test(low)) {
+      action = { type: 'navigate', tab: 'offline' };
+      replyPt = 'Ativando Cryo Nova — baixe suas faixas para ouvir em qualquer lugar sem internet.';
+    } else if (/(artista|clipe|explorar|youtube)/i.test(low)) {
+      action = { type: 'navigate', tab: 'explore' };
+      replyPt = 'Viajando para Aethelgard! Todos os artistas, clipes e biografias do mundo.';
+    } else if (/(buraco negro|black hole|portal|multiverso|estranho|strange|guardi)/i.test(low)) {
+      const portals = ['movies', 'reels', 'explore', 'arcade', 'studio'];
+      const pick = portals[Math.floor(Math.random() * portals.length)];
+      if (/(abrir|entrar|leva|vai|jump|open|teleport)/i.test(low)) {
+        action = { type: 'navigate', tab: pick };
+      }
+      replyPt =
+        personaId === 'nova'
+          ? 'Os portais arcanos conectam cada realidade da LENKYX! Toque em qualquer anel dourado ou peça para eu abrir Cinema, Reels, Música ou Jogos.'
+          : 'Esse Buraco Negro dobra o espaço-tempo da nossa galáxia! Cuidado para não cair direto numa dimensão aleatória de som pesado.';
+    } else {
+      const personas = {
+        zylar: [
+          `Saudações da Nave Alpha! ${currentTrackTitle ? `Estou curtindo "${currentTrackTitle}" no painel da nave.` : 'Os motores quânticos estão prontos.'} Quer que eu toque um som ou abra algum planeta?`,
+          'E aí, viajante! Já patrulhei três nebulosas hoje. Se quiser música, filme completo ou falar com a galera online, é só mandar!',
+          'Aqui na órbita dos Guardiões tudo tem vida: os satélites piscam, o buraco negro ruge e os portais nunca fecham. Para onde vamos?',
+        ],
+        nova: [
+          'Os anéis de Kamar-Taj giram sobre o multiverso LENKYX. Diga qual realidade deseja abrir — Cinema, Reels, IA ou Músicas — e eu conjuro o portal!',
+          'Cada fragmento brilhante ao redor do portal reflete um universo diferente. Quer atravessar para uma dimensão aleatória?',
+        ],
+        solis: [
+          `Eu sou o coração solar desta galáxia! ${currentTrackTitle ? `Estou vibrando na frequência de "${currentTrackTitle}".` : 'Toque no Sol para liberar o Espectro 3D.'} Quer que eu coloque um som pra pulsar?`,
+          'Minha coroa solar reage a cada grave, agudo e batida. Peça para tocar música ou abrir o Espectro!',
+        ],
+        sentinel: [
+          'Satélite S-7 em órbita estável! Sinais de Futebol, UFC, Filmes HD e downloads instantâneos operando a 100% sem anúncios.',
+          'Telemetria limpa: 9 planetas ativos, 3 portais dimensionais estáveis e chat global sincronizado com usuários online.',
+        ],
+        blackhole: [
+          'Do outro lado do Horizonte de Eventos existem realidades infinitas. Diga "me leva para outro universo" ou escolha um portal dourado!',
+          'A gravidade aqui curva até a luz e o som. Peça um filme, uma música ou um salto dimensional.',
+        ],
+      };
+      const pool = personas[personaId] || personas.zylar;
+      replyPt = pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    const reply = targetLang !== 'pt' ? await translateSingleText(replyPt, targetLang) : replyPt;
+    res.json({ ok: true, personaId, reply, action });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
 app.get('/tv', (_req, res) => {
   res.redirect(302, '/?tvMode=1');
 });
