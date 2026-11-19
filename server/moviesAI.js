@@ -8,33 +8,18 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 export const MOVIE_CATEGORIES = [
   {
-    id: 'cat-lancamentos-cinema',
-    title: `Lançamentos de Cinema ${CURRENT_YEAR} — Trailers Oficiais 4K (Auto)`,
-    emoji: '🍿',
-    mediaType: 'trailer',
-    isTrailerCategory: true,
-    query: `lancamentos cinema ${CURRENT_YEAR} trailer oficial dublado 4k hd`,
-  },
-  {
     id: 'cat-novidades-completos',
-    title: `Lançamentos & Filmes Novos ${CURRENT_YEAR} (Completos Dublados HD)`,
+    title: `Filmes Completos ${CURRENT_YEAR} (Dublados HD)`,
     emoji: '✨',
     mediaType: 'movie',
-    query: `filme novo lancamento ${CURRENT_YEAR} completo dublado portugues full hd`,
+    query: `filme completo dublado portugues ${CURRENT_YEAR} full hd`,
   },
   {
     id: 'cat-internacionais-dub',
-    title: 'Top Internacionais Dublados (Full HD)',
+    title: 'Top Internacionais Completos (Full HD)',
     emoji: '🌍',
     mediaType: 'movie',
     query: 'melhores filmes internacionais completos dublados portugues full hd 1080p',
-  },
-  {
-    id: 'cat-sequencias',
-    title: 'Sagas, Sequências & Continuações (Parte 1, 2, 3...)',
-    emoji: '🎞️',
-    mediaType: 'movie',
-    query: 'filme completo parte 1 parte 2 saga sequencia dublado hd',
   },
   {
     id: 'cat-series-temporadas',
@@ -45,10 +30,10 @@ export const MOVIE_CATEGORIES = [
   },
   {
     id: 'cat-series',
-    title: 'Séries Internacionais & Episódios Dublados (HD)',
+    title: 'Séries Internacionais Completas (Dublado HD)',
     emoji: '🎞️',
     mediaType: 'series',
-    query: 'serie internacional completa dublado portugues episodio hd',
+    query: 'serie internacional completa dublado portugues todos episodios hd',
   },
   {
     id: 'cat-animes',
@@ -199,22 +184,14 @@ export const MOVIE_CATEGORIES = [
   },
   {
     id: 'cat-familia',
-    title: 'Animações, Desenhos & Família (Dublados HD)',
+    title: 'Animações, Desenhos & Família Completos (HD)',
     emoji: '🦁',
     mediaType: 'anime',
-    query: 'desenho filme animacao familia completo dublado portugues hd',
-  },
-  {
-    id: 'cat-trailers',
-    title: 'Lançamentos Cinema — Trailers Oficiais 4K/HD',
-    emoji: '🎬',
-    mediaType: 'trailer',
-    isTrailerCategory: true,
-    query: 'trailer oficial lancamento cinema 2026 dublado 4k hd',
+    query: 'filme desenho animacao familia completo dublado portugues hd',
   },
   {
     id: 'cat-classicos',
-    title: 'Documentários Espaciais & Universo NASA 4K/HD',
+    title: 'Documentários Espaciais Completos 4K/HD',
     emoji: '🌌',
     mediaType: 'movie',
     query: 'documentario universo nasa completo dublado 4k hd',
@@ -504,22 +481,19 @@ export async function searchMovies(
       const data = JSON.parse(sub.slice(0, end));
       const renderers = extractVideoRenderers(data);
 
-      // Series & animes can have 15-24 min episodes; full movies require >= 28 min
-      const minDurSec = isTrailerCategory
-        ? 0
-        : mediaType === 'series' || mediaType === 'anime'
-          ? 720
-          : 1500;
+      // STRICT COMPLETE-ONLY POLICY: Movies >= 50 min (3000s); Series/Anime >= 18 min (1080s). Reject trailers/clips/summaries!
+      const minDurSec = mediaType === 'series' || mediaType === 'anime' ? 1080 : 3000;
+      const incompleteRe = /\b(trailer|teaser|cortes?|trechos?|cena|cenas|resumo|review|react|explica(?:do|cao|ção)?|bastidores|making\s*of|preview|spoiler|shorts?|clipe|music\s*video|abertura|opening|ending)\b/i;
 
       for (const vr of renderers) {
         const vid = vr.videoId;
         if (!vid || seen.has(vid)) continue;
         const durText = vr.lengthText?.simpleText || '';
         const durSec = parseDurSec(durText);
-        if (!isTrailerCategory && durSec > 0 && durSec < minDurSec) continue;
-        if (isTrailerCategory && durSec > 480) continue;
+        if (durSec <= 0 || durSec < minDurSec) continue;
 
-        const title = (vr.title?.runs || []).map((r) => r.text).join('') || 'Filme HD';
+        const title = (vr.title?.runs || []).map((r) => r.text).join('') || 'Filme Completo HD';
+        if (incompleteRe.test(title)) continue;
         const channel = (vr.ownerText?.runs || []).map((r) => r.text).join('') || 'Cinema HD';
         const badges = (vr.badges || [])
           .map((b) => b?.metadataBadgeRenderer?.label || '')

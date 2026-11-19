@@ -40,6 +40,7 @@ import {
 } from '../utils/backgroundAudioGuard';
 import { CosmicGtaLoader } from './CosmicGtaLoader';
 import { PlayerQueueStrip } from './PlayerQueueStrip';
+import { claimMediaFocus, registerMediaStopper } from '../utils/mediaCoordinator';
 
 interface Props {
   onPauseMusic: () => void;
@@ -57,13 +58,13 @@ interface Props {
 type CinemaFilter = 'all' | 'releases' | 'movie' | 'series' | 'anime' | 'archive' | 'dubbed' | 'uhd';
 
 const QUICK_SEARCH_CHIPS: Array<{ label: string; query: string; mediaType: 'movie' | 'series' | 'anime' | 'trailer' }> = [
-  { label: `🍿 Lançamentos ${new Date().getFullYear()}`, query: `lancamentos cinema ${new Date().getFullYear()} trailer oficial dublado 4k`, mediaType: 'trailer' },
-  { label: '🌍 Internacionais Dublados 1080p', query: 'melhores filmes internacionais completos dublados portugues 1080p', mediaType: 'movie' },
-  { label: '📺 Séries por Temporada', query: 'serie completa temporada 1 temporada 2 todos episodios dublado hd', mediaType: 'series' },
-  { label: '⛩️ Animes Dublados', query: 'anime completo dublado portugues filme episodio full hd', mediaType: 'anime' },
-  { label: '🚀 Ficção & Espaço 4K', query: 'filme ficcao cientifica espaco completo dublado hd', mediaType: 'movie' },
-  { label: '💥 Ação & Drift', query: 'filme acao corrida drift completo dublado portugues 1080p', mediaType: 'movie' },
-  { label: '🎨 Animação & Família', query: 'filme animacao aventura familia completo dublado portugues hd', mediaType: 'movie' },
+  { label: `🍿 Filmes Completos ${new Date().getFullYear()}`, query: `filme completo dublado portugues ${new Date().getFullYear()} full hd`, mediaType: 'movie' },
+  { label: '🌍 Internacionais Completos', query: 'melhores filmes internacionais completos dublados portugues 1080p', mediaType: 'movie' },
+  { label: '📺 Séries Completas', query: 'serie completa temporada 1 temporada 2 todos episodios dublado hd', mediaType: 'series' },
+  { label: '⛩️ Animes Completos', query: 'anime completo dublado portugues filme episodio full hd', mediaType: 'anime' },
+  { label: '🚀 Ficção & Espaço', query: 'filme ficcao cientifica espaco completo dublado hd', mediaType: 'movie' },
+  { label: '💥 Ação Completa', query: 'filme acao corrida drift completo dublado portugues 1080p', mediaType: 'movie' },
+  { label: '🎨 Animação Completa', query: 'filme animacao aventura familia completo dublado portugues hd', mediaType: 'movie' },
 ];
 
 const NetflixScrollableRow: React.FC<{
@@ -209,16 +210,10 @@ export const MoviesView: React.FC<Props> = ({
   const [, setPrerollActive] = useState(false);
   const [cinemaQuality, setCinemaQuality] = useState<'auto' | 'large' | 'hd720' | 'hd1080' | 'hd2160'>('hd720');
   const [expandedView, setExpandedView] = useState(false);
-  const [leftOverlayOpen, setLeftOverlayOpen] = useState(false);
-  const leftOverlayTimerRef = useRef<number | null>(null);
 
-  const revealLeftOverlay = () => {
-    setLeftOverlayOpen(true);
-    if (leftOverlayTimerRef.current !== null) window.clearTimeout(leftOverlayTimerRef.current);
-    leftOverlayTimerRef.current = window.setTimeout(() => {
-      setLeftOverlayOpen(false);
-    }, 4500);
-  };
+  useEffect(() => {
+    return registerMediaStopper('movies', () => setActiveMovie(null));
+  }, []);
 
   // Series Seasons & Episodes state
   const [seriesMetaTitle, setSeriesMetaTitle] = useState('');
@@ -307,6 +302,7 @@ export const MoviesView: React.FC<Props> = ({
   // Open movie passed from Search or Home directly with Netflix-style intro!
   useEffect(() => {
     if (!initialMovie) return;
+    claimMediaFocus('movies');
     onPauseMusic();
     setMovieQueue([initialMovie]);
     setActiveMovie(initialMovie);
@@ -373,16 +369,15 @@ export const MoviesView: React.FC<Props> = ({
   };
 
   const matchesFilter = (m: MovieItem): boolean => {
+    if (m.isTrailer || m.mediaType === 'trailer') return false;
     if (activeFilter === 'all') return true;
     if (activeFilter === 'releases') {
       return (
-        m.isTrailer ||
-        m.mediaType === 'trailer' ||
         (m.category || '').toLowerCase().includes('lançamento') ||
         m.title.includes(String(new Date().getFullYear()))
       );
     }
-    if (activeFilter === 'movie') return (m.mediaType || 'movie') === 'movie' && !m.isTrailer;
+    if (activeFilter === 'movie') return (m.mediaType || 'movie') === 'movie';
     if (activeFilter === 'series') return m.mediaType === 'series';
     if (activeFilter === 'anime') return m.mediaType === 'anime';
     if (activeFilter === 'archive') return m.sourceLabel === 'Acervo Direto' || m.id.startsWith('arcmov-');
@@ -471,6 +466,7 @@ export const MoviesView: React.FC<Props> = ({
   };
 
   const handleOpenMovie = (m: MovieItem, queueList: MovieItem[]) => {
+    claimMediaFocus('movies');
     onPauseMusic();
     setMovieQueue(queueList.length ? queueList : [m]);
     setActiveMovie(m);
@@ -515,18 +511,18 @@ export const MoviesView: React.FC<Props> = ({
     setSearching(true);
     try {
       const low = q.toLowerCase();
-      const isTrailer = forcedType === 'trailer' || low.includes('trailer');
-      const inferredType: 'movie' | 'series' | 'anime' | 'trailer' = isTrailer
-        ? 'trailer'
-        : forcedType || (low.includes('anime') ? 'anime' : low.includes('serie') || low.includes('série') ? 'series' : 'movie');
+      const inferredType: 'movie' | 'series' | 'anime' =
+        forcedType === 'anime' || low.includes('anime')
+          ? 'anime'
+          : forcedType === 'series' || low.includes('serie') || low.includes('série')
+            ? 'series'
+            : 'movie';
 
       let finalQ = q;
-      if (!isTrailer) {
-        if (!low.includes('dublado') && !low.includes('legendado')) finalQ = `${finalQ} dublado`;
-        if (!low.includes('completo') && inferredType === 'movie') finalQ = `${finalQ} filme completo`;
-        if (!low.includes('hd') && !low.includes('1080') && !low.includes('4k')) finalQ = `${finalQ} full hd`;
-      }
-      const items = await searchMoviesCatalog(finalQ, isTrailer, inferredType);
+      if (!low.includes('dublado') && !low.includes('legendado')) finalQ = `${finalQ} dublado`;
+      if (!low.includes('completo') && inferredType === 'movie') finalQ = `${finalQ} filme completo`;
+      if (!low.includes('hd') && !low.includes('1080') && !low.includes('4k')) finalQ = `${finalQ} full hd`;
+      const items = await searchMoviesCatalog(finalQ, false, inferredType);
       setSearchResults(items);
     } finally {
       setSearching(false);
@@ -712,21 +708,6 @@ export const MoviesView: React.FC<Props> = ({
                 </button>
               )}
 
-              {onEmergencyStop && (
-                <button
-                  onClick={() => {
-                    setActiveMovie(null);
-                    clearBackgroundMediaSession();
-                    onEmergencyStop();
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/45 border border-rose-400/50 text-rose-100 text-[11px] font-black flex items-center gap-1"
-                  title="Botão de Segurança: Parar vídeo, áudio e segundo plano"
-                >
-                  <ShieldOff className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Parar Tudo</span>
-                </button>
-              )}
-
               <button
                 onClick={() => setActiveMovie(null)}
                 className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-rose-600 text-white text-xs font-black flex items-center gap-1"
@@ -737,9 +718,7 @@ export const MoviesView: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Video Viewport — Immediate playback with YouTube-style Left-Edge Tap-to-Reveal Controls */}
           <div
-            onClick={revealLeftOverlay}
             className="relative w-full bg-black flex-1 min-h-[220px] sm:aspect-video flex items-center justify-center overflow-hidden"
           >
             {activeMovie.videoStreamUrl && !activeMovie.youtubeVideoId && !activeMovie.youtubePlaylistId ? (
@@ -768,75 +747,6 @@ export const MoviesView: React.FC<Props> = ({
                 className="w-full h-full border-0"
               />
             )}
-
-            {/* Left-Edge Tap-to-Reveal Cinema Controls */}
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                revealLeftOverlay();
-              }}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex items-center"
-            >
-              {!leftOverlayOpen ? (
-                <button
-                  type="button"
-                  onClick={revealLeftOverlay}
-                  className="ml-1.5 px-1.5 py-4 rounded-full bg-black/40 hover:bg-black/75 backdrop-blur-md border border-white/20 text-white/85 hover:text-white flex items-center justify-center shadow-lg transition"
-                  title="Toque para abrir controles laterais (Voltar / Fechar)"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <div className="ml-2 p-1.5 rounded-2xl bg-[#090418]/90 backdrop-blur-xl border border-cyan-400/35 shadow-[0_12px_40px_rgba(0,0,0,0.85)] flex flex-col items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveMovie(null)}
-                    className="w-11 h-10 rounded-xl bg-white/15 hover:bg-white/25 text-white flex flex-col items-center justify-center transition"
-                    title="Voltar"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span className="text-[8px] font-black">Voltar</span>
-                  </button>
-                  {movieQueue.length > 1 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => stepMovie(-1)}
-                        className="w-11 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
-                        title="Anterior"
-                      >
-                        <SkipBack className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => stepMovie(1)}
-                        className="w-11 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
-                        title="Próximo"
-                      >
-                        <SkipForward className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => void toggleExpandPlayer()}
-                    className="w-11 h-9 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-200 flex items-center justify-center transition"
-                    title="Ampliar / Reduzir"
-                  >
-                    {expandedView ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveMovie(null)}
-                    className="w-11 h-10 rounded-xl bg-rose-500/30 hover:bg-rose-500/55 border border-rose-400/40 text-rose-100 flex flex-col items-center justify-center transition"
-                    title="Fechar"
-                  >
-                    <X className="w-4 h-4" />
-                    <span className="text-[8px] font-black">Fechar</span>
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Series Seasons & Episodes Selector OR Mobile & TV Next-in-Queue Strip */}

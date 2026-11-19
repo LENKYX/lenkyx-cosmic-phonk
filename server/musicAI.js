@@ -562,10 +562,14 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
   const ai = interpretQueryWithAI(q);
   const effectiveQuery = ai.corrected || q;
   const queryForYt = effectiveQuery ? ai.expanded : 'Henrique e Juliano Marilia Mendonca The Weeknd Queen Alok official audio';
+  const isArtistQuery = Boolean(ai.matchedArtist) || effectiveQuery.length >= 3;
 
   const promises = [
-    searchYouTubeMusic(queryForYt, 18),
-    searchAudiusFull(effectiveQuery || 'phonk cosmic', 6),
+    searchYouTubeMusic(queryForYt, isArtistQuery ? 30 : 18),
+    isArtistQuery
+      ? searchYouTubeMusic(`${ai.matchedArtist?.name || effectiveQuery} maiores sucessos musicas completas`, 20)
+      : Promise.resolve([]),
+    searchAudiusFull(effectiveQuery || 'phonk cosmic', isArtistQuery ? 12 : 6),
     ai.isCosmic || options.includeArchiveSpace
       ? searchArchiveSpaceAudio('nasa voyager space electromagnetic alien', 6)
       : Promise.resolve([]),
@@ -584,15 +588,18 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
     promises.push(Promise.resolve(null));
   }
 
-  const [ytTracks, audiusTracks, archiveTracks, wikiArtist] = await Promise.all(promises);
+  const [ytTracks, ytMoreTracks, audiusTracks, archiveTracks, wikiArtist] = await Promise.all(promises);
 
-  // Merge: NASA/Archive space first if cosmic, then YouTube Official, then Audius
+  // Merge: NASA/Archive space first if cosmic, then YouTube Official + Full Discography, then Audius
   const combined = [];
   const seenIds = new Set();
+  const seenTitles = new Set();
   const pushUnique = (arr) => {
     for (const t of arr) {
-      if (!seenIds.has(t.id)) {
+      const titleKey = String(t.title || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 40);
+      if (!seenIds.has(t.id) && (!titleKey || !seenTitles.has(titleKey))) {
         seenIds.add(t.id);
+        if (titleKey) seenTitles.add(titleKey);
         combined.push({ ...t, number: combined.length + 1 });
       }
     }
@@ -601,9 +608,11 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
   if (ai.isCosmic || options.includeArchiveSpace) {
     pushUnique(archiveTracks);
     pushUnique(ytTracks);
+    pushUnique(ytMoreTracks);
     pushUnique(audiusTracks);
   } else {
     pushUnique(ytTracks);
+    pushUnique(ytMoreTracks);
     pushUnique(audiusTracks);
     pushUnique(archiveTracks);
   }
@@ -620,12 +629,70 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
         }
       : null;
 
+  // Strict Artist Isolation: when viewing a specific artist, filter out unrelated artists so there is ZERO interference!
+  let finalTracks = combined;
+  if (artistProfile?.name) {
+    const tokens = artistProfile.name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .split(/\s+/)
+      .filter((w) => w.length >= 3);
+    if (tokens.length > 0) {
+      const matchedOnly = combined.filter((t) => {
+        const hay = `${t.artist || ''} ${t.title || ''}`
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        return tokens.some((tok) => hay.includes(tok));
+      });
+      if (matchedOnly.length >= 4) {
+        finalTracks = matchedOnly.map((t, i) => ({ ...t, number: i + 1 }));
+      }
+    }
+  }
+
+  const artistPlaylists = artistProfile?.name
+    ? [
+        {
+          id: `art-hits-${artistProfile.name}`,
+          title: `Maiores Sucessos · ${artistProfile.name}`,
+          subtitle: `As faixas mais tocadas de ${artistProfile.name}`,
+          emoji: '🔥',
+          era: artistProfile.genre || 'Artista',
+          gradient: 'from-pink-500/25 via-purple-600/20 to-cyan-500/20',
+          searchQuery: `${artistProfile.name} maiores sucessos`,
+          includeArchiveSpace: false,
+        },
+        {
+          id: `art-clips-${artistProfile.name}`,
+          title: `Clipes Oficiais · ${artistProfile.name}`,
+          subtitle: `Vídeos & clipes completos de ${artistProfile.name}`,
+          emoji: '🎬',
+          era: 'HD',
+          gradient: 'from-rose-500/25 via-pink-500/20 to-purple-600/20',
+          searchQuery: `${artistProfile.name} clipe oficial`,
+          includeArchiveSpace: false,
+        },
+        {
+          id: `art-live-${artistProfile.name}`,
+          title: `Ao Vivo & Álbuns · ${artistProfile.name}`,
+          subtitle: `Shows e faixas completas de ${artistProfile.name}`,
+          emoji: '🎤',
+          era: 'Completo',
+          gradient: 'from-emerald-500/25 via-cyan-500/20 to-blue-600/20',
+          searchQuery: `${artistProfile.name} ao vivo dvd completo`,
+          includeArchiveSpace: false,
+        },
+      ]
+    : CURATED_PLAYLISTS;
+
   const payload = {
     query: q,
-    aiInsight: buildAiInsight(q, ai.expanded, artistProfile, combined.length, ai.isCosmic),
+    aiInsight: buildAiInsight(q, ai.expanded, artistProfile, finalTracks.length, ai.isCosmic),
     artistProfile,
-    tracks: combined,
-    playlists: CURATED_PLAYLISTS,
+    tracks: finalTracks,
+    playlists: artistPlaylists,
   };
 
   searchCache.set(cacheKey, { ts: Date.now(), payload });

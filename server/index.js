@@ -736,6 +736,30 @@ app.get('/api/world-search', async (req, res) => {
   const space = req.query.space === '1' || req.query.space === 'true';
   try {
     const payload = await runSmartWorldSearch(q, { includeArchiveSpace: space });
+    if (q.length >= 2) {
+      const db = readDb();
+      const qLow = q.toLowerCase();
+      const localMatches = (db.tracks || []).filter((t) =>
+        `${t.artist || ''} ${t.title || ''}`.toLowerCase().includes(qLow)
+      );
+      if (localMatches.length > 0) {
+        const existing = new Set((payload.tracks || []).map((t) => t.id));
+        const merged = [...localMatches.filter((t) => !existing.has(t.id)), ...(payload.tracks || [])].map(
+          (t, i) => ({ ...t, number: i + 1 })
+        );
+        payload.tracks = merged;
+        if (!payload.artistProfile && qLow.includes('lenkyx')) {
+          payload.artistProfile = {
+            name: 'LENKYX',
+            photoUrl: '/covers/icon-512.png',
+            bio: 'Catálogo oficial LENKYX Cosmic Phonk — todas as faixas originais completas sem anúncios.',
+            genre: 'Cosmic Phonk / Trap',
+            era: 'Oficial',
+            wikiUrl: '',
+          };
+        }
+      }
+    }
     res.json(payload);
   } catch {
     res.json({ tracks: [], playlists: CURATED_PLAYLISTS, artistProfile: null, aiInsight: null });
@@ -2111,6 +2135,41 @@ app.get('/api/community/world-shorts', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }
+});
+
+// === SELF-IMPROVING GLOBAL SMART PREFERENCES ===
+const globalSmartTastes = { artists: {}, genres: {}, reelCategories: {}, totalSignals: 0 };
+
+app.post('/api/smart-learn', (req, res) => {
+  const { artist = '', genre = '', reelCategory = '' } = req.body || {};
+  if (artist) {
+    const k = String(artist).trim().slice(0, 60);
+    globalSmartTastes.artists[k] = (globalSmartTastes.artists[k] || 0) + 1;
+  }
+  if (genre) {
+    const k = String(genre).trim().toLowerCase().slice(0, 40);
+    globalSmartTastes.genres[k] = (globalSmartTastes.genres[k] || 0) + 1;
+  }
+  if (reelCategory) {
+    const k = String(reelCategory).trim().toLowerCase().slice(0, 30);
+    globalSmartTastes.reelCategories[k] = (globalSmartTastes.reelCategories[k] || 0) + 1;
+  }
+  globalSmartTastes.totalSignals += 1;
+  res.json({ ok: true, totalSignals: globalSmartTastes.totalSignals });
+});
+
+app.get('/api/smart-learn', (_req, res) => {
+  const top = (obj) =>
+    Object.entries(obj)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([name, score]) => ({ name, score }));
+  res.json({
+    totalSignals: globalSmartTastes.totalSignals,
+    topArtists: top(globalSmartTastes.artists),
+    topGenres: top(globalSmartTastes.genres),
+    topReelCategories: top(globalSmartTastes.reelCategories),
+  });
 });
 
 app.post('/api/tv-handoff', (req, res) => {

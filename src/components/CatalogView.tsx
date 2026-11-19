@@ -170,121 +170,105 @@ export const CatalogView: React.FC<Props> = ({
 
   return (
     <div className="space-y-4 pb-36 md:pb-28 cosmic-scene">
-      {/* YOUTUBE-MUSIC COSMIC GALAXY HERO (Clean, zero text clash behind title!) */}
-      <section className="relative rounded-3xl cosmic-card-3d overflow-hidden border border-white/12 bg-gradient-to-br from-[#170933] via-[#0b041c] to-[#061326]">
-        <div className="absolute -top-16 -right-12 w-56 h-56 rounded-full bg-pink-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-12 w-56 h-56 rounded-full bg-cyan-500/20 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5 sm:gap-5 min-w-0">
-            <img
-              src="/covers/icon-512.png?v=43"
-              alt="LENKYX Logo 3D"
-              className="w-16 h-16 sm:w-20 sm:h-20 object-contain lenkyx-logo-3d shrink-0"
-            />
-
-            <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[9px] sm:text-[10px] font-black text-emerald-300">
-                  <CheckCircle2 className="w-3 h-3 shrink-0" /> OFICIAL · VERIFICADO
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-500/20 border border-pink-400/35 text-[9px] sm:text-[10px] font-extrabold text-pink-200">
-                  <Sparkles className="w-2.5 h-2.5 shrink-0" /> {tracks.length} FAIXAS SEM ANÚNCIOS
-                </span>
-              </div>
-              <h1 className="font-display text-lg sm:text-2xl lg:text-3xl font-black tracking-wide text-white truncate">
-                {settings.artistName} <span className="neon-text">{settings.brandSubtitle}</span>
-              </h1>
-              <div className="flex flex-wrap items-center gap-3 text-[11px] text-purple-200/80">
-                <span className="inline-flex items-center gap-1">
-                  <Headphones className="w-3.5 h-3.5 text-cyan-400" />
-                  {totalPlays.toLocaleString('pt-BR')} plays
-                </span>
-                {offlineCount > 0 && (
-                  <span className="inline-flex items-center gap-1 text-emerald-300 font-bold">
-                    <WifiOff className="w-3 h-3" /> {offlineCount} offline
-                  </span>
-                )}
-              </div>
+      {/* CLEAN COMPACT HEADER BAR (Simple, unified, no giant LENKYX spotlight box!) */}
+      <section className="rounded-2xl cosmic-card-3d px-3.5 py-3 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <img
+            src="/covers/icon-192.png?v=43"
+            alt="LENKYX"
+            className="w-9 h-9 object-contain lenkyx-logo-3d shrink-0"
+          />
+          <div className="min-w-0">
+            <h1 className="font-display text-sm sm:text-base font-black text-white truncate">
+              Músicas & Artistas
+            </h1>
+            <div className="text-[11px] text-cyan-200/80 flex items-center gap-2">
+              <span>{tracks.length} faixas</span>
+              <span>·</span>
+              <span>{totalPlays.toLocaleString('pt-BR')} plays</span>
+              {offlineCount > 0 && (
+                <>
+                  <span>·</span>
+                  <span className="text-emerald-300 font-bold">{offlineCount} offline</span>
+                </>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Clean Essential Action Row */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => tracks[0] && onPlayTrack(tracks[0], 'v1')}
-              className="px-4 sm:px-5 py-2 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 hover:brightness-110 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_24px_rgba(236,72,153,0.45)] transition active:scale-95"
-            >
-              <Play className="w-3.5 h-3.5 fill-white" /> Tocar Álbum
-            </button>
-            <button
-              onClick={onDownloadAllOffline}
-              disabled={downloadingAll}
-              className="px-3.5 sm:px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs flex items-center gap-1.5 transition active:scale-95"
-            >
-              {downloadingAll ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
-              ) : offlineCount >= tracks.length && tracks.length > 0 ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <DownloadCloud className="w-3.5 h-3.5 text-cyan-300" />
-              )}
-              {downloadingAll
-                ? 'Baixando...'
-                : offlineCount >= tracks.length && tracks.length > 0
-                ? 'Todas Offline'
-                : 'Offline'}
-            </button>
-            {!isAndroidApk() && onInstallApp && (
-              <button
-                type="button"
-                onClick={onInstallApp}
-                className="px-3.5 sm:px-4 py-2 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-[0_0_16px_rgba(52,211,153,0.35)] transition active:scale-95"
-              >
-                <Smartphone className="w-3.5 h-3.5" /> Baixar (Android · iPhone · PC)
-              </button>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => tracks[0] && onPlayTrack(tracks[0], 'v1')}
+            className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 hover:brightness-110 text-white font-extrabold text-xs flex items-center gap-1.5 shadow transition active:scale-95"
+          >
+            <Play className="w-3.5 h-3.5 fill-white" /> Tocar Tudo
+          </button>
+          <button
+            onClick={onDownloadAllOffline}
+            disabled={downloadingAll}
+            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs flex items-center gap-1.5 transition"
+          >
+            {downloadingAll ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
+            ) : offlineCount >= tracks.length && tracks.length > 0 ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <DownloadCloud className="w-3.5 h-3.5 text-cyan-300" />
             )}
+            <span>{offlineCount >= tracks.length && tracks.length > 0 ? 'Salvas' : 'Offline'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleToggleMainChannelSubscribe()}
+            className={`px-3 py-1.5 rounded-full font-extrabold text-xs flex items-center gap-1 transition ${
+              channelSubscribed
+                ? 'bg-white/15 border border-white/25 text-white'
+                : 'bg-gradient-to-r from-red-600 to-pink-500 text-white hover:brightness-110'
+            }`}
+          >
+            {channelSubscribed ? <BellRing className="w-3.5 h-3.5 text-emerald-300" /> : <Bell className="w-3.5 h-3.5" />}
+            <span>{channelSubscribed ? 'Inscrito' : 'Inscrever-se'} · {channelSubsCount}</span>
+          </button>
+          {mode === 'creator' && (
             <button
-              type="button"
-              onClick={() => void handleToggleMainChannelSubscribe()}
-              className={`px-3.5 sm:px-4 py-2 rounded-full font-extrabold text-xs flex items-center gap-1.5 transition active:scale-95 ${
-                channelSubscribed
-                  ? 'bg-white/15 border border-white/25 text-white'
-                  : 'bg-gradient-to-r from-red-600 to-pink-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.4)] hover:brightness-110'
-              }`}
+              onClick={onAddTrack}
+              className="px-3 py-1.5 rounded-full bg-white text-black hover:bg-purple-100 font-extrabold text-xs flex items-center gap-1 transition"
             >
-              {channelSubscribed ? (
-                <>
-                  <BellRing className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Inscrito · {channelSubsCount}</span>
-                </>
-              ) : (
-                <>
-                  <Bell className="w-3.5 h-3.5" />
-                  <span>Inscrever-se · {channelSubsCount}</span>
-                </>
-              )}
+              <Plus className="w-3.5 h-3.5" /> Nova
             </button>
-            {onOpenGlobalChat && (
-              <button
-                type="button"
-                onClick={onOpenGlobalChat}
-                className="px-3.5 sm:px-4 py-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 font-extrabold text-xs flex items-center gap-1.5 transition active:scale-95"
-              >
-                <MessageCircle className="w-3.5 h-3.5" /> Chat
-              </button>
-            )}
-            {mode === 'creator' && (
-              <button
-                onClick={onAddTrack}
-                className="px-3.5 py-2 rounded-full bg-white text-black hover:bg-purple-100 font-extrabold text-xs flex items-center gap-1 transition"
-              >
-                <Plus className="w-3.5 h-3.5" /> Nova
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </section>
+
+      {/* SIMPLE ARTISTS STRIP INSIDE MÚSICAS (LENKYX equal alongside all other artists!) */}
+      {onSearchWorld && (
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          {[
+            'LENKYX',
+            'The Weeknd',
+            'Henrique & Juliano',
+            'Alok',
+            'Marília Mendonça',
+            'Gusttavo Lima',
+            'Bruno Mars',
+            'Ana Castela',
+            'Kordhell',
+            'Dua Lipa',
+          ].map((artistName) => (
+            <button
+              key={artistName}
+              type="button"
+              onClick={() => onSearchWorld(artistName)}
+              className="px-3 py-1.5 rounded-full bg-white/[0.08] hover:bg-gradient-to-r hover:from-emerald-400 hover:to-cyan-400 hover:text-black border border-white/15 text-xs font-extrabold text-white whitespace-nowrap shrink-0 flex items-center gap-1.5 transition"
+            >
+              {artistName === 'LENKYX' && (
+                <img src="/covers/icon-192.png?v=43" alt="LENKYX" className="w-4 h-4 object-contain" />
+              )}
+              <span>{artistName}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* FILTER PILLS + YOUTUBE/LIST VIEW TOGGLE */}
       <div className="flex items-center justify-between gap-2">
@@ -432,7 +416,16 @@ export const CatalogView: React.FC<Props> = ({
                       {track.emoji} {track.title}
                     </div>
                     <div className="text-[11px] text-purple-200/70 truncate flex items-center gap-2">
-                      <span>{track.artist}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSearchWorld?.(track.artist);
+                        }}
+                        className="hover:text-cyan-300 hover:underline truncate"
+                      >
+                        {track.artist}
+                      </button>
                       <span className="font-mono text-[10px] text-cyan-300/80">{track.bpm} BPM</span>
                       {isOff && (
                         <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold">
@@ -661,8 +654,15 @@ export const CatalogView: React.FC<Props> = ({
                     >
                       {track.emoji} {track.title}
                     </div>
-                    <div className="text-[11px] text-slate-300/80 truncate mt-0.5">
-                      {track.artist} · {track.bpm} BPM · {(track.plays || 0).toLocaleString('pt-BR')} plays
+                    <div className="text-[11px] text-slate-300/80 truncate mt-0.5 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onSearchWorld?.(track.artist)}
+                        className="hover:text-cyan-300 hover:underline truncate font-semibold"
+                      >
+                        {track.artist}
+                      </button>
+                      <span>· {track.bpm} BPM · {(track.plays || 0).toLocaleString('pt-BR')}</span>
                     </div>
 
                     <div className="mt-2 flex items-center justify-between gap-1">

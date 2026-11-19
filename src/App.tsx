@@ -76,6 +76,8 @@ import { WorldLanguageModal } from './components/WorldLanguageModal';
 import { MediaPlayerMenuModal } from './components/MediaPlayerMenuModal';
 import { CommunityChatModal, TargetCommentsModal } from './components/CommunityChatModal';
 import { recordRankingHit } from './utils/rankingsApi';
+import { claimMediaFocus, registerMediaStopper, stopAllMedia } from './utils/mediaCoordinator';
+import { rankTracksBySmartTaste, recordSmartInteraction } from './utils/smartEngine';
 import {
   AppMode,
   AppSettings,
@@ -532,7 +534,7 @@ export function App() {
         setGtaLoaderOpen(false);
         sessionStorage.setItem('lenkyx_splash_done', '1');
       }
-    }, 15000);
+    }, 8200);
     return () => {
       cancelled = true;
       window.clearTimeout(t);
@@ -1043,9 +1045,14 @@ export function App() {
   }, []);
 
   const pauseCatalogPlayer = useCallback(() => {
+    userPausedRef.current = true;
     audioRef.current?.pause();
     ytPlayerRef.current?.pauseVideo?.();
   }, []);
+
+  useEffect(() => {
+    return registerMediaStopper('catalog', pauseCatalogPlayer);
+  }, [pauseCatalogPlayer]);
 
   // Real-time online listeners + daily PIX goal heartbeat
   useEffect(() => {
@@ -1186,10 +1193,17 @@ export function App() {
     async (track: Track, requestedVersion?: AudioVersion, customQueue?: Track[]) => {
       const audio = audioRef.current;
       if (!audio) return;
+      claimMediaFocus('catalog');
       const mySeq = ++playSeqRef.current;
       userPausedRef.current = false;
       bgHandoffActiveRef.current = false;
       audioProxyRetriedRef.current = false;
+      recordSmartInteraction({
+        kind: 'play',
+        artist: track.artist,
+        genre: track.genre || track.album,
+        title: track.title,
+      });
       if (ytStallTimerRef.current !== null) {
         window.clearTimeout(ytStallTimerRef.current);
         ytStallTimerRef.current = null;
@@ -1525,6 +1539,7 @@ export function App() {
     userPausedRef.current = true;
     bgHandoffActiveRef.current = false;
     isPlayingRef.current = false;
+    stopAllMedia();
     try {
       const audio = audioRef.current;
       if (audio) {
@@ -1545,17 +1560,21 @@ export function App() {
     showToast('🔒 Áudio, vídeo e segundo plano encerrados com segurança!');
   }, [showToast]);
 
-  // Keep Audio & Video Alive when Minimizing / Locking Phone Screen (ONLY stop on Safety Stop or closing the site)
+  // Auto YouTube-Music Style Media Player on Minimize / Screen Off / App Leave: keeps playing continuously!
   useEffect(() => {
     const onVisChange = () => {
       if (document.visibilityState === 'hidden') {
         if (!userPausedRef.current && isPlayingRef.current && backgroundModeRef.current) {
+          setMobileBackgroundKeepalive(true);
           void bassAudioCtxRef.current?.resume().catch(() => {});
           if (audioRef.current?.src && audioRef.current.paused) {
             void audioRef.current.play().catch(() => {});
           }
           if (currentTrackRef.current?.youtubeVideoId && !currentTrackRef.current.audioUrl) {
             ytPlayerRef.current?.playVideo?.();
+          }
+          if (currentTrackRef.current) {
+            setMediaPlayerMenuOpen(true);
           }
         }
       } else if (document.visibilityState === 'visible') {
@@ -1564,21 +1583,19 @@ export function App() {
         }
       }
     };
-    const onBeforeUnload = () => {
-      userPausedRef.current = true;
-      try {
-        audioRef.current?.pause();
-        ytPlayerRef.current?.stopVideo?.();
-      } catch {
-        // ignore
+    const onPageHide = () => {
+      if (!userPausedRef.current && isPlayingRef.current && backgroundModeRef.current) {
+        setMobileBackgroundKeepalive(true);
+        if (audioRef.current?.src && audioRef.current.paused) {
+          void audioRef.current.play().catch(() => {});
+        }
       }
-      clearBackgroundMediaSession();
     };
     document.addEventListener('visibilitychange', onVisChange);
-    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('pagehide', onPageHide);
     return () => {
       document.removeEventListener('visibilitychange', onVisChange);
-      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('pagehide', onPageHide);
     };
   }, []);
 
@@ -1820,6 +1837,14 @@ export function App() {
 
   const handleLikeTrack = async (track: Track) => {
     const nextFav = !track.favorite;
+    if (nextFav) {
+      recordSmartInteraction({
+        kind: 'like',
+        artist: track.artist,
+        genre: track.genre || track.album,
+        title: track.title,
+      });
+    }
     if (!track.source || track.source === 'lenkyx') {
       setTracks((prev) => prev.map((t) => (t.id === track.id ? { ...t, favorite: nextFav } : t)));
       if (currentTrack?.id === track.id) setCurrentTrack((c) => (c ? { ...c, favorite: nextFav } : c));
@@ -2304,22 +2329,11 @@ export function App() {
                   ? 'bg-gradient-to-r from-pink-500/25 via-purple-500/25 to-cyan-500/25 border-cyan-400/60 text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.35)]'
                   : 'bg-white/[0.08] hover:bg-white/20 border-white/15 text-slate-100'
               }`}
-              title="Menu Media Player · Continuar tocando com celular fechado"
+              title="Menu Media Player · 2º Plano"
             >
               <Disc3 className={`w-4 h-4 md:w-3.5 md:h-3.5 text-cyan-300 ${isPlaying ? 'animate-spin' : ''}`} />
               <span className="hidden md:inline">Player</span>
             </button>
-            {(isPlaying || currentTrack) && (
-              <button
-                type="button"
-                onClick={handleEmergencyStop}
-                className="w-9 h-9 md:w-auto md:px-2.5 md:py-1.5 rounded-full bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/50 text-rose-200 text-[11px] font-black flex items-center justify-center gap-1 shrink-0 transition shadow-[0_0_15px_rgba(244,63,94,0.28)]"
-                title="Botão de Segurança: Parar som, vídeo e segundo plano imediatamente"
-              >
-                <Power className="w-4 h-4 md:w-3.5 md:h-3.5 text-rose-300" />
-                <span className="hidden md:inline">Parar Tudo</span>
-              </button>
-            )}
             <div className="hidden lg:flex items-center gap-1 px-2 py-1 rounded-full bg-white/[0.07] border border-white/10">
               <button
                 onClick={handleToggleMute}
@@ -2369,29 +2383,17 @@ export function App() {
               <span className="hidden md:inline uppercase">{getLanguageMeta(userLang).code}</span>
             </button>
 
-            {/* Quick PIX QR + Share (Desktop pills, mobile lives cleanly in YouTube Chip Bar below) */}
+            {/* Mobile-only Quick PIX & Share (Desktop already has them cleanly in the Sidebar!) */}
             <button
               onClick={() => {
                 setPixInitialTab('donate');
                 setPixOpen(true);
               }}
-              className="hidden sm:flex px-2.5 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/45 text-emerald-100 text-[11px] font-black items-center gap-1 transition"
-              title="Abrir QR Code PIX & Apoiar Igrejas/Combate à Fome"
+              className="flex md:hidden px-2.5 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/45 text-emerald-100 text-[11px] font-black items-center gap-1 transition shrink-0"
+              title="PIX"
             >
               <QrCode className="w-3.5 h-3.5 text-emerald-300" />
-              <span>PIX</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setPixInitialTab('ranking');
-                setPixOpen(true);
-              }}
-              className="hidden lg:flex px-2.5 py-1.5 rounded-full bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/40 text-amber-100 text-[11px] font-black items-center gap-1 transition"
-              title="Classificação de Apoio & Coleção de Bonequinhos"
-            >
-              <Crown className="w-3.5 h-3.5 text-amber-300" />
-              <span>Ranking</span>
+              <span className="hidden sm:inline">PIX</span>
             </button>
 
             <button
@@ -2399,11 +2401,10 @@ export function App() {
                 setShareTrack(null);
                 setShareOpen(true);
               }}
-              className="hidden sm:flex px-2.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/35 hover:to-cyan-500/35 border border-emerald-400/40 text-emerald-100 text-[11px] font-black items-center gap-1 transition"
-              title="Compartilhe com amigos"
+              className="flex md:hidden px-2.5 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-400/40 text-emerald-100 text-[11px] font-black items-center gap-1 transition shrink-0"
+              title="Compartilhar"
             >
               <Share2 className="w-3.5 h-3.5 text-emerald-300" />
-              <span className="hidden lg:inline">Compartilhar</span>
             </button>
 
             {mode === 'creator' && (
@@ -2444,43 +2445,13 @@ export function App() {
                   className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap transition shrink-0 ${
                     active
                       ? 'bg-white text-black shadow-[0_0_14px_rgba(255,255,255,0.35)]'
-                      : 'bg-white/[0.07] hover:bg-white/[0.14] border border-white/10 text-slate-200'
+                      : 'bg-white/[0.08] hover:bg-white/[0.16] border border-white/10 text-slate-100'
                   }`}
                 >
                   {chip.label}
                 </button>
               );
             })}
-
-            <button
-              type="button"
-              onClick={() => {
-                setPixInitialTab('donate');
-                setPixOpen(true);
-              }}
-              className="sm:hidden px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-400/35 text-emerald-200 text-[11px] font-extrabold whitespace-nowrap shrink-0"
-            >
-              💚 PIX
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShareTrack(null);
-                setShareOpen(true);
-              }}
-              className="sm:hidden px-3 py-1.5 rounded-xl bg-cyan-500/20 border border-cyan-400/35 text-cyan-200 text-[11px] font-extrabold whitespace-nowrap shrink-0"
-            >
-              📤 Compartilhar
-            </button>
-            {!isAndroidApk() && (
-              <button
-                type="button"
-                onClick={() => setInstallModalOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-400/20 to-emerald-400/20 border border-cyan-400/40 text-cyan-100 text-[11px] font-extrabold whitespace-nowrap shrink-0"
-              >
-                📲 Baixar App
-              </button>
-            )}
           </div>
         </div>
 
@@ -2593,7 +2564,7 @@ export function App() {
               <>
                 {activeTab === 'catalog' && (
                   <CatalogView
-                    tracks={tracks}
+                    tracks={globalSearch.trim() ? tracks : rankTracksBySmartTaste(tracks)}
                     settings={settings}
                     mode={mode}
                     searchQuery={globalSearch}
@@ -3526,22 +3497,6 @@ export function App() {
                 </button>
                 <button
                   onClick={() => setClipTheaterOpen(false)}
-                  className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/35 text-[11px] font-bold text-emerald-200 flex items-center gap-1"
-                  title="Minimizar e continuar tocando com a tela apagada"
-                >
-                  <Minimize2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Tela Apagada</span>
-                </button>
-                <button
-                  onClick={handleEmergencyStop}
-                  className="px-2.5 py-1.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/45 border border-rose-400/50 text-[11px] font-black text-rose-100 flex items-center gap-1"
-                  title="Botão de Segurança: Parar som, vídeo e segundo plano"
-                >
-                  <ShieldOff className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Parar Tudo</span>
-                </button>
-                <button
-                  onClick={() => setClipTheaterOpen(false)}
                   className="px-2.5 py-1.5 rounded-full bg-rose-600/85 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -3552,7 +3507,6 @@ export function App() {
           )}
 
           <div
-            onClick={clipTheaterOpen ? revealClipLeftOverlay : undefined}
             className={
               clipTheaterOpen
                 ? 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center relative overflow-hidden'
@@ -3560,73 +3514,6 @@ export function App() {
             }
           >
             <div id="lenkyx-yt-audio-host" className="w-full h-full" />
-
-            {/* YouTube-Style Left-Edge Tap-to-Reveal Controls inside Clip Theater */}
-            {clipTheaterOpen && currentTrack?.youtubeVideoId && (
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  revealClipLeftOverlay();
-                }}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex items-center"
-              >
-                {!clipLeftOverlayOpen ? (
-                  <button
-                    type="button"
-                    onClick={revealClipLeftOverlay}
-                    className="ml-1.5 px-1.5 py-4 rounded-full bg-black/45 hover:bg-black/75 backdrop-blur-md border border-white/20 text-white/85 hover:text-white flex items-center justify-center shadow-lg transition"
-                    title="Toque para abrir controles laterais (Voltar / Fechar)"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <div className="ml-2 p-1.5 rounded-2xl bg-[#090418]/90 backdrop-blur-xl border border-cyan-400/35 shadow-[0_12px_40px_rgba(0,0,0,0.85)] flex flex-col items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setClipTheaterOpen(false)}
-                      className="w-11 h-10 rounded-xl bg-white/15 hover:bg-white/25 text-white flex flex-col items-center justify-center transition"
-                      title="Voltar"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span className="text-[8px] font-black">Voltar</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handlePrevNext(-1)}
-                      className="w-11 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
-                      title="Anterior"
-                    >
-                      <SkipBack className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleTogglePlay()}
-                      className="w-11 h-9 rounded-xl bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center transition"
-                      title="Tocar / Pausar"
-                    >
-                      {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black ml-0.5" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handlePrevNext(1)}
-                      className="w-11 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
-                      title="Próximo"
-                    >
-                      <SkipForward className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setClipTheaterOpen(false)}
-                      className="w-11 h-10 rounded-xl bg-rose-500/30 hover:bg-rose-500/55 border border-rose-400/40 text-rose-100 flex flex-col items-center justify-center transition"
-                      title="Fechar"
-                    >
-                      <X className="w-4 h-4" />
-                      <span className="text-[8px] font-black">Fechar</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
 
             {clipTheaterOpen && currentTrack?.youtubeVideoId && !isPlaying && (
               <div

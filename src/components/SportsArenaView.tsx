@@ -28,6 +28,7 @@ import {
 import { clearBackgroundMediaSession, syncBackgroundMediaSession } from '../utils/backgroundAudioGuard';
 import { CosmicGtaLoader } from './CosmicGtaLoader';
 import { PlayerQueueStrip } from './PlayerQueueStrip';
+import { claimMediaFocus, registerMediaStopper } from '../utils/mediaCoordinator';
 
 interface Props {
   onPauseMusic: () => void;
@@ -146,7 +147,12 @@ export const SportsArenaView: React.FC<Props> = ({
     return categories.filter((c) => c.sport === sportFilter);
   }, [categories, sportFilter]);
 
+  useEffect(() => {
+    return registerMediaStopper('sports', () => setActiveStream(null));
+  }, []);
+
   const openStream = (item: SportStreamItem, queue: SportStreamItem[]) => {
+    claimMediaFocus('sports');
     onPauseMusic();
     setStreamQueue(queue.length ? queue : [item]);
     setActiveStream(item);
@@ -339,21 +345,6 @@ export const SportsArenaView: React.FC<Props> = ({
                 >
                   <QrCode className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">PIX</span>
-                </button>
-              )}
-
-              {onEmergencyStop && (
-                <button
-                  onClick={() => {
-                    setActiveStream(null);
-                    clearBackgroundMediaSession();
-                    onEmergencyStop();
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-rose-500/25 hover:bg-rose-500/45 border border-rose-400/50 text-rose-100 text-[11px] font-black flex items-center gap-1"
-                  title="Botão de Segurança: Parar transmissão e segundo plano"
-                >
-                  <ShieldOff className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Parar Tudo</span>
                 </button>
               )}
 

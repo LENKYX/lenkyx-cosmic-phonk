@@ -327,22 +327,17 @@ export const MediaPlayerMenuModal: React.FC<Props> = ({
           </div>
 
           {/* CELULAR FECHADO / TELA BLOQUEADA BACKGROUND PANEL */}
-          <div className="rounded-2xl bg-gradient-to-br from-emerald-500/12 via-cyan-500/10 to-purple-500/12 border border-emerald-400/35 p-4 space-y-3">
+          <div className="rounded-2xl bg-gradient-to-br from-emerald-500/15 via-cyan-500/10 to-purple-500/15 border border-emerald-400/40 p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300">
                   <Smartphone className="w-5 h-5" />
                 </div>
-                <div>
-                  <div className="text-xs font-black text-white flex items-center gap-1.5">
-                    Continuar Tocando com Celular Fechado
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${backgroundMode ? 'bg-emerald-400 text-black' : 'bg-white/15 text-slate-300'}`}>
-                      {backgroundMode ? 'ATIVO' : 'PAUSADO'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-300">
-                    Mantém o som ativo com a tela apagada, celular no bolso, WhatsApp ou jogos abertos.
-                  </p>
+                <div className="text-xs font-black text-white flex items-center gap-1.5">
+                  2º Plano · Celular Fechado
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${backgroundMode ? 'bg-emerald-400 text-black' : 'bg-white/15 text-slate-300'}`}>
+                    {backgroundMode ? 'ON' : 'OFF'}
+                  </span>
                 </div>
               </div>
 
@@ -356,41 +351,8 @@ export const MediaPlayerMenuModal: React.FC<Props> = ({
                 }`}
               >
                 <BatteryCharging className="w-4 h-4" />
-                {backgroundMode ? '2º Plano Ligado' : 'Ativar 2º Plano'}
+                {backgroundMode ? '2º Plano ON' : 'Ativar'}
               </button>
-            </div>
-
-            {/* Lock-Screen Notification Widget Preview */}
-            <div className="rounded-xl bg-black/55 border border-white/12 p-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <img
-                  src={track?.coverUrl || '/covers/icon-192.png'}
-                  alt="Tela Bloqueada"
-                  className="w-11 h-11 rounded-lg object-cover border border-white/15 shrink-0"
-                />
-                <div className="min-w-0">
-                  <div className="text-[9px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1">
-                    <Lock className="w-2.5 h-2.5" /> Controle na Tela Bloqueada & Notificações
-                  </div>
-                  <div className="text-xs font-bold text-white truncate">
-                    {track?.title || 'LENKYX Cosmic Phonk'}
-                  </div>
-                  <div className="text-[10px] text-slate-400 truncate">
-                    {track?.artist || 'LENKYX'} · Fone Bluetooth / Carro / Bolso
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button type="button" onClick={onPrev} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white">
-                  <SkipBack className="w-3.5 h-3.5" />
-                </button>
-                <button type="button" onClick={onTogglePlay} className="p-2 rounded-lg bg-cyan-400 text-black font-black">
-                  {isPlaying ? <Pause className="w-3.5 h-3.5 fill-black" /> : <Play className="w-3.5 h-3.5 fill-black" />}
-                </button>
-                <button type="button" onClick={onNext} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white">
-                  <SkipForward className="w-3.5 h-3.5" />
-                </button>
-              </div>
             </div>
 
             {/* Extra Mobile Actions: Floating PiP + Sleep Timer */}
@@ -512,18 +474,6 @@ export const MediaPlayerMenuModal: React.FC<Props> = ({
               </div>
             </div>
           )}
-
-          {/* SAFETY STOP */}
-          <button
-            type="button"
-            onClick={() => {
-              onEmergencyStop();
-              onClose();
-            }}
-            className="w-full py-3 rounded-2xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/45 text-rose-100 text-xs font-black flex items-center justify-center gap-2 transition"
-          >
-            <ShieldOff className="w-4 h-4" /> Parar Tudo & Encerrar 2º Plano com Segurança
-          </button>
         </div>
       </div>
     </div>

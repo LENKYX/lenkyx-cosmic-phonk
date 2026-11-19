@@ -47,6 +47,7 @@ import {
   SunoAiArtist,
 } from '../utils/rankingsApi';
 import { getSmartDiscoveryQueries, recordPlayTaste, recordSearchTaste } from '../utils/tasteProfile';
+import { recordSmartInteraction } from '../utils/smartEngine';
 import { CosmicScrollRow } from './CosmicScrollRow';
 
 interface Props {
@@ -163,6 +164,8 @@ export const WorldExploreView: React.FC<Props> = ({
   const [sunoTracks, setSunoTracks] = useState<Track[]>([]);
   const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
   const [subscribedChannels, setSubscribedChannels] = useState<Set<string>>(new Set());
+  const [autoPlayOnArtistClick, setAutoPlayOnArtistClick] = useState(true);
+  const resultsListRef = React.useRef<HTMLDivElement | null>(null);
   const subscriberId = useMemo(() => getClientSubscriberId(), []);
 
   useEffect(() => {
@@ -190,7 +193,12 @@ export const WorldExploreView: React.FC<Props> = ({
     }
   };
 
-  const runSearch = async (term: string, label?: string, includeArchiveSpace = false) => {
+  const runSearch = async (
+    term: string,
+    label?: string,
+    includeArchiveSpace = false,
+    autoPlayFirst = false
+  ) => {
     setLoading(true);
     setActiveLabel(label || (term ? `Artista: ${term}` : '🔥 Em Alta'));
     if (term.trim()) {
@@ -201,9 +209,24 @@ export const WorldExploreView: React.FC<Props> = ({
       const payload = term.trim()
         ? await searchWorldMusic(term, { includeArchiveSpace })
         : await getWorldTrending();
-      setResults(payload.tracks || []);
+      const loadedTracks = payload.tracks || [];
+      setResults(loadedTracks);
       setArtistProfile(payload.artistProfile || null);
       if (payload.playlists?.length) setCuratedPlaylists(payload.playlists);
+
+      if (autoPlayFirst && loadedTracks.length > 0) {
+        recordPlayTaste(loadedTracks[0].artist, loadedTracks[0].genre, loadedTracks[0].title);
+        recordSmartInteraction({
+          kind: 'play',
+          artist: loadedTracks[0].artist,
+          genre: loadedTracks[0].genre,
+          title: loadedTracks[0].title,
+        });
+        onPlayTrack(loadedTracks[0], loadedTracks, label || term);
+        window.setTimeout(() => {
+          resultsListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 120);
+      }
     } catch {
       setResults([]);
     } finally {
@@ -258,7 +281,7 @@ export const WorldExploreView: React.FC<Props> = ({
 
   useEffect(() => {
     if (initialQuery && initialQuery.trim()) {
-      void runSearch(initialQuery);
+      void runSearch(initialQuery, `🎤 ${initialQuery}`, false, searchNonce > 0 && autoPlayOnArtistClick);
     } else {
       void runSearch('');
     }
@@ -284,6 +307,12 @@ export const WorldExploreView: React.FC<Props> = ({
 
   const handlePlayRow = (track: Track, customQueue?: Track[]) => {
     recordPlayTaste(track.artist, track.genre, track.title);
+    recordSmartInteraction({
+      kind: 'play',
+      artist: track.artist,
+      genre: track.genre,
+      title: track.title,
+    });
     setSmartPicks(getSmartDiscoveryQueries());
     onPlayTrack(track, customQueue || results, activeLabel);
   };
@@ -323,14 +352,25 @@ export const WorldExploreView: React.FC<Props> = ({
               onClick={() => handlePlayRow(results[0])}
               className="px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-xs font-black flex items-center gap-1.5 shadow hover:brightness-110 transition"
             >
-              <Play className="w-3.5 h-3.5 fill-current" /> Tocar Mix
+              <Play className="w-3.5 h-3.5 fill-current" /> Play Automático
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setAutoPlayOnArtistClick((v) => !v)}
+            className={`px-3 py-1.5 rounded-full border text-[11px] font-black transition ${
+              autoPlayOnArtistClick
+                ? 'bg-emerald-500/25 border-emerald-400/50 text-emerald-200'
+                : 'bg-white/10 border-white/15 text-slate-300'
+            }`}
+          >
+            {autoPlayOnArtistClick ? '⚡ Auto-Play: ON' : 'Auto-Play: OFF'}
+          </button>
         </div>
       </div>
 
-      {/* Personalized Discovery Chips */}
-      {smartPicks.length > 0 && (
+      {/* Personalized Discovery Chips (Hidden when viewing a single Artist) */}
+      {!artistProfile && smartPicks.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
           <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1 shrink-0 pr-1">
             <Sparkles className="w-3 h-3 text-pink-400" /> Para Você:
@@ -397,7 +437,7 @@ export const WorldExploreView: React.FC<Props> = ({
                     onClick={() => handlePlayRow(results[0])}
                     className="px-5 py-2.5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-black flex items-center gap-1.5 shadow-lg transition active:scale-95"
                   >
-                    <Play className="w-3.5 h-3.5 fill-black" /> Tocar Mix do Artista
+                    <Play className="w-3.5 h-3.5 fill-black" /> Play Automático ({results.length} músicas)
                   </button>
                 )}
                 {clipTracks[0] && onWatchClip && (
@@ -446,8 +486,8 @@ export const WorldExploreView: React.FC<Props> = ({
         </section>
       )}
 
-      {/* === TOP 1 AO 5 ARTISTAS MAIS ESCUTADOS + TOP 5 VÍDEOS RECOMENDADOS === */}
-      {topArtists.length > 0 && (
+      {/* === TOP 1 AO 5 ARTISTAS MAIS ESCUTADOS (Hidden when viewing a single Artist — Zero Interference!) === */}
+      {!artistProfile && topArtists.length > 0 && (
         <section className="rounded-3xl bg-gradient-to-br from-amber-500/10 via-[#0d0720] to-cyan-500/10 border border-amber-400/25 p-4 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -486,7 +526,7 @@ export const WorldExploreView: React.FC<Props> = ({
               return (
                 <button
                   key={art.name}
-                  onClick={() => void runSearch(art.name, `🏆 #${art.rank} ${art.name}`)}
+                  onClick={() => void runSearch(art.name, `🏆 #${art.rank} ${art.name}`, false, autoPlayOnArtistClick)}
                   className={`group relative rounded-3xl overflow-hidden bg-[#0a0619] text-left transition duration-300 hover:-translate-y-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.65)] ${
                     art.rank === 1
                       ? 'border-2 border-amber-400/80 shadow-[0_0_34px_rgba(251,191,36,0.28)]'
@@ -624,8 +664,8 @@ export const WorldExploreView: React.FC<Props> = ({
         </section>
       )}
 
-      {/* === SUNO AI ARTISTS & TRACKS HUB === */}
-      {sunoArtists.length > 0 && (
+      {/* === SUNO AI ARTISTS & TRACKS HUB (Hidden when viewing a single Artist) === */}
+      {!artistProfile && sunoArtists.length > 0 && (
         <CosmicScrollRow
           title={
             <>
@@ -674,8 +714,8 @@ export const WorldExploreView: React.FC<Props> = ({
         </CosmicScrollRow>
       )}
 
-      {/* === SECTION 1: MODERN GLASSMORPHIC ARTIST CARDS SHOWCASE === */}
-      {famousArtists.length > 0 && (
+      {/* === SECTION 1: MODERN GLASSMORPHIC ARTIST CARDS SHOWCASE (Hidden when viewing a single Artist) === */}
+      {!artistProfile && famousArtists.length > 0 && (
         <CosmicScrollRow
           title={
             <>
@@ -707,7 +747,7 @@ export const WorldExploreView: React.FC<Props> = ({
           {filteredArtists.map((art) => (
             <button
               key={art.name}
-              onClick={() => void runSearch(art.name, `🎤 ${art.name}`)}
+              onClick={() => void runSearch(art.name, `🎤 ${art.name}`, false, autoPlayOnArtistClick)}
               className="group w-44 sm:w-52 shrink-0 rounded-3xl overflow-hidden bg-gradient-to-b from-white/[0.10] to-black/60 backdrop-blur-xl border border-white/15 hover:border-cyan-400/65 text-left snap-start transition duration-300 hover:-translate-y-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.65)]"
             >
               <div className="relative aspect-[4/4.5] w-full overflow-hidden bg-black">
@@ -736,8 +776,8 @@ export const WorldExploreView: React.FC<Props> = ({
         </CosmicScrollRow>
       )}
 
-      {/* === SECTION 2: NOVOS LANÇAMENTOS === */}
-      {newReleases.length > 0 && (
+      {/* === SECTION 2: NOVOS LANÇAMENTOS (Hidden when viewing a single Artist) === */}
+      {!artistProfile && newReleases.length > 0 && (
         <CosmicScrollRow
           title={
             <>
@@ -794,12 +834,12 @@ export const WorldExploreView: React.FC<Props> = ({
         </CosmicScrollRow>
       )}
 
-      {/* === SECTION 3: PLAYLISTS POR ESTILO === */}
+      {/* === SECTION 3: PLAYLISTS (Artist-specific when artist selected!) === */}
       <CosmicScrollRow
         title={
           <>
             <ListMusic className="w-4 h-4 text-cyan-400" />
-            <span>Mixes por Estilo</span>
+            <span>{artistProfile ? `Playlists de ${artistProfile.name}` : 'Mixes por Estilo'}</span>
           </>
         }
         count={curatedPlaylists.length}
@@ -809,7 +849,7 @@ export const WorldExploreView: React.FC<Props> = ({
           <button
             key={pl.id}
             onClick={() =>
-              void runSearch(pl.searchQuery, `${pl.emoji} ${pl.title}`, Boolean(pl.includeArchiveSpace))
+              void runSearch(pl.searchQuery, `${pl.emoji} ${pl.title}`, Boolean(pl.includeArchiveSpace), Boolean(artistProfile))
             }
             className={`w-60 sm:w-64 shrink-0 text-left rounded-2xl p-3.5 bg-gradient-to-br ${pl.gradient} cosmic-card-3d flex items-start gap-3 snap-start hover:scale-[1.02] transition`}
           >
@@ -867,12 +907,21 @@ export const WorldExploreView: React.FC<Props> = ({
       )}
 
       {/* Results Header */}
-      <div className="flex items-center justify-between text-xs text-purple-200/80 px-1 pt-1">
+      <div ref={resultsListRef} className="flex items-center justify-between text-xs text-purple-200/80 px-1 pt-1">
         <div className="flex items-center gap-1.5 font-bold text-white">
           <Flame className="w-4 h-4 text-pink-400" />
-          <span>{activeLabel}</span>
-          {!loading && <span className="text-purple-300/70 font-normal">({results.length} faixas)</span>}
+          <span>{artistProfile ? `Todas as músicas de ${artistProfile.name}` : activeLabel}</span>
+          {!loading && <span className="text-cyan-300 font-extrabold">({results.length} músicas)</span>}
         </div>
+        {results.length > 0 && (
+          <button
+            type="button"
+            onClick={() => handlePlayRow(results[0])}
+            className="px-3 py-1 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-[11px] font-black flex items-center gap-1 transition"
+          >
+            <Play className="w-3 h-3 fill-black" /> Tocar Todas
+          </button>
+        )}
       </div>
 
       {/* Clean Modern Track List */}

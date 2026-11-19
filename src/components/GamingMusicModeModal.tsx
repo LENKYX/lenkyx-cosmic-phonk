@@ -100,7 +100,7 @@ export const GamingMusicModeModal: React.FC<Props> = ({
                   Proteção Automática Anti-Corte nos Jogos
                 </div>
                 <p className="text-[11px] text-slate-200/90 leading-relaxed">
-                  Mantém suas músicas tocando sem parar mesmo ao abrir jogos no celular ou PC. A música só para quando você apertar Pause ou Parar Tudo.
+                  Mantém suas músicas tocando sem parar mesmo ao abrir jogos no celular ou PC.
                 </p>
               </div>
               <button
