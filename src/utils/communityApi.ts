@@ -174,10 +174,12 @@ export async function fetchWorldShorts(
   q = '',
   excludeIds: string[] = [],
   forceRefresh = false,
-  userId = ''
+  userId = '',
+  country = 'BR'
 ): Promise<CommunityShortItem[]> {
   const params = new URLSearchParams();
   params.set('category', category);
+  params.set('country', country || 'BR');
   if (q) params.set('q', q);
   if (excludeIds.length > 0) params.set('exclude', excludeIds.slice(-250).join(','));
   if (forceRefresh) params.set('refresh', '1');

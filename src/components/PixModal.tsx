@@ -7,10 +7,8 @@ import {
   HeartHandshake,
   Save,
   Target,
-  Sparkles,
   Trophy,
   Crown,
-  Gift,
   Heart,
   ShieldCheck,
   Clock,
@@ -20,18 +18,12 @@ import {
 } from 'lucide-react';
 import { AppMode, AppSettings, LiveStats } from '../types';
 import { generatePixPayload, generatePixQrDataUrl } from '../utils/pix';
-import {
-  getCosmicMascotById,
-  getLocalSupporterId,
-  loadOwnedMascotIds,
-  saveOwnedMascotIds,
-} from '../utils/alienCollection';
-import { CosmicMascotBadge } from './CosmicMascotBadge';
+import { getLocalSupporterId } from '../utils/alienCollection';
 
 interface PixModalProps {
   open: boolean;
   onClose: () => void;
-  initialTab?: 'donate' | 'ranking' | 'collection' | 'config';
+  initialTab?: 'donate' | 'ranking' | 'config';
   settings: AppSettings;
   mode: AppMode;
   liveStats?: LiveStats;
@@ -54,7 +46,7 @@ export const PixModal: React.FC<PixModalProps> = ({
   onSaveSettings,
   onToast,
 }) => {
-  const [tab, setTab] = useState<'donate' | 'ranking' | 'collection' | 'config'>(initialTab);
+  const [tab, setTab] = useState<'donate' | 'ranking' | 'config'>(initialTab);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(10);
   const [customAmount, setCustomAmount] = useState('');
   const [donorName, setDonorName] = useState(() => {
@@ -86,10 +78,8 @@ export const PixModal: React.FC<PixModalProps> = ({
   const [sessionTxid] = useState(() => `LX${Date.now().toString(36).toUpperCase().slice(-10)}`);
   const [pledgedFeedback, setPledgedFeedback] = useState<{
     amount: number;
-    mascotId: number;
     donorName: string;
   } | null>(null);
-  const [ownedMascots, setOwnedMascots] = useState<number[]>(() => loadOwnedMascotIds());
 
   const [qrUrl, setQrUrl] = useState<string>('');
   const [copiedKey, setCopiedKey] = useState(false);
@@ -154,7 +144,7 @@ export const PixModal: React.FC<PixModalProps> = ({
     });
   }, [effectivePixKey, settings.pixName, settings.pixCity, effectiveAmount, sessionTxid]);
 
-  // Poll supporter verification status so surprise toy unlocks ONLY after PIX is actually confirmed
+  // Poll supporter verification status when PIX is confirmed
   useEffect(() => {
     if (!open) return;
     const supporterId = getLocalSupporterId();
@@ -164,27 +154,12 @@ export const PixModal: React.FC<PixModalProps> = ({
         if (!r.ok) return;
         const d = await r.json();
         if (Array.isArray(d.pending)) setPendingPledges(d.pending);
-        if (Array.isArray(d.approved) && d.approved.length > 0) {
-          const currentOwned = loadOwnedMascotIds();
-          const newApproved = d.approved.filter(
-            (a: { unlockedMascotId?: number }) =>
-              a.unlockedMascotId && !currentOwned.includes(Number(a.unlockedMascotId))
-          );
-          if (newApproved.length > 0) {
-            const latest = newApproved[0];
-            const merged = saveOwnedMascotIds([
-              ...currentOwned,
-              ...newApproved.map((a: { unlockedMascotId: number }) => Number(a.unlockedMascotId)),
-            ]);
-            setOwnedMascots(merged);
-            setPledgedFeedback({
-              amount: Number(latest.amount || 10),
-              mascotId: Number(latest.unlockedMascotId),
-              donorName: String(latest.donorName || donorName || 'Apoiador'),
-            });
-            const mascot = getCosmicMascotById(Number(latest.unlockedMascotId));
-            onToast(`✅ PIX confirmado! Bonequinho ${mascot.name} (${mascot.code}) desbloqueado!`);
-          }
+        if (Array.isArray(d.approved) && d.approved.length > 0 && !pledgedFeedback) {
+          const latest = d.approved[0];
+          setPledgedFeedback({
+            amount: Number(latest.amount || 10),
+            donorName: String(latest.donorName || donorName || 'Apoiador'),
+          });
         }
       } catch {
         // ignore
@@ -193,7 +168,7 @@ export const PixModal: React.FC<PixModalProps> = ({
     void checkStatus();
     const iv = window.setInterval(() => void checkStatus(), 5000);
     return () => window.clearInterval(iv);
-  }, [open, donorName, onToast]);
+  }, [open, donorName, pledgedFeedback]);
 
   // Load creator pending PIX queue
   useEffect(() => {
@@ -284,7 +259,6 @@ export const PixModal: React.FC<PixModalProps> = ({
           amount: val,
           donorName: cleanName,
           supporterId: getLocalSupporterId(),
-          ownedMascots,
           e2eId: cleanE2e,
           txid: sessionTxid,
           receiptDataUrl,
@@ -300,7 +274,7 @@ export const PixModal: React.FC<PixModalProps> = ({
       setE2eId('');
       setReceiptDataUrl('');
       setReceiptFileName('');
-      onToast('⏳ Comprovante enviado! A surpresa será liberada após a confirmação real do PIX.');
+      onToast('⏳ Comprovante enviado! O apoio será confirmado após a conferência do PIX.');
     } catch (e) {
       onToast(String(e instanceof Error ? e.message : e));
     } finally {
@@ -320,7 +294,7 @@ export const PixModal: React.FC<PixModalProps> = ({
       if (!r.ok) throw new Error(data?.error || 'Erro na verificação');
       setCreatorPendingList(Array.isArray(data.pending) ? data.pending : []);
       onLiveStatsUpdated?.(data);
-      onToast(action === 'approve' ? '✅ PIX confirmado e bonequinho liberado!' : '❌ Comprovante recusado.');
+      onToast(action === 'approve' ? '✅ PIX confirmado no ranking!' : '❌ Comprovante recusado.');
     } catch (e) {
       onToast(String(e instanceof Error ? e.message : e));
     } finally {
@@ -359,8 +333,6 @@ export const PixModal: React.FC<PixModalProps> = ({
     }
   };
 
-  const unlockedMascotInfo = pledgedFeedback ? getCosmicMascotById(pledgedFeedback.mascotId) : null;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2.5 sm:p-4 overflow-y-auto">
       <div className="relative w-full max-w-xl my-auto rounded-[28px] cosmic-card-3d neon-border overflow-hidden bg-[#0a051a]">
@@ -375,7 +347,7 @@ export const PixModal: React.FC<PixModalProps> = ({
                 PIX Solidário · LENKYX Sem Anúncios
               </h2>
               <p className="text-[11px] text-emerald-300 font-bold">
-                Exclusivamente PIX (PicPay) · Ajuda em Igrejas, Combate à Fome & Bonequinho Colecionável
+                Exclusivamente PIX (PicPay) · Apoio Solidário Brasil & Plataforma Gratuita
               </p>
             </div>
           </div>
@@ -408,16 +380,6 @@ export const PixModal: React.FC<PixModalProps> = ({
             }`}
           >
             <Trophy className="w-3 h-3" /> Ranking ({leaderboard.length})
-          </button>
-          <button
-            onClick={() => setTab('collection')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-black whitespace-nowrap transition ${
-              tab === 'collection'
-                ? 'bg-gradient-to-r from-purple-400 to-cyan-400 text-black shadow'
-                : 'bg-white/[0.06] text-slate-200 hover:bg-white/15'
-            }`}
-          >
-            👾 Meus Bonequinhos ({ownedMascots.length}/1000)
           </button>
           {mode === 'creator' && (
             <button
@@ -461,8 +423,8 @@ export const PixModal: React.FC<PixModalProps> = ({
                 </div>
               </div>
 
-              {/* Post-Donation Gratitude Screen + Unlocked Alien Mascot */}
-              {pledgedFeedback && unlockedMascotInfo ? (
+                  {/* Post-Donation Gratitude Screen */}
+              {pledgedFeedback ? (
                 <div className="rounded-3xl bg-gradient-to-br from-emerald-500/20 via-[#0d0724] to-amber-500/15 border border-emerald-400/50 p-5 space-y-4 text-center">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-400 text-black text-[11px] font-black">
                     <Heart className="w-3.5 h-3.5 fill-black" /> DOAÇÃO CONFIRMADA · R$ {pledgedFeedback.amount.toFixed(2).replace('.', ',')}
@@ -473,27 +435,12 @@ export const PixModal: React.FC<PixModalProps> = ({
                   </h3>
 
                   <p className="text-xs sm:text-sm text-emerald-100 leading-relaxed bg-black/35 rounded-2xl p-3.5 border border-emerald-400/25">
-                    Sua ajuda foi destinada para fazer <strong>doações nas igrejas</strong> e ajudar a{' '}
-                    <strong>matar a fome do Brasil — e quem sabe do mundo!</strong>
+                    Sua ajuda fortalece a plataforma no Brasil e ajuda a apoiar ações solidárias e manter o LENKYX 100% gratuito e sem anúncios!
                     <br />
                     <span className="text-[11px] text-slate-300 block mt-1.5">
                       🔒 No comprovante enviado para o seu banco vai de uma forma bem discreta para sua privacidade.
                     </span>
                   </p>
-
-                  {/* Unlocked Alien Mascot Reveal */}
-                  <div className="rounded-2xl bg-white/[0.05] border border-cyan-400/40 p-4 flex flex-col items-center gap-2.5">
-                    <div className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-cyan-300">
-                      <Gift className="w-3.5 h-3.5" /> Recompensa Automática Desbloqueada!
-                    </div>
-                    <CosmicMascotBadge id={pledgedFeedback.mascotId} size="lg" showLabel />
-                    <div className="text-[11px] text-purple-200">
-                      {unlockedMascotInfo.trackTheme} · Equipamento: <strong>{unlockedMascotInfo.accessoryLabel}</strong>
-                    </div>
-                    <div className="text-[10px] text-slate-300/80">
-                      Esse bonequinho exclusivo já foi salvo na sua coleção e aparece ao lado do seu nome no Ranking de Apoio!
-                    </div>
-                  </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -578,7 +525,7 @@ export const PixModal: React.FC<PixModalProps> = ({
 
                     <div className="flex-1 w-full space-y-2.5 text-center sm:text-left">
                       <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/35 text-[10px] font-black text-emerald-200">
-                        <Sparkles className="w-3 h-3" /> Ganhe +1 Bonequinho Alienígena Musical (1 de 1.000)
+                        <Heart className="w-3 h-3" /> Apoio Solidário · Ranking Brasil
                       </div>
 
                       <div className="rounded-xl bg-black/45 border border-white/10 p-2.5 space-y-1">
@@ -611,17 +558,17 @@ export const PixModal: React.FC<PixModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Verified PIX Proof Submission (NEVER auto-unlocks without payment proof) */}
+                  {/* Verified PIX Proof Submission */}
                   <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/30 p-3.5 space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-black text-emerald-300 flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4" /> Confirmação Real de PIX para Liberar Surpresa
+                        <ShieldCheck className="w-4 h-4" /> Confirmação Real de PIX
                       </span>
                       <span className="text-[9px] font-mono text-slate-300">TXID {sessionTxid}</span>
                     </div>
 
                     <p className="text-[11px] text-emerald-100/90 leading-relaxed">
-                      🙏 Faça o PIX pelo QR Code ou Copia e Cola acima. O bonequinho surpresa só é liberado{' '}
+                      🙏 Faça o PIX pelo QR Code ou Copia e Cola acima. Seu nome entra no Ranking{' '}
                       <strong>após enviar o ID E2E ou comprovante</strong> e o pagamento ser conferido.
                     </p>
 
@@ -699,7 +646,7 @@ export const PixModal: React.FC<PixModalProps> = ({
                   <Crown className="w-4 h-4" /> CLASSIFICAÇÃO OFICIAL DE APOIADORES
                 </div>
                 <p className="text-[11px] text-slate-200/80 mt-0.5">
-                  Quem mais contribui aparece no topo com o valor apoiado e sua coleção de bonequinhos alienígenas!
+                  Quem mais contribui aparece no topo com o valor apoiado!
                 </p>
               </div>
 
@@ -748,71 +695,16 @@ export const PixModal: React.FC<PixModalProps> = ({
                         <div className="min-w-0">
                           <div className="text-xs sm:text-sm font-black text-white truncate">{sup.name}</div>
                           <div className="text-[10px] text-slate-300/75">
-                            {sup.donationsCount} {sup.donationsCount === 1 ? 'apoio' : 'apoios'} ·{' '}
-                            {(sup.mascots || []).length} bonequinhos
+                            {sup.donationsCount} {sup.donationsCount === 1 ? 'apoio' : 'apoios'}
                           </div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex -space-x-1.5">
-                          {(sup.mascots || []).slice(-3).map((mid) => (
-                            <CosmicMascotBadge key={mid} id={mid} size="xs" />
-                          ))}
-                        </div>
                         <div className="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-400/40 font-mono text-xs font-black text-emerald-300">
                           R$ {Number(sup.totalBrl || 0).toFixed(2).replace('.', ',')}
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* COLEÇÃO DE BONEQUINHOS (1.000 MÚSICAS CÓSMICAS) */}
-          {tab === 'collection' && (
-            <div className="space-y-3">
-              <div className="rounded-2xl bg-gradient-to-r from-purple-500/20 via-cyan-500/15 to-emerald-500/15 border border-cyan-400/35 p-3.5 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs font-black text-cyan-300">
-                    👾 COLEÇÃO CÓSMICA LENKYX ({ownedMascots.length} / 1.000)
-                  </div>
-                  <p className="text-[11px] text-slate-200/80 mt-0.5">
-                    Cada bonequinho representa 1 das 1.000 faixas do universo musical LENKYX. Toda doação libera 1 inédito!
-                  </p>
-                </div>
-                <button
-                  onClick={() => setTab('donate')}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-400 text-black text-[11px] font-black shrink-0"
-                >
-                  + Ganhar 1
-                </button>
-              </div>
-
-              {ownedMascots.length === 0 ? (
-                <div className="py-10 text-center rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5">
-                  <div className="text-3xl">🛸</div>
-                  <p className="text-xs text-slate-300 max-w-sm mx-auto">
-                    Você ainda não desbloqueou nenhum bonequinho alienígena. Faça um apoio solidário via PIX para
-                    ganhar o primeiro automaticamente!
-                  </p>
-                  <button
-                    onClick={() => setTab('donate')}
-                    className="px-4 py-2 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-xs font-black"
-                  >
-                    Fazer PIX & Ganhar Bonequinho
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
-                  {ownedMascots.map((id) => (
-                    <div
-                      key={id}
-                      className="rounded-2xl bg-white/[0.04] border border-white/10 p-2.5 flex flex-col items-center text-center"
-                    >
-                      <CosmicMascotBadge id={id} size="md" showLabel />
                     </div>
                   ))}
                 </div>
@@ -831,8 +723,7 @@ export const PixModal: React.FC<PixModalProps> = ({
                 </div>
                 {creatorPendingList.length === 0 ? (
                   <p className="text-[11px] text-slate-300">
-                    Nenhum comprovante PIX pendente no momento. Só após sua aprovação aqui o apoiador ganha o
-                    bonequinho!
+                    Nenhum comprovante PIX pendente no momento.
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">

@@ -33,6 +33,7 @@ import {
   getClientSubscriberId,
   toggleChannelSubscribe,
 } from '../utils/communityApi';
+import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 
 interface Props {
   tracks: Track[];
@@ -170,22 +171,30 @@ export const CatalogView: React.FC<Props> = ({
 
   return (
     <div className="space-y-4 pb-36 md:pb-28 cosmic-scene">
-      {/* CLEAN COMPACT HEADER BAR (Simple, unified, no logo clutter) */}
+      {/* CLEAN COMPACT HEADER BAR (Edge-3D Logo + Christmas Brazil) */}
       <section className="rounded-2xl cosmic-card-3d px-3.5 py-3 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="min-w-0">
-          <h1 className="font-display text-sm sm:text-base font-black text-white truncate">
-            Início · Músicas & Artistas
-          </h1>
-          <div className="text-[11px] text-cyan-200/80 flex items-center gap-2">
-            <span>{tracks.length} faixas</span>
-            <span>·</span>
-            <span>{totalPlays.toLocaleString('pt-BR')} plays</span>
-            {offlineCount > 0 && (
-              <>
-                <span>·</span>
-                <span className="text-emerald-300 font-bold">{offlineCount} offline</span>
-              </>
-            )}
+        <div className="flex items-center gap-3 min-w-0">
+          <LenkyxEdgeLogo size="md" className="shrink-0" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h1 className="font-display text-sm sm:text-base font-black text-white truncate">
+                LENKYX · Músicas & Artistas
+              </h1>
+              <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500/25 via-amber-500/20 to-emerald-500/25 border border-amber-400/35 text-[9px] font-black text-amber-200">
+                🎄 Natal Brasil 🇧🇷
+              </span>
+            </div>
+            <div className="text-[11px] text-cyan-200/80 flex items-center gap-2">
+              <span>{tracks.length} faixas</span>
+              <span>·</span>
+              <span>{totalPlays.toLocaleString('pt-BR')} plays</span>
+              {offlineCount > 0 && (
+                <>
+                  <span>·</span>
+                  <span className="text-emerald-300 font-bold">{offlineCount} offline</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

@@ -706,26 +706,24 @@ const worldShortsCache = new Map();
 
 const WORLD_SHORTS_POOLS = {
   all: [
-    'viral youtube shorts brasil mundo entretenimento',
-    'trending music dance comedy gaming #shorts',
-    'melhores reels shorts engraçados jogos musica futebol',
-    'cosmic phonk drift edits dance music shorts',
-    'amazing facts science cars cinema #shorts',
+    'shorts virais brasil hoje humor musica futebol',
+    'melhores reels shorts brasil sertanejo funk comedia',
+    'brasil entretenimento curiosidades memes #shorts',
+    'novidades brasil musica clipes viral #shorts',
   ],
   viral: [
     'shorts virais brasil hoje humor curiosidades',
-    'trending viral youtube reels shorts 2026',
-    'melhores momentos reels shorts youtube',
+    'em alta brasil youtube shorts #shorts',
+    'melhores momentos reels shorts brasil',
   ],
   humor: [
     'comedia humor memes brasileiros #shorts',
-    'funny comedy skits fails youtube #shorts',
     'pegadinhas humor viral brasil #shorts',
+    'stand up memes brasil #shorts',
   ],
   games: [
-    'free fire gta 5 minecraft roblox jogadas #shorts',
-    'gaming highlights valorant fortnite codm #shorts',
-    'melhores jogadas games celular pc #shorts',
+    'free fire gta 5 minecraft roblox brasil #shorts',
+    'melhores jogadas brasil games #shorts',
   ],
   football: [
     'futebol gols dribles neymar messi cristiano #shorts',
@@ -779,8 +777,11 @@ export async function searchWorldShorts(
   category = 'all',
   customQuery = '',
   excludeIds = [],
-  forceRefresh = false
+  forceRefresh = false,
+  countryCode = 'BR'
 ) {
+  const gl = String(countryCode || 'BR').trim().toUpperCase().slice(0, 2) || 'BR';
+  const hl = gl === 'BR' ? 'pt' : 'en';
   const cat = WORLD_SHORTS_POOLS[category] ? category : 'all';
   const isLiveMode = cat === 'live' || /\b(ao vivo|live)\b/i.test(customQuery);
   const excludeSet = new Set(
@@ -794,9 +795,9 @@ export async function searchWorldShorts(
   const q = customQuery.trim()
     ? isLiveMode
       ? customQuery.trim()
-      : `${customQuery.trim()} #shorts`
+      : `${customQuery.trim()} brasil #shorts`
     : pool[pickIdx];
-  const key = `${cat}|${q.toLowerCase()}|${isLiveMode ? 'live' : 'shorts'}`;
+  const key = `${gl}|${cat}|${q.toLowerCase()}|${isLiveMode ? 'live' : 'shorts'}`;
   const cached = worldShortsCache.get(key);
   if (!forceRefresh && cached && Date.now() - cached.ts < (isLiveMode ? 3 * 60 * 1000 : 10 * 60 * 1000)) {
     const filteredCached = cached.items.filter((it) => !excludeSet.has(it.youtube_id || '') && !excludeSet.has(it.id));
@@ -811,8 +812,14 @@ export async function searchWorldShorts(
         ? spFilters[Math.floor(Math.random() * spFilters.length)]
         : '';
     const r = await fetch(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}${spParam}`,
-      { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) }
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&gl=${gl}&hl=${hl}${spParam}`,
+      {
+        headers: {
+          'User-Agent': UA,
+          'Accept-Language': gl === 'BR' ? 'pt-BR,pt;q=0.9' : 'en-US,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(8000),
+      }
     );
     if (!r.ok) return [];
     const html = await r.text();

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="aurora" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f5ff">
+        <animate attributeName="stop-color" values="#00f5ff;#3b82f6;#ec4899;#10b981;#00f5ff" dur="4s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="50%" stop-color="#3b82f6">
+        <animate attributeName="stop-color" values="#3b82f6;#ec4899;#10b981;#00f5ff;#3b82f6" dur="4s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stop-color="#a855f7">
+        <animate attributeName="stop-color" values="#a855f7;#10b981;#00f5ff;#3b82f6;#a855f7" dur="4s" repeatCount="indefinite" />
+      </stop>
+    </linearGradient>
+    <linearGradient id="lx3d" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee">
+        <animate attributeName="stop-color" values="#22d3ee;#38bdf8;#a855f7;#ec4899;#22d3ee" dur="3.6s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="55%" stop-color="#0284c7">
+        <animate attributeName="stop-color" values="#0284c7;#7c3aed;#ec4899;#06b6d4;#0284c7" dur="3.6s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#aurora)" />
+  <rect x="10" y="10" width="108" height="108" rx="25" fill="#ffffff" />
+  <text x="64" y="84" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="60" letter-spacing="-3" fill="url(#lx3d)">LX</text>
+</svg>

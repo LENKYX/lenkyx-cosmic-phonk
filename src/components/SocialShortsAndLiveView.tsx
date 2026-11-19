@@ -48,11 +48,9 @@ import {
   CheckCircle2,
   Music2,
   Download,
-  Languages,
   MoreVertical,
   Bookmark,
 } from 'lucide-react';
-import { speakWithPreservedVoice, stopPreservedVoice } from './GlobalVoiceCallModal';
 import { triggerDirectFileDownload } from '../utils/offlineCache';
 import { Track, UserProfile } from '../types';
 import {
@@ -108,19 +106,14 @@ type SubTab = 'shorts' | 'live' | 'studio';
 type LiveEffectId = 'studio_hd' | 'cosmic_aurora' | 'cyber_glitch' | 'jbl_pulse' | 'galaxy_portal';
 
 const SHORT_CATEGORIES: { id: string; label: string }[] = [
-  { id: 'all', label: '🌍 Todos Canais' },
-  { id: 'viral', label: '🔥 Virais Hoje' },
+  { id: 'all', label: '🇧🇷 Brasil · Todos' },
+  { id: 'viral', label: '🔥 Virais Brasil' },
   { id: 'humor', label: '😂 Humor & Memes' },
-  { id: 'games', label: '🎮 Games' },
+  { id: 'music', label: '🎵 Música & Clipes' },
   { id: 'football', label: '⚽ Futebol' },
   { id: 'cinema', label: '🎬 Cinema & Animes' },
-  { id: 'music', label: '🎵 Música' },
-  { id: 'phonk', label: '⚡ Phonk & Drift' },
-  { id: 'brazil', label: '🇧🇷 Brasil' },
-  { id: 'tech', label: '🚗 Tech & Carros' },
+  { id: 'tech', label: '🚗 Carros & Tech' },
   { id: 'live', label: '🔴 Ao Vivo Agora' },
-  { id: 'djs', label: '🎧 DJs & Beats' },
-  { id: 'space', label: '🚀 Espaço' },
   { id: 'community', label: '📱 Comunidade' },
 ];
 
@@ -671,8 +664,6 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   const [shortsMuted, setShortsMuted] = useState(false);
   const [shortsRate, setShortsRate] = useState<number>(1);
   const [reelsExpanded, setReelsExpanded] = useState(false);
-  const [autoDubEnabled, setAutoDubEnabled] = useState(false);
-  const [dubSubtitle, setDubSubtitle] = useState('');
   const [downloadingShortId, setDownloadingShortId] = useState<string | null>(null);
   const [newShortDurationSec, setNewShortDurationSec] = useState<number>(0);
   const [likedShortIds, setLikedShortIds] = useState<Set<string>>(() => {
@@ -791,6 +782,15 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     });
   }, [subscriberId]);
 
+  const localCountryCode = (() => {
+    try {
+      const lang = (navigator.language || 'pt-BR').split('-')[1];
+      return lang && lang.length === 2 ? lang.toUpperCase() : 'BR';
+    } catch {
+      return 'BR';
+    }
+  })();
+
   const loadShorts = async (cat = shortCategory, q = shortSearch, forceRefresh = false) => {
     setShortsLoading(true);
     try {
@@ -798,7 +798,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
       if (forceRefresh) {
         shorts.forEach((s) => markReelSeen(s));
       }
-      let list = await fetchWorldShorts(cat, q, seenReelIdsRef.current, forceRefresh, subscriberId);
+      let list = await fetchWorldShorts(cat, q, seenReelIdsRef.current, forceRefresh, subscriberId, localCountryCode);
       if (list.length === 0 && seenReelIdsRef.current.length > 0) {
         // If user watched every single video in this category, reset history for this category so fresh cycle begins
         seenReelIdsRef.current = [];
@@ -807,7 +807,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
         } catch {
           // ignore
         }
-        list = await fetchWorldShorts(cat, q, [], true, subscriberId);
+        list = await fetchWorldShorts(cat, q, [], true, subscriberId, localCountryCode);
       }
       setShorts(list);
       setActiveIndex(0);
@@ -819,7 +819,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   useEffect(() => {
     void loadShorts('all', '');
     void fetchActiveLives().then(setLives);
-    void fetchWorldShorts('live', '').then(setYtLives);
+    void fetchWorldShorts('live', '', [], false, subscriberId, localCountryCode).then(setYtLives);
   }, []);
 
   useEffect(() => {
@@ -1446,54 +1446,6 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
   const activeShort = visibleShorts[activeIndex] || visibleShorts[0] || shorts[0] || null;
 
-  // === AUTOMATIC REELS VOICE-PRESERVING DUBBING ===
-  useEffect(() => {
-    if (!autoDubEnabled || !activeShort || !exclusiveShortsOpen) {
-      stopPreservedVoice();
-      setDubSubtitle('');
-      return;
-    }
-    let cancelled = false;
-    const targetLang = (() => {
-      try {
-        return localStorage.getItem('lenkyx_lang_v1') || 'pt';
-      } catch {
-        return 'pt';
-      }
-    })();
-
-    void fetch('/api/reels/auto-dub', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        videoId: activeShort.youtube_id || '',
-        title: activeShort.title,
-        description: activeShort.description || '',
-        creatorName: activeShort.creator_name,
-        targetLang,
-      }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled || !d?.ok || !d.dubbedText) return;
-        setDubSubtitle(d.dubbedText);
-        // Preserve speaker vocal texture/pitch smoothly while ducking original audio clash
-        const pitchByCreator =
-          (activeShort.creator_name || '').length % 2 === 0 ? 1.04 : 0.96;
-        speakWithPreservedVoice(d.dubbedText, targetLang, {
-          pitchRatio: pitchByCreator,
-          voiceEffect: 'studio',
-          rate: 1.02,
-        });
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-      stopPreservedVoice();
-    };
-  }, [autoDubEnabled, activeShort?.id, exclusiveShortsOpen]);
-
   const renderShortsStage = (isExclusiveModal: boolean) => {
     if (isExclusiveModal && activeShort) {
       return (
@@ -1646,15 +1598,6 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 </form>
               )}
 
-              {/* Dubbed Live Subtitle Banner when Auto-Dub is Active */}
-              {autoDubEnabled && dubSubtitle && (
-                <div className="absolute top-16 inset-x-4 z-30 pointer-events-none flex justify-center">
-                  <div className="px-3 py-1.5 rounded-2xl bg-black/75 backdrop-blur-md text-[11px] font-bold text-white text-center max-w-sm line-clamp-2 shadow-lg">
-                    🎙️ {dubSubtitle}
-                  </div>
-                </div>
-              )}
-
               {/* CLEAN YOUTUBE SHORTS BOTTOM-LEFT CREATOR ROW + WHITE PILL SUBSCRIBE + 1-LINE TITLE */}
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -1768,29 +1711,6 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 >
                   <Share2 className="w-7 h-7" />
                   <span className="text-[11px] font-semibold">Compart.</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !autoDubEnabled;
-                    setAutoDubEnabled(next);
-                    if (next) {
-                      setShortsMuted(true);
-                      onToast('🎙️ Dublagem Automática ativada');
-                    } else {
-                      stopPreservedVoice();
-                      setShortsMuted(false);
-                      setDubSubtitle('');
-                    }
-                  }}
-                  className={`flex flex-col items-center gap-1 drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)] transition active:scale-90 ${
-                    autoDubEnabled ? 'text-cyan-300' : 'text-white'
-                  }`}
-                  title="Dublar / Áudio"
-                >
-                  <Languages className="w-7 h-7" />
-                  <span className="text-[11px] font-semibold">Dublar</span>
                 </button>
 
                 {/* Square Creator / Audio Thumbnail (YouTube Shorts bottom-right) */}

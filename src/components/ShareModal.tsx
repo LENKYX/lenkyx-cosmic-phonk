@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AppSettings, Track, AppMode, LiveStats } from '../types';
 import { copyTextReliable, isAndroidApk } from '../utils/androidBridge';
+import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 
 interface Props {
   open: boolean;
@@ -105,9 +106,12 @@ export const ShareModal: React.FC<Props> = ({
     }
   };
 
-  // Send ONLY the clean app (zero cluttered text walls, zero hashtags)
-  const appTitle = track ? `${track.title} · LENKYX` : 'LENKYX';
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(mainClickableLink)}`;
+  // Invite message focused on growing LENKYX in Brazil
+  const appTitle = track
+    ? `Ouça "${track.title}" grátis no LENKYX Brasil!`
+    : 'Conheça o LENKYX Brasil — Músicas, Clipes HD, Shorts e Cinema grátis sem anúncios!';
+  const shareMessage = `${appTitle} 🇧🇷🎄\n${mainClickableLink}`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mainClickableLink)}&text=${encodeURIComponent(appTitle)}`;
   const xTwitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(appTitle)}&url=${encodeURIComponent(mainClickableLink)}`;
   const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(mainClickableLink)}`;
@@ -188,21 +192,17 @@ export const ShareModal: React.FC<Props> = ({
         <div className="relative z-10 h-1.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500" />
         <div className="relative z-10 p-4 sm:p-5 space-y-3.5">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <img
-                src="/covers/icon-192.png"
-                alt="LENKYX"
-                className="w-11 h-11 object-contain lenkyx-logo-3d shrink-0"
-              />
+            <div className="flex items-center gap-3">
+              <LenkyxEdgeLogo size="md" className="shrink-0" />
               <div>
                 <div className="text-[10px] font-black text-emerald-300 flex items-center gap-1">
-                  ✓ SITE OFICIAL · 100% SEGURO & VERIFICADO
+                  🇧🇷 CRESCIMENTO BRASIL · 100% GRATUITO
                 </div>
                 <h2 className="font-display text-sm sm:text-base font-black text-white">
-                  {track ? `ENVIAR: ${track.title}` : 'ENVIAR APP LENKYX (AUTOMÁTICO)'}
+                  {track ? `DIVULGAR: ${track.title}` : 'TRAZER AMIGOS PRO LENKYX BRASIL'}
                 </h2>
-                <p className="text-[11px] text-cyan-200/85">
-                  Envia somente o App limpo — baixa fácil no Android, iPhone, PC e Smart TV!
+                <p className="text-[11px] text-amber-200/90">
+                  Compartilhe no WhatsApp, Status e Grupos — baixa em 1 clique no Celular e PC!
                 </p>
               </div>
             </div>

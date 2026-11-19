@@ -2202,9 +2202,32 @@ app.get(['/download/pc', '/download/pc/windows', '/download/pc/mac', '/pc'], (re
     '====================================================',
   ].join('\r\n');
 
+  const launcherHtml = [
+    '<!DOCTYPE html>',
+    '<html lang="pt-BR">',
+    '<head><meta charset="UTF-8"><title>LENKYX 3D</title>',
+    '<style>',
+    'body{margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#070b18;color:#fff;font-family:system-ui,sans-serif;overflow:hidden}',
+    '.wrap{position:relative;width:140px;height:140px;border-radius:36px;display:flex;align-items:center;justify-content:center;isolation:isolate}',
+    '.aurora{position:absolute;inset:-5px;border-radius:40px;background:conic-gradient(#00f5ff,#0284c7,#7c3aed,#ec4899,#f59e0b,#10b981,#00f5ff);filter:blur(8px);z-index:-1;animation:spin 3.5s linear infinite}',
+    '.badge{position:relative;overflow:hidden;width:100%;height:100%;border-radius:36px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 35px rgba(34,211,238,.45)}',
+    '.badge img{width:82%;height:82%;object-fit:contain;animation:hue 6s ease-in-out infinite}',
+    '.sheen{position:absolute;inset:-40%;background:linear-gradient(115deg,transparent 35%,rgba(0,245,255,.35) 45%,rgba(255,255,255,.75) 50%,rgba(236,72,153,.3) 55%,transparent 65%);animation:sweep 2.8s ease-in-out infinite}',
+    '@keyframes spin{to{transform:rotate(360deg)}}',
+    '@keyframes hue{0%,100%{filter:hue-rotate(0deg)}50%{filter:hue-rotate(24deg)}}',
+    '@keyframes sweep{0%{transform:translateX(-110%) skewX(-18deg)}60%,100%{transform:translateX(125%) skewX(-18deg)}}',
+    'h1{margin:20px 0 6px;letter-spacing:.22em;font-size:26px}p{margin:0;color:#67e8f9;font-size:13px}',
+    '</style></head><body>',
+    `<div class="wrap"><div class="aurora"></div><div class="badge"><img src="${siteUrl}/covers/icon-edge-3d.png" alt="LENKYX"/><div class="sheen"></div></div></div>`,
+    '<h1>LENKYX</h1><p>Abrindo Aplicativo Oficial Brasil...</p>',
+    `<script>setTimeout(function(){window.location.href=${JSON.stringify(siteUrl)};},950);</script>`,
+    '</body></html>',
+  ].join('');
+
   const entries = [
     { name: 'LENKYX-App-PC/Abrir-LENKYX-App.bat', content: winBat },
     { name: 'LENKYX-App-PC/Criar-Atalho-Area-de-Trabalho.bat', content: winShortcutBat },
+    { name: 'LENKYX-App-PC/LENKYX-Launcher-3D.html', content: launcherHtml },
     { name: 'LENKYX-App-PC/LENKYX-Site-Oficial.url', content: urlFile },
     { name: 'LENKYX-App-PC/Abrir-LENKYX-Mac-Linux.command', content: macCmd, mode: (0o100755 << 16) >>> 0 },
     { name: 'LENKYX-App-PC/LEIA-ME.txt', content: readme },
@@ -2504,6 +2527,7 @@ app.get('/api/community/world-shorts', async (req, res) => {
   const category = String(req.query.category || 'all').trim();
   const q = String(req.query.q || '').trim();
   const userId = String(req.query.userId || '').trim();
+  const country = String(req.query.country || req.headers['cf-ipcountry'] || 'BR').trim().toUpperCase();
   const excludeRaw = String(req.query.exclude || '').trim();
   const forceRefresh = req.query.refresh === '1' || req.query.refresh === 'true';
   const excludeIds = excludeRaw
@@ -2512,7 +2536,7 @@ app.get('/api/community/world-shorts', async (req, res) => {
   const excludeSet = new Set(excludeIds);
   try {
     const [worldShorts, communityShorts] = await Promise.all([
-      searchWorldShorts(category, q, excludeIds, forceRefresh),
+      searchWorldShorts(category, q, excludeIds, forceRefresh, country),
       getCommunityShorts(),
     ]);
     const filteredCommunity = communityShorts.filter(

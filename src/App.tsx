@@ -102,6 +102,8 @@ import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
 import { PlaylistsView } from './components/PlaylistsView';
 import { CosmicSpaceBackdrop } from './components/CosmicSpaceBackdrop';
+import { LenkyxEdgeLogo } from './components/LenkyxEdgeLogo';
+import { playLenkyxStartupSound } from './utils/startupSound';
 const MoviesView = React.lazy(() => import('./components/MoviesView').then((m) => ({ default: m.MoviesView })));
 const SportsArenaView = React.lazy(() =>
   import('./components/SportsArenaView').then((m) => ({ default: m.SportsArenaView }))
@@ -252,6 +254,60 @@ export function App() {
     }
     setInstallModalOpen(true);
   }, [deferredInstallPrompt]);
+
+  // 1-Click PC Download / Install (Edge/Chrome desktop PWA install OR direct 1-click PC ZIP)
+  const handleOneClickPcDownload = useCallback(async () => {
+    if (deferredInstallPrompt) {
+      try {
+        await deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice?.outcome === 'accepted') {
+          showToast('💻 LENKYX instalado no seu PC com 1 clique!');
+          setDeferredInstallPrompt(null);
+          setInstallModalOpen(false);
+          return;
+        }
+      } catch {
+        // fall through to direct ZIP download
+      }
+    }
+    const a = document.createElement('a');
+    a.href = '/download/pc';
+    a.download = 'LENKYX-App-PC.zip';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast('💻 Download do App LENKYX para PC iniciado em 1 clique!');
+  }, [deferredInstallPrompt]);
+
+  // Clean Edge-3D Opening Splash + Cool Startup Chime on Launch
+  const [showEntrySplash, setShowEntrySplash] = useState(true);
+  const [entrySplashExiting, setEntrySplashExiting] = useState(false);
+
+  const dismissEntrySplash = useCallback((withSound = true) => {
+    if (withSound) {
+      void playLenkyxStartupSound(true);
+    }
+    setEntrySplashExiting(true);
+    window.setTimeout(() => setShowEntrySplash(false), 320);
+  }, []);
+
+  useEffect(() => {
+    // Attempt immediate startup chime (succeeds if browser autoplay policy allows; otherwise plays on click/tap)
+    void playLenkyxStartupSound(false);
+    const unlockOnce = () => {
+      void playLenkyxStartupSound(false);
+    };
+    window.addEventListener('pointerdown', unlockOnce, { once: true });
+    const autoClose = window.setTimeout(() => {
+      setEntrySplashExiting(true);
+      window.setTimeout(() => setShowEntrySplash(false), 320);
+    }, 2400);
+    return () => {
+      window.removeEventListener('pointerdown', unlockOnce);
+      window.clearTimeout(autoClose);
+    };
+  }, []);
 
   // Bass Boost Web Audio nodes + Speed + Loop
   const [bassBoostLevel, setBassBoostLevel] = useState<BassBoostLevel>(0);
@@ -470,7 +526,7 @@ export function App() {
 
   // Modals & notifications
   const [pixOpen, setPixOpen] = useState(false);
-  const [pixInitialTab, setPixInitialTab] = useState<'donate' | 'ranking' | 'collection' | 'config'>('donate');
+  const [pixInitialTab, setPixInitialTab] = useState<'donate' | 'ranking' | 'config'>('donate');
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
@@ -2108,16 +2164,57 @@ export function App() {
   }, [settings.publicUrl]);
 
   return (
-    <div className="h-dvh overflow-hidden bg-[#05020d] text-white flex relative">
+    <div className="h-dvh overflow-hidden bg-[#070b18] text-white flex relative">
       <CosmicSpaceBackdrop />
+
+      {/* === CLEAN EDGE-3D OPENING ENTRANCE (Logo 3D Branco + Efeito Especial + Som Legal) === */}
+      {showEntrySplash && (
+        <div
+          onClick={() => dismissEntrySplash(true)}
+          className={`fixed inset-0 z-[120] flex flex-col items-center justify-center bg-[#060916]/96 backdrop-blur-2xl cursor-pointer transition-opacity duration-300 ${
+            entrySplashExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        >
+          <div className="edge-entrance-logo flex flex-col items-center gap-4 px-6 text-center">
+            <LenkyxEdgeLogo size="hero" />
+            <div className="space-y-1">
+              <div className="font-logo text-2xl sm:text-3xl font-black tracking-[0.22em] text-white drop-shadow-[0_0_24px_rgba(34,211,238,0.55)]">
+                LENKYX
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-red-500/20 via-amber-400/20 to-emerald-500/20 border border-cyan-400/40 text-[11px] font-black text-cyan-100">
+                <span>🎄</span>
+                <span>Especial de Natal · Brasil 🇧🇷</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                dismissEntrySplash(true);
+              }}
+              className="mt-1 px-5 py-2 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-black text-xs font-black shadow-[0_0_26px_rgba(34,211,238,0.55)] hover:brightness-110 transition active:scale-95"
+            >
+              Entrar · Som 3D ✨
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* === DESKTOP & SMART TV LEFT SIDEBAR === */}
         <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
         <div
           onClick={handleBrandTap}
-          className="h-14 px-4 flex items-center justify-between border-b border-white/[0.08] cursor-pointer hover:bg-white/[0.03] select-none"
+          className="h-16 px-3.5 flex items-center justify-between border-b border-white/[0.08] cursor-pointer hover:bg-white/[0.03] select-none"
         >
-          <span className="font-display text-sm font-black tracking-[0.14em] text-white">LENKYX</span>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <LenkyxEdgeLogo size="sm" className="shrink-0" />
+            <div className="min-w-0">
+              <span className="font-display text-sm font-black tracking-[0.14em] text-white block leading-none">
+                LENKYX
+              </span>
+              <span className="text-[9px] font-bold text-cyan-300/90">🎄 Natal Brasil 🇧🇷</span>
+            </div>
+          </div>
         </div>
 
         {/* 5 Clean Focused Tabs */}
@@ -2185,7 +2282,7 @@ export function App() {
           </div>
         </div>
 
-        {/* Clean Utility Dock (PIX QR + Ranking & Bonequinhos + Share + Legal) */}
+        {/* Clean Utility Dock (PIX QR + Ranking + 1-Click PC + Share + Legal) */}
         <div className="p-2.5 border-t border-white/[0.08] bg-black/25 space-y-2">
           <div className="grid grid-cols-2 gap-1.5">
             <button
@@ -2204,21 +2301,11 @@ export function App() {
                 setPixOpen(true);
               }}
               className="py-2 px-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-pink-500/20 hover:from-amber-500/35 hover:to-pink-500/35 border border-amber-400/40 text-amber-100 text-[11px] font-black flex items-center justify-center gap-1 transition"
-              title="Ver Ranking de Apoiadores & Bonequinhos"
+              title="Ver Ranking de Apoiadores"
             >
               <Crown className="w-3.5 h-3.5 text-amber-300" /> Ranking
             </button>
           </div>
-
-          <button
-            onClick={() => {
-              setPixInitialTab('collection');
-              setPixOpen(true);
-            }}
-            className="w-full py-1.5 px-2.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/30 border border-purple-400/35 text-purple-100 text-[11px] font-black flex items-center justify-center gap-1.5 transition"
-          >
-            <span>👾</span> Meus Bonequinhos (1.000)
-          </button>
 
           <div className="grid grid-cols-2 gap-1.5">
             <button
@@ -2241,10 +2328,10 @@ export function App() {
           {!isAndroidApk() && (
             <button
               type="button"
-              onClick={() => setInstallModalOpen(true)}
-              className="w-full py-2 px-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black flex items-center justify-center gap-1.5 shadow transition"
+              onClick={() => void handleOneClickPcDownload()}
+              className="w-full py-2 px-2.5 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black flex items-center justify-center gap-1.5 shadow-[0_0_16px_rgba(34,211,238,0.35)] transition"
             >
-              <Monitor className="w-3.5 h-3.5" /> Site Oficial · App PC/Cel
+              <Download className="w-3.5 h-3.5" /> Baixar no PC (1 Clique)
             </button>
           )}
 
@@ -2276,8 +2363,9 @@ export function App() {
 
             <div
               onClick={handleBrandTap}
-              className="flex md:hidden items-center shrink-0 cursor-pointer select-none"
+              className="flex md:hidden items-center gap-2 shrink-0 cursor-pointer select-none"
             >
+              <LenkyxEdgeLogo size="xs" />
               <span className="font-display text-sm font-black tracking-wider text-white">LENKYX</span>
             </div>
           </div>
@@ -2463,13 +2551,24 @@ export function App() {
                     type="button"
                     onClick={() => {
                       setTopOverflowOpen(false);
+                      void handleOneClickPcDownload();
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
+                  >
+                    <Download className="w-4 h-4 text-cyan-300" />
+                    <span>Baixar no PC (1 Clique)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTopOverflowOpen(false);
                       setPixInitialTab('donate');
                       setPixOpen(true);
                     }}
                     className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
                   >
                     <QrCode className="w-4 h-4 text-emerald-300" />
-                    <span>PIX Solidário & Coleção</span>
+                    <span>PIX Solidário & Ranking</span>
                   </button>
                   <button
                     type="button"
@@ -3113,16 +3212,19 @@ export function App() {
             <div className="p-5 space-y-4">
               {/* Official Brand Clean Header */}
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] font-black text-emerald-300 mb-1">
-                    <CheckCircle2 className="w-3 h-3" /> OFICIAL · 100% SEGURO & VERIFICADO
+                <div className="flex items-center gap-3 min-w-0">
+                  <LenkyxEdgeLogo size="md" className="shrink-0" />
+                  <div className="min-w-0">
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] font-black text-emerald-300 mb-1">
+                      <CheckCircle2 className="w-3 h-3" /> OFICIAL · 100% SEGURO & VERIFICADO
+                    </div>
+                    <h3 className="font-display text-base sm:text-lg font-black text-white leading-tight">
+                      App & Versão Web LENKYX
+                    </h3>
+                    <p className="text-[11px] text-cyan-200/85 font-semibold">
+                      Disponível para Android, iPhone (iOS), PC & Smart TV
+                    </p>
                   </div>
-                  <h3 className="font-display text-base sm:text-lg font-black text-white leading-tight">
-                    App & Versão Web LENKYX
-                  </h3>
-                  <p className="text-[11px] text-cyan-200/85 font-semibold">
-                    Disponível para Android, iPhone (iOS), PC & Smart TV
-                  </p>
                 </div>
                 <button
                   onClick={() => setInstallModalOpen(false)}
@@ -3282,15 +3384,13 @@ export function App() {
 
               {installPlatformTab === 'pc' && (
                 <div className="space-y-2.5">
-                  {deferredInstallPrompt && (
-                    <button
-                      type="button"
-                      onClick={() => void handleInstantInstall()}
-                      className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 hover:brightness-110 text-black font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(52,211,153,0.45)]"
-                    >
-                      <Zap className="w-4 h-4" /> Instalar App no PC Agora (1 Clique)
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handleOneClickPcDownload()}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-400 hover:brightness-110 text-black font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(34,211,238,0.45)]"
+                  >
+                    <Download className="w-4 h-4" /> Baixar e Instalar no PC (1 Clique)
+                  </button>
 
                   <a
                     href="/download/pc"

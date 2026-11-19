@@ -33,6 +33,7 @@ import {
   WorldArtistProfile,
   WorldCuratedPlaylist,
 } from '../types';
+import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 import {
   FALLBACK_CURATED_PLAYLISTS,
   getWorldDirectory,
@@ -101,7 +102,7 @@ const ArtistPortrait: React.FC<{
 
   const isLenkyx = name.trim().toLowerCase() === 'lenkyx';
   const resolvedUrl = isLenkyx
-    ? '/covers/icon-512.png'
+    ? '/covers/icon-edge-3d.png'
     : photoUrl && !photoUrl.includes('album-official.jpg')
     ? photoUrl
     : '';
@@ -121,6 +122,22 @@ const ArtistPortrait: React.FC<{
     );
   }
 
+  if (isLenkyx) {
+    return (
+      <div className="w-full h-full bg-white relative flex items-center justify-center p-4 overflow-hidden">
+        <div className="edge-3d-aurora opacity-60" aria-hidden="true" />
+        <img
+          src="/covers/icon-edge-3d.png"
+          alt={name}
+          loading="lazy"
+          decoding="async"
+          className="relative z-10 w-full h-full object-contain edge-3d-img-hue"
+        />
+        <span className="edge-3d-sheen z-20" aria-hidden="true" />
+      </div>
+    );
+  }
+
   return (
     <img
       src={resolvedUrl}
@@ -128,11 +145,7 @@ const ArtistPortrait: React.FC<{
       loading="lazy"
       decoding="async"
       onError={() => setFailed(true)}
-      className={
-        isLenkyx
-          ? 'w-full h-full object-contain p-4 bg-[#070316] lenkyx-logo-3d'
-          : className
-      }
+      className={className}
     />
   );
 };
@@ -335,6 +348,30 @@ export const WorldExploreView: React.FC<Props> = ({
 
   return (
     <div className="space-y-6 pb-32 md:pb-24">
+      {/* === EXPLORAR: MÚSICAS & VÍDEOS CLIPES DOS ARTISTAS === */}
+      <section className="rounded-3xl cosmic-card-3d px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <LenkyxEdgeLogo size="md" className="shrink-0" />
+          <div className="min-w-0">
+            <h1 className="font-display text-sm sm:text-base font-black text-white truncate flex items-center gap-2">
+              <span>Explorar · Músicas & Vídeos Clipes dos Artistas</span>
+            </h1>
+            <p className="text-[11px] text-cyan-200/85 truncate">
+              🇧🇷 Artistas do Brasil e do mundo · Clipes Oficiais HD, Lançamentos e Faixas Completas
+            </p>
+          </div>
+        </div>
+        {clipTracks[0] && onWatchClip && (
+          <button
+            type="button"
+            onClick={() => onWatchClip(clipTracks[0], clipTracks)}
+            className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:brightness-110 text-black text-xs font-black flex items-center gap-1.5 shadow-[0_0_20px_rgba(34,211,238,0.4)] transition shrink-0"
+          >
+            <Film className="w-3.5 h-3.5" /> Assistir Clipes HD ({clipTracks.length})
+          </button>
+        )}
+      </section>
+
       {/* === MODERN GENRE CHIPS + QUICK MIX CONTROLS === */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
@@ -507,7 +544,7 @@ export const WorldExploreView: React.FC<Props> = ({
               );
               const bestPhoto =
                 art.name.trim().toLowerCase() === 'lenkyx'
-                  ? '/covers/icon-512.png'
+                  ? '/covers/icon-edge-3d.png'
                   : (art.photoUrl && !art.photoUrl.includes('album-official.jpg') ? art.photoUrl : '') ||
                     dirMatch?.photoUrl ||
                     '';
