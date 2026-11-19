@@ -328,11 +328,32 @@ app.get('/api/fans/lookup', async (req, res) => {
   }
 });
 
+function getEffectiveSettings(db) {
+  const s = { ...(db?.settings || {}) };
+  if (!s.affiliateMlTool && process.env.AFFILIATE_ML_TOOL) {
+    s.affiliateMlTool = String(process.env.AFFILIATE_ML_TOOL).trim();
+  }
+  if (!s.affiliateMlWord && process.env.AFFILIATE_ML_WORD) {
+    s.affiliateMlWord = String(process.env.AFFILIATE_ML_WORD).trim();
+  }
+  if (!s.affiliateShopeeId && process.env.AFFILIATE_SHOPEE_ID) {
+    s.affiliateShopeeId = String(process.env.AFFILIATE_SHOPEE_ID).trim();
+  }
+  if (!s.affiliateAmazonTag && process.env.AFFILIATE_AMAZON_TAG) {
+    s.affiliateAmazonTag = String(process.env.AFFILIATE_AMAZON_TAG).trim();
+  }
+  if (!s.whatsappStoreNumber && process.env.WHATSAPP_STORE_NUMBER) {
+    s.whatsappStoreNumber = String(process.env.WHATSAPP_STORE_NUMBER).trim();
+  }
+  return s;
+}
+
 // === PUBLIC API ROUTES ===
 app.get('/api/state', (req, res) => {
   const db = readDb();
   res.json({
     ...db,
+    settings: getEffectiveSettings(db),
     auth: auth.getStatus(req),
   });
 });
@@ -3604,9 +3625,35 @@ app.post('/api/jam/:code/sync', (req, res) => {
   return res.json(room);
 });
 
-// === v63: LOJA DOS CRIA — LIVE PUBLISHED ITEMS & AFFILIATE COMMISSIONS ===
+// === v64: LOJA DOS CRIA — LIVE PUBLISHED ITEMS, LINK EXTRACTOR & AFFILIATE COMMISSIONS ===
 const liveShopCache = new Map();
-let shopAffiliateClicks = 0;
+
+function extractAffiliateParamsFromUrl(rawUrl) {
+  const extracted = {};
+  try {
+    const u = new URL(rawUrl);
+    const sp = u.searchParams;
+    const mattTool = sp.get('matt_tool');
+    const mattWord = sp.get('matt_word');
+    const tag = sp.get('tag');
+    const utmSource = sp.get('utm_source') || '';
+    const afSiteId = sp.get('af_siteid') || '';
+
+    if (mattTool && mattTool.trim()) extracted.affiliateMlTool = mattTool.trim();
+    if (mattWord && mattWord.trim()) extracted.affiliateMlWord = mattWord.trim();
+    if (tag && tag.trim()) extracted.affiliateAmazonTag = tag.trim();
+    if (afSiteId && afSiteId.trim()) {
+      extracted.affiliateShopeeId = afSiteId.trim().replace(/^an_/i, '');
+    } else if (/^an_(\d+)/i.test(utmSource)) {
+      extracted.affiliateShopeeId = utmSource.replace(/^an_/i, '').trim();
+    } else if (/^af_(\d+)/i.test(utmSource)) {
+      extracted.affiliateShopeeId = utmSource.replace(/^af_/i, '').trim();
+    }
+  } catch {
+    // ignore invalid url
+  }
+  return extracted;
+}
 
 function decorateAffiliateUrl(rawUrl, settings = {}) {
   try {
@@ -3615,7 +3662,8 @@ function decorateAffiliateUrl(rawUrl, settings = {}) {
     if (host.includes('amazon.com') && settings.affiliateAmazonTag) {
       u.searchParams.set('tag', String(settings.affiliateAmazonTag).trim());
     } else if (host.includes('shopee.com') && settings.affiliateShopeeId) {
-      u.searchParams.set('utm_source', `an_${String(settings.affiliateShopeeId).trim()}`);
+      const cleanShopee = String(settings.affiliateShopeeId).trim().replace(/^an_/i, '');
+      u.searchParams.set('utm_source', `an_${cleanShopee}`);
       u.searchParams.set('utm_medium', 'affiliates');
     } else if ((host.includes('mercadolivre.com') || host.includes('mercadolibre.com')) && settings.affiliateMlTool) {
       u.searchParams.set('matt_tool', String(settings.affiliateMlTool).trim());
@@ -3629,18 +3677,61 @@ function decorateAffiliateUrl(rawUrl, settings = {}) {
   }
 }
 
+app.post('/api/shop/parse-affiliate-link', async (req, res) => {
+  const raw = String(req.body?.url || '').trim();
+  if (!raw || !/^https?:\/\//i.test(raw)) {
+    return res.status(400).json({ error: 'Cole um link válido começando com https://' });
+  }
+  let resolvedUrl = raw;
+  let extracted = extractAffiliateParamsFromUrl(raw);
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.hostname.toLowerCase();
+    const isPrivate =
+      host === 'localhost' ||
+      host.startsWith('127.') ||
+      host.startsWith('10.') ||
+      host.startsWith('192.168.') ||
+      host.startsWith('169.254.');
+    if (!isPrivate && Object.keys(extracted).length === 0) {
+      const r = await fetch(raw, {
+        method: 'GET',
+        redirect: 'follow',
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (r.url) {
+        resolvedUrl = r.url;
+        extracted = { ...extracted, ...extractAffiliateParamsFromUrl(r.url) };
+      }
+    }
+  } catch {
+    // fallback to direct parse only
+  }
+  return res.json({
+    ok: Object.keys(extracted).length > 0,
+    resolvedUrl,
+    extracted,
+  });
+});
+
 app.get('/api/shop/live', async (req, res) => {
   const qRaw = String(req.query.q || 'Lacoste Oakley Juliet Invicta Brasil').trim().slice(0, 120);
   const key = qRaw.toLowerCase();
   const db = readDb();
+  const effectiveSettings = getEffectiveSettings(db);
+  const clicks = Number(effectiveSettings.shopAffiliateClicks || 0);
   const cached = liveShopCache.get(key);
   if (cached && Date.now() - cached.ts < 30 * 60 * 1000) {
     return res.json({
       query: qRaw,
-      clicks: shopAffiliateClicks,
+      clicks,
       items: cached.items.map((it) => ({
         ...it,
-        affiliateUrl: decorateAffiliateUrl(it.productUrl, db.settings),
+        affiliateUrl: decorateAffiliateUrl(it.productUrl, effectiveSettings),
       })),
     });
   }
@@ -3710,20 +3801,26 @@ app.get('/api/shop/live', async (req, res) => {
     liveShopCache.set(key, { ts: Date.now(), items });
     return res.json({
       query: qRaw,
-      clicks: shopAffiliateClicks,
+      clicks,
       items: items.map((it) => ({
         ...it,
-        affiliateUrl: decorateAffiliateUrl(it.productUrl, db.settings),
+        affiliateUrl: decorateAffiliateUrl(it.productUrl, effectiveSettings),
       })),
     });
   } catch {
-    return res.json({ query: qRaw, clicks: shopAffiliateClicks, items: [] });
+    return res.json({ query: qRaw, clicks, items: [] });
   }
 });
 
 app.post('/api/shop/track-click', (_req, res) => {
-  shopAffiliateClicks += 1;
-  res.json({ ok: true, clicks: shopAffiliateClicks });
+  const db = readDb();
+  const nextClicks = Number(db.settings?.shopAffiliateClicks || 0) + 1;
+  db.settings = {
+    ...(db.settings || {}),
+    shopAffiliateClicks: nextClicks,
+  };
+  writeDb(db);
+  res.json({ ok: true, clicks: nextClicks });
 });
 
 // Serve built frontend with optimized mobile/desktop HTTP caching

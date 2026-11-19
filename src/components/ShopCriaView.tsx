@@ -614,7 +614,23 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
   const [shopeeId, setShopeeId] = useState(settings.affiliateShopeeId || '');
   const [amazonTag, setAmazonTag] = useState(settings.affiliateAmazonTag || '');
   const [waNumber, setWaNumber] = useState(settings.whatsappStoreNumber || '');
+  const [pasteLink, setPasteLink] = useState('');
+  const [extractingLink, setExtractingLink] = useState(false);
   const [savingAff, setSavingAff] = useState(false);
+
+  useEffect(() => {
+    setMlTool(settings.affiliateMlTool || '');
+    setMlWord(settings.affiliateMlWord || '');
+    setShopeeId(settings.affiliateShopeeId || '');
+    setAmazonTag(settings.affiliateAmazonTag || '');
+    setWaNumber(settings.whatsappStoreNumber || '');
+  }, [
+    settings.affiliateMlTool,
+    settings.affiliateMlWord,
+    settings.affiliateShopeeId,
+    settings.affiliateAmazonTag,
+    settings.whatsappStoreNumber,
+  ]);
 
   const hasAnyAffiliate = Boolean(
     settings.affiliateMlTool || settings.affiliateShopeeId || settings.affiliateAmazonTag
@@ -657,21 +673,21 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
   const totalItems = cart.reduce((acc, c) => acc + c.qty, 0);
   const totalPrice = cart.reduce((acc, c) => acc + c.item.priceBrl * c.qty, 0);
 
-  const buildCommissionUrl = (searchQuery: string, category: CriaProduct['category']) => {
-    if (category === 'motos' || category === 'carros') {
-      return `https://www.webmotors.com.br/carros/estoque?tipoveiculo=${
-        category === 'motos' ? 'motos' : 'carros'
-      }&q=${encodeURIComponent(searchQuery)}`;
+  const buildStoreUrl = (searchQuery: string, store: 'ml' | 'shopee' | 'amazon') => {
+    if (store === 'amazon') {
+      return settings.affiliateAmazonTag
+        ? `https://www.amazon.com.br/s?k=${encodeURIComponent(searchQuery)}&tag=${encodeURIComponent(
+            settings.affiliateAmazonTag
+          )}`
+        : `https://www.amazon.com.br/s?k=${encodeURIComponent(searchQuery)}`;
     }
-    if (settings.affiliateAmazonTag) {
-      return `https://www.amazon.com.br/s?k=${encodeURIComponent(searchQuery)}&tag=${encodeURIComponent(
-        settings.affiliateAmazonTag
-      )}`;
-    }
-    if (settings.affiliateShopeeId) {
-      return `https://shopee.com.br/search?keyword=${encodeURIComponent(
-        searchQuery
-      )}&utm_source=an_${encodeURIComponent(settings.affiliateShopeeId)}&utm_medium=affiliates`;
+    if (store === 'shopee') {
+      const cleanShopee = (settings.affiliateShopeeId || '').trim().replace(/^an_/i, '');
+      return cleanShopee
+        ? `https://shopee.com.br/search?keyword=${encodeURIComponent(
+            searchQuery
+          )}&utm_source=an_${encodeURIComponent(cleanShopee)}&utm_medium=affiliates`
+        : `https://shopee.com.br/search?keyword=${encodeURIComponent(searchQuery)}`;
     }
     const base = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchQuery).replace(/%20/g, '-')}`;
     if (settings.affiliateMlTool) {
@@ -680,6 +696,27 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
       }`;
     }
     return base;
+  };
+
+  const buildCommissionUrl = (searchQuery: string, category: CriaProduct['category']) => {
+    if (category === 'motos' || category === 'carros') {
+      return `https://www.webmotors.com.br/carros/estoque?tipoveiculo=${
+        category === 'motos' ? 'motos' : 'carros'
+      }&q=${encodeURIComponent(searchQuery)}`;
+    }
+    if (category === 'eletronicos' && settings.affiliateAmazonTag) {
+      return buildStoreUrl(searchQuery, 'amazon');
+    }
+    if (
+      (category === 'roupas' || category === 'oculos' || category === 'correntes' || category === 'tenis') &&
+      settings.affiliateShopeeId
+    ) {
+      return buildStoreUrl(searchQuery, 'shopee');
+    }
+    if (settings.affiliateMlTool) return buildStoreUrl(searchQuery, 'ml');
+    if (settings.affiliateShopeeId) return buildStoreUrl(searchQuery, 'shopee');
+    if (settings.affiliateAmazonTag) return buildStoreUrl(searchQuery, 'amazon');
+    return buildStoreUrl(searchQuery, 'ml');
   };
 
   const trackAndOpenOffer = () => {
@@ -719,6 +756,55 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
     return cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
       : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  };
+
+  const handleAutoExtractLink = async () => {
+    const clean = pasteLink.trim();
+    if (!clean) {
+      onToast('Cole primeiro um link gerado no Mercado Livre, Shopee ou Amazon!');
+      return;
+    }
+    setExtractingLink(true);
+    try {
+      const r = await fetch('/api/shop/parse-affiliate-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: clean }),
+      });
+      const d = await r.json().catch(() => ({}));
+      const ex = d?.extracted || {};
+      const nextMlTool = ex.affiliateMlTool || mlTool;
+      const nextMlWord = ex.affiliateMlWord || mlWord;
+      const nextShopee = ex.affiliateShopeeId || shopeeId;
+      const nextAmazon = ex.affiliateAmazonTag || amazonTag;
+
+      if (ex.affiliateMlTool) setMlTool(ex.affiliateMlTool);
+      if (ex.affiliateMlWord) setMlWord(ex.affiliateMlWord);
+      if (ex.affiliateShopeeId) setShopeeId(ex.affiliateShopeeId);
+      if (ex.affiliateAmazonTag) setAmazonTag(ex.affiliateAmazonTag);
+
+      if (d?.ok) {
+        if (mode === 'creator') {
+          await onSaveSettings({
+            affiliateMlTool: nextMlTool.trim(),
+            affiliateMlWord: nextMlWord.trim(),
+            affiliateShopeeId: nextShopee.trim(),
+            affiliateAmazonTag: nextAmazon.trim(),
+            whatsappStoreNumber: waNumber.trim(),
+          });
+          onToast('⚡ Código extraído do link e salvo automaticamente!');
+        } else {
+          onToast('⚡ Código extraído do link! Ative o Modo Criador (5 toques no logo LENKYX) para salvar.');
+        }
+        setPasteLink('');
+      } else {
+        onToast('Não achei código nesse link. Gere um link de afiliado dentro do painel da loja e cole aqui.');
+      }
+    } catch {
+      onToast('Erro ao ler o link. Tente copiar o link completo.');
+    } finally {
+      setExtractingLink(false);
+    }
   };
 
   const handleSaveAffiliateConfig = async (e: React.FormEvent) => {
@@ -924,24 +1010,57 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => addToCart(item)}
-                  className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1 transition"
-                >
-                  <Plus className="w-3.5 h-3.5 text-cyan-300" /> Na Sacola
-                </button>
-                <a
-                  href={offerUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={trackAndOpenOffer}
-                  className="py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-xs font-black flex items-center justify-center gap-1 transition"
-                >
-                  <span>Comprar</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+              <div className="space-y-2 pt-1">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => addToCart(item)}
+                    className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1 transition"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-cyan-300" /> Na Sacola
+                  </button>
+                  <a
+                    href={offerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={trackAndOpenOffer}
+                    className="py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-xs font-black flex items-center justify-center gap-1 transition"
+                  >
+                    <span>Comprar</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                {item.category !== 'motos' && item.category !== 'carros' && (
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <a
+                      href={buildStoreUrl(item.searchQuery, 'ml')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={trackAndOpenOffer}
+                      className="flex-1 py-1 rounded-lg bg-yellow-400/15 hover:bg-yellow-400/25 border border-yellow-400/30 text-yellow-200 font-bold text-center transition"
+                    >
+                      Mercado Livre
+                    </a>
+                    <a
+                      href={buildStoreUrl(item.searchQuery, 'shopee')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={trackAndOpenOffer}
+                      className="flex-1 py-1 rounded-lg bg-orange-500/15 hover:bg-orange-500/25 border border-orange-400/30 text-orange-200 font-bold text-center transition"
+                    >
+                      Shopee
+                    </a>
+                    <a
+                      href={buildStoreUrl(item.searchQuery, 'amazon')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={trackAndOpenOffer}
+                      className="flex-1 py-1 rounded-lg bg-cyan-400/15 hover:bg-cyan-400/25 border border-cyan-400/30 text-cyan-200 font-bold text-center transition"
+                    >
+                      Amazon
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -974,22 +1093,66 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
               </button>
             </div>
 
-            <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/35 p-3.5 space-y-2 text-xs text-slate-200 leading-relaxed">
+            <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/35 p-3.5 space-y-2.5 text-xs text-slate-200 leading-relaxed">
               <div className="font-black text-emerald-300 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> Cadastros Gratuitos Para Você Receber Dinheiro:
+                <CheckCircle2 className="w-4 h-4" /> 1) Cadastre Grátis nas Lojas (1 Minuto Cada):
               </div>
-              <p>
-                1. <strong>Mercado Livre Afiliados</strong> (<code>programa.mercadolivre.com.br/afiliados</code>) — paga <strong>8% a 16%</strong> por venda direto no seu Mercado Pago.
-              </p>
-              <p>
-                2. <strong>Shopee Afiliados Brasil</strong> (<code>affiliate.shopee.com.br</code>) — paga até <strong>14%</strong> por venda (roupas, Juliet, relógios, correntes).
-              </p>
-              <p>
-                3. <strong>Amazon Associados Brasil</strong> (<code>associados.amazon.com.br</code>) — paga até <strong>15%</strong> por venda (JBL, iPhone, livros, moda).
-              </p>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href="https://www.mercadolivre.com.br/l/afiliados"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-yellow-400 text-black font-black flex items-center gap-1 text-[11px]"
+                >
+                  Mercado Livre Afiliados <ExternalLink className="w-3 h-3" />
+                </a>
+                <a
+                  href="https://affiliate.shopee.com.br/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-orange-500 text-white font-black flex items-center gap-1 text-[11px]"
+                >
+                  Shopee Afiliados <ExternalLink className="w-3 h-3" />
+                </a>
+                <a
+                  href="https://associados.amazon.com.br/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-cyan-400 text-black font-black flex items-center gap-1 text-[11px]"
+                >
+                  Amazon Associados <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
               <p className="text-[11px] text-cyan-200">
-                Depois de fazer esses cadastros grátis, cole seus códigos abaixo — todos os links da Loja dos Cria passam a gerar comissão pra você automaticamente!
+                Os botões de compra do seu site já estão 100% ligados! Só falta você pegar seu código grátis nesses 3 sites acima (com seu CPF/conta) para o dinheiro cair direto pra você.
               </p>
+            </div>
+
+            {/* Auto Link Extractor */}
+            <div className="rounded-2xl bg-cyan-500/10 border border-cyan-400/35 p-3.5 space-y-2 text-xs">
+              <div className="font-black text-cyan-200 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-300" /> 2) Jeito Fácil: Cole Qualquer Link Seu Que Eu Extraio Tudo!
+              </div>
+              <p className="text-[11px] text-slate-300">
+                Gerou um link de afiliado no Mercado Livre, Shopee ou Amazon (até link curto)? Cole abaixo e clique em Extrair:
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={pasteLink}
+                  onChange={(e) => setPasteLink(e.target.value)}
+                  placeholder="https://mercadolivre.com/sec/... ou https://shope.ee/..."
+                  className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-black/55 border border-white/15 text-white text-xs"
+                />
+                <button
+                  type="button"
+                  disabled={extractingLink}
+                  onClick={() => void handleAutoExtractLink()}
+                  className="px-3 py-2 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black font-black text-xs shrink-0"
+                >
+                  {extractingLink ? 'Lendo...' : 'Extrair'}
+                </button>
+              </div>
             </div>
 
             {mode === 'creator' ? (
