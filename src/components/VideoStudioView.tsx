@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Video,
   Play,
   Square,
-  Download,
+  Rocket,
   Sparkles,
   Smartphone,
   Monitor,
@@ -17,12 +16,15 @@ import {
   Upload,
 } from 'lucide-react';
 import { Track } from '../types';
-import { downloadBlobReliable } from '../utils/androidBridge';
+import { CommunityShortItem } from '../utils/communityApi';
 
 interface Props {
   tracks: Track[];
   initialTrack?: Track | null;
+  creatorName?: string;
+  creatorColor?: string;
   onPauseCatalogPlayer: () => void;
+  onAutoPublished?: (shortItem: CommunityShortItem) => void;
   onToast: (msg: string) => void;
 }
 
@@ -36,7 +38,15 @@ interface Star {
   hue: number;
 }
 
-export const VideoStudioView: React.FC<Props> = ({ tracks, initialTrack, onPauseCatalogPlayer, onToast }) => {
+export const VideoStudioView: React.FC<Props> = ({
+  tracks,
+  initialTrack,
+  creatorName,
+  creatorColor,
+  onPauseCatalogPlayer,
+  onAutoPublished,
+  onToast,
+}) => {
   const [customTrack, setCustomTrack] = useState<Track | null>(null);
   const allSelectableTracks = React.useMemo(() => {
     const base = customTrack ? [customTrack, ...tracks] : tracks;
@@ -56,10 +66,8 @@ export const VideoStudioView: React.FC<Props> = ({ tracks, initialTrack, onPause
   const [clipDuration, setClipDuration] = useState<number>(15);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [recElapsed, setRecElapsed] = useState(0);
-  const [exportedVideoUrl, setExportedVideoUrl] = useState<string>('');
-  const [exportedVideoBlob, setExportedVideoBlob] = useState<Blob | null>(null);
-  const [exportedFilename, setExportedFilename] = useState<string>('');
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
@@ -517,7 +525,6 @@ export const VideoStudioView: React.FC<Props> = ({ tracks, initialTrack, onPause
   const handleStartRenderVideo = async () => {
     if (!track || !canvasRef.current) return;
     onPauseCatalogPlayer();
-    setExportedVideoUrl('');
     ensureAudioGraph();
 
     const audio = audioElRef.current!;
@@ -543,16 +550,42 @@ export const VideoStudioView: React.FC<Props> = ({ tracks, initialTrack, onPause
     };
     rec.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: mimeType });
-      const url = URL.createObjectURL(blob);
       const suffix = format === 'youtube_16_9' ? 'YOUTUBE-16x9' : 'REELS-SHORTS-9x16';
       const cleanTitle = track.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      setExportedVideoBlob(blob);
-      setExportedVideoUrl(url);
-      setExportedFilename(`LENKYX-${cleanTitle}-${suffix}.webm`);
+      const filename = `LENKYX-${cleanTitle}-${suffix}.webm`;
       setIsRecording(false);
       setIsPreviewing(false);
       audio.pause();
-      onToast('🎬 Vídeo pronto! Baixe e poste no TikTok, Reels, Status ou YouTube.');
+
+      // Publish directly into Reels feed without forcing user to download or archive!
+      void (async () => {
+        setIsPublishing(true);
+        try {
+          const fd = new FormData();
+          fd.append('video', blob, filename);
+          fd.append('title', hookText.trim() || track.title);
+          fd.append('creatorName', creatorName || 'Criador LENKYX');
+          fd.append('creatorColor', creatorColor || 'from-cyan-400 to-pink-500');
+          fd.append('description', `${track.title} — ${track.artist}`);
+          fd.append('posterUrl', track.coverUrl || '/covers/album-official.jpg');
+          fd.append('audioTitle', `${track.title} · ${track.artist}`);
+          fd.append('durationSec', String(Math.min(180, Math.max(5, clipDuration || 15))));
+
+          const res = await fetch('/api/community/upload-short-video', { method: 'POST', body: fd });
+          if (!res.ok) throw new Error('Falha na publicação');
+          const data = await res.json();
+          if (data?.short && onAutoPublished) {
+            onToast('🚀 Publicado direto no feed!');
+            onAutoPublished(data.short as CommunityShortItem);
+          } else {
+            onToast('🚀 Vídeo publicado!');
+          }
+        } catch {
+          onToast('Não foi possível publicar agora. Tente novamente.');
+        } finally {
+          setIsPublishing(false);
+        }
+      })();
     };
 
     recorderRef.current = rec;
@@ -708,10 +741,11 @@ export const VideoStudioView: React.FC<Props> = ({ tracks, initialTrack, onPause
                 disabled={isRecording}
                 className="w-full px-3 py-2 rounded-xl bg-black/60 border border-purple-500/35 text-xs font-bold text-white"
               >
-                <option value={15} className="bg-[#0f0824]">15 seg (Status / Shorts)</option>
-                <option value={30} className="bg-[#0f0824]">30 seg (Reels / TikTok)</option>
-                <option value={60} className="bg-[#0f0824]">60 seg (Shorts Longo)</option>
-                <option value={0} className="bg-[#0f0824]">Música Completa (Longo)</option>
+                <option value={15} className="bg-[#0f0824]">15 seg</option>
+                <option value={30} className="bg-[#0f0824]">30 seg</option>
+                <option value={60} className="bg-[#0f0824]">60 seg</option>
+                <option value={120} className="bg-[#0f0824]">2 min</option>
+                <option value={180} className="bg-[#0f0824]">3 min (Máx Shorts)</option>
               </select>
             </div>
             <label className="flex items-center gap-2 py-2 px-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer text-xs text-purple-100">
@@ -721,60 +755,48 @@ export const VideoStudioView: React.FC<Props> = ({ tracks, initialTrack, onPause
                 onChange={(e) => setShowCta(e.target.checked)}
                 className="accent-pink-500"
               />
-              Mostrar assinatura
+              Assinatura LENKYX
             </label>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 pt-1">
             <button
               onClick={handleTogglePreview}
-              disabled={isRecording}
+              disabled={isRecording || isPublishing}
               className="py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 transition"
             >
               {isPreviewing && !isRecording ? <Square className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white" />}
-              {isPreviewing && !isRecording ? 'Parar' : 'Testar Preview'}
+              {isPreviewing && !isRecording ? 'Parar' : 'Preview'}
             </button>
             <button
               onClick={isRecording ? stopAll : handleStartRenderVideo}
+              disabled={isPublishing}
               className={`py-3 px-4 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition ${
                 isRecording
                   ? 'bg-red-600 text-white animate-pulse'
                   : 'bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 hover:brightness-110 text-white'
               }`}
             >
-              {isRecording ? <Square className="w-4 h-4 fill-white" /> : <Video className="w-4 h-4" />}
-              {isRecording ? 'Parar Gravação' : 'Gerar Vídeo'}
+              {isRecording ? <Square className="w-4 h-4 fill-white" /> : <Rocket className="w-4 h-4" />}
+              {isPublishing ? 'Publicando...' : isRecording ? 'Finalizar & Publicar' : 'Criar & Publicar'}
             </button>
           </div>
 
-          {isRecording && (
+          {(isRecording || isPublishing) && (
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-bold text-pink-300">
                 <span className="flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5" /> Gerando vídeo com áudio...
+                  <Sparkles className="w-3.5 h-3.5" />{' '}
+                  {isPublishing ? 'Publicando direto no feed...' : 'Gerando e enviando para publicação...'}
                 </span>
                 <span className="font-mono">{recElapsed.toFixed(1)}s / {targetSec}s</span>
               </div>
               <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 transition-all"
-                  style={{ width: `${pct}%` }}
+                  style={{ width: `${isPublishing ? 100 : pct}%` }}
                 />
               </div>
-            </div>
-          )}
-
-          {exportedVideoUrl && (
-            <div className="rounded-2xl bg-emerald-500/15 border border-emerald-400/45 p-3.5 space-y-2.5">
-              <div className="text-xs font-extrabold text-emerald-200">✅ Vídeo pronto para postar em qualquer app!</div>
-              <video controls src={exportedVideoUrl} className="w-full max-h-52 rounded-xl bg-black" />
-              <button
-                type="button"
-                onClick={() => exportedVideoBlob && downloadBlobReliable(exportedVideoBlob, exportedFilename)}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 text-black font-extrabold text-xs flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" /> Salvar Vídeo ({exportedFilename})
-              </button>
             </div>
           )}
         </div>

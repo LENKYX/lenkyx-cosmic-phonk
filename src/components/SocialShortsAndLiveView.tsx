@@ -2551,7 +2551,14 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
           <VideoStudioView
             tracks={tracks}
             initialTrack={initialTrack}
+            creatorName={user?.name || 'Criador LENKYX'}
+            creatorColor={user?.avatarColor || 'from-cyan-400 to-pink-500'}
             onPauseCatalogPlayer={onPauseCatalogPlayer}
+            onAutoPublished={(createdShort) => {
+              setShorts((prev) => [createdShort, ...prev.filter((s) => s.id !== createdShort.id)]);
+              setActiveIndex(0);
+              setSubTab('shorts');
+            }}
             onToast={onToast}
           />
         </Suspense>

@@ -91,12 +91,14 @@ const STORAGE_ROOT = process.env.STORAGE_DIR ? path.resolve(process.env.STORAGE_
 const DB_PATH = path.join(DATA_DIR, 'db.json');
 const STORAGE_AUDIO = path.join(STORAGE_ROOT, 'audio');
 const STORAGE_COVERS = path.join(STORAGE_ROOT, 'covers');
+const STORAGE_VIDEOS = path.join(STORAGE_ROOT, 'videos');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const DIST_DIR = path.join(ROOT, 'dist');
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(STORAGE_AUDIO, { recursive: true });
 fs.mkdirSync(STORAGE_COVERS, { recursive: true });
+fs.mkdirSync(STORAGE_VIDEOS, { recursive: true });
 
 const auth = createAuthManager(DATA_DIR);
 
@@ -181,11 +183,14 @@ function writeDb(db, deletedTrackId = null) {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === 'audio' || file.fieldname === 'audioV2') cb(null, STORAGE_AUDIO);
+    else if (file.fieldname === 'video') cb(null, STORAGE_VIDEOS);
     else cb(null, STORAGE_COVERS);
   },
   filename: (req, file, cb) => {
     const isAudio = file.fieldname === 'audio' || file.fieldname === 'audioV2';
-    const safeExt = path.extname(file.originalname || '').toLowerCase() || (isAudio ? '.wav' : '.jpg');
+    const isVideo = file.fieldname === 'video';
+    const safeExt =
+      path.extname(file.originalname || '').toLowerCase() || (isVideo ? '.webm' : isAudio ? '.wav' : '.jpg');
     const cleanName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${safeExt}`;
     cb(null, cleanName);
   },
@@ -2389,6 +2394,34 @@ app.post('/api/community/shorts', async (req, res) => {
       audioTitle: req.body?.audioTitle,
     });
     res.status(201).json(created);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/upload-short-video', upload.single('video'), async (req, res) => {
+  try {
+    const durSec = Number(req.body?.durationSec || 0);
+    if (durSec > 180) {
+      return res.status(400).json({
+        error: 'Reels permitem apenas vídeos curtos de até 3 minutos (180s, limite do YouTube Shorts).',
+      });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'Arquivo de vídeo não recebido.' });
+    }
+    const videoUrl = `/storage/videos/${req.file.filename}`;
+    const created = await createCommunityShort({
+      title: req.body?.title || 'Cosmic Reel',
+      creatorName: req.body?.creatorName || 'Criador LENKYX',
+      creatorColor: req.body?.creatorColor || 'from-cyan-400 to-pink-500',
+      description: req.body?.description || '',
+      mediaType: 'video',
+      videoUrl,
+      posterUrl: req.body?.posterUrl || '/covers/album-official.jpg',
+      audioTitle: req.body?.audioTitle || 'LENKYX Sound',
+    });
+    res.status(201).json({ ok: true, short: created, videoUrl });
   } catch (err) {
     res.status(400).json({ error: String(err?.message || err) });
   }
