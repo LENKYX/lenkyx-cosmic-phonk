@@ -63,6 +63,8 @@ import {
   stepAutonomousConsciousness,
   replyAsConsciousNpc,
   fetchSatelliteLiveOverview,
+  stepRobotWorkers,
+  getRobotFleetStatus,
   startAutonomousWorldSync,
 } from './worldsAutonomous.js';
 import {
@@ -3354,6 +3356,43 @@ app.post('/api/galaxy/npc-chat', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }
+});
+
+// === AUTONOMOUS INTELLIGENT WORKER ROBOTS (REAL-TIME APP OPTIMIZATION) ===
+async function formatFleetForLang(fleet, localLang) {
+  if (localLang === 'pt') return fleet;
+  const [bots, logs] = await Promise.all([
+    Promise.all(
+      (fleet.bots || []).map(async (b) => ({
+        ...b,
+        role: await translateCached(b.role, localLang),
+        status: await translateCached(b.status, localLang),
+        currentTask: await translateCached(b.currentTask, localLang),
+      }))
+    ),
+    Promise.all(
+      (fleet.logs || []).slice(0, 8).map(async (l) => ({
+        ...l,
+        action: await translateCached(l.action, localLang),
+      }))
+    ),
+  ]);
+  return { ...fleet, bots, logs };
+}
+
+app.get('/api/robots/status', async (req, res) => {
+  const localLang =
+    normalizeServerLang(req.query.lang || req.headers['accept-language']?.split(',')[0] || 'pt') || 'pt';
+  const fleet = getRobotFleetStatus();
+  res.json({ ok: true, localLang, fleet: await formatFleetForLang(fleet, localLang) });
+});
+
+app.post('/api/robots/optimize', async (req, res) => {
+  const localLang =
+    normalizeServerLang(req.query.lang || req.body?.lang || req.headers['accept-language']?.split(',')[0] || 'pt') ||
+    'pt';
+  const fleet = stepRobotWorkers(true);
+  res.json({ ok: true, localLang, fleet: await formatFleetForLang(fleet, localLang) });
 });
 
 app.get('/tv', (_req, res) => {

@@ -4,6 +4,7 @@ import {
   Activity,
   ArrowLeft,
   Bike,
+  Bot,
   Brain,
   Bug,
   Car,
@@ -22,10 +23,31 @@ import {
   Volume2,
   VolumeX,
   X,
+  Zap,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
+interface RobotFleetState {
+  optimizationsCount: number;
+  lastSweepMs: number;
+  memoryMb: number;
+  healthScore: number;
+  bots: {
+    id: string;
+    name: string;
+    role: string;
+    color: string;
+    status: string;
+    efficiencyPct: number;
+    actionsDone: number;
+    currentTask: string;
+  }[];
+  logs: { id: string; ts: string; botId: string; action: string }[];
+}
+
 interface EcosystemSnapshot {
+  cycleTick?: number;
+  evolutionEpoch?: number;
   timeOfDay: number;
   weather: string;
   temperatureC: number;
@@ -33,6 +55,19 @@ interface EcosystemSnapshot {
   soilFertilityPct: number;
   biodiversityIndex: number;
   galaxyMood: string;
+  atmosphere?: {
+    pressureHpa: number;
+    humidityPct: number;
+    windSpeedKmh: number;
+    windDirection: string;
+    cloudCoverPct: number;
+    uvIndex: number;
+    airQualityIndex: number;
+    visibilityKm: number;
+    rainIntensity: number;
+    auroraIntensity: number;
+    phase: string;
+  };
   speciesCounts: {
     bacteriaBillions: number;
     plantsAndFlowers: number;
@@ -272,6 +307,9 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
   const [nearGuy, setNearGuy] = useState(false);
   const [microscopeOpen, setMicroscopeOpen] = useState(false);
   const [brainLogOpen, setBrainLogOpen] = useState(false);
+  const [robotsOpen, setRobotsOpen] = useState(false);
+  const [robotFleet, setRobotFleet] = useState<RobotFleetState | null>(null);
+  const [boostingBots, setBoostingBots] = useState(false);
   const [npcChatOpen, setNpcChatOpen] = useState(false);
   const [npcVoice, setNpcVoice] = useState(true);
   const [npcInput, setNpcInput] = useState('');
@@ -287,19 +325,23 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
   // Mobile / keyboard unified input state
   const keysRef = useRef<Record<string, boolean>>({});
   const joyRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const ecoRef = useRef<EcosystemSnapshot | null>(null);
   const actionTriggerRef = useRef<{ toggleVehicle: () => void; talkNpc: () => void; spawnTree: () => void }>({
     toggleVehicle: () => {},
     talkNpc: () => {},
     spawnTree: () => {},
   });
 
-  // Poll server Autonomous Galaxy Consciousness & Ecosystem every 8s
+  // Poll server Autonomous Galaxy Consciousness, Atmosphere & Ecosystem every 5s
   const fetchConsciousness = useCallback(async () => {
     try {
       const localLang = encodeURIComponent(navigator.language || 'pt');
       const r = await fetch(`/api/galaxy/consciousness?lang=${localLang}`);
       const d = await r.json();
-      if (d?.ok && d.ecosystem) setEco(d.ecosystem);
+      if (d?.ok && d.ecosystem) {
+        setEco(d.ecosystem);
+        ecoRef.current = d.ecosystem;
+      }
     } catch {
       // ignore
     }
@@ -307,9 +349,43 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
 
   useEffect(() => {
     void fetchConsciousness();
-    const t = window.setInterval(() => void fetchConsciousness(), 8000);
+    const t = window.setInterval(() => void fetchConsciousness(), 5000);
     return () => window.clearInterval(t);
   }, [fetchConsciousness]);
+
+  const fetchRobots = useCallback(async () => {
+    try {
+      const localLang = encodeURIComponent(navigator.language || 'pt');
+      const r = await fetch(`/api/robots/status?lang=${localLang}`);
+      const d = await r.json();
+      if (d?.ok && d.fleet) setRobotFleet(d.fleet);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchRobots();
+    const t = window.setInterval(() => void fetchRobots(), 6000);
+    return () => window.clearInterval(t);
+  }, [fetchRobots]);
+
+  const handleBoostRobots = async () => {
+    setBoostingBots(true);
+    try {
+      const localLang = encodeURIComponent(navigator.language || 'pt');
+      const r = await fetch(`/api/robots/optimize?lang=${localLang}`, { method: 'POST' });
+      const d = await r.json();
+      if (d?.ok && d.fleet) {
+        setRobotFleet(d.fleet);
+        onToast(`🤖 4 Robôs IA executaram varredura (${d.fleet.lastSweepMs}ms · Saúde ${d.fleet.healthScore}%)!`);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setBoostingBots(false);
+    }
+  };
 
   // Sync player presence with online multiplayer sector
   useEffect(() => {
@@ -422,6 +498,83 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
     ocean.rotation.x = -Math.PI / 2;
     ocean.position.set(0, 0.02, 132);
     scene.add(ocean);
+
+    /* === LIVING ATMOSPHERE: SUN, MOON, CLOUDS, STARS, AURORA & RAIN === */
+    const skySun = new THREE.Mesh(
+      new THREE.SphereGeometry(5.5, 20, 20),
+      new THREE.MeshBasicMaterial({ color: '#fef08a' })
+    );
+    scene.add(skySun);
+
+    const skyMoon = new THREE.Mesh(
+      new THREE.SphereGeometry(3.8, 18, 18),
+      new THREE.MeshBasicMaterial({ color: '#e0f2fe' })
+    );
+    scene.add(skyMoon);
+
+    const starPos = new Float32Array(450 * 3);
+    for (let i = 0; i < 450; i++) {
+      starPos[i * 3] = (Math.random() - 0.5) * 320;
+      starPos[i * 3 + 1] = 45 + Math.random() * 110;
+      starPos[i * 3 + 2] = (Math.random() - 0.5) * 320;
+    }
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({ color: '#f8fafc', size: 0.95, transparent: true, opacity: 0.45 });
+    const starField = new THREE.Points(starGeo, starMat);
+    scene.add(starField);
+
+    const auroraArc = new THREE.Mesh(
+      new THREE.TorusGeometry(95, 6.5, 10, 48, Math.PI),
+      new THREE.MeshBasicMaterial({
+        color: '#2dd4bf',
+        transparent: true,
+        opacity: 0.12,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+      })
+    );
+    auroraArc.position.set(0, 32, -65);
+    auroraArc.rotation.z = 0.08;
+    scene.add(auroraArc);
+
+    const clouds: THREE.Group[] = [];
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: '#f8fafc',
+      roughness: 0.95,
+      transparent: true,
+      opacity: 0.84,
+    });
+    for (let i = 0; i < 14; i++) {
+      const cg = new THREE.Group();
+      for (let p = 0; p < 3; p++) {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(3.2 + p * 0.7, 10, 10), cloudMat);
+        puff.position.set((p - 1) * 3.4, (p % 2) * 0.9, (Math.random() - 0.5) * 2.2);
+        puff.scale.set(1.5, 0.72, 1.15);
+        cg.add(puff);
+      }
+      cg.position.set((Math.random() - 0.5) * 210, 42 + Math.random() * 18, (Math.random() - 0.5) * 180);
+      scene.add(cg);
+      clouds.push(cg);
+    }
+
+    const rainCount = 700;
+    const rainPos = new Float32Array(rainCount * 3);
+    for (let i = 0; i < rainCount; i++) {
+      rainPos[i * 3] = (Math.random() - 0.5) * 160;
+      rainPos[i * 3 + 1] = Math.random() * 55;
+      rainPos[i * 3 + 2] = (Math.random() - 0.5) * 160;
+    }
+    const rainGeo = new THREE.BufferGeometry();
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+    const rainMat = new THREE.PointsMaterial({
+      color: '#7dd3fc',
+      size: 0.34,
+      transparent: true,
+      opacity: 0,
+    });
+    const rainSystem = new THREE.Points(rainGeo, rainMat);
+    scene.add(rainSystem);
 
     // Roads (Avenues along X & Z)
     const roadMat = new THREE.MeshStandardMaterial({ color: '#0f172a', roughness: 0.8 });
@@ -619,6 +772,34 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
     let playerYaw = Math.PI;
     playerMesh.position.copy(playerPos);
     scene.add(playerMesh);
+
+    // 4 Autonomous Intelligent AI Worker Robots Hovering & Optimizing City + Ecosystem
+    const workerRobots: { group: THREE.Group; ring: THREE.Mesh; center: THREE.Vector3; rad: number; speed: number; phase: number }[] = [];
+    const botPalette = ['#22d3ee', '#34d399', '#fbbf24', '#a855f7'];
+    botPalette.forEach((hex, idx) => {
+      const rg = new THREE.Group();
+      const core = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.65, 1),
+        new THREE.MeshStandardMaterial({ color: '#e2e8f0', emissive: new THREE.Color(hex), emissiveIntensity: 0.75, metalness: 0.85, roughness: 0.15 })
+      );
+      rg.add(core);
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(1.15, 0.08, 8, 24),
+        new THREE.MeshBasicMaterial({ color: hex })
+      );
+      ring.rotation.x = Math.PI / 2;
+      rg.add(ring);
+      const beam = new THREE.Mesh(
+        new THREE.ConeGeometry(0.95, 3.2, 16, 1, true),
+        new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.16, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+      );
+      beam.position.y = -1.7;
+      beam.rotation.x = Math.PI;
+      rg.add(beam);
+      const center = idx === 1 ? new THREE.Vector3(50, 7.5, 0) : new THREE.Vector3((idx - 1) * 26, 8.5, -12 + idx * 14);
+      scene.add(rg);
+      workerRobots.push({ group: rg, ring, center, rad: 16 + idx * 4, speed: 0.48 + idx * 0.09, phase: idx * 1.5 });
+    });
 
     let activeVehicle: WorldVehicle | null = null;
     let camYaw = 0;
@@ -835,6 +1016,74 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
         fi.mesh.position.z = fi.z0 + Math.cos(sim * 0.7 + fi.phase) * 3;
       }
 
+      // Autonomous Intelligent AI Worker Robots Patrolling & Balancing City/Biosphere
+      for (const rb of workerRobots) {
+        const a = sim * rb.speed + rb.phase;
+        rb.group.position.set(
+          rb.center.x + Math.cos(a) * rb.rad,
+          rb.center.y + Math.sin(a * 2.2) * 1.2,
+          rb.center.z + Math.sin(a) * rb.rad
+        );
+        rb.group.rotation.y += dt * 1.6;
+        rb.ring.rotation.z += dt * 3.2;
+      }
+
+      // Dynamic Living Atmosphere Cycle (Sky, Sun/Moon, Wind, Clouds, Rain, Aurora & Waves)
+      const liveEco = ecoRef.current;
+      const tod = liveEco?.timeOfDay ?? ((10.5 + sim * 0.05) % 24);
+      const sunAngle = ((tod - 6) / 24) * Math.PI * 2;
+      const daylight = Math.max(0, Math.sin(sunAngle));
+      const duskGlow = Math.max(0, 1 - Math.abs(daylight - 0.18) * 4.5);
+
+      skySun.position.set(Math.cos(sunAngle) * 135, Math.sin(sunAngle) * 115, -75);
+      skySun.visible = skySun.position.y > -8;
+      skyMoon.position.set(-Math.cos(sunAngle) * 135, -Math.sin(sunAngle) * 115, -75);
+      skyMoon.visible = skyMoon.position.y > -8;
+      sunLight.position.set(skySun.position.x * 0.6, Math.max(18, Math.abs(skySun.position.y) * 0.7), 35);
+      sunLight.intensity = 0.55 + daylight * 1.45;
+      ambient.intensity = 0.55 + daylight * 0.75;
+
+      const rainActive =
+        (liveEco?.atmosphere?.rainIntensity ?? 0) > 0.1 ||
+        /chuva|rain|tempestade/i.test(liveEco?.weather || '');
+      const skyColor = rainActive
+        ? new THREE.Color('#1e293b')
+        : new THREE.Color('#070b1e').lerp(new THREE.Color('#38bdf8'), daylight * 0.65).lerp(new THREE.Color('#c084fc'), duskGlow * 0.35);
+      (scene.background as THREE.Color).lerp(skyColor, 0.04);
+      if (scene.fog instanceof THREE.FogExp2) {
+        scene.fog.color.lerp(skyColor, 0.04);
+        scene.fog.density = rainActive ? 0.0085 : 0.0042 + (1 - daylight) * 0.0018;
+      }
+
+      starMat.opacity = Math.max(0.05, (1 - daylight) * 0.9);
+      auroraArc.material.opacity = (liveEco?.atmosphere?.auroraIntensity ?? (1 - daylight) * 0.5) * 0.25;
+      auroraArc.rotation.y = Math.sin(sim * 0.12) * 0.15;
+
+      const windKmh = liveEco?.atmosphere?.windSpeedKmh ?? 14;
+      const windFactor = windKmh / 14;
+      for (const cg of clouds) {
+        cg.position.x += dt * 1.3 * windFactor;
+        if (cg.position.x > 125) cg.position.x = -125;
+      }
+      cloudMat.opacity = rainActive ? 0.94 : 0.72;
+      cloudMat.color.set(rainActive ? '#64748b' : daylight > 0.35 ? '#f8fafc' : '#94a3b8');
+
+      trees.forEach((tr, i) => {
+        tr.rotation.z = Math.sin(sim * 1.6 * windFactor + i) * 0.028 * windFactor;
+      });
+      ocean.position.y = 0.02 + Math.sin(sim * 1.8) * 0.09;
+
+      rainMat.opacity += ((rainActive ? 0.65 : 0) - rainMat.opacity) * 0.08;
+      if (rainMat.opacity > 0.02) {
+        const rp = rainGeo.attributes.position as THREE.BufferAttribute;
+        for (let i = 0; i < rainCount; i++) {
+          let y = rp.getY(i) - dt * 34;
+          if (y < 0) y = 55;
+          rp.setY(i, y);
+        }
+        rp.needsUpdate = true;
+      }
+
       // Follow Camera (3rd-Person GTA / Oasis Chase Cam)
       const camDist = activeVehicle ? 10.5 : 7.8;
       const targetCamYaw = activeVehicle ? activeVehicle.yaw + Math.PI : camYaw + Math.PI;
@@ -909,12 +1158,28 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             <span>FREE CITY · OASIS 6</span>
             <span className="text-cyan-300 hidden sm:inline">
-              · {eco?.weather || 'Brisa Solar'} {eco ? `${eco.temperatureC}°C` : ''}
+              · {eco?.atmosphere?.phase || eco?.weather || 'Brisa Solar'} {eco ? `${eco.temperatureC}°C` : ''}
             </span>
+            {eco?.atmosphere && (
+              <span className="text-[10px] text-emerald-300 hidden md:inline">
+                · 💧{eco.atmosphere.humidityPct}% · 💨{eco.atmosphere.windSpeedKmh}km/h · O₂ {eco.oxygenPct}%
+              </span>
+            )}
           </div>
         </div>
 
         <div className="pointer-events-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setRobotsOpen((v) => !v)}
+            className="px-2.5 py-1.5 rounded-full bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/50 backdrop-blur-xl text-cyan-100 text-[11px] font-black flex items-center gap-1"
+            title="Robôs IA trabalhando em tempo real"
+          >
+            <Bot className="w-3.5 h-3.5 text-cyan-300" />
+            <span className="hidden sm:inline">
+              Robôs IA {robotFleet ? `(${robotFleet.optimizationsCount})` : ''}
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => setBrainLogOpen((v) => !v)}
@@ -946,6 +1211,51 @@ export const CosmicPhonkWorldGame: React.FC<Props> = ({ user, onToast, onExit })
           </button>
         </div>
       </div>
+
+      {/* Autonomous Intelligent Worker Robots Drawer */}
+      {robotsOpen && robotFleet && (
+        <div className="absolute top-16 right-3 z-30 w-84 max-w-[94vw] rounded-2xl bg-slate-950/92 border border-cyan-400/45 backdrop-blur-2xl p-3 space-y-2.5 shadow-2xl">
+          <div className="flex items-center justify-between text-xs font-black text-cyan-200">
+            <span className="flex items-center gap-1.5">
+              <Bot className="w-4 h-4 text-cyan-400" /> Robôs Trabalhando Agora ({robotFleet.healthScore}%)
+            </span>
+            <button type="button" onClick={() => setRobotsOpen(false)}>
+              <X className="w-4 h-4 text-slate-400" />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center">
+            <div className="p-1.5 rounded-xl bg-white/5 font-bold text-cyan-200">
+              ⚡ {robotFleet.optimizationsCount} ações
+            </div>
+            <div className="p-1.5 rounded-xl bg-white/5 font-bold text-emerald-200">
+              ⏱️ {robotFleet.lastSweepMs}ms
+            </div>
+            <div className="p-1.5 rounded-xl bg-white/5 font-bold text-amber-200">
+              💾 {robotFleet.memoryMb} MB
+            </div>
+          </div>
+          <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+            {robotFleet.bots.map((b) => (
+              <div key={b.id} className="p-2 rounded-xl bg-white/[0.05] border border-white/10 space-y-0.5">
+                <div className="flex items-center justify-between text-[11px] font-black text-white">
+                  <span style={{ color: b.color }}>{b.name}</span>
+                  <span className="text-[9px] text-emerald-300">{b.status} · {b.efficiencyPct}%</span>
+                </div>
+                <div className="text-[10px] text-slate-300 leading-snug">{b.currentTask}</div>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={boostingBots}
+            onClick={() => void handleBoostRobots()}
+            className="w-full py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-black font-black text-xs flex items-center justify-center gap-1.5"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>{boostingBots ? 'Otimizando...' : 'Turbinar Robôs Agora'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Autonomous Decisions Feed Drawer */}
       {brainLogOpen && eco && (

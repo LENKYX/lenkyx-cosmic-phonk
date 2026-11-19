@@ -4,6 +4,7 @@ import {
   AudioWaveform,
   Bitcoin,
   Bluetooth,
+  Bot,
   Car,
   Clapperboard,
   Compass,
@@ -1247,6 +1248,14 @@ export const GalaxyUniverseView: React.FC<Props> = ({
   const [callsOpen, setCallsOpen] = useState(false);
   const [bluetoothOpen, setBluetoothOpen] = useState(false);
   const [freeCityOpen, setFreeCityOpen] = useState(false);
+  const [robotsModalOpen, setRobotsModalOpen] = useState(false);
+  const [galaxyRobots, setGalaxyRobots] = useState<{
+    optimizationsCount: number;
+    healthScore: number;
+    memoryMb: number;
+    lastSweepMs: number;
+    bots: { id: string; name: string; color: string; status: string; currentTask: string }[];
+  } | null>(null);
   const [liveDecision, setLiveDecision] = useState<string>(
     'Ecossistema vivo: bactérias, flores, insetos e carros autônomos em harmonia em Free City.'
   );
@@ -1271,9 +1280,15 @@ export const GalaxyUniverseView: React.FC<Props> = ({
           }
         })
         .catch(() => {});
+      fetch(`/api/robots/status?lang=${localLang}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d?.ok && d.fleet) setGalaxyRobots(d.fleet);
+        })
+        .catch(() => {});
     };
     pollConsciousness();
-    const t = window.setInterval(pollConsciousness, 16000);
+    const t = window.setInterval(pollConsciousness, 7000);
     return () => window.clearInterval(t);
   }, []);
 
@@ -2806,16 +2821,71 @@ export const GalaxyUniverseView: React.FC<Props> = ({
         onToast={onToast}
       />
 
-      {/* SUBTLE LIVE GALAXY CONSCIOUSNESS & FREE CITY QUICK ENTRY */}
+      {/* SUBTLE LIVE GALAXY CONSCIOUSNESS + INTELLIGENT ROBOTS STATUS */}
       {!commsOpen && !freeCityOpen && (
-        <button
-          type="button"
-          onClick={() => setFreeCityOpen(true)}
-          className="absolute bottom-3 left-3 z-20 max-w-[85vw] sm:max-w-md px-3 py-1.5 rounded-full bg-slate-950/65 hover:bg-slate-900/90 border border-cyan-400/35 backdrop-blur-xl flex items-center gap-2 text-left transition shadow-lg"
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-          <span className="text-[10px] font-bold text-cyan-100 truncate">{liveDecision}</span>
-        </button>
+        <div className="absolute bottom-3 left-3 z-20 flex flex-wrap items-center gap-2 max-w-[92vw]">
+          <button
+            type="button"
+            onClick={() => setFreeCityOpen(true)}
+            className="max-w-[78vw] sm:max-w-sm px-3 py-1.5 rounded-full bg-slate-950/65 hover:bg-slate-900/90 border border-cyan-400/35 backdrop-blur-xl flex items-center gap-2 text-left transition shadow-lg"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+            <span className="text-[10px] font-bold text-cyan-100 truncate">{liveDecision}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRobotsModalOpen((v) => !v)}
+            className="px-2.5 py-1.5 rounded-full bg-slate-950/70 hover:bg-slate-900/90 border border-emerald-400/40 backdrop-blur-xl flex items-center gap-1.5 text-[10px] font-black text-emerald-200 transition shadow-lg"
+          >
+            <Bot className="w-3.5 h-3.5 text-cyan-300" />
+            <span>
+              Robôs IA {galaxyRobots ? `· ${galaxyRobots.optimizationsCount}` : ''}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* LIVE WORKER ROBOTS MONITOR POPUP */}
+      {robotsModalOpen && galaxyRobots && !freeCityOpen && (
+        <div className="absolute bottom-14 left-3 z-30 w-80 max-w-[92vw] rounded-2xl bg-slate-950/92 border border-cyan-400/45 backdrop-blur-2xl p-3 space-y-2 shadow-2xl">
+          <div className="flex items-center justify-between text-xs font-black text-cyan-200">
+            <span className="flex items-center gap-1.5">
+              <Bot className="w-4 h-4 text-cyan-300" /> Frota de Robôs IA ({galaxyRobots.healthScore}%)
+            </span>
+            <button type="button" onClick={() => setRobotsModalOpen(false)}>
+              <X className="w-4 h-4 text-slate-400" />
+            </button>
+          </div>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            {galaxyRobots.bots.map((b) => (
+              <div key={b.id} className="p-2 rounded-xl bg-white/[0.05] border border-white/10">
+                <div className="flex items-center justify-between text-[10px] font-black">
+                  <span style={{ color: b.color }}>{b.name}</span>
+                  <span className="text-emerald-300">{b.status}</span>
+                </div>
+                <div className="text-[10px] text-slate-300 leading-snug">{b.currentTask}</div>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const localLang = encodeURIComponent(navigator.language || 'pt');
+              void fetch(`/api/robots/optimize?lang=${localLang}`, { method: 'POST' })
+                .then((r) => r.json())
+                .then((d) => {
+                  if (d?.ok && d.fleet) {
+                    setGalaxyRobots(d.fleet);
+                    onToast(`🤖 Frota IA otimizou o app em ${d.fleet.lastSweepMs}ms!`);
+                  }
+                });
+            }}
+            className="w-full py-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-black text-[11px] font-black"
+          >
+            ⚡ Turbinar Robôs Agora
+          </button>
+        </div>
       )}
 
       {/* FULL 3D GTA 6 + FREE GUY + READY PLAYER ONE LIVING ECOSYSTEM WORLD */}

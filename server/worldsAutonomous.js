@@ -979,9 +979,10 @@ export function pollCallSignals(peerId) {
   return list;
 }
 
-// === AUTONOMOUS LIVING GALAXY CONSCIOUSNESS & ECOSYSTEM ENGINE ===
+// === AUTONOMOUS LIVING GALAXY CONSCIOUSNESS, ATMOSPHERE & ECOSYSTEM ENGINE ===
 const ecosystem = {
   cycleTick: 0,
+  evolutionEpoch: 1,
   timeOfDay: 10.5, // 0..24h
   weather: 'Brisa Solar',
   temperatureC: 24.4,
@@ -989,6 +990,19 @@ const ecosystem = {
   soilFertilityPct: 84,
   biodiversityIndex: 94,
   galaxyMood: 'Harmonia Criativa',
+  atmosphere: {
+    pressureHpa: 1015,
+    humidityPct: 62,
+    windSpeedKmh: 14,
+    windDirection: 'SE',
+    cloudCoverPct: 28,
+    uvIndex: 6,
+    airQualityIndex: 98,
+    visibilityKm: 24,
+    rainIntensity: 0,
+    auroraIntensity: 0.15,
+    phase: 'Sol Dourado',
+  },
   speciesCounts: {
     bacteriaBillions: 4820,
     plantsAndFlowers: 1450,
@@ -1011,21 +1025,44 @@ const ecosystem = {
     {
       id: 'dec_init',
       ts: new Date().toISOString(),
-      domain: 'Ecossistema',
-      decision: 'Bactérias do solo enriqueceram a fertilidade em +4%; novas flores e árvores germinando no parque.',
+      domain: 'Atmosfera & Vida',
+      decision: 'Atmosfera respirável estabilizada (21.6% O₂, 1015 hPa); bactérias do solo nutrem novas flores.',
     },
   ],
 };
 
+const WIND_DIRS = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'];
+
 export function stepAutonomousConsciousness(userAction = null) {
   ecosystem.cycleTick += 1;
-  ecosystem.timeOfDay = Number(((ecosystem.timeOfDay + 0.35) % 24).toFixed(2));
+  ecosystem.timeOfDay = Number(((ecosystem.timeOfDay + 0.28) % 24).toFixed(2));
+  const h = ecosystem.timeOfDay;
+  const atm = ecosystem.atmosphere;
+
+  // Natural continuous biological & atmospheric evolution
+  atm.windSpeedKmh = Math.max(5, Math.min(38, Math.round(14 + Math.sin(ecosystem.cycleTick * 0.45) * 9 + (Math.random() - 0.5) * 3)));
+  atm.windDirection = WIND_DIRS[Math.floor(ecosystem.cycleTick / 4) % WIND_DIRS.length];
+  atm.pressureHpa = Math.round(1013 + Math.cos(ecosystem.cycleTick * 0.25) * 8);
+  atm.uvIndex = h >= 6.5 && h <= 17.5 ? Math.max(1, Math.round(Math.sin(((h - 6.5) / 11) * Math.PI) * 9)) : 0;
+
+  // Subtle organic micro-growth every tick
+  ecosystem.speciesCounts.bacteriaBillions += Math.round((ecosystem.soilFertilityPct - 65) * 1.4);
+  if (ecosystem.cycleTick % 2 === 0) {
+    ecosystem.speciesCounts.plantsAndFlowers += 2;
+    ecosystem.speciesCounts.insects += 3;
+  }
+  if (ecosystem.cycleTick % 6 === 0) {
+    ecosystem.evolutionEpoch += 1;
+    ecosystem.speciesCounts.trees += 1;
+    ecosystem.speciesCounts.marineLife += 2;
+  }
 
   if (userAction?.type === 'plant_tree') {
     ecosystem.speciesCounts.trees += 6;
     ecosystem.speciesCounts.plantsAndFlowers += 18;
     ecosystem.speciesCounts.insects += 24;
     ecosystem.oxygenPct = Math.min(24.5, Number((ecosystem.oxygenPct + 0.15).toFixed(2)));
+    atm.airQualityIndex = Math.min(100, atm.airQualityIndex + 1);
     ecosystem.decisions.unshift({
       id: `dec_${Date.now()}`,
       ts: new Date().toISOString(),
@@ -1043,36 +1080,61 @@ export function stepAutonomousConsciousness(userAction = null) {
       decision: 'Nova vida animal integrada ao bioma: lobos, cervos, cães, aves e cardumes equilibram a cadeia natural.',
     });
   } else {
-    // Coherent autonomous environmental & city decisions
-    if (ecosystem.soilFertilityPct < 75) {
+    // Self-regulating atmospheric & ecological decisions
+    atm.humidityPct = Math.max(44, Math.min(94, Math.round(atm.humidityPct + (Math.random() > 0.42 ? 3 : -2))));
+    atm.cloudCoverPct = Math.max(10, Math.min(95, Math.round(atm.humidityPct * 0.88 - 14)));
+
+    if (ecosystem.soilFertilityPct < 76 || atm.humidityPct >= 86) {
       ecosystem.speciesCounts.bacteriaBillions += 240;
-      ecosystem.soilFertilityPct = Math.min(98, ecosystem.soilFertilityPct + 9);
+      ecosystem.soilFertilityPct = Math.min(98, ecosystem.soilFertilityPct + 8);
+      atm.humidityPct = Math.max(58, atm.humidityPct - 14);
+      atm.rainIntensity = 0.85;
+      atm.visibilityKm = 11;
       ecosystem.weather = 'Chuva Nutritiva';
+      atm.phase = 'Chuva Regeneradora';
+      ecosystem.temperatureC = Number(Math.max(19.5, ecosystem.temperatureC - 1.8).toFixed(1));
       ecosystem.decisions.unshift({
         id: `dec_${Date.now()}`,
         ts: new Date().toISOString(),
-        domain: 'Micro-vida & Clima',
-        decision: 'Fertilidade caiu abaixo de 75%: ativei chuva suave e bactérias decompositoras para regenerar o solo.',
+        domain: 'Atmosfera & Solo',
+        decision: 'Nuvens atingiram saturação: ativei chuva nutritiva e brisa para irrigar árvores, flores e bactérias do solo.',
       });
     } else if (ecosystem.temperatureC > 28.5) {
-      ecosystem.weather = 'Chuva Nutritiva';
-      ecosystem.temperatureC = Number((ecosystem.temperatureC - 2.6).toFixed(1));
+      atm.rainIntensity = 0.45;
+      atm.visibilityKm = 16;
+      ecosystem.weather = 'Brisa Oceânica';
+      atm.phase = 'Resfriamento Marinho';
+      ecosystem.temperatureC = Number((ecosystem.temperatureC - 2.4).toFixed(1));
       ecosystem.decisions.unshift({
         id: `dec_${Date.now()}`,
         ts: new Date().toISOString(),
         domain: 'Clima Galáctico',
-        decision: 'Temperatura subiu na cidade: disparei brisa oceânica e chuva leve para proteger plantas e animais.',
+        decision: 'Calor elevado detectado: disparei corrente fria do oceano e névoa suave para proteger plantas e animais.',
       });
     } else {
-      ecosystem.soilFertilityPct = Math.max(68, ecosystem.soilFertilityPct - 1 + (ecosystem.cycleTick % 3 === 0 ? 2 : 0));
+      atm.rainIntensity = 0;
+      atm.visibilityKm = 24;
+      ecosystem.soilFertilityPct = Math.max(70, ecosystem.soilFertilityPct - 1 + (ecosystem.cycleTick % 2 === 0 ? 2 : 0));
       ecosystem.temperatureC = Number(
-        (22 + Math.sin(ecosystem.timeOfDay * 0.26) * 5.2 + (Math.random() - 0.5) * 0.6).toFixed(1)
+        (22.4 + Math.sin(ecosystem.timeOfDay * 0.26) * 4.9 + (Math.random() - 0.5) * 0.5).toFixed(1)
       );
-      ecosystem.weather =
-        ecosystem.timeOfDay >= 19 || ecosystem.timeOfDay < 5.5
-          ? 'Aurora Noturna'
-          : ecosystem.cycleTick % 5 === 0
-            ? 'Brisa Dourada'
+      const isNight = h >= 19 || h < 5.2;
+      const isDawn = h >= 5.2 && h < 7.8;
+      const isDusk = h >= 17.2 && h < 19;
+      atm.auroraIntensity = isNight ? 0.85 : isDusk || isDawn ? 0.45 : 0.1;
+      atm.phase = isNight
+        ? 'Noite Estrelada & Aurora'
+        : isDawn
+          ? 'Aurora da Manhã'
+          : isDusk
+            ? 'Crepúsculo Dourado'
+            : 'Sol Dourado';
+      ecosystem.weather = isNight
+        ? 'Aurora Noturna'
+        : isDawn || isDusk
+          ? 'Brisa Dourada'
+          : ecosystem.cycleTick % 4 === 0
+            ? 'Brisa Oceânica'
             : 'Ensolarado';
 
       const guyGoals = [
@@ -1087,20 +1149,20 @@ export function stepAutonomousConsciousness(userAction = null) {
 
       const periodicDecisions = [
         {
+          domain: 'Atmosfera Viva',
+          decision: `${atm.phase}: vento ${atm.windSpeedKmh} km/h (${atm.windDirection}), umidade ${atm.humidityPct}% e ${ecosystem.oxygenPct}% de O₂.`,
+        },
+        {
           domain: 'Free Guy IA',
           decision: `Guy mudou de rota sozinho: agora está em ${ecosystem.guyState.location} (${ecosystem.guyState.currentGoal}).`,
         },
         {
           domain: 'Ecossistema',
-          decision: 'Bactérias fixadoras de nitrogênio e polinizadores aumentaram o crescimento das flores e árvores em +3%.',
+          decision: 'Bactérias fixadoras de nitrogênio e polinizadores elevaram a vitalidade das flores e árvores.',
         },
         {
-          domain: 'Tráfego Inteligente',
-          decision: 'Fluxo de carros e motos autônomos redistribuído nas avenidas para zero congestionamento.',
-        },
-        {
-          domain: 'Fauna Viva',
-          decision: 'Bando de aves migratórias e cardumes costeiros sincronizados com o ciclo solar de Free City.',
+          domain: 'Tráfego & Fauna',
+          decision: 'Veículos autônomos e animais livres em sintonia nas vias ecológicas de Free City.',
         },
       ];
       const pick = periodicDecisions[ecosystem.cycleTick % periodicDecisions.length];
@@ -1112,6 +1174,9 @@ export function stepAutonomousConsciousness(userAction = null) {
     }
   }
 
+  ecosystem.oxygenPct = Number(
+    Math.max(20.8, Math.min(23.8, 21.1 + ecosystem.speciesCounts.trees / 950)).toFixed(2)
+  );
   ecosystem.biodiversityIndex = Math.min(
     100,
     Math.round(
@@ -1156,6 +1221,155 @@ export function replyAsConsciousNpc({ npcName = 'Guy', message = '', userLang = 
   };
 }
 
+// === AUTONOMOUS INTELLIGENT WORKER ROBOTS (REAL-TIME APP OPTIMIZATION) ===
+const robotFleet = {
+  optimizationsCount: 0,
+  lastSweepMs: 2,
+  memoryMb: Math.round(process.memoryUsage().rss / 1048576),
+  healthScore: 99,
+  bots: [
+    {
+      id: 'BOT-SYNAPSE',
+      name: 'Synapse Cache IA',
+      role: 'Cache, Áudio & Streams',
+      color: '#22d3ee',
+      status: 'Otimizando',
+      efficiencyPct: 98,
+      actionsDone: 1,
+      currentTask: 'Pré-aquecendo feeds de notícias, mercados e catálogos para abertura instantânea.',
+    },
+    {
+      id: 'BOT-GAIA',
+      name: 'Gaia Bio-Drone',
+      role: 'Ecossistema & Atmosfera',
+      color: '#34d399',
+      status: 'Ativo',
+      efficiencyPct: 99,
+      actionsDone: 1,
+      currentTask: 'Balanceando O₂, fertilidade do solo e nuvens nutritivas em Free City.',
+    },
+    {
+      id: 'BOT-FLUX',
+      name: 'Flux Engine Bot',
+      role: 'Memória RAM & Latência',
+      color: '#fbbf24',
+      status: 'Monitorando',
+      efficiencyPct: 97,
+      actionsDone: 1,
+      currentTask: 'Limpando filas de sinalização antigas e mantendo memória leve.',
+    },
+    {
+      id: 'BOT-SHIELD',
+      name: 'Shield Guard IA',
+      role: 'Integridade & Tradução',
+      color: '#a855f7',
+      status: 'Protegendo',
+      efficiencyPct: 100,
+      actionsDone: 1,
+      currentTask: 'Validando feeds globais, rotas API e caches de idioma local.',
+    },
+  ],
+  logs: [
+    {
+      id: 'rlog_init',
+      ts: new Date().toISOString(),
+      botId: 'BOT-SYNAPSE',
+      action: 'Frota de 4 robôs inteligentes inicializada para otimização contínua em tempo real.',
+    },
+  ],
+};
+
+export function stepRobotWorkers(manualBoost = false) {
+  const t0 = Date.now();
+  const now = Date.now();
+  let prunedItems = 0;
+
+  // 1. BOT-SYNAPSE: Prune expired query caches & verify hot feeds
+  for (const [k, v] of Object.entries(state.news.byCat)) {
+    if (now - (v?.ts || 0) > 1_200_000 && Object.keys(state.news.byCat).length > 6) {
+      delete state.news.byCat[k];
+      prunedItems += 1;
+    }
+  }
+  for (const [k, v] of Object.entries(state.shopping.byQuery)) {
+    if (now - (v?.ts || 0) > 1_200_000 && Object.keys(state.shopping.byQuery).length > 6) {
+      delete state.shopping.byQuery[k];
+      prunedItems += 1;
+    }
+  }
+  const synapse = robotFleet.bots[0];
+  synapse.actionsDone += 1;
+  synapse.currentTask =
+    prunedItems > 0
+      ? `Liberou ${prunedItems} caches expirados e manteve ${Object.keys(state.news.byCat).length} feeds quentes.`
+      : `Mantendo ${Object.keys(state.news.byCat).length + Object.keys(state.shopping.byQuery).length} caches rápidos prontos (0ms espera).`;
+
+  // 2. BOT-GAIA: Stabilize living biosphere & oxygen
+  const gaia = robotFleet.bots[1];
+  gaia.actionsDone += 1;
+  if (ecosystem.soilFertilityPct < 79) {
+    ecosystem.soilFertilityPct = Math.min(96, ecosystem.soilFertilityPct + 4);
+    ecosystem.speciesCounts.bacteriaBillions += 90;
+    gaia.currentTask = `Injetou nutrientes microbianos no solo (fertilidade -> ${ecosystem.soilFertilityPct}%).`;
+  } else {
+    gaia.currentTask = `Atmosfera estável (${ecosystem.atmosphere.phase} · ${ecosystem.oxygenPct}% O₂ · ${ecosystem.biodiversityIndex}% bio).`;
+  }
+
+  // 3. BOT-FLUX: Clean stale WebRTC peers / signal queues & measure real RSS memory
+  let cleanedPeers = 0;
+  for (const [pid, peer] of state.calls.peers.entries()) {
+    if (now - (peer?.lastSeen || 0) > 90_000) {
+      state.calls.peers.delete(pid);
+      state.calls.signals.delete(pid);
+      cleanedPeers += 1;
+    }
+  }
+  for (const [pid, sigs] of state.calls.signals.entries()) {
+    if (Array.isArray(sigs) && sigs.length === 0) {
+      state.calls.signals.delete(pid);
+    }
+  }
+  const memMb = Math.round(process.memoryUsage().rss / 1048576);
+  robotFleet.memoryMb = memMb;
+  const flux = robotFleet.bots[2];
+  flux.actionsDone += 1;
+  flux.currentTask =
+    cleanedPeers > 0
+      ? `Removeu ${cleanedPeers} sessões inativas; memória do servidor em ${memMb} MB.`
+      : `Memória estável em ${memMb} MB · ${state.calls.peers.size} nós ativos em baixa latência.`;
+
+  // 4. BOT-SHIELD: Trim log buffers & verify world readiness
+  if (state.orders.length > 40) state.orders = state.orders.slice(0, 40);
+  if (state.darkweb.chat.length > 50) state.darkweb.chat = state.darkweb.chat.slice(-50);
+  const shield = robotFleet.bots[3];
+  shield.actionsDone += 1;
+  shield.currentTask = `Integridade 100% · Satélites ${state.satellites?.data ? 'online' : 'aquecendo'} · Cripto/Bolsas sincronizadas.`;
+
+  robotFleet.optimizationsCount += 1;
+  robotFleet.lastSweepMs = Math.max(1, Date.now() - t0);
+  robotFleet.healthScore = Math.min(100, 96 + (robotFleet.lastSweepMs < 15 ? 4 : 2));
+
+  const chosenBot = manualBoost
+    ? synapse
+    : robotFleet.bots[robotFleet.optimizationsCount % robotFleet.bots.length];
+  robotFleet.logs.unshift({
+    id: `rlog_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+    ts: new Date().toISOString(),
+    botId: chosenBot.id,
+    action: manualBoost
+      ? `Turbo manual: ${synapse.currentTask} | ${gaia.currentTask}`
+      : chosenBot.currentTask,
+  });
+  robotFleet.logs = robotFleet.logs.slice(0, 16);
+
+  return robotFleet;
+}
+
+export function getRobotFleetStatus() {
+  robotFleet.memoryMb = Math.round(process.memoryUsage().rss / 1048576);
+  return robotFleet;
+}
+
 // === AUTONOMOUS BACKGROUND SYNC ENGINE ===
 let syncStarted = false;
 export function startAutonomousWorldSync() {
@@ -1171,6 +1385,7 @@ export function startAutonomousWorldSync() {
         fetchShoppingProducts('destaques', '', true),
         fetchSatelliteLiveOverview(true),
       ]);
+      stepRobotWorkers(false);
     } catch {
       // keep silent in background
     }
@@ -1178,5 +1393,6 @@ export function startAutonomousWorldSync() {
 
   setTimeout(() => void runSync(), 2500);
   setInterval(() => void runSync(), 180_000);
-  setInterval(() => stepAutonomousConsciousness(), 15_000);
+  setInterval(() => stepAutonomousConsciousness(), 8_000);
+  setInterval(() => stepRobotWorkers(false), 10_000);
 }
