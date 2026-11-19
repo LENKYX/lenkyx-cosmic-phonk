@@ -90,6 +90,11 @@ export interface AppSettings {
   intlPayUrl?: string;
   dailyGoal: number;
   totalGoal: number;
+  affiliateAmazonTag?: string;
+  affiliateShopeeId?: string;
+  affiliateMlTool?: string;
+  affiliateMlWord?: string;
+  whatsappStoreNumber?: string;
 }
 
 export type AudioVersion = 'v1' | 'v2';

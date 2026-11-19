@@ -3604,6 +3604,128 @@ app.post('/api/jam/:code/sync', (req, res) => {
   return res.json(room);
 });
 
+// === v63: LOJA DOS CRIA — LIVE PUBLISHED ITEMS & AFFILIATE COMMISSIONS ===
+const liveShopCache = new Map();
+let shopAffiliateClicks = 0;
+
+function decorateAffiliateUrl(rawUrl, settings = {}) {
+  try {
+    const u = new URL(rawUrl);
+    const host = u.hostname.toLowerCase();
+    if (host.includes('amazon.com') && settings.affiliateAmazonTag) {
+      u.searchParams.set('tag', String(settings.affiliateAmazonTag).trim());
+    } else if (host.includes('shopee.com') && settings.affiliateShopeeId) {
+      u.searchParams.set('utm_source', `an_${String(settings.affiliateShopeeId).trim()}`);
+      u.searchParams.set('utm_medium', 'affiliates');
+    } else if ((host.includes('mercadolivre.com') || host.includes('mercadolibre.com')) && settings.affiliateMlTool) {
+      u.searchParams.set('matt_tool', String(settings.affiliateMlTool).trim());
+      if (settings.affiliateMlWord) {
+        u.searchParams.set('matt_word', String(settings.affiliateMlWord).trim());
+      }
+    }
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
+app.get('/api/shop/live', async (req, res) => {
+  const qRaw = String(req.query.q || 'Lacoste Oakley Juliet Invicta Brasil').trim().slice(0, 120);
+  const key = qRaw.toLowerCase();
+  const db = readDb();
+  const cached = liveShopCache.get(key);
+  if (cached && Date.now() - cached.ts < 30 * 60 * 1000) {
+    return res.json({
+      query: qRaw,
+      clicks: shopAffiliateClicks,
+      items: cached.items.map((it) => ({
+        ...it,
+        affiliateUrl: decorateAffiliateUrl(it.productUrl, db.settings),
+      })),
+    });
+  }
+
+  try {
+    const bingUrl = `https://www.bing.com/images/async?q=${encodeURIComponent(
+      `${qRaw} preco comprar brasil`
+    )}&first=1&count=18&mkt=pt-BR`;
+    const r = await fetch(bingUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'Accept-Language': 'pt-BR,pt;q=0.9',
+      },
+      signal: AbortSignal.timeout(7000),
+    });
+    const rawHtml = await r.text();
+    const unescape = (s) =>
+      String(s || '')
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+
+    const blocks = rawHtml.match(/m="\{[^"]*\}"/g) || [];
+    const seen = new Set();
+    const items = [];
+    for (const blk of blocks) {
+      const jsonStr = unescape(blk.slice(3, -1));
+      try {
+        const obj = JSON.parse(jsonStr);
+        const murl = String(obj.murl || '').trim();
+        const purl = String(obj.purl || '').trim();
+        const t = String(obj.t || qRaw).trim();
+        if (!murl.startsWith('http') || !purl.startsWith('http')) continue;
+        if (seen.has(murl)) continue;
+        seen.add(murl);
+        let storeName = 'Loja Brasil';
+        try {
+          const h = new URL(purl).hostname.replace(/^www\./, '');
+          if (h.includes('mercadolivre')) storeName = 'Mercado Livre';
+          else if (h.includes('shopee')) storeName = 'Shopee Brasil';
+          else if (h.includes('amazon')) storeName = 'Amazon BR';
+          else if (h.includes('netshoes')) storeName = 'Netshoes';
+          else if (h.includes('dafiti')) storeName = 'Dafiti';
+          else if (h.includes('centauro')) storeName = 'Centauro';
+          else if (h.includes('webmotors')) storeName = 'WebMotors';
+          else if (h.includes('olx')) storeName = 'OLX Brasil';
+          else storeName = h.split('.')[0].toUpperCase();
+        } catch {
+          // ignore
+        }
+        items.push({
+          id: `live-${items.length}-${Date.now().toString(36)}`,
+          title: t.slice(0, 95),
+          imageUrl: murl,
+          productUrl: purl,
+          storeName,
+        });
+        if (items.length >= 12) break;
+      } catch {
+        // ignore invalid json block
+      }
+    }
+
+    liveShopCache.set(key, { ts: Date.now(), items });
+    return res.json({
+      query: qRaw,
+      clicks: shopAffiliateClicks,
+      items: items.map((it) => ({
+        ...it,
+        affiliateUrl: decorateAffiliateUrl(it.productUrl, db.settings),
+      })),
+    });
+  } catch {
+    return res.json({ query: qRaw, clicks: shopAffiliateClicks, items: [] });
+  }
+});
+
+app.post('/api/shop/track-click', (_req, res) => {
+  shopAffiliateClicks += 1;
+  res.json({ ok: true, clicks: shopAffiliateClicks });
+});
+
 // Serve built frontend with optimized mobile/desktop HTTP caching
 if (fs.existsSync(DIST_DIR)) {
   app.use(

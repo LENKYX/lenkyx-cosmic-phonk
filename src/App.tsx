@@ -2924,7 +2924,14 @@ export function App() {
                   </Suspense>
                 )}
 
-                {activeTab === 'shop' && <ShopCriaView onToast={showToast} />}
+                {activeTab === 'shop' && (
+                  <ShopCriaView
+                    settings={settings}
+                    mode={mode}
+                    onSaveSettings={handleSaveSettings}
+                    onToast={showToast}
+                  />
+                )}
 
                 {activeTab === 'explore' && (
                   <WorldExploreView

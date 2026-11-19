@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ShoppingBag,
   Search,
@@ -8,13 +8,28 @@ import {
   Trash2,
   MessageCircle,
   Sparkles,
-  CheckCircle2,
   Flame,
   X,
+  DollarSign,
+  CheckCircle2,
+  RefreshCw,
+  Loader2,
+  BadgeCheck,
+  Settings,
 } from 'lucide-react';
+import { AppMode, AppSettings } from '../types';
 import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 
-type ShopCat = 'all' | 'roupas' | 'oculos' | 'relogios' | 'correntes' | 'motos' | 'carros';
+type ShopCat =
+  | 'all'
+  | 'roupas'
+  | 'tenis'
+  | 'oculos'
+  | 'relogios'
+  | 'correntes'
+  | 'motos'
+  | 'carros'
+  | 'eletronicos';
 
 interface CriaProduct {
   id: string;
@@ -27,11 +42,21 @@ interface CriaProduct {
   emoji: string;
   specs: string;
   searchQuery: string;
+  commissionEst: string;
   accent: string;
 }
 
+interface LivePublishedItem {
+  id: string;
+  title: string;
+  imageUrl: string;
+  productUrl: string;
+  affiliateUrl: string;
+  storeName: string;
+}
+
 const CRIA_CATALOG: CriaProduct[] = [
-  // ROUPAS DE MARCA (LACOSTE, OAKLEY, NIKE)
+  // 1. ROUPAS, BONÉS & GRIFES (LACOSTE, OAKLEY, NIKE, CYCLONE, ARMANI)
   {
     id: 'shop-lacoste-polo',
     name: 'Camisa Polo & Conjunto Lacoste Jacaré Sport',
@@ -41,51 +66,155 @@ const CRIA_CATALOG: CriaProduct[] = [
     priceLabel: 'R$ 389',
     badge: '🐊 CLÁSSICO DOS CRIA',
     emoji: '🐊',
-    specs: 'Tecido piquet respirável · Bordado original · Kit Peita + Bermuda',
-    searchQuery: 'Conjunto Lacoste camisa polo original',
+    specs: 'Tecido piquet respirável · Jacaré bordado · Kit Peita + Bermuda',
+    searchQuery: 'Camisa Polo Lacoste original',
+    commissionEst: '8% a 14% comissão',
     accent: 'from-emerald-500/30 to-cyan-500/20',
   },
   {
+    id: 'shop-lacoste-corta',
+    name: 'Jaqueta Corta-Vento Lacoste Sport Dupla Face',
+    brand: 'Lacoste',
+    category: 'roupas',
+    priceBrl: 890,
+    priceLabel: 'R$ 890',
+    badge: '🐊 BRABA NO BAILE',
+    emoji: '🧥',
+    specs: 'Impermeável leve · Capuz ajustável · Brilho de respeito',
+    searchQuery: 'Jaqueta Corta Vento Lacoste original',
+    commissionEst: '10% a 14% comissão',
+    accent: 'from-emerald-400/30 to-teal-600/20',
+  },
+  {
     id: 'shop-oakley-corta',
-    name: 'Corta-Vento & Dry-Fit Oakley Reflective',
+    name: 'Corta-Vento & Camiseta Dry-Fit Oakley Reflective',
     brand: 'Oakley',
     category: 'roupas',
     priceBrl: 449,
     priceLabel: 'R$ 449',
     badge: '⚡ REFLETIVO',
-    emoji: '🧥',
-    specs: 'Capuz impermeável · Zíper selado · Logo O-Icon refletivo no baile',
+    emoji: '🦾',
+    specs: 'Zíper selado · Logo O-Icon refletivo no flash do baile',
     searchQuery: 'Jaqueta corta vento Oakley original',
+    commissionEst: '8% a 12% comissão',
     accent: 'from-cyan-500/30 to-blue-600/20',
   },
   {
-    id: 'shop-nike-tn',
-    name: 'Tênis Nike Air Max Plus TN & Conjuntão Dri-FIT',
-    brand: 'Nike',
+    id: 'shop-oakley-mochila',
+    name: 'Mochila Oakley Kitchen Sink / Hardshell + Shoulder Bag',
+    brand: 'Oakley · Lacoste',
     category: 'roupas',
-    priceBrl: 1199,
-    priceLabel: 'R$ 1.199',
-    badge: '🔥 MAIS PROCURADO',
-    emoji: '👟',
-    specs: 'Amortecimento Tuned Air · Visual agressivo de quebrada',
-    searchQuery: 'Tenis Nike Air Max Plus TN original',
-    accent: 'from-pink-500/25 to-purple-600/20',
+    priceBrl: 699,
+    priceLabel: 'R$ 699',
+    badge: '🎒 MOCHILA DOS CRIA',
+    emoji: '🎒',
+    specs: 'Casco rígido de aço/nylon · Porta-óculos e notebook',
+    searchQuery: 'Mochila Oakley Kitchen Sink original',
+    commissionEst: '10% comissão',
+    accent: 'from-slate-500/30 to-cyan-500/20',
   },
   {
-    id: 'shop-kenner-bone',
-    name: 'Boné Lacoste Aba Curva + Chinelo Kenner Rakka',
-    brand: 'Lacoste · Kenner',
+    id: 'shop-nike-tech',
+    name: 'Conjunto Nike Tech Fleece & Corta-Vento Windrunner',
+    brand: 'Nike',
+    category: 'roupas',
+    priceBrl: 799,
+    priceLabel: 'R$ 799',
+    badge: '✔️ TECH FLEECE',
+    emoji: '🔥',
+    specs: 'Moletom térmico leve · Bolso selado no braço · Caimento perfeito',
+    searchQuery: 'Conjunto Nike Tech Fleece original',
+    commissionEst: '8% a 12% comissão',
+    accent: 'from-sky-500/25 to-indigo-600/20',
+  },
+  {
+    id: 'shop-cyclone-veludo',
+    name: 'Bermuda Cyclone Veludo / Tactel + Boné Lacoste Aba Curva',
+    brand: 'Cyclone · Lacoste',
     category: 'roupas',
     priceBrl: 299,
     priceLabel: 'R$ 299',
-    badge: '🧢 KIT BAILE',
+    badge: '🧢 KIT QUEBRADA',
     emoji: '🧢',
-    specs: 'Combo de responsa pro rolê · Conforto máximo',
-    searchQuery: 'Bone Lacoste original chinelo Kenner Rakka',
+    specs: 'Estampa clássica de baile funk · Conforto total pro rolê',
+    searchQuery: 'Bermuda Cyclone veludo original Bone Lacoste',
+    commissionEst: '10% a 15% comissão',
     accent: 'from-amber-500/25 to-emerald-500/20',
   },
+  {
+    id: 'shop-boss-armani',
+    name: 'Camiseta & Conjunto Hugo Boss / Armani Exchange',
+    brand: 'Hugo Boss · Armani',
+    category: 'roupas',
+    priceBrl: 459,
+    priceLabel: 'R$ 459',
+    badge: '👔 PATRÃO',
+    emoji: '👔',
+    specs: 'Algodão pima peruano · Logo alto-relevo · Visual de patrão',
+    searchQuery: 'Camiseta Hugo Boss Armani Exchange original',
+    commissionEst: '8% a 14% comissão',
+    accent: 'from-zinc-500/30 to-amber-500/20',
+  },
 
-  // ÓCULOS DE MARCA
+  // 2. TÊNIS & CHINELOS PESADOS
+  {
+    id: 'shop-nike-tn',
+    name: 'Tênis Nike Air Max Plus TN (Tubarão)',
+    brand: 'Nike',
+    category: 'tenis',
+    priceBrl: 1199,
+    priceLabel: 'R$ 1.199',
+    badge: '🦈 O REI DO BAILE',
+    emoji: '👟',
+    specs: 'Amortecimento Tuned Air · Degradê agressivo · Mais pedido pelos cria',
+    searchQuery: 'Tenis Nike Air Max Plus TN original',
+    commissionEst: '8% a 12% comissão',
+    accent: 'from-pink-500/25 to-purple-600/20',
+  },
+  {
+    id: 'shop-mizuno-prophecy',
+    name: 'Tênis Mizuno Wave Prophecy 12 / 13 (12 Molas)',
+    brand: 'Mizuno',
+    category: 'tenis',
+    priceBrl: 1399,
+    priceLabel: 'R$ 1.399',
+    badge: '⚡ 12 MOLAS',
+    emoji: '⚡',
+    specs: 'Placa Infinity Wave vazada · Visual futurista pesado',
+    searchQuery: 'Tenis Mizuno Wave Prophecy original',
+    commissionEst: '8% a 12% comissão',
+    accent: 'from-cyan-500/30 to-emerald-500/20',
+  },
+  {
+    id: 'shop-nike-shox',
+    name: 'Tênis Nike Shox NZ / R4 (4 Molas Clássico)',
+    brand: 'Nike',
+    category: 'tenis',
+    priceBrl: 899,
+    priceLabel: 'R$ 899',
+    badge: '💥 CLÁSSICO 4 MOLAS',
+    emoji: '💥',
+    specs: 'Colunas Shox no calcanhar · Relíquia de quebrada que nunca sai de moda',
+    searchQuery: 'Tenis Nike Shox NZ R4 original',
+    commissionEst: '8% a 12% comissão',
+    accent: 'from-red-500/25 to-orange-500/20',
+  },
+  {
+    id: 'shop-kenner-rakka',
+    name: 'Chinelo Kenner Rakka / Kivah Gold Edition',
+    brand: 'Kenner',
+    category: 'tenis',
+    priceBrl: 199,
+    priceLabel: 'R$ 199',
+    badge: '🩴 PÉ NO CHÃO',
+    emoji: '🩴',
+    specs: 'Palmilha macia + solado tratorado · Pingente K dourado/preto',
+    searchQuery: 'Chinelo Kenner Rakka Gold original',
+    commissionEst: '10% a 14% comissão',
+    accent: 'from-amber-400/30 to-slate-700/30',
+  },
+
+  // 3. ÓCULOS DE MARCA (JULIET, ROMEO 2, PENNY, PRADA, RAY-BAN)
   {
     id: 'shop-juliet',
     name: 'Óculos Oakley Juliet X-Metal Plasma / Ruby',
@@ -95,118 +224,183 @@ const CRIA_CATALOG: CriaProduct[] = [
     priceLabel: 'R$ 1.490',
     badge: '🕶️ LENDÁRIO',
     emoji: '🕶️',
-    specs: 'Armação em liga metálica X-Metal · Lentes polarizadas iridium',
-    searchQuery: 'Oculos Oakley Juliet original',
+    specs: 'Armação em liga X-Metal · Lentes polarizadas iridium camaleão',
+    searchQuery: 'Oculos Oakley Juliet X Metal',
+    commissionEst: '10% a 15% comissão',
     accent: 'from-red-500/30 to-amber-500/20',
   },
   {
     id: 'shop-romeo2',
-    name: 'Óculos Oakley Romeo 2 & Penny Titanium',
+    name: 'Óculos Oakley Romeo 2, Penny & Double X Titanium',
     brand: 'Oakley',
     category: 'oculos',
     priceBrl: 1690,
     priceLabel: 'R$ 1.690',
-    badge: '💎 RELÍQUIA',
-    emoji: '⚡',
-    specs: 'Proteção UV400 · Design futurista de cria',
-    searchQuery: 'Oculos Oakley Romeo 2 Penny',
+    badge: '💎 RELÍQUIA X-METAL',
+    emoji: '🦾',
+    specs: 'Proteção UV400 · Lente azul/verde/fogo · Design robô futurista',
+    searchQuery: 'Oculos Oakley Romeo 2 Penny Double X',
+    commissionEst: '10% a 15% comissão',
     accent: 'from-cyan-400/30 to-indigo-500/20',
   },
   {
-    id: 'shop-prada-rayban',
-    name: 'Óculos Prada Linea Rossa & Ray-Ban Hexagonal',
-    brand: 'Prada · Ray-Ban',
+    id: 'shop-radar-ev',
+    name: 'Óculos Oakley Radar EV / Jawbreaker Ciclismo & Grau',
+    brand: 'Oakley',
     category: 'oculos',
     priceBrl: 980,
     priceLabel: 'R$ 980',
+    badge: '🏍️ PRO GRAU',
+    emoji: '⚡',
+    specs: 'Lente única Prizm · Trava firme no capacete e no rolê de moto',
+    searchQuery: 'Oculos Oakley Radar EV Prizm original',
+    commissionEst: '10% comissão',
+    accent: 'from-lime-400/25 to-cyan-500/20',
+  },
+  {
+    id: 'shop-prada-lv',
+    name: 'Óculos Prada Linea Rossa & Ray-Ban Hexagonal Ouro',
+    brand: 'Prada · Ray-Ban',
+    category: 'oculos',
+    priceBrl: 1150,
+    priceLabel: 'R$ 1.150',
     badge: '✨ LUXO',
-    emoji: '🔥',
-    specs: 'Lente espelhada / degradê · Acabamento premium',
-    searchQuery: 'Oculos Prada Linea Rossa Ray Ban',
+    emoji: '✨',
+    specs: 'Lente degradê / espelhada · Armação italiana premium',
+    searchQuery: 'Oculos Prada Linea Rossa Ray Ban Hexagonal',
+    commissionEst: '8% a 12% comissão',
     accent: 'from-purple-500/30 to-pink-500/20',
   },
 
-  // RELÓGIOS
+  // 4. RELÓGIOS DE LUXO & PESADOS
   {
-    id: 'shop-invicta-pro',
-    name: 'Relógio Invicta Pro Diver & Bolt Zeus Dourado',
+    id: 'shop-invicta-bolt',
+    name: 'Relógio Invicta Bolt Zeus & Reserve Magnum Dourado',
     brand: 'Invicta',
     category: 'relogios',
-    priceBrl: 1290,
-    priceLabel: 'R$ 1.290',
-    badge: '⌚ PESADO',
+    priceBrl: 1490,
+    priceLabel: 'R$ 1.490',
+    badge: '⌚ PESADO NO PULSO',
     emoji: '⌚',
-    specs: 'Caixa 52mm aço banhado a ouro 18k · À prova d’água 200m',
+    specs: 'Caixa 52mm banhada a ouro 18k · Cabo de aço · Prova d’água 200m',
     searchQuery: 'Relogio Invicta Bolt Zeus Dourado original',
+    commissionEst: '10% a 14% comissão',
     accent: 'from-amber-400/30 to-yellow-500/20',
   },
   {
-    id: 'shop-gshock',
-    name: 'Relógio Casio G-Shock CasiOak & Mudmaster',
-    brand: 'G-Shock',
+    id: 'shop-invicta-pro',
+    name: 'Relógio Invicta Pro Diver & Yakuza Dragon Ouro',
+    brand: 'Invicta',
     category: 'relogios',
     priceBrl: 890,
     priceLabel: 'R$ 890',
+    badge: '🐉 YAKUZA GOLD',
+    emoji: '🐉',
+    specs: 'Movimento automático japonês · Mostrador dourado detalhado',
+    searchQuery: 'Relogio Invicta Yakuza Pro Diver dourado',
+    commissionEst: '10% a 14% comissão',
+    accent: 'from-yellow-500/30 to-red-500/20',
+  },
+  {
+    id: 'shop-gshock',
+    name: 'Relógio Casio G-Shock CasiOak & Mudmaster Full Metal',
+    brand: 'G-Shock',
+    category: 'relogios',
+    priceBrl: 950,
+    priceLabel: 'R$ 950',
     badge: '🛡️ INDESTRUTÍVEL',
     emoji: '⏱️',
-    specs: 'Resistente a impacto e água · Estilo esportivo futurista',
-    searchQuery: 'Relogio Casio G-Shock original',
+    specs: 'Resistente a choques, lama e mergulho · Estilo tático futurista',
+    searchQuery: 'Relogio Casio G-Shock CasiOak original',
+    commissionEst: '8% a 12% comissão',
     accent: 'from-cyan-500/30 to-slate-600/30',
   },
   {
-    id: 'shop-rolex-sub',
-    name: 'Relógio Estilo Rolex Submariner / Datejust Ice',
-    brand: 'Alta Relojoaria',
+    id: 'shop-rolex-diesel',
+    name: 'Relógio Diesel Mr. Daddy 2.0 & Estilo Rolex Submariner',
+    brand: 'Diesel · Alta Relojoaria',
     category: 'relogios',
-    priceBrl: 4500,
-    priceLabel: 'A partir de R$ 4.500',
+    priceBrl: 1890,
+    priceLabel: 'A partir de R$ 1.890',
     badge: '👑 ELITE',
     emoji: '👑',
-    specs: 'Movimento automático de precisão · Safira anti-risco',
-    searchQuery: 'Relogio automatico estilo Submariner original',
+    specs: 'Caixa gigante 57mm ou safira automática · Presença absurda',
+    searchQuery: 'Relogio Diesel Mr Daddy 2.0 dourado original',
+    commissionEst: '8% a 12% comissão',
     accent: 'from-emerald-400/30 to-amber-500/20',
   },
 
-  // CORRENTES DE OURO
+  // 5. CORRENTES DE OURO 18K, PULSEIRAS & ICE
   {
     id: 'shop-corrente-grumet',
-    name: 'Corrente Grumet 10mm Ouro 18k Maciço + Fecho Gaveta',
+    name: 'Corrente Grumet 10mm a 15mm Ouro 18k + Fecho Gaveta',
     brand: 'Joalheria Ouro 18k',
     category: 'correntes',
     priceBrl: 3890,
     priceLabel: 'R$ 3.890',
     badge: '🥇 OURO 18K',
     emoji: '⛓️',
-    specs: 'Brilho intenso · Certificado de garantia 18k / Moeda Antiga top',
-    searchQuery: 'Corrente Grumet ouro 18k moeda antiga 10mm',
+    specs: 'Elos pesados diamantados · Garantia eterna / Moeda Antiga top',
+    searchQuery: 'Corrente Grumet 10mm ouro 18k fecho gaveta',
+    commissionEst: '10% a 16% comissão',
     accent: 'from-yellow-400/35 to-amber-600/20',
   },
   {
+    id: 'shop-cordao-cartier',
+    name: 'Cordão Cadeado / Cartier Ouro 18k + Pulseira Italiana',
+    brand: 'Ouro 18k · Prata 925',
+    category: 'correntes',
+    priceBrl: 2490,
+    priceLabel: 'R$ 2.490',
+    badge: '✨ KIT PESCOÇO & PULSO',
+    emoji: '🥇',
+    specs: 'Conjunto corrente + pulseira 60cm/70cm com brilho espelhado',
+    searchQuery: 'Corrente Cadeado Cartier Ouro 18k Pulseira',
+    commissionEst: '10% a 16% comissão',
+    accent: 'from-amber-400/30 to-orange-500/20',
+  },
+  {
     id: 'shop-cordao-cravejado',
-    name: 'Cordão Cadeado + Pingente Cravejado Ice Zircônia',
+    name: 'Cordão Cuban Link + Pingente Cravejado Ice Zircônia / Cruz',
     brand: 'Ice Drip BR',
     category: 'correntes',
     priceBrl: 690,
     priceLabel: 'R$ 690',
     badge: '❄️ ICE DRIP',
     emoji: '💎',
-    specs: 'Cravejamento manual brilhando forte no flash e no rolê',
-    searchQuery: 'Corrente cordao cadeado cravejado pingente',
+    specs: 'Cravejamento manual em zircônia VVS · Brilha no escuro e no flash',
+    searchQuery: 'Corrente Cuban Link cravejada pingente ice',
+    commissionEst: '12% a 16% comissão',
     accent: 'from-cyan-300/30 to-blue-500/20',
   },
+  {
+    id: 'shop-anel-dedinho',
+    name: 'Anel de Dedinho Cravejado Ouro 18k + Bracelete Prego',
+    brand: 'Joias dos Cria',
+    category: 'correntes',
+    priceBrl: 590,
+    priceLabel: 'R$ 590',
+    badge: '💍 DEDINHO ICE',
+    emoji: '💍',
+    specs: 'Acabamento banhado a ouro 18k 10 camadas · Pedras cravejadas',
+    searchQuery: 'Anel dedinho cravejado ouro 18k masculino',
+    commissionEst: '12% comissão',
+    accent: 'from-yellow-300/30 to-pink-500/20',
+  },
 
-  // MOTOS ESPORTIVAS
+  // 6. MOTOS ESPORTIVAS & GRAU
   {
     id: 'shop-hornet',
     name: 'Honda CB 600F Hornet · Ronco 4 Cilindros',
     brand: 'Honda',
     category: 'motos',
     priceBrl: 42900,
-    priceLabel: 'R$ 42.900 (Fipe/Oferta)',
+    priceLabel: 'R$ 42.900',
     badge: '🏍️ SONHO DA QUEBRADA',
     emoji: '🏍️',
-    specs: '102 cv · 4 cilindros em linha · Escapamento esportivo',
+    specs: '102 cv · 4 cilindros em linha · Escapamento só o cano / esportivo',
     searchQuery: 'Honda CB 600F Hornet a venda',
+    commissionEst: 'Lead / Parceria Auto',
     accent: 'from-red-600/30 to-amber-500/20',
   },
   {
@@ -220,34 +414,65 @@ const CRIA_CATALOG: CriaProduct[] = [
     emoji: '🔥',
     specs: 'Quickshifter · Controle de largada · Painel TFT futurista',
     searchQuery: 'BMW S1000RR a venda Brasil',
+    commissionEst: 'Lead / Parceria Auto',
     accent: 'from-blue-500/35 to-cyan-400/25',
   },
   {
-    id: 'shop-xj6-ninja',
-    name: 'Yamaha XJ6 / MT-09 & Kawasaki Ninja ZX-10R',
+    id: 'shop-bmw-gs1250',
+    name: 'BMW R1250 GS Adventure / F850 GS · Rainha do Asfalto',
+    brand: 'BMW Motorrad',
+    category: 'motos',
+    priceBrl: 98500,
+    priceLabel: 'R$ 98.500',
+    badge: '👑 MEIOTA / 1250',
+    emoji: '💨',
+    specs: 'Motor Boxer 136 cv · Suspensão eletrônica · Baú e protetor',
+    searchQuery: 'BMW R1250 GS a venda Brasil',
+    commissionEst: 'Lead / Parceria Auto',
+    accent: 'from-cyan-500/30 to-amber-400/20',
+  },
+  {
+    id: 'shop-xj6-mt09-ninja',
+    name: 'Yamaha XJ6 / MT-09 & Kawasaki Ninja ZX-10R / Z900',
     brand: 'Yamaha · Kawasaki',
     category: 'motos',
     priceBrl: 48500,
     priceLabel: 'A partir de R$ 48.500',
     badge: '💨 SÓ NO GRAU',
     emoji: '⚡',
-    specs: 'Torque brutal · Ciclística perfeita pra pista e avenida',
-    searchQuery: 'Yamaha XJ6 MT-09 Kawasaki Ninja a venda',
+    specs: 'Torque brutal · Ronco sinistro · Ciclística perfeita pra pista',
+    searchQuery: 'Yamaha XJ6 MT-09 Kawasaki Z900 a venda',
+    commissionEst: 'Lead / Parceria Auto',
     accent: 'from-emerald-500/30 to-lime-400/20',
   },
+  {
+    id: 'shop-titan-xre',
+    name: 'Honda CG 160 Titan & XRE 300 Sahara + Capacete Norisk/AGV',
+    brand: 'Honda · AGV',
+    category: 'motos',
+    priceBrl: 18900,
+    priceLabel: 'A partir de R$ 18.900',
+    badge: '🛵 CORRERIA & ROLÊ',
+    emoji: '🪖',
+    specs: 'Montadinha top + capacete esportivo com viseira camaleão',
+    searchQuery: 'Capacete AGV Norisk viseira camaleao Honda Titan 160',
+    commissionEst: '8% a 12% em Capacetes/Peças',
+    accent: 'from-red-500/25 to-cyan-500/20',
+  },
 
-  // CARROS ESPORTIVOS & NAVES
+  // 7. CARROS ESPORTIVOS & NAVES
   {
     id: 'shop-bmw-320i',
-    name: 'BMW 320i M Sport Turbo · Nave dos Cria',
+    name: 'BMW 320i M Sport Turbo & BMW X6 Coupé',
     brand: 'BMW',
     category: 'carros',
     priceBrl: 249000,
     priceLabel: 'R$ 249.000',
-    badge: '🚘 NAVE ESPORTIVA',
+    badge: '🚘 NAVE DOS CRIA',
     emoji: '🚘',
-    specs: 'Tração traseira · Pacote M Sport · Teto solar & som Harman',
+    specs: 'Tração traseira · Pacote M Sport · Teto solar & som Harman Kardon',
     searchQuery: 'BMW 320i M Sport a venda Brasil',
+    commissionEst: 'Lead / Acessórios Auto',
     accent: 'from-cyan-500/30 to-blue-700/25',
   },
   {
@@ -259,44 +484,166 @@ const CRIA_CATALOG: CriaProduct[] = [
     priceLabel: 'A partir de R$ 165.000',
     badge: '🏁 TURBO BRABO',
     emoji: '🏁',
-    specs: 'Motor 2.0 TSI · Câmbio DSG · Bancos xadrez esportivos',
-    searchQuery: 'Volkswagen Golf GTI a venda Brasil',
+    specs: 'Motor 2.0 TSI · Câmbio DSG · Bancos xadrez esportivos & downpipe',
+    searchQuery: 'Volkswagen Golf GTI Jetta GLI a venda',
+    commissionEst: 'Lead / Acessórios Auto',
     accent: 'from-rose-500/30 to-purple-600/20',
   },
   {
     id: 'shop-porsche',
-    name: 'Porsche 911 Carrera / Macan GTS · Topo do Topo',
+    name: 'Porsche 911 Carrera / Macan GTS / Cayenne',
     brand: 'Porsche',
     category: 'carros',
     priceBrl: 590000,
     priceLabel: 'A partir de R$ 590.000',
     badge: '🏆 PATAMAR MÁXIMO',
     emoji: '🏎️',
-    specs: '0 a 100 km/h em 3.5s · Interior em couro & som Bose/Burmester',
-    searchQuery: 'Porsche 911 Macan a venda Brasil',
+    specs: '0 a 100 km/h em 3.5s · Interior em couro & escapamento esportivo',
+    searchQuery: 'Porsche 911 Macan Cayenne a venda Brasil',
+    commissionEst: 'Lead / Parceria Auto',
     accent: 'from-amber-400/30 to-pink-500/20',
+  },
+  {
+    id: 'shop-mercedes-audi',
+    name: 'Mercedes-Benz CLA 45 AMG & Audi RS3 / Civic Si',
+    brand: 'Mercedes · Audi · Honda',
+    category: 'carros',
+    priceBrl: 289000,
+    priceLabel: 'A partir de R$ 289.000',
+    badge: '⚡ ESPORTIVO TURBO',
+    emoji: '⚡',
+    specs: 'Rodas aro 19 · Volante Alcântara · Som pesado de fábrica',
+    searchQuery: 'Mercedes CLA 45 AMG Audi RS3 a venda',
+    commissionEst: 'Lead / Parceria Auto',
+    accent: 'from-indigo-500/30 to-cyan-500/20',
+  },
+  {
+    id: 'shop-evoque-hilux',
+    name: 'Range Rover Evoque / Velar & Toyota Hilux SW4 Diamond',
+    brand: 'Land Rover · Toyota',
+    category: 'carros',
+    priceBrl: 295000,
+    priceLabel: 'A partir de R$ 295.000',
+    badge: '🛡️ SUV DE PATRÃO',
+    emoji: '🚙',
+    specs: 'Teto panorâmico · Presença gigante na avenida e no baile',
+    searchQuery: 'Range Rover Evoque Toyota Hilux SW4 a venda',
+    commissionEst: 'Lead / Parceria Auto',
+    accent: 'from-emerald-500/30 to-slate-600/30',
+  },
+
+  // 8. SOM PESADO, TECH & PERFUMES IMPORTADOS
+  {
+    id: 'shop-jbl-boombox',
+    name: 'Caixa JBL Boombox 3 & PartyBox 310 / 710 Grave Extremo',
+    brand: 'JBL',
+    category: 'eletronicos',
+    priceBrl: 2490,
+    priceLabel: 'R$ 2.490',
+    badge: '🔊 TREME TUDO',
+    emoji: '🔊',
+    specs: 'Bateria 24h · À prova d’água IP67 · Grave pesado pro churrasco e baile',
+    searchQuery: 'Caixa de som JBL Boombox 3 original',
+    commissionEst: '8% a 11% comissão',
+    accent: 'from-orange-500/30 to-red-600/20',
+  },
+  {
+    id: 'shop-iphone-ps5',
+    name: 'iPhone 16 Pro Max Titânio & PlayStation 5 Slim',
+    brand: 'Apple · Sony',
+    category: 'eletronicos',
+    priceBrl: 3790,
+    priceLabel: 'PS5 R$ 3.790 / iPhone R$ 8.490',
+    badge: '📱 TECH DOS CRIA',
+    emoji: '📱',
+    specs: 'Câmera cinema pros Reels + PS5 4K pra jogar ouvindo o som do app',
+    searchQuery: 'iPhone 16 Pro Max PlayStation 5 Slim Brasil',
+    commissionEst: '5% a 10% comissão',
+    accent: 'from-cyan-400/30 to-purple-500/20',
+  },
+  {
+    id: 'shop-perfumes',
+    name: 'Perfume Importado 1 Million, Dior Sauvage & 212 VIP Black',
+    brand: 'Paco Rabanne · Dior · CH',
+    category: 'eletronicos',
+    priceBrl: 549,
+    priceLabel: 'R$ 549',
+    badge: '🌟 CHEIROSO NO ROLÊ',
+    emoji: '🍾',
+    specs: 'Eau de Parfum original lacrado · Fixação de 12 horas',
+    searchQuery: 'Perfume 1 Million Dior Sauvage 212 VIP Black original',
+    commissionEst: '10% a 15% comissão',
+    accent: 'from-amber-400/30 to-rose-500/20',
   },
 ];
 
-const CATEGORIES: { id: ShopCat; label: string }[] = [
-  { id: 'all', label: '🔥 Tudo dos Cria' },
-  { id: 'roupas', label: '🐊 Lacoste & Oakley' },
-  { id: 'oculos', label: '🕶️ Óculos & Juliet' },
-  { id: 'relogios', label: '⌚ Relógios' },
-  { id: 'correntes', label: '🥇 Correntes Ouro' },
-  { id: 'motos', label: '🏍️ Motos Esportivas' },
-  { id: 'carros', label: '🚘 Carros & Naves' },
+const CATEGORIES: { id: ShopCat; label: string; liveQuery: string }[] = [
+  { id: 'all', label: '🔥 Tudo dos Cria', liveQuery: 'Lacoste Oakley Juliet Invicta Brasil' },
+  { id: 'roupas', label: '🐊 Roupas & Grife', liveQuery: 'Camisa Polo Corta Vento Lacoste Oakley original' },
+  { id: 'tenis', label: '👟 Tênis & Kenner', liveQuery: 'Tenis Nike Air Max Plus TN Mizuno Prophecy Kenner' },
+  { id: 'oculos', label: '🕶️ Óculos Juliet', liveQuery: 'Oculos Oakley Juliet Romeo 2 Prada original' },
+  { id: 'relogios', label: '⌚ Relógios Luxo', liveQuery: 'Relogio Invicta Bolt Zeus Dourado G-Shock original' },
+  { id: 'correntes', label: '🥇 Correntes Ouro', liveQuery: 'Corrente Grumet Ouro 18k Cordao Cravejado Ice' },
+  { id: 'motos', label: '🏍️ Motos Grau', liveQuery: 'Honda Hornet BMW S1000RR Yamaha XJ6 a venda' },
+  { id: 'carros', label: '🚘 Carros & Naves', liveQuery: 'BMW 320i Golf GTI Porsche 911 a venda' },
+  { id: 'eletronicos', label: '🔊 JBL & Perfumes', liveQuery: 'JBL Boombox 3 iPhone Pro Max 1 Million perfume' },
 ];
 
 interface Props {
+  settings: AppSettings;
+  mode: AppMode;
+  onSaveSettings: (partial: Partial<AppSettings>) => Promise<void>;
   onToast: (msg: string) => void;
 }
 
-export const ShopCriaView: React.FC<Props> = ({ onToast }) => {
+export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, onToast }) => {
   const [cat, setCat] = useState<ShopCat>('all');
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState<{ item: CriaProduct; qty: number }[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+
+  // Live published products fetched from Brazilian marketplaces
+  const [liveItems, setLiveItems] = useState<LivePublishedItem[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [affiliateClicks, setAffiliateClicks] = useState(0);
+
+  // Commission / Affiliate configuration modal
+  const [affModalOpen, setAffModalOpen] = useState(false);
+  const [mlTool, setMlTool] = useState(settings.affiliateMlTool || '');
+  const [mlWord, setMlWord] = useState(settings.affiliateMlWord || '');
+  const [shopeeId, setShopeeId] = useState(settings.affiliateShopeeId || '');
+  const [amazonTag, setAmazonTag] = useState(settings.affiliateAmazonTag || '');
+  const [waNumber, setWaNumber] = useState(settings.whatsappStoreNumber || '');
+  const [savingAff, setSavingAff] = useState(false);
+
+  const hasAnyAffiliate = Boolean(
+    settings.affiliateMlTool || settings.affiliateShopeeId || settings.affiliateAmazonTag
+  );
+
+  const fetchLiveOffers = async (searchText: string) => {
+    setLiveLoading(true);
+    try {
+      const r = await fetch(`/api/shop/live?q=${encodeURIComponent(searchText)}`);
+      if (r.ok) {
+        const d = await r.json();
+        if (Array.isArray(d?.items)) setLiveItems(d.items);
+        if (typeof d?.clicks === 'number') setAffiliateClicks(d.clicks);
+      }
+    } catch {
+      // ignore offline
+    } finally {
+      setLiveLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const activeCatObj = CATEGORIES.find((c) => c.id === cat) || CATEGORIES[0];
+    const q = query.trim() || activeCatObj.liveQuery;
+    const t = window.setTimeout(() => {
+      void fetchLiveOffers(q);
+    }, 280);
+    return () => window.clearTimeout(t);
+  }, [cat, query]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -309,6 +656,40 @@ export const ShopCriaView: React.FC<Props> = ({ onToast }) => {
 
   const totalItems = cart.reduce((acc, c) => acc + c.qty, 0);
   const totalPrice = cart.reduce((acc, c) => acc + c.item.priceBrl * c.qty, 0);
+
+  const buildCommissionUrl = (searchQuery: string, category: CriaProduct['category']) => {
+    if (category === 'motos' || category === 'carros') {
+      return `https://www.webmotors.com.br/carros/estoque?tipoveiculo=${
+        category === 'motos' ? 'motos' : 'carros'
+      }&q=${encodeURIComponent(searchQuery)}`;
+    }
+    if (settings.affiliateAmazonTag) {
+      return `https://www.amazon.com.br/s?k=${encodeURIComponent(searchQuery)}&tag=${encodeURIComponent(
+        settings.affiliateAmazonTag
+      )}`;
+    }
+    if (settings.affiliateShopeeId) {
+      return `https://shopee.com.br/search?keyword=${encodeURIComponent(
+        searchQuery
+      )}&utm_source=an_${encodeURIComponent(settings.affiliateShopeeId)}&utm_medium=affiliates`;
+    }
+    const base = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchQuery).replace(/%20/g, '-')}`;
+    if (settings.affiliateMlTool) {
+      return `${base}?matt_tool=${encodeURIComponent(settings.affiliateMlTool)}${
+        settings.affiliateMlWord ? `&matt_word=${encodeURIComponent(settings.affiliateMlWord)}` : ''
+      }`;
+    }
+    return base;
+  };
+
+  const trackAndOpenOffer = () => {
+    void fetch('/api/shop/track-click', { method: 'POST' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (typeof d?.clicks === 'number') setAffiliateClicks(d.clicks);
+      })
+      .catch(() => {});
+  };
 
   const addToCart = (item: CriaProduct) => {
     setCart((prev) => {
@@ -330,50 +711,84 @@ export const ShopCriaView: React.FC<Props> = ({ onToast }) => {
   };
 
   const buildOrderWhatsappUrl = () => {
-    const lines = cart.map(
-      (c) => `• ${c.qty}x ${c.item.name} (${c.item.priceLabel})`
-    );
+    const lines = cart.map((c) => `• ${c.qty}x ${c.item.name} (${c.item.priceLabel})`);
     const msg =
       `Salve! Montei minha lista de compras na Loja dos Cria do LENKYX Brasil 🔥:\n\n` +
       `${lines.join('\n')}\n\nTotal estimado: R$ ${totalPrice.toLocaleString('pt-BR')}`;
-    return `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    const cleanPhone = (settings.whatsappStoreNumber || '').replace(/\D/g, '');
+    return cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  };
+
+  const handleSaveAffiliateConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingAff(true);
+    try {
+      await onSaveSettings({
+        affiliateMlTool: mlTool.trim(),
+        affiliateMlWord: mlWord.trim(),
+        affiliateShopeeId: shopeeId.trim(),
+        affiliateAmazonTag: amazonTag.trim(),
+        whatsappStoreNumber: waNumber.trim(),
+      });
+      onToast('💰 Códigos de Comissão salvos! Todo link agora gera comissão pra você.');
+      setAffModalOpen(false);
+    } finally {
+      setSavingAff(false);
+    }
   };
 
   return (
     <div className="space-y-5 pb-36 md:pb-28 cosmic-scene">
-      {/* Graffiti + Robot HUD Shop Header */}
+      {/* Header */}
       <section className="rounded-3xl cosmic-card-3d p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <LenkyxEdgeLogo size="md" className="shrink-0" />
           <div className="min-w-0">
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-amber-400" /> VITRINE DA QUEBRADA · LACOSTE, OAKLEY, OURO & NAVES
+              <Flame className="w-3.5 h-3.5 text-amber-400" /> TUDO QUE OS CRIA GOSTAM DE OSTENTAR · BRASIL 🇧🇷
             </div>
             <h1 className="font-display text-base sm:text-xl font-black text-white truncate">
-              🛍️ Loja dos Cria · Grife, Motos & Carros
+              🛍️ Loja dos Cria · Grife, Ouro, Motos & Naves ({CRIA_CATALOG.length} Kits)
             </h1>
             <p className="text-[11px] text-slate-300">
-              Só o kit pesado que os cria curtem — monte sua lista ou compre direto nas ofertas oficiais do Brasil!
+              Lacoste, Oakley Juliet, Invicta, Correntes Ouro 18k, Hornet, S1000RR, BMW, Porsche & JBL com links de comissão!
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setCartOpen(true)}
-          className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-400 text-black text-xs font-black flex items-center gap-2 shadow-[0_0_24px_rgba(34,211,238,0.4)] hover:brightness-110 transition shrink-0"
-        >
-          <ShoppingBag className="w-4 h-4" />
-          <span>Sacola ({totalItems})</span>
-          {totalPrice > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-black/20 font-mono text-[10px]">
-              R$ {totalPrice.toLocaleString('pt-BR')}
-            </span>
-          )}
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setAffModalOpen(true)}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-black flex items-center gap-1.5 border transition ${
+              hasAnyAffiliate
+                ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
+                : 'bg-amber-400/20 border-amber-400/50 text-amber-200 hover:bg-amber-400 hover:text-black'
+            }`}
+          >
+            <DollarSign className="w-4 h-4" />
+            <span>{hasAnyAffiliate ? `Comissão Ativa (${affiliateClicks} cliques)` : 'Ativar Minhas Comissões'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCartOpen(true)}
+            className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-400 text-black text-xs font-black flex items-center gap-2 shadow-[0_0_24px_rgba(34,211,238,0.4)] hover:brightness-110 transition"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span>Sacola ({totalItems})</span>
+            {totalPrice > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-black/20 font-mono text-[10px]">
+                R$ {totalPrice.toLocaleString('pt-BR')}
+              </span>
+            )}
+          </button>
+        </div>
       </section>
 
-      {/* Search + Category Pills */}
+      {/* Search + Categories */}
       <div className="space-y-2.5">
         <div className="relative">
           <Search className="w-4 h-4 text-cyan-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -381,7 +796,7 @@ export const ShopCriaView: React.FC<Props> = ({ onToast }) => {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Procurar kit brabo: Lacoste, Juliet, Invicta, Corrente Ouro, Hornet, BMW..."
+            placeholder="Buscar kit pesado: Lacoste, Juliet, Romeo 2, Invicta, Corrente Ouro 18k, Hornet, BMW, JBL..."
             className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-black/50 border border-cyan-400/25 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
           />
         </div>
@@ -404,14 +819,81 @@ export const ShopCriaView: React.FC<Props> = ({ onToast }) => {
         </div>
       </div>
 
-      {/* Product Grid */}
+      {/* LIVE PUBLISHED ITEMS STRIP (Real Photos + Real Store Links + Affiliate Commission) */}
+      <section className="rounded-3xl cosmic-card-3d p-4 space-y-3 border border-cyan-400/30">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300 flex items-center gap-1.5">
+              <BadgeCheck className="w-3.5 h-3.5" /> OFERTAS PUBLICADAS AO VIVO DO BRASIL (COMISSÃO POR VENDA)
+            </div>
+            <h2 className="font-display text-sm sm:text-base font-black text-white">
+              Produtos Reais na Vitrine Agora ({liveItems.length})
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const activeCatObj = CATEGORIES.find((c) => c.id === cat) || CATEGORIES[0];
+              void fetchLiveOffers(query.trim() || activeCatObj.liveQuery);
+            }}
+            disabled={liveLoading}
+            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-cyan-200 flex items-center gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${liveLoading ? 'animate-spin' : ''}`} />
+            Atualizar Ofertas
+          </button>
+        </div>
+
+        {liveLoading && liveItems.length === 0 ? (
+          <div className="py-8 flex items-center justify-center gap-2 text-xs text-cyan-200">
+            <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+            <span>Buscando anúncios reais publicados no Brasil...</span>
+          </div>
+        ) : liveItems.length === 0 ? (
+          <p className="text-xs text-slate-300">
+            Use os cards abaixo para abrir ofertas oficiais com seu link de comissão!
+          </p>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+            {liveItems.map((it) => (
+              <a
+                key={it.id}
+                href={it.affiliateUrl || it.productUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={trackAndOpenOffer}
+                className="group w-44 sm:w-48 shrink-0 rounded-2xl overflow-hidden bg-black/55 border border-white/15 hover:border-cyan-400/70 transition flex flex-col justify-between"
+              >
+                <div className="relative aspect-square bg-white overflow-hidden">
+                  <img
+                    src={it.imageUrl}
+                    alt={it.title}
+                    loading="lazy"
+                    className="w-full h-full object-contain p-1.5 group-hover:scale-105 transition duration-300"
+                  />
+                  <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/80 text-emerald-300 text-[9px] font-black">
+                    {it.storeName}
+                  </span>
+                </div>
+                <div className="p-2.5 space-y-1.5">
+                  <div className="text-[11px] font-bold text-white line-clamp-2 leading-snug">
+                    {it.title}
+                  </div>
+                  <div className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-cyan-400 to-emerald-400 text-black text-[10px] font-black flex items-center justify-center gap-1">
+                    <span>Comprar · Comissão</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Complete Curated "Tudo que os Cria Ostentam" Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((item) => {
-          const mlUrl = `https://lista.mercadolivre.com.br/${encodeURIComponent(item.searchQuery).replace(/%20/g, '-')}`;
-          const webMotorsOrGoogle =
-            item.category === 'motos' || item.category === 'carros'
-              ? `https://www.webmotors.com.br/carros/estoque?tipoveiculo=${item.category === 'motos' ? 'motos' : 'carros'}&q=${encodeURIComponent(item.brand)}`
-              : mlUrl;
+          const offerUrl = buildCommissionUrl(item.searchQuery, item.category);
           return (
             <div
               key={item.id}
@@ -422,13 +904,12 @@ export const ShopCriaView: React.FC<Props> = ({ onToast }) => {
                   className={`rounded-2xl bg-gradient-to-br ${item.accent} border border-white/15 p-4 flex items-center justify-between`}
                 >
                   <span className="text-4xl select-none">{item.emoji}</span>
-                  <div className="text-right">
-                    <span className="px-2.5 py-0.5 rounded-full bg-black/55 border border-cyan-400/35 text-[9px] font-black text-cyan-200">
+                  <div className="text-right space-y-1">
+                    <span className="px-2.5 py-0.5 rounded-full bg-black/60 border border-cyan-400/35 text-[9px] font-black text-cyan-200 block">
                       {item.badge}
                     </span>
-                    <div className="mt-1.5 font-mono text-sm font-black text-emerald-300">
-                      {item.priceLabel}
-                    </div>
+                    <div className="font-mono text-sm font-black text-emerald-300">{item.priceLabel}</div>
+                    <div className="text-[9px] font-bold text-amber-300">{item.commissionEst}</div>
                   </div>
                 </div>
 
@@ -447,24 +928,177 @@ export const ShopCriaView: React.FC<Props> = ({ onToast }) => {
                 <button
                   type="button"
                   onClick={() => addToCart(item)}
-                  className="py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-xs font-black flex items-center justify-center gap-1 transition"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Botar na Sacola
-                </button>
-                <a
-                  href={webMotorsOrGoogle}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1 transition"
                 >
-                  <span>Ver Oferta</span>
-                  <ExternalLink className="w-3 h-3 text-cyan-300" />
+                  <Plus className="w-3.5 h-3.5 text-cyan-300" /> Na Sacola
+                </button>
+                <a
+                  href={offerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={trackAndOpenOffer}
+                  className="py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-xs font-black flex items-center justify-center gap-1 transition"
+                >
+                  <span>Comprar</span>
+                  <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Affiliate Commission Setup Modal */}
+      {affModalOpen && (
+        <div
+          onClick={() => setAffModalOpen(false)}
+          className="fixed inset-0 z-[95] bg-black/82 backdrop-blur-md flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl glass-panel border border-cyan-400/45 p-5 sm:p-6 space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-emerald-300" />
+                <h3 className="font-display text-base font-black text-white">
+                  Receber Comissão por Cada Venda
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAffModalOpen(false)}
+                className="p-1.5 rounded-full bg-white/10 text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/35 p-3.5 space-y-2 text-xs text-slate-200 leading-relaxed">
+              <div className="font-black text-emerald-300 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4" /> Cadastros Gratuitos Para Você Receber Dinheiro:
+              </div>
+              <p>
+                1. <strong>Mercado Livre Afiliados</strong> (<code>programa.mercadolivre.com.br/afiliados</code>) — paga <strong>8% a 16%</strong> por venda direto no seu Mercado Pago.
+              </p>
+              <p>
+                2. <strong>Shopee Afiliados Brasil</strong> (<code>affiliate.shopee.com.br</code>) — paga até <strong>14%</strong> por venda (roupas, Juliet, relógios, correntes).
+              </p>
+              <p>
+                3. <strong>Amazon Associados Brasil</strong> (<code>associados.amazon.com.br</code>) — paga até <strong>15%</strong> por venda (JBL, iPhone, livros, moda).
+              </p>
+              <p className="text-[11px] text-cyan-200">
+                Depois de fazer esses cadastros grátis, cole seus códigos abaixo — todos os links da Loja dos Cria passam a gerar comissão pra você automaticamente!
+              </p>
+            </div>
+
+            {mode === 'creator' ? (
+              <form onSubmit={(e) => void handleSaveAffiliateConfig(e)} className="space-y-3 text-xs">
+                <div>
+                  <label className="text-[10px] font-bold uppercase text-cyan-300 block mb-1">
+                    Mercado Livre · Código matt_tool
+                  </label>
+                  <input
+                    type="text"
+                    value={mlTool}
+                    onChange={(e) => setMlTool(e.target.value)}
+                    placeholder="Ex: 12345678"
+                    className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase text-cyan-300 block mb-1">
+                    Mercado Livre · Nome da Campanha (matt_word)
+                  </label>
+                  <input
+                    type="text"
+                    value={mlWord}
+                    onChange={(e) => setMlWord(e.target.value)}
+                    placeholder="Ex: lenkyx_loja"
+                    className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase text-cyan-300 block mb-1">
+                    Shopee Afiliados · Seu ID de Afiliado
+                  </label>
+                  <input
+                    type="text"
+                    value={shopeeId}
+                    onChange={(e) => setShopeeId(e.target.value)}
+                    placeholder="Ex: 183920102"
+                    className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase text-cyan-300 block mb-1">
+                    Amazon Associados · Tag de Rastreamento
+                  </label>
+                  <input
+                    type="text"
+                    value={amazonTag}
+                    onChange={(e) => setAmazonTag(e.target.value)}
+                    placeholder="Ex: lenkyx-20"
+                    className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase text-cyan-300 block mb-1">
+                    Seu WhatsApp para Pedidos Diretos (com DDD)
+                  </label>
+                  <input
+                    type="text"
+                    value={waNumber}
+                    onChange={(e) => setWaNumber(e.target.value)}
+                    placeholder="Ex: 5567999999999"
+                    className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-white"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={savingAff}
+                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 text-black font-black flex items-center justify-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  {savingAff ? 'Salvando...' : 'Salvar Códigos de Comissão'}
+                </button>
+              </form>
+            ) : (
+              <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3.5 text-[11px] text-slate-300 space-y-2">
+                <p>
+                  🔐 Para salvar seus códigos de comissão direto no servidor, ative o <strong>Modo Criador</strong> (5 toques rápidos no logo <strong>LENKYX</strong>) e volte aqui!
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <a
+                    href="https://www.mercadolivre.com.br/l/afiliados"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl bg-yellow-400 text-black font-black flex items-center gap-1"
+                  >
+                    Cadastro Mercado Livre <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <a
+                    href="https://affiliate.shopee.com.br/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl bg-orange-500 text-white font-black flex items-center gap-1"
+                  >
+                    Cadastro Shopee <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <a
+                    href="https://associados.amazon.com.br/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl bg-cyan-400 text-black font-black flex items-center gap-1"
+                  >
+                    Cadastro Amazon <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Cart Drawer Modal */}
       {cartOpen && (
