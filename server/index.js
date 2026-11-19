@@ -1038,6 +1038,9 @@ function readLiveStatsStore() {
         totalShares: Number(parsed.totalShares || 18),
         recentSupporters: [],
         supporters: Array.isArray(parsed.supporters) ? parsed.supporters : [],
+        pendingPixPledges: Array.isArray(parsed.pendingPixPledges) ? parsed.pendingPixPledges : [],
+        approvedPixPledges: Array.isArray(parsed.approvedPixPledges) ? parsed.approvedPixPledges.slice(0, 40) : [],
+        usedPixE2eIds: Array.isArray(parsed.usedPixE2eIds) ? parsed.usedPixE2eIds.slice(-300) : [],
         artistPlays: persistedArtistPlays,
         videoPlays: persistedVideoPlays,
         moviePlays: persistedMoviePlays,
@@ -1051,6 +1054,9 @@ function readLiveStatsStore() {
       totalVisits: Number(parsed.totalVisits ?? defaults.totalVisits),
       totalShares: Number(parsed.totalShares ?? defaults.totalShares),
       supporters: Array.isArray(parsed.supporters) ? parsed.supporters : [],
+      pendingPixPledges: Array.isArray(parsed.pendingPixPledges) ? parsed.pendingPixPledges : [],
+      approvedPixPledges: Array.isArray(parsed.approvedPixPledges) ? parsed.approvedPixPledges : [],
+      usedPixE2eIds: Array.isArray(parsed.usedPixE2eIds) ? parsed.usedPixE2eIds : [],
       artistPlays: persistedArtistPlays,
       videoPlays: persistedVideoPlays,
       moviePlays: persistedMoviePlays,
@@ -1096,9 +1102,11 @@ app.get('/api/live-stats', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const store = readLiveStatsStore();
   const onlineCount = pruneAndCountListeners();
+  const { pendingPixPledges: _p, usedPixE2eIds: _u, ...publicStore } = store;
   res.json({
     onlineCount,
-    ...store,
+    ...publicStore,
+    pendingPixCount: Array.isArray(_p) ? _p.length : 0,
     ...computePopularityMeta(store, onlineCount),
     leaderboard: getSortedLeaderboard(store.supporters),
   });
@@ -1217,10 +1225,114 @@ app.post('/api/live-stats/pix-pledge', (req, res) => {
   const donorName = String(req.body?.donorName || 'Fã LENKYX').trim().slice(0, 40) || 'Fã LENKYX';
   const donorKey = String(req.body?.supporterId || donorName.toLowerCase().replace(/\s+/g, '-')).slice(0, 48);
   const existingOwned = Array.isArray(req.body?.ownedMascots) ? req.body.ownedMascots.map(Number) : [];
+  const rawE2eId = String(req.body?.e2eId || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const txid = String(req.body?.txid || 'LENKYXSOCIAL').trim().slice(0, 25);
+  const receiptDataUrl = String(req.body?.receiptDataUrl || '').trim();
+
   if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
     return res.status(400).json({ error: 'Informe um valor válido entre R$ 1 e R$ 10.000.' });
   }
+
+  const hasValidE2e = /^E[A-Z0-9]{20,40}$/.test(rawE2eId);
+  const hasReceiptImg = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]{100,}$/i.test(receiptDataUrl) && receiptDataUrl.length < 2_200_000;
+
+  if (!hasValidE2e && !hasReceiptImg) {
+    return res.status(400).json({
+      error:
+        'Para evitar resgates sem pagamento, informe o ID da Transação PIX (código E... com 20+ caracteres do comprovante) ou anexe a imagem do comprovante PIX.',
+    });
+  }
+
   const store = readLiveStatsStore();
+  const usedIds = new Set(Array.isArray(store.usedPixE2eIds) ? store.usedPixE2eIds : []);
+  const pending = Array.isArray(store.pendingPixPledges) ? [...store.pendingPixPledges] : [];
+
+  if (hasValidE2e && (usedIds.has(rawE2eId) || pending.some((p) => p.e2eId === rawE2eId))) {
+    return res.status(409).json({
+      error: 'Esse ID de Transação PIX (E2E) já foi enviado anteriormente. Use o comprovante de um novo PIX.',
+    });
+  }
+
+  const pledge = {
+    id: `pix_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+    amount,
+    donorName,
+    supporterId: donorKey,
+    ownedMascots: existingOwned.slice(0, 1000),
+    e2eId: hasValidE2e ? rawE2eId : '',
+    txid,
+    receiptDataUrl: hasReceiptImg ? receiptDataUrl : '',
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  };
+
+  store.pendingPixPledges = [pledge, ...pending].slice(0, 60);
+  writeLiveStatsStore(store);
+
+  res.status(202).json({
+    ok: true,
+    status: 'pending',
+    pledgeId: pledge.id,
+    message:
+      'Comprovante recebido! Seu bonequinho surpresa será desbloqueado automaticamente assim que o PIX for confirmado.',
+  });
+});
+
+app.get('/api/live-stats/pix-status', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const supporterId = String(req.query.supporterId || '').trim().slice(0, 48);
+  if (!supporterId) return res.json({ ok: true, pending: [], approved: [] });
+  const store = readLiveStatsStore();
+  const pending = (store.pendingPixPledges || [])
+    .filter((p) => p.supporterId === supporterId)
+    .map(({ receiptDataUrl: _r, ...rest }) => rest);
+  const approved = (store.approvedPixPledges || []).filter((a) => a.supporterId === supporterId);
+  res.json({ ok: true, pending, approved });
+});
+
+app.get('/api/live-stats/pix-pending', auth.requireCreator, (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const store = readLiveStatsStore();
+  res.json({
+    ok: true,
+    pending: Array.isArray(store.pendingPixPledges) ? store.pendingPixPledges : [],
+  });
+});
+
+app.post('/api/live-stats/pix-verify', auth.requireCreator, (req, res) => {
+  const pledgeId = String(req.body?.pledgeId || '').trim();
+  const action = req.body?.action === 'reject' ? 'reject' : 'approve';
+  const store = readLiveStatsStore();
+  const pending = Array.isArray(store.pendingPixPledges) ? [...store.pendingPixPledges] : [];
+  const idx = pending.findIndex((p) => p.id === pledgeId);
+  if (idx === -1) return res.status(404).json({ error: 'Comprovante PIX não encontrado ou já processado.' });
+
+  const [pledge] = pending.splice(idx, 1);
+  store.pendingPixPledges = pending;
+
+  if (action === 'reject') {
+    writeLiveStatsStore(store);
+    const onlineCount = pruneAndCountListeners();
+    return res.json({
+      ok: true,
+      rejected: true,
+      pending,
+      onlineCount,
+      ...store,
+      ...computePopularityMeta(store, onlineCount),
+      leaderboard: getSortedLeaderboard(store.supporters),
+    });
+  }
+
+  // Approved: PIX confirmed in PicPay! Now unlock mascot & credit ranking/goal
+  const amount = Number(pledge.amount || 0);
+  const donorName = pledge.donorName || 'Fã LENKYX';
+  const donorKey = pledge.supporterId || donorName.toLowerCase().replace(/\s+/g, '-');
+  const existingOwned = Array.isArray(pledge.ownedMascots) ? pledge.ownedMascots : [];
+
+  if (pledge.e2eId) {
+    store.usedPixE2eIds = Array.from(new Set([...(store.usedPixE2eIds || []), pledge.e2eId])).slice(-300);
+  }
   store.dailyCollectedBrl = Math.round((Number(store.dailyCollectedBrl || 0) + amount) * 100) / 100;
   store.dailyContributors = Number(store.dailyContributors || 0) + 1;
   store.recentSupporters = [
@@ -1254,6 +1366,18 @@ app.post('/api/live-stats/pix-pledge', (req, res) => {
     supporters.push(entry);
   }
   store.supporters = supporters;
+  store.approvedPixPledges = [
+    {
+      id: pledge.id,
+      supporterId: donorKey,
+      donorName,
+      amount,
+      unlockedMascotId,
+      approvedAt: new Date().toISOString(),
+    },
+    ...(store.approvedPixPledges || []),
+  ].slice(0, 40);
+
   writeLiveStatsStore(store);
 
   const onlineCount = pruneAndCountListeners();
@@ -1261,6 +1385,7 @@ app.post('/api/live-stats/pix-pledge', (req, res) => {
     ok: true,
     unlockedMascotId,
     supporterEntry: entry,
+    pending,
     onlineCount,
     ...store,
     ...computePopularityMeta(store, onlineCount),

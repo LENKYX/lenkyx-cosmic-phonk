@@ -12,6 +12,11 @@ import {
   Crown,
   Gift,
   Heart,
+  ShieldCheck,
+  Clock,
+  Upload,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { AppMode, AppSettings, LiveStats } from '../types';
 import { generatePixPayload, generatePixQrDataUrl } from '../utils/pix';
@@ -60,6 +65,25 @@ export const PixModal: React.FC<PixModalProps> = ({
     }
   });
   const [pledging, setPledging] = useState(false);
+  const [e2eId, setE2eId] = useState('');
+  const [receiptDataUrl, setReceiptDataUrl] = useState('');
+  const [receiptFileName, setReceiptFileName] = useState('');
+  const [pendingPledges, setPendingPledges] = useState<
+    { id: string; amount: number; donorName: string; e2eId?: string; createdAt: string }[]
+  >([]);
+  const [creatorPendingList, setCreatorPendingList] = useState<
+    {
+      id: string;
+      amount: number;
+      donorName: string;
+      e2eId?: string;
+      txid?: string;
+      receiptDataUrl?: string;
+      createdAt: string;
+    }[]
+  >([]);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [sessionTxid] = useState(() => `LX${Date.now().toString(36).toUpperCase().slice(-10)}`);
   const [pledgedFeedback, setPledgedFeedback] = useState<{
     amount: number;
     mascotId: number;
@@ -125,10 +149,68 @@ export const PixModal: React.FC<PixModalProps> = ({
       name: settings.pixName || 'LENKYX',
       city: settings.pixCity || 'CAMPO GRANDE',
       amount: effectiveAmount,
-      txid: 'LENKYXSOCIAL',
+      txid: sessionTxid,
       description: 'Apoio Social LENKYX',
     });
-  }, [effectivePixKey, settings.pixName, settings.pixCity, effectiveAmount]);
+  }, [effectivePixKey, settings.pixName, settings.pixCity, effectiveAmount, sessionTxid]);
+
+  // Poll supporter verification status so surprise toy unlocks ONLY after PIX is actually confirmed
+  useEffect(() => {
+    if (!open) return;
+    const supporterId = getLocalSupporterId();
+    const checkStatus = async () => {
+      try {
+        const r = await fetch(`/api/live-stats/pix-status?supporterId=${encodeURIComponent(supporterId)}`);
+        if (!r.ok) return;
+        const d = await r.json();
+        if (Array.isArray(d.pending)) setPendingPledges(d.pending);
+        if (Array.isArray(d.approved) && d.approved.length > 0) {
+          const currentOwned = loadOwnedMascotIds();
+          const newApproved = d.approved.filter(
+            (a: { unlockedMascotId?: number }) =>
+              a.unlockedMascotId && !currentOwned.includes(Number(a.unlockedMascotId))
+          );
+          if (newApproved.length > 0) {
+            const latest = newApproved[0];
+            const merged = saveOwnedMascotIds([
+              ...currentOwned,
+              ...newApproved.map((a: { unlockedMascotId: number }) => Number(a.unlockedMascotId)),
+            ]);
+            setOwnedMascots(merged);
+            setPledgedFeedback({
+              amount: Number(latest.amount || 10),
+              mascotId: Number(latest.unlockedMascotId),
+              donorName: String(latest.donorName || donorName || 'Apoiador'),
+            });
+            const mascot = getCosmicMascotById(Number(latest.unlockedMascotId));
+            onToast(`✅ PIX confirmado! Bonequinho ${mascot.name} (${mascot.code}) desbloqueado!`);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    void checkStatus();
+    const iv = window.setInterval(() => void checkStatus(), 5000);
+    return () => window.clearInterval(iv);
+  }, [open, donorName, onToast]);
+
+  // Load creator pending PIX queue
+  useEffect(() => {
+    if (!open || mode !== 'creator') return;
+    const loadPending = async () => {
+      try {
+        const r = await fetch('/api/live-stats/pix-pending');
+        if (r.ok) {
+          const d = await r.json();
+          if (Array.isArray(d.pending)) setCreatorPendingList(d.pending);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    void loadPending();
+  }, [open, mode, tab]);
 
   useEffect(() => {
     if (!open || !pixPayload) {
@@ -168,9 +250,31 @@ export const PixModal: React.FC<PixModalProps> = ({
     }
   };
 
+  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1_500_000) {
+      onToast('Escolha uma imagem de comprovante menor que 1,5 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setReceiptDataUrl(reader.result);
+        setReceiptFileName(file.name);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleConfirmPledge = async () => {
     const val = effectiveAmount || 10;
     const cleanName = donorName.trim() || 'Apoiador Anônimo';
+    const cleanE2e = e2eId.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!/^E[A-Z0-9]{20,40}$/.test(cleanE2e) && !receiptDataUrl) {
+      onToast('Faça o PIX primeiro e informe o ID da Transação (E...) ou anexe o comprovante!');
+      return;
+    }
     setPledging(true);
     try {
       const r = await fetch('/api/live-stats/pix-pledge', {
@@ -181,26 +285,46 @@ export const PixModal: React.FC<PixModalProps> = ({
           donorName: cleanName,
           supporterId: getLocalSupporterId(),
           ownedMascots,
+          e2eId: cleanE2e,
+          txid: sessionTxid,
+          receiptDataUrl,
         }),
       });
       const data = await r.json();
-      if (!r.ok) throw new Error(data?.error || 'Erro ao registrar apoio');
+      if (!r.ok) throw new Error(data?.error || 'Erro ao registrar comprovante PIX');
 
-      const unlockedId = Number(data.unlockedMascotId || Math.floor(Math.random() * 1000) + 1);
-      const nextOwned = saveOwnedMascotIds([...ownedMascots, unlockedId]);
-      setOwnedMascots(nextOwned);
-      onLiveStatsUpdated?.(data);
-      setPledgedFeedback({
-        amount: val,
-        mascotId: unlockedId,
-        donorName: cleanName,
-      });
-      const mascot = getCosmicMascotById(unlockedId);
-      onToast(`👾 Você ganhou o bonequinho ${mascot.name} (${mascot.code})!`);
+      setPendingPledges((prev) => [
+        { id: data.pledgeId, amount: val, donorName: cleanName, e2eId: cleanE2e, createdAt: new Date().toISOString() },
+        ...prev,
+      ]);
+      setE2eId('');
+      setReceiptDataUrl('');
+      setReceiptFileName('');
+      onToast('⏳ Comprovante enviado! A surpresa será liberada após a confirmação real do PIX.');
     } catch (e) {
       onToast(String(e instanceof Error ? e.message : e));
     } finally {
       setPledging(false);
+    }
+  };
+
+  const handleVerifyPix = async (pledgeId: string, action: 'approve' | 'reject') => {
+    setVerifyingId(pledgeId);
+    try {
+      const r = await fetch('/api/live-stats/pix-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pledgeId, action }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || 'Erro na verificação');
+      setCreatorPendingList(Array.isArray(data.pending) ? data.pending : []);
+      onLiveStatsUpdated?.(data);
+      onToast(action === 'approve' ? '✅ PIX confirmado e bonequinho liberado!' : '❌ Comprovante recusado.');
+    } catch (e) {
+      onToast(String(e instanceof Error ? e.message : e));
+    } finally {
+      setVerifyingId(null);
     }
   };
 
@@ -304,7 +428,7 @@ export const PixModal: React.FC<PixModalProps> = ({
                   : 'bg-white/[0.06] text-slate-200 hover:bg-white/15'
               }`}
             >
-              ⚙️ Meta
+              ⚙️ Meta {creatorPendingList.length > 0 ? `(${creatorPendingList.length} PIX)` : ''}
             </button>
           )}
         </div>
@@ -487,23 +611,79 @@ export const PixModal: React.FC<PixModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Discreet Note + Confirm Reward Button */}
-                  <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/30 p-3 space-y-2.5">
-                    <p className="text-[11px] text-emerald-100/90 leading-relaxed text-center">
-                      🙏 Cada ajuda fortalece nossas doações para <strong>igrejas e combate à fome</strong> — no
-                      comprovante bancário aparece de forma discreta. Após fazer o PIX no seu banco, confirme abaixo
-                      para entrar no topo do Ranking e ganhar seu <strong>bonequinho exclusivo</strong>!
+                  {/* Verified PIX Proof Submission (NEVER auto-unlocks without payment proof) */}
+                  <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/30 p-3.5 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-black text-emerald-300 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4" /> Confirmação Real de PIX para Liberar Surpresa
+                      </span>
+                      <span className="text-[9px] font-mono text-slate-300">TXID {sessionTxid}</span>
+                    </div>
+
+                    <p className="text-[11px] text-emerald-100/90 leading-relaxed">
+                      🙏 Faça o PIX pelo QR Code ou Copia e Cola acima. O bonequinho surpresa só é liberado{' '}
+                      <strong>após enviar o ID E2E ou comprovante</strong> e o pagamento ser conferido.
                     </p>
+
+                    {pendingPledges.length > 0 && (
+                      <div className="rounded-xl bg-amber-500/15 border border-amber-400/40 p-2.5 space-y-1">
+                        <div className="text-[11px] font-black text-amber-300 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 animate-pulse" /> PIX em conferência ({pendingPledges.length})
+                        </div>
+                        {pendingPledges.slice(0, 2).map((p) => (
+                          <div key={p.id} className="text-[10px] text-amber-100 flex items-center justify-between">
+                            <span>
+                              R$ {p.amount.toFixed(2).replace('.', ',')} · {p.e2eId || 'Comprovante anexado'}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-200 font-bold">
+                              Aguardando
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-emerald-200 block mb-1">
+                          ID da Transação PIX (começa com E...)
+                        </label>
+                        <input
+                          type="text"
+                          value={e2eId}
+                          onChange={(e) => setE2eId(e.target.value)}
+                          placeholder="Ex: E2289643120261119..."
+                          className="w-full px-3 py-2 rounded-xl bg-black/45 border border-white/15 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-emerald-200 block mb-1">
+                          Ou anexe o print do comprovante PIX
+                        </label>
+                        <label className="w-full px-3 py-2 rounded-xl bg-black/45 border border-dashed border-emerald-400/45 hover:border-emerald-300 text-xs text-emerald-200 flex items-center justify-center gap-1.5 cursor-pointer truncate">
+                          <Upload className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{receiptFileName || 'Enviar foto do comprovante'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleReceiptUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
                     <button
                       type="button"
-                      disabled={pledging}
+                      disabled={pledging || (!e2eId.trim() && !receiptDataUrl)}
                       onClick={() => void handleConfirmPledge()}
-                      className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 hover:brightness-110 text-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition"
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 hover:brightness-110 disabled:opacity-45 disabled:cursor-not-allowed text-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition"
                     >
                       <HeartHandshake className="w-4 h-4" />
                       {pledging
-                        ? 'Registrando apoio & gerando bonequinho...'
-                        : `Já fiz o PIX (R$ ${(effectiveAmount || 10).toFixed(0)}) · Receber Bonequinho`}
+                        ? 'Enviando comprovante...'
+                        : `Enviar Comprovante PIX (R$ ${(effectiveAmount || 10).toFixed(0)})`}
                     </button>
                   </div>
                 </>
@@ -640,9 +820,69 @@ export const PixModal: React.FC<PixModalProps> = ({
             </div>
           )}
 
-          {/* CREATOR PIX CONFIG */}
+          {/* CREATOR PIX CONFIG & REAL PAYMENT VERIFICATION QUEUE */}
           {tab === 'config' && mode === 'creator' && (
-            <form onSubmit={handleSaveConfig} className="space-y-3">
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-amber-500/10 border border-amber-400/35 p-3 space-y-2.5">
+                <div className="text-xs font-black text-amber-300 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4" /> Conferir PIX Recebidos ({creatorPendingList.length})
+                  </span>
+                </div>
+                {creatorPendingList.length === 0 ? (
+                  <p className="text-[11px] text-slate-300">
+                    Nenhum comprovante PIX pendente no momento. Só após sua aprovação aqui o apoiador ganha o
+                    bonequinho!
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {creatorPendingList.map((item) => (
+                      <div
+                        key={item.id}
+                        className="rounded-xl bg-black/45 border border-white/15 p-2.5 space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <div>
+                            <div className="font-black text-white">
+                              {item.donorName} · R$ {Number(item.amount).toFixed(2).replace('.', ',')}
+                            </div>
+                            <div className="text-[10px] font-mono text-cyan-300">
+                              {item.e2eId || 'Sem E2E (ver imagem)'} · TX {item.txid || '-'}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              disabled={verifyingId === item.id}
+                              onClick={() => void handleVerifyPix(item.id, 'approve')}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-black text-[10px] font-black flex items-center gap-1"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Confirmar
+                            </button>
+                            <button
+                              type="button"
+                              disabled={verifyingId === item.id}
+                              onClick={() => void handleVerifyPix(item.id, 'reject')}
+                              className="px-2 py-1.5 rounded-lg bg-rose-500/25 hover:bg-rose-500 text-rose-200 hover:text-white text-[10px] font-black flex items-center gap-1"
+                            >
+                              <XCircle className="w-3.5 h-3.5" /> Recusar
+                            </button>
+                          </div>
+                        </div>
+                        {item.receiptDataUrl && (
+                          <img
+                            src={item.receiptDataUrl}
+                            alt="Comprovante PIX"
+                            className="w-full max-h-36 object-contain rounded-lg bg-black border border-white/10"
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleSaveConfig} className="space-y-3">
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="text-[11px] font-bold text-emerald-300 block mb-1">Meta Diária (R$)</label>
@@ -704,6 +944,7 @@ export const PixModal: React.FC<PixModalProps> = ({
                 <Save className="w-4 h-4" /> {saving ? 'Salvando...' : 'Salvar Meta & Chave PIX'}
               </button>
             </form>
+            </div>
           )}
         </div>
       </div>
