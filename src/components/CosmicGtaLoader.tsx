@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Sparkles, FastForward } from 'lucide-react';
+import { Sparkles, FastForward, Volume2, VolumeX } from 'lucide-react';
+import { startGalaxyIntroSound } from '../utils/galaxyIntroAudio';
 
 const INTRO_HIGHLIGHTS = [
   {
@@ -319,10 +320,12 @@ export const CosmicGtaLoader: React.FC<Props> = ({
   const [slideIdx, setSlideIdx] = useState(0);
   const [autoPct, setAutoPct] = useState(20);
 
-  // 15-Second Galaxy Netflix-Style Intro Phases
+  // 15-Second Galaxy Netflix-Style Intro Phases + Signature "TA-DUM" Sound
   const [showRibbons, setShowRibbons] = useState(false);
   const [showBrandTitle, setShowBrandTitle] = useState(false);
   const [warpOutro, setWarpOutro] = useState(false);
+  const [soundLocked, setSoundLocked] = useState(false);
+  const soundCtrlRef = useRef<ReturnType<typeof startGalaxyIntroSound> | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -330,9 +333,36 @@ export const CosmicGtaLoader: React.FC<Props> = ({
     setShowBrandTitle(false);
     setWarpOutro(false);
 
-    const tRibbon = window.setTimeout(() => setShowRibbons(true), 6900);
-    const tTitle = window.setTimeout(() => setShowBrandTitle(true), 9200);
-    const tWarp = window.setTimeout(() => setWarpOutro(true), 13700);
+    if (mode === 'splash') {
+      const ctrl = startGalaxyIntroSound('netflix15');
+      soundCtrlRef.current = ctrl;
+      const checkTimer = window.setTimeout(() => {
+        setSoundLocked(ctrl.isMutedOrLocked());
+      }, 220);
+
+      const handleUnlock = () => {
+        void ctrl.unlock().then((ok) => {
+          if (ok) setSoundLocked(false);
+        });
+      };
+      window.addEventListener('pointerdown', handleUnlock, { passive: true });
+      window.addEventListener('keydown', handleUnlock, { passive: true });
+
+      const tRibbon = window.setTimeout(() => setShowRibbons(true), 6900);
+      const tTitle = window.setTimeout(() => setShowBrandTitle(true), 9200);
+      const tWarp = window.setTimeout(() => setWarpOutro(true), 13700);
+
+      return () => {
+        window.clearTimeout(checkTimer);
+        window.clearTimeout(tRibbon);
+        window.clearTimeout(tTitle);
+        window.clearTimeout(tWarp);
+        window.removeEventListener('pointerdown', handleUnlock);
+        window.removeEventListener('keydown', handleUnlock);
+        ctrl.stop();
+        soundCtrlRef.current = null;
+      };
+    }
 
     const t = window.setInterval(() => {
       setSlideIdx((i) => (i + 1) % INTRO_HIGHLIGHTS.length);
@@ -342,13 +372,10 @@ export const CosmicGtaLoader: React.FC<Props> = ({
     }, 150);
 
     return () => {
-      window.clearTimeout(tRibbon);
-      window.clearTimeout(tTitle);
-      window.clearTimeout(tWarp);
       window.clearInterval(t);
       window.clearInterval(p);
     };
-  }, [open]);
+  }, [open, mode]);
 
   if (!open) return null;
 
@@ -465,11 +492,41 @@ export const CosmicGtaLoader: React.FC<Props> = ({
         <div className="w-2 sm:w-3 h-[78%] rounded-full bg-gradient-to-b from-transparent via-purple-400/45 to-transparent blur-[2px] netflix-ribbon-glow" />
       </div>
 
+      {/* Whisper-quiet Cinema Sound Status / Tap-to-Unmute Pill */}
+      <button
+        type="button"
+        onClick={() => {
+          void soundCtrlRef.current?.unlock().then((ok) => {
+            if (ok) setSoundLocked(false);
+          });
+        }}
+        className={`fixed top-4 left-4 sm:top-6 sm:left-6 z-30 px-3 py-1.5 rounded-full border text-[11px] font-bold flex items-center gap-1.5 backdrop-blur-md transition ${
+          soundLocked
+            ? 'bg-pink-500/25 border-pink-400/60 text-pink-100 animate-pulse'
+            : 'bg-white/[0.06] border-white/15 text-cyan-200/80 hover:text-white'
+        }`}
+      >
+        {soundLocked ? (
+          <>
+            <VolumeX className="w-3.5 h-3.5 text-pink-300" />
+            <span>Toque para Som</span>
+          </>
+        ) : (
+          <>
+            <Volume2 className="w-3.5 h-3.5 text-cyan-300" />
+            <span>Som Cinema</span>
+          </>
+        )}
+      </button>
+
       {/* Whisper-quiet Netflix-style Skip Button */}
       {onSkip && (
         <button
           type="button"
-          onClick={onSkip}
+          onClick={() => {
+            soundCtrlRef.current?.stop();
+            onSkip();
+          }}
           className="fixed top-4 right-4 sm:top-6 sm:right-6 z-30 px-3.5 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/20 border border-white/15 text-[11px] font-bold tracking-wider uppercase text-white/75 hover:text-white flex items-center gap-1.5 backdrop-blur-md transition"
         >
           <span>Pular Intro</span>
@@ -515,6 +572,7 @@ export const CinemaPrerollIntro: React.FC<{
   useEffect(() => {
     if (!open) return;
     setPhase('in');
+    const soundCtrl = startGalaxyIntroSound('fast');
     const t1 = window.setTimeout(() => setPhase('zoom'), 120);
     const t2 = window.setTimeout(() => setPhase('out'), 1450);
     const t3 = window.setTimeout(() => onFinish(), 1850);
@@ -522,6 +580,7 @@ export const CinemaPrerollIntro: React.FC<{
       window.clearTimeout(t1);
       window.clearTimeout(t2);
       window.clearTimeout(t3);
+      soundCtrl.stop();
     };
   }, [open, title, onFinish]);
 
