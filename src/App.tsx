@@ -52,6 +52,7 @@ import {
   MoreVertical,
   Compass,
   Bell,
+  User,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
@@ -117,16 +118,9 @@ const CosmicSearchView = React.lazy(() =>
 const OfflineTravelView = React.lazy(() =>
   import('./components/OfflineTravelView').then((m) => ({ default: m.OfflineTravelView }))
 );
-const GalaxyUniverseView = React.lazy(() =>
-  import('./components/GalaxyUniverseView').then((m) => ({ default: m.GalaxyUniverseView }))
-);
-const ArcadeView = React.lazy(() =>
-  import('./components/ArcadeView').then((m) => ({ default: m.ArcadeView }))
-);
 import { BassBoostLevel, MiniPlayer } from './components/MiniPlayer';
 import { LegalTermsModal } from './components/LegalTermsModal';
 import { MobileIosSearchModal } from './components/MobileIosSearchModal';
-import { CosmicGtaLoader } from './components/CosmicGtaLoader';
 import { PlayerQueueStrip } from './components/PlayerQueueStrip';
 import { PixModal } from './components/PixModal';
 import { ShareModal } from './components/ShareModal';
@@ -189,7 +183,7 @@ export function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabId>('galaxy');
+  const [activeTab, setActiveTab] = useState<TabId>('catalog');
   const [tabHistory, setTabHistory] = useState<TabId[]>([]);
 
   // Real-time online listeners & Daily PIX Goal
@@ -277,17 +271,13 @@ export function App() {
   const [updatingApp, setUpdatingApp] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ label: string; pct: number; mb: number } | null>(null);
 
-  // Cinematic Startup Intro + Auto-Update Check on Entry
-  const [gtaLoaderOpen, setGtaLoaderOpen] = useState(() => !sessionStorage.getItem('lenkyx_splash_done'));
-  const [introStatus, setIntroStatus] = useState('Sincronizando catálogo & verificando atualizações...');
-
   const navigateTab = useCallback((next: TabId) => {
     setActiveTab((prev) => {
       if (prev === next) return prev;
       setTabHistory((h) => [...h.slice(-15), prev]);
       return next;
     });
-    if (['galaxy', 'reels', 'movies', 'sports', 'studio', 'search', 'arcade'].includes(next)) {
+    if (['reels', 'movies', 'sports', 'studio', 'search'].includes(next)) {
       setMusicMenuOpen(false);
     }
     window.requestAnimationFrame(() => {
@@ -302,7 +292,7 @@ export function App() {
         setActiveTab(last);
         return h.slice(0, -1);
       }
-      setActiveTab('galaxy');
+      setActiveTab('catalog');
       return h;
     });
   }, []);
@@ -587,36 +577,21 @@ export function App() {
     }
   }, [updatingApp, showToast]);
 
-  // Entry Cinematic Intro + Automatic Service Worker Update Check
+  // Background Service Worker Update Check on Entry (Instant open — no intro screen)
   useEffect(() => {
-    if (!gtaLoaderOpen) return;
-
-    let cancelled = false;
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .getRegistration()
         .then(async (reg) => {
-          if (!reg || cancelled) return;
+          if (!reg) return;
           await reg.update().catch(() => {});
           if (reg.waiting) {
-            setIntroStatus('Aplicando nova atualização automaticamente...');
             reg.waiting.postMessage({ type: 'SKIP_WAITING' });
           }
         })
         .catch(() => {});
     }
-
-    const t = window.setTimeout(() => {
-      if (!cancelled) {
-        setGtaLoaderOpen(false);
-        sessionStorage.setItem('lenkyx_splash_done', '1');
-      }
-    }, 8200);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(t);
-    };
-  }, [gtaLoaderOpen]);
+  }, []);
 
   // Global Auto-Region & Multi-Language Translator Lifecycle
   useEffect(() => {
@@ -2096,16 +2071,14 @@ export function App() {
   };
 
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'galaxy', label: 'Galáxia 3D', icon: <Sparkles className="w-4 h-4" /> },
-    { id: 'catalog', label: 'Som LENKYX', icon: <Music className="w-4 h-4" /> },
-    { id: 'reels', label: 'Reels & Lives', icon: <Film className="w-4 h-4" /> },
-    { id: 'explore', label: 'Artistas & Clipes', icon: <Globe2 className="w-4 h-4" /> },
+    { id: 'catalog', label: 'Início', icon: <Home className="w-4 h-4" /> },
+    { id: 'reels', label: 'Shorts & Lives', icon: <Film className="w-4 h-4" /> },
+    { id: 'explore', label: 'Explorar', icon: <Compass className="w-4 h-4" /> },
     { id: 'movies', label: 'Cinema & Séries', icon: <Clapperboard className="w-4 h-4" /> },
     { id: 'sports', label: 'Futebol & UFC', icon: <Trophy className="w-4 h-4" /> },
-    { id: 'arcade', label: 'Jogos Arcade', icon: <Gamepad2 className="w-4 h-4" /> },
-    { id: 'offline', label: 'Viagem & Offline', icon: <Car className="w-4 h-4" /> },
-    { id: 'search', label: 'Busca Rápida', icon: <Search className="w-4 h-4" /> },
-    { id: 'playlists', label: 'Minhas Playlists', icon: <ListMusic className="w-4 h-4" /> },
+    { id: 'offline', label: 'Downloads Offline', icon: <Car className="w-4 h-4" /> },
+    { id: 'search', label: 'Pesquisar', icon: <Search className="w-4 h-4" /> },
+    { id: 'playlists', label: 'Você · Playlists', icon: <ListMusic className="w-4 h-4" /> },
   ];
 
   const clipSuggestions = useMemo(() => {
@@ -2138,28 +2111,13 @@ export function App() {
     <div className="h-dvh overflow-hidden bg-[#05020d] text-white flex relative">
       <CosmicSpaceBackdrop />
 
-      {/* === DESKTOP & SMART TV LEFT SIDEBAR (Hidden inside 3D Galaxy Hub so space fills 100% edge-to-edge) === */}
-      {activeTab !== 'galaxy' && (
+      {/* === DESKTOP & SMART TV LEFT SIDEBAR === */}
         <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
-        {/* Brand Monument (tap 5x secretly for Creator access) */}
         <div
           onClick={handleBrandTap}
-          className="h-16 px-4 flex items-center gap-3 border-b border-white/[0.08] cursor-pointer hover:bg-white/[0.03] select-none"
+          className="h-14 px-4 flex items-center justify-between border-b border-white/[0.08] cursor-pointer hover:bg-white/[0.03] select-none"
         >
-          <img
-            src="/covers/icon-192.png?v=43"
-            alt="LENKYX"
-            className="w-10 h-10 object-contain lenkyx-logo-3d shrink-0"
-          />
-          <div className="leading-tight min-w-0">
-            <div className="font-display text-sm font-black tracking-[0.14em] text-white flex items-center gap-1">
-              LENKYX
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            </div>
-            <div className="text-[9px] font-bold tracking-[0.14em] text-emerald-300/95 truncate">
-              OFICIAL · 100% SEGURO
-            </div>
-          </div>
+          <span className="font-display text-sm font-black tracking-[0.14em] text-white">LENKYX</span>
         </div>
 
         {/* 5 Clean Focused Tabs */}
@@ -2300,16 +2258,10 @@ export function App() {
           )}
         </div>
       </aside>
-      )}
 
       {/* === MAIN CONTENT SHELL === */}
-      <div
-        className={`relative z-10 flex-1 min-w-0 h-full overflow-hidden flex flex-col ${
-          activeTab === 'galaxy' ? '' : 'md:pl-60 lg:pl-64'
-        }`}
-      >
-        {/* TOP HEADER (YouTube Clean Architecture — hidden inside full-bleed 3D Galaxy) */}
-        {activeTab !== 'galaxy' && (
+      <div className="relative z-10 flex-1 min-w-0 h-full overflow-hidden flex flex-col md:pl-60 lg:pl-64">
+        {/* TOP HEADER (YouTube Clean Architecture) */}
         <header className="shrink-0 z-30 bg-[#080514]/92 backdrop-blur-xl border-b border-white/[0.08] h-13 px-3 sm:px-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 shrink-0 min-w-0">
             {activeTab !== 'catalog' && (
@@ -2324,9 +2276,8 @@ export function App() {
 
             <div
               onClick={handleBrandTap}
-              className="flex md:hidden items-center gap-2 shrink-0 cursor-pointer select-none"
+              className="flex md:hidden items-center shrink-0 cursor-pointer select-none"
             >
-              <img src="/covers/icon-192.png?v=43" alt="LENKYX" className="w-7 h-7 object-contain lenkyx-logo-3d" />
               <span className="font-display text-sm font-black tracking-wider text-white">LENKYX</span>
             </div>
           </div>
@@ -2484,17 +2435,6 @@ export function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setTopOverflowOpen(false);
-                      setGamingModalOpen(true);
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
-                  >
-                    <Gamepad2 className="w-4 h-4 text-cyan-300" />
-                    <span>Modo Jogos & Mini Player (PiP)</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={async () => {
                       setTopOverflowOpen(false);
                       setBackgroundMode(true);
@@ -2548,23 +2488,19 @@ export function App() {
             )}
           </div>
         </header>
-        )}
 
         {/* CLEAN YOUTUBE-STYLE CATEGORY CHIPS BAR (Mobile) */}
-        {activeTab !== 'galaxy' && (
         <div className="md:hidden shrink-0 z-20 px-3 py-2 border-b border-white/[0.06] bg-[#080514]/80">
           <div className="max-w-[1380px] mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar">
             {(
               [
                 { id: 'catalog' as TabId, label: 'Tudo' },
                 { id: 'reels' as TabId, label: 'Shorts' },
-                { id: 'galaxy' as TabId, label: 'Galáxia 3D' },
                 { id: 'explore' as TabId, label: 'Explorar' },
                 { id: 'movies' as TabId, label: 'Cinema' },
                 { id: 'sports' as TabId, label: 'Ao Vivo' },
                 { id: 'offline' as TabId, label: 'Offline' },
                 { id: 'playlists' as TabId, label: 'Inscrições & Listas' },
-                { id: 'arcade' as TabId, label: 'Jogos' },
               ] as { id: TabId; label: string }[]
             ).map((chip) => {
               const active = activeTab === chip.id;
@@ -2585,11 +2521,10 @@ export function App() {
             })}
           </div>
         </div>
-        )}
 
         {/* ACTIVE VIEW CONTAINER */}
         <main id="lenkyx-main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full">
-          <div className={activeTab === 'galaxy' ? 'w-full h-full' : 'w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-3'}>
+          <div className="w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-3">
             {appUpdateInfo && (
               <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
                 <div className="min-w-0">
@@ -2627,48 +2562,10 @@ export function App() {
             {loading ? (
               <div className="py-24 text-center space-y-3">
                 <div className="w-10 h-10 mx-auto rounded-full border-3 border-pink-500 border-t-cyan-400 animate-spin" />
-                <div className="font-display text-xs tracking-widest text-purple-300">CARREGANDO LENKYX...</div>
+                <div className="font-display text-xs tracking-widest text-purple-300">CARREGANDO...</div>
               </div>
             ) : (
               <>
-                {activeTab === 'galaxy' && (
-                  <Suspense
-                    fallback={
-                      <div className="py-24 text-center text-xs text-cyan-300 font-semibold">
-                        Entrando na Galáxia LENKYX...
-                      </div>
-                    }
-                  >
-                    <GalaxyUniverseView
-                      settings={settings}
-                      tracks={tracks}
-                      currentTrack={currentTrack}
-                      isPlaying={isPlaying}
-                      userLang={userLang}
-                      onNavigateTab={navigateTab}
-                      onOpenVisualizer={() => setVisualizerOpen(true)}
-                      onPlayTrack={(t) => void handlePlayTrack(t, 'v1', tracks)}
-                      onOpenSearch={(q) => {
-                        if (q && q.trim()) {
-                          openWebSearch(q.trim(), searchViewPrivate);
-                        } else {
-                          setMobileIosSearchOpen(true);
-                        }
-                      }}
-                      onOpenCreate={() => setCreateMenuOpen(true)}
-                      onOpenLang={() => setLangModalOpen(true)}
-                      onOpenPix={(tab) => {
-                        setPixInitialTab(tab || 'donate');
-                        setPixOpen(true);
-                      }}
-                      onOpenInstall={() => void handleInstantInstall()}
-                      onOpenUpdates={() => void handleForceAppUpdate()}
-                      onBrandTap={handleBrandTap}
-                      onToast={showToast}
-                    />
-                  </Suspense>
-                )}
-
                 {activeTab === 'catalog' && (
                   <CatalogView
                     tracks={globalSearch.trim() ? tracks : rankTracksBySmartTaste(tracks)}
@@ -2846,8 +2743,6 @@ export function App() {
                       onToast={showToast}
                     />
                   )}
-
-                  {activeTab === 'arcade' && <ArcadeView user={null} onToast={showToast} />}
                 </Suspense>
               </>
             )}
@@ -2856,7 +2751,7 @@ export function App() {
       </div>
 
       {/* ON-DEMAND MUSIC PLAYER BAR: Shown ONLY when actively playing music in music sections! */}
-      {!watchingMovie && isPlayerAllowedTab && !['galaxy', 'reels', 'movies', 'sports', 'studio', 'search', 'arcade'].includes(activeTab) && currentTrack && isPlaying && musicMenuOpen && (
+      {!watchingMovie && isPlayerAllowedTab && !['reels', 'movies', 'sports', 'studio', 'search'].includes(activeTab) && currentTrack && isPlaying && musicMenuOpen && (
         <MiniPlayer
           track={currentTrack}
           activeVersion={activeVersion}
@@ -2921,17 +2816,17 @@ export function App() {
         />
       )}
 
-      {/* YOUTUBE-IDENTICAL 5-SLOT MOBILE BOTTOM NAVIGATION BAR (Início · Shorts · + · Galáxia · Você) */}
-      {!watchingMovie && activeTab !== 'galaxy' && (
+      {/* YOUTUBE-IDENTICAL 5-SLOT MOBILE BOTTOM NAVIGATION BAR (Início · Shorts · + · Explorar · Você) */}
+      {!watchingMovie && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#0f0f0f]/98 backdrop-blur-2xl border-t border-white/10 grid grid-cols-5 px-1">
           {(
             [
               { id: 'catalog' as TabId, label: 'Início', icon: <Home className="w-5 h-5" /> },
               { id: 'reels' as TabId, label: 'Shorts', icon: <Film className="w-5 h-5" /> },
               { id: 'studio' as TabId, label: '', icon: <Plus className="w-6 h-6 stroke-[2]" />, center: true },
-              { id: 'galaxy' as TabId, label: 'Galáxia', icon: <Compass className="w-5 h-5" /> },
-              { id: 'playlists' as TabId, label: 'Você', profile: true },
-            ] as { id: TabId; label: string; icon?: React.ReactNode; center?: boolean; profile?: boolean }[]
+              { id: 'explore' as TabId, label: 'Explorar', icon: <Compass className="w-5 h-5" /> },
+              { id: 'playlists' as TabId, label: 'Você', icon: <User className="w-5 h-5" /> },
+            ] as { id: TabId; label: string; icon: React.ReactNode; center?: boolean }[]
           ).map((item) => {
             const active = activeTab === item.id;
             if (item.center) {
@@ -2946,26 +2841,6 @@ export function App() {
                   <span className="w-10 h-10 rounded-full flex items-center justify-center bg-white/12 hover:bg-white/20 text-white transition active:scale-90">
                     {item.icon}
                   </span>
-                </button>
-              );
-            }
-            if (item.profile) {
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => navigateTab(item.id)}
-                  className={`flex flex-col items-center justify-center gap-0.5 py-1 transition ${
-                    active ? 'text-white' : 'text-white/70'
-                  }`}
-                >
-                  <span
-                    className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center border ${
-                      active ? 'border-white' : 'border-white/40'
-                    }`}
-                  >
-                    <img src="/covers/icon-192.png?v=43" alt="Você" className="w-full h-full object-cover" />
-                  </span>
-                  <span className="text-[10px] font-medium truncate max-w-full">{item.label}</span>
                 </button>
               );
             }
@@ -3236,25 +3111,18 @@ export function App() {
           >
             <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-pink-500" />
             <div className="p-5 space-y-4">
-              {/* Official Brand 3D Header */}
+              {/* Official Brand Clean Header */}
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3.5">
-                  <img
-                    src="/covers/icon-512.png"
-                    alt="LENKYX Logo 3D"
-                    className="w-16 h-16 object-contain lenkyx-logo-3d shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] font-black text-emerald-300 mb-1">
-                      <CheckCircle2 className="w-3 h-3" /> OFICIAL · 100% SEGURO & VERIFICADO
-                    </div>
-                    <h3 className="font-display text-base sm:text-lg font-black text-white leading-tight">
-                      Site Oficial & App LENKYX
-                    </h3>
-                    <p className="text-[11px] text-cyan-200/85 font-semibold">
-                      Disponível para Android, iPhone (iOS), PC, Smart TV & Jogos
-                    </p>
+                <div className="min-w-0">
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/45 text-[10px] font-black text-emerald-300 mb-1">
+                    <CheckCircle2 className="w-3 h-3" /> OFICIAL · 100% SEGURO & VERIFICADO
                   </div>
+                  <h3 className="font-display text-base sm:text-lg font-black text-white leading-tight">
+                    App & Versão Web LENKYX
+                  </h3>
+                  <p className="text-[11px] text-cyan-200/85 font-semibold">
+                    Disponível para Android, iPhone (iOS), PC & Smart TV
+                  </p>
                 </div>
                 <button
                   onClick={() => setInstallModalOpen(false)}
@@ -3529,32 +3397,6 @@ export function App() {
           </div>
         </div>
       )}
-
-      {/* STARTUP CINEMATIC INTRO + AUTO-UPDATE CHECK + PIX SUPPORT APPEAL */}
-      <CosmicGtaLoader
-        open={gtaLoaderOpen}
-        mode="splash"
-        statusText={introStatus}
-        dailyCollectedBrl={liveStats.dailyCollectedBrl}
-        dailyGoalBrl={liveStats.dailyGoalBrl}
-        onlineCount={liveStats.onlineCount}
-        onOpenPix={() => {
-          setGtaLoaderOpen(false);
-          sessionStorage.setItem('lenkyx_splash_done', '1');
-          setPixInitialTab('donate');
-          setPixOpen(true);
-        }}
-        onShareApp={() => {
-          setGtaLoaderOpen(false);
-          sessionStorage.setItem('lenkyx_splash_done', '1');
-          setShareTrack(null);
-          setShareOpen(true);
-        }}
-        onSkip={() => {
-          setGtaLoaderOpen(false);
-          sessionStorage.setItem('lenkyx_splash_done', '1');
-        }}
-      />
 
       {/* CLIP THEATER (with Netflix-style pre-roll intro before clip rolls, 100% pure LENKYX) */}
       <div

@@ -170,29 +170,22 @@ export const CatalogView: React.FC<Props> = ({
 
   return (
     <div className="space-y-4 pb-36 md:pb-28 cosmic-scene">
-      {/* CLEAN COMPACT HEADER BAR (Simple, unified, no giant LENKYX spotlight box!) */}
+      {/* CLEAN COMPACT HEADER BAR (Simple, unified, no logo clutter) */}
       <section className="rounded-2xl cosmic-card-3d px-3.5 py-3 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <img
-            src="/covers/icon-192.png?v=43"
-            alt="LENKYX"
-            className="w-9 h-9 object-contain lenkyx-logo-3d shrink-0"
-          />
-          <div className="min-w-0">
-            <h1 className="font-display text-sm sm:text-base font-black text-white truncate">
-              Músicas & Artistas
-            </h1>
-            <div className="text-[11px] text-cyan-200/80 flex items-center gap-2">
-              <span>{tracks.length} faixas</span>
-              <span>·</span>
-              <span>{totalPlays.toLocaleString('pt-BR')} plays</span>
-              {offlineCount > 0 && (
-                <>
-                  <span>·</span>
-                  <span className="text-emerald-300 font-bold">{offlineCount} offline</span>
-                </>
-              )}
-            </div>
+        <div className="min-w-0">
+          <h1 className="font-display text-sm sm:text-base font-black text-white truncate">
+            Início · Músicas & Artistas
+          </h1>
+          <div className="text-[11px] text-cyan-200/80 flex items-center gap-2">
+            <span>{tracks.length} faixas</span>
+            <span>·</span>
+            <span>{totalPlays.toLocaleString('pt-BR')} plays</span>
+            {offlineCount > 0 && (
+              <>
+                <span>·</span>
+                <span className="text-emerald-300 font-bold">{offlineCount} offline</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -261,9 +254,6 @@ export const CatalogView: React.FC<Props> = ({
               onClick={() => onSearchWorld(artistName)}
               className="px-3 py-1.5 rounded-full bg-white/[0.08] hover:bg-gradient-to-r hover:from-emerald-400 hover:to-cyan-400 hover:text-black border border-white/15 text-xs font-extrabold text-white whitespace-nowrap shrink-0 flex items-center gap-1.5 transition"
             >
-              {artistName === 'LENKYX' && (
-                <img src="/covers/icon-192.png?v=43" alt="LENKYX" className="w-4 h-4 object-contain" />
-              )}
               <span>{artistName}</span>
             </button>
           ))}
@@ -640,11 +630,9 @@ export const CatalogView: React.FC<Props> = ({
 
                 {/* YouTube-style Channel Info & Quick Controls */}
                 <div className="p-3 flex items-start gap-2.5">
-                  <img
-                    src="/covers/icon-192.png?v=43"
-                    alt="LENKYX"
-                    className="w-9 h-9 object-contain shrink-0 lenkyx-logo-3d mt-0.5"
-                  />
+                  <div className="w-9 h-9 rounded-full bg-white/10 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
+                    {(track.artist || 'L').slice(0, 1).toUpperCase()}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div
                       onClick={() => onPlayTrack(track, 'v1')}

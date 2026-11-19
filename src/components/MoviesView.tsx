@@ -40,7 +40,6 @@ import {
   setMobileBackgroundKeepalive,
   syncBackgroundMediaSession,
 } from '../utils/backgroundAudioGuard';
-import { CosmicGtaLoader } from './CosmicGtaLoader';
 import { PlayerQueueStrip } from './PlayerQueueStrip';
 import { claimMediaFocus, registerMediaStopper } from '../utils/mediaCoordinator';
 
@@ -941,11 +940,10 @@ export const MoviesView: React.FC<Props> = ({
 
       {/* === NETFLIX HERO BILLBOARD (Zero Transparent Arrows — Touch Swipe + Smooth Dot Indicators!) === */}
       {loading ? (
-        <CosmicGtaLoader
-          open={true}
-          mode="stage"
-          statusText="Carregando Filmes, Séries, Animes & Lançamentos..."
-        />
+        <div className="py-20 text-center space-y-2.5">
+          <div className="w-8 h-8 mx-auto rounded-full border-2 border-white/20 border-t-white animate-spin" />
+          <div className="text-xs font-semibold text-white/70">Carregando Cinema...</div>
+        </div>
       ) : featuredMovie ? (
         <section
           onTouchStart={(e) => {
