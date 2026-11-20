@@ -146,7 +146,7 @@ async function fetchDuckDuckGoWeb(query) {
           playableMedia.push({
             id: `web-yt-${ytId}`,
             title: cleanTitle || rawTitle,
-            artist: 'Mix & Áudio Web · LENKYX',
+            artist: 'Mix & Áudio Web · MORRO GOLD',
             youtubeVideoId: ytId,
             coverUrl: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
             genre: 'Web Discovery',
@@ -264,7 +264,7 @@ export async function runCosmicWebSearch(rawQuery = '', options = {}) {
       answer:
         pollinationsAns ||
         knowledge?.summary ||
-        `Encontrei ${playableMedia.length} mídias reproduzíveis para "${q}" direto no LENKYX.`,
+        `Encontrei ${playableMedia.length} mídias reproduzíveis para "${q}" direto no MORRO GOLD.`,
       highlights: bullets,
       imageUrl: knowledge?.imageUrl || '',
       sourceUrl: knowledge?.sourceUrl || webResults[0]?.url || '',

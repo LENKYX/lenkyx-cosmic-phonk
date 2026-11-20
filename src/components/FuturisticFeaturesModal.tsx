@@ -382,15 +382,15 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
     const marca = sponsorBrandName.trim() || 'sua empresa/marca';
     return (
       `Olá, equipe de ${marca}! Tudo bem?\n\n` +
-      `Sou criador do aplicativo brasileiro LENKYX (${officialSiteUrl}) — uma plataforma gratuita e ultra-moderna de Músicas, Vídeos Clipes HD, Shorts de Criadores Brasileiros, Cinema e Futebol Ao Vivo, sem anúncios intrusivos.\n\n` +
+      `Sou criador do aplicativo brasileiro MORRO GOLD (${officialSiteUrl}) — uma plataforma gratuita e ultra-moderna de Músicas, Vídeos Clipes HD, Shorts de Criadores Brasileiros, Cinema e Futebol Ao Vivo, sem anúncios intrusivos.\n\n` +
       `Estamos abrindo cotas oficiais de Patrocínio e Parceria Comercial no Brasil (banner no app, destaque nos Shorts & Ranking Top 5 de Criadores e ações exclusivas).\n\n` +
-      `Gostaria de apresentar os planos de patrocínio para ${marca} crescer junto com o LENKYX Brasil. Podemos conversar?\n\n` +
+      `Gostaria de apresentar os planos de patrocínio para ${marca} crescer junto com o MORRO GOLD. Podemos conversar?\n\n` +
       `Acesse o app ao vivo: ${officialSiteUrl}`
     );
   }, [sponsorBrandName, officialSiteUrl]);
 
   const buildCreatorInviteText = (c: BrCreatorItem) =>
-    `Fala, ${c.name}! 🇧🇷🔥 Você já está em destaque no Ranking Top Criadores do LENKYX (${c.badge})! ` +
+    `Fala, ${c.name}! 🇧🇷🔥 Você já está em destaque no Ranking Top Criadores do MORRO GOLD (${c.badge})! ` +
     `Estamos reunindo os melhores canais brasileiros de humor, memes e pegadinhas dentro do nosso app gratuito (Músicas, Clipes, Shorts e Lives). ` +
     `Venha conhecer e compartilhar seu canal com a galera do Brasil: ${officialSiteUrl}`;
 
@@ -405,7 +405,7 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
             <LenkyxEdgeLogo size="sm" className="shrink-0" />
             <div className="min-w-0">
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 flex items-center gap-1.5">
-                <Bot className="w-3.5 h-3.5" /> LENKYX CORE HUD · MODO FUTURISTA BRASIL
+                <Bot className="w-3.5 h-3.5" /> MORRO GOLD CORE HUD · MODO FUTURISTA BRASIL
               </div>
               <h2 className="font-display text-sm sm:text-base font-black text-white truncate">
                 Radar Musical · Ouvir Junto · Top Brasil · Parceiros
@@ -602,7 +602,7 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
                       </button>
                       <a
                         href={`https://wa.me/?text=${encodeURIComponent(
-                          `Entra na minha sala Ouvir Junto no LENKYX! Código: ${jamRoom.code} 🎧🔥 ${officialSiteUrl}/?jam=${jamRoom.code}`
+                          `Entra na minha sala Ouvir Junto no MORRO GOLD! Código: ${jamRoom.code} 🎧🔥 ${officialSiteUrl}/?jam=${jamRoom.code}`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -652,12 +652,12 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
                       <Sparkles className="w-3.5 h-3.5" /> SEU TOP BRASIL · RETROSPECTIVA
                     </div>
                     <h3 className="font-display text-base font-black text-white">
-                      {user?.name ? `${user.name} no LENKYX` : 'Suas Mais Tocadas no LENKYX'}
+                      {user?.name ? `${user.name} no MORRO GOLD` : 'Suas Mais Tocadas no MORRO GOLD'}
                     </h3>
                   </div>
                   <a
                     href={`https://wa.me/?text=${encodeURIComponent(
-                      `🔥 Meu Top no LENKYX Brasil:\n${
+                      `🔥 Meu Top no MORRO GOLD Brasil:\n${
                         topHistory.length
                           ? topHistory.map((h, i) => `${i + 1}. ${h.title} — ${h.artist} (${h.count}x)`).join('\n')
                           : 'Ouvindo músicas, clipes e Shorts sem anúncios!'
@@ -745,7 +745,7 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
               {/* Business Sponsors Pitch */}
               <div className="rounded-3xl bg-gradient-to-br from-emerald-500/15 via-cyan-500/10 to-amber-500/10 border border-emerald-400/40 p-4 space-y-3">
                 <div className="text-xs font-black text-emerald-300 flex items-center gap-1.5">
-                  <Handshake className="w-4 h-4" /> CONVITES PARA EMPRESÁRIOS PATROCINAREM O LENKYX
+                  <Handshake className="w-4 h-4" /> CONVITES PARA EMPRESÁRIOS PATROCINAREM O MORRO GOLD
                 </div>
                 <p className="text-[11px] text-slate-200">
                   Gere e envie na hora uma proposta comercial profissional pelo seu <strong>Gmail</strong> ou{' '}
@@ -770,7 +770,7 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
                 <div className="flex flex-wrap gap-2">
                   <a
                     href={`mailto:${encodeURIComponent(sponsorEmail.trim())}?subject=${encodeURIComponent(
-                      `Proposta de Patrocínio Oficial · App LENKYX Brasil`
+                      `Proposta de Patrocínio Oficial · App MORRO GOLD Brasil`
                     )}&body=${encodeURIComponent(sponsorPitchText)}`}
                     className="px-3.5 py-2 rounded-xl bg-cyan-400 text-black text-xs font-black flex items-center gap-1.5"
                   >

@@ -77,7 +77,7 @@ export const CreatorModal: React.FC<Props> = ({
       setAuthToken(data.token);
       setPassword('');
       onLoginSuccess(data.token, Boolean(data.hasCustomPassword));
-      onToast('🔓 Bem-vindo, LENKYX! Modo Criador desbloqueado.');
+      onToast('🔓 Bem-vindo ao MORRO GOLD! Modo Criador desbloqueado.');
       onClose();
     } catch {
       setError('Falha ao conectar ao servidor.');
@@ -149,7 +149,7 @@ export const CreatorModal: React.FC<Props> = ({
       const res = await authFetch('/api/export-backup');
       if (!res.ok) throw new Error();
       const blob = await res.blob();
-      await downloadBlobReliable(blob, `lenkyx-backup-${new Date().toISOString().slice(0, 10)}.json`);
+      await downloadBlobReliable(blob, `morro-gold-backup-${new Date().toISOString().slice(0, 10)}.json`);
       onToast('Backup completo do catálogo baixado!');
     } catch {
       onToast('Erro ao baixar backup.');
@@ -187,7 +187,7 @@ export const CreatorModal: React.FC<Props> = ({
               </div>
               <div>
                 <h2 className="font-display text-base sm:text-lg font-extrabold text-white">
-                  {isAuthenticated ? 'PAINEL DO CRIADOR LENKYX' : 'ACESSO RESTRITO — CRIADOR'}
+                  {isAuthenticated ? 'PAINEL DO CRIADOR MORRO GOLD' : 'ACESSO RESTRITO — CRIADOR'}
                 </h2>
                 <p className="text-xs text-purple-200/75">
                   {isAuthenticated
@@ -204,7 +204,7 @@ export const CreatorModal: React.FC<Props> = ({
           {!isAuthenticated ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-purple-200 mb-1.5">Senha do Criador LENKYX</label>
+                <label className="block text-xs font-bold text-purple-200 mb-1.5">Senha do Criador MORRO GOLD</label>
                 <div className="relative">
                   <KeyRound className="w-4 h-4 text-purple-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input

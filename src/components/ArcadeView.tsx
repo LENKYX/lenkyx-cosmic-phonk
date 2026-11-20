@@ -481,7 +481,7 @@ export const ArcadeView: React.FC<Props> = ({ user, onToast }) => {
       const json = await res.json();
       setCategories(json.categories || []);
     } catch {
-      onToast('Não foi possível carregar o catálogo externo agora; os jogos do universo LENKYX estão 100% prontos!');
+      onToast('Não foi possível carregar o catálogo externo agora; os jogos do MORRO GOLD estão 100% prontos!');
     } finally {
       setLoading(false);
     }
@@ -608,7 +608,7 @@ export const ArcadeView: React.FC<Props> = ({ user, onToast }) => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-300/50 text-cyan-200 text-[11px] font-black">
-              <Sparkles className="w-3.5 h-3.5" /> JOGO EXCLUSIVO DO UNIVERSO LENKYX · 100% GRÁTIS & ONLINE
+              <Sparkles className="w-3.5 h-3.5" /> JOGO EXCLUSIVO DO MORRO GOLD · 100% GRÁTIS & ONLINE
             </div>
             <h2 className="font-display text-2xl sm:text-3xl font-black text-white tracking-tight">
               🚀 COSMIC PHONK: NOVO MUNDO (Nova Aetheris)
@@ -632,7 +632,7 @@ export const ArcadeView: React.FC<Props> = ({ user, onToast }) => {
       <section className="space-y-2.5">
         <div className="flex items-center justify-between">
           <h3 className="text-sm sm:text-base font-black text-white">
-            ⚡ Fliperama Instantâneo LENKYX (Toque e Jogue na Hora — 100% Grátis)
+            ⚡ Fliperama Instantâneo MORRO GOLD (Toque e Jogue na Hora — 100% Grátis)
           </h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

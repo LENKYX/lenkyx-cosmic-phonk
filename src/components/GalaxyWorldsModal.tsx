@@ -362,7 +362,7 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
   const [cyberNews, setCyberNews] = useState<{ id: string; title: string; url: string; author: string }[]>([]);
   const [darkChat, setDarkChat] = useState<{ id: string; handle: string; text: string; ts: string }[]>([]);
   const [darkInput, setDarkInput] = useState('');
-  const [hashInput, setHashInput] = useState('LENKYX-QUANTUM-KEY');
+  const [hashInput, setHashInput] = useState('MORRO-GOLD-VIP-KEY');
   const [hashOutput, setHashOutput] = useState('');
   const [inspectHost, setInspectHost] = useState('brasilmais.mj.gov.br');
   const [inspectResult, setInspectResult] = useState<Record<string, unknown> | null>(null);
@@ -531,7 +531,7 @@ export const GalaxyWorldsModal: React.FC<Props> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           product: p,
-          buyerName: user?.name || 'Explorador LENKYX',
+          buyerName: user?.name || 'Cria MORRO GOLD',
           paymentMethod,
           address: 'Entrega Expressa Automática',
         }),

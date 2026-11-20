@@ -216,7 +216,7 @@ export async function getWorldTrending(): Promise<WorldSearchPayload> {
   return {
     query: '',
     aiInsight: {
-      title: 'IA Musical LENKYX',
+      title: 'IA Musical MORRO GOLD',
       summary: 'Músicas completas gratuitas prontas para tocar em sequência.',
       tags: ['100% Completo', 'Grátis'],
     },

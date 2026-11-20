@@ -291,7 +291,7 @@ export const PlaylistsView: React.FC<Props> = ({
               <Sparkles className="w-7 h-7 mx-auto text-pink-400 opacity-75" />
               <div className="font-bold text-white">Esta lista ainda está vazia!</div>
               <p className="max-w-sm mx-auto opacity-80">
-                Clique no ícone <strong>+ Playlist</strong> em qualquer música da LENKYX ou da aba{' '}
+                Clique no ícone <strong>+ Playlist</strong> em qualquer música do MORRO GOLD ou da aba{' '}
                 <strong>Explorar Mundo</strong>, ou clique em <strong>Colocar Minha Música</strong> para subir seus
                 arquivos MP3/WAV!
               </p>

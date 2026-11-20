@@ -125,7 +125,7 @@ export const SportsArenaView: React.FC<Props> = ({
     syncBackgroundMediaSession(
       {
         title: activeStream.title,
-        artist: activeStream.subtitle || 'LENKYX Arena Ao Vivo',
+        artist: activeStream.subtitle || 'MORRO GOLD Arena Ao Vivo',
         album: 'Futebol & UFC Ao Vivo',
         artworkUrl: activeStream.posterUrl,
         isPlaying: true,

@@ -538,9 +538,9 @@ export const StudioCreateView: React.FC<Props> = ({
     setSavingBeat(true);
     try {
       const fd = new FormData();
-      fd.append('title', beatTitle.trim() || 'Beat Original LENKYX');
+      fd.append('title', beatTitle.trim() || 'Beat Original MORRO GOLD');
       fd.append('emoji', '🎹');
-      fd.append('album', 'LENKYX Original Beats');
+      fd.append('album', 'MORRO GOLD Original Beats');
       fd.append('bpm', String(beatBpm));
       fd.append('audio', new File([recordedBeatBlob], `lenkyx-beat-${Date.now()}.webm`, { type: recordedBeatBlob.type }));
       fd.append('status', JSON.stringify({ suno: true, cover: false, app: true, youtube: false, distrokid: false }));
@@ -855,7 +855,7 @@ export const StudioCreateView: React.FC<Props> = ({
             </div>
 
             <p className="text-xs text-purple-200/85 leading-relaxed">
-              Seu fluxo oficial: <b>1) Gere a letra</b> na aba anterior → <b>2) Crie no Suno</b> com seu Prompt Master fixo → <b>3) Sincronize aqui</b> para importar automaticamente V1 + V2 mantendo 100% suas capas exclusivas LENKYX!
+              Seu fluxo oficial: <b>1) Gere a letra</b> na aba anterior → <b>2) Crie no Suno</b> com seu Prompt Master fixo → <b>3) Sincronize aqui</b> para importar automaticamente V1 + V2 mantendo 100% suas capas exclusivas MORRO GOLD!
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -891,12 +891,12 @@ export const StudioCreateView: React.FC<Props> = ({
                 className="w-full py-2.5 px-4 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/45 text-cyan-200 font-extrabold text-xs flex items-center justify-center gap-2 transition"
               >
                 <RefreshCw className={`w-4 h-4 ${syncingHub ? 'animate-spin' : ''}`} />
-                {syncingHub ? 'Sincronizando playlist @lenkyx...' : '🔄 Sincronizar Novas Faixas do Suno (Mantém Capas LENKYX)'}
+                {syncingHub ? 'Sincronizando playlist @lenkyx...' : '🔄 Sincronizar Novas Faixas do Suno (Mantém Capas MORRO GOLD)'}
               </button>
             )}
 
             <div className="rounded-xl bg-black/45 border border-white/10 p-3 text-[11px] text-purple-200/80 space-y-1">
-              <div className="font-bold text-cyan-300">⚡ Regra de Ouro LENKYX:</div>
+              <div className="font-bold text-cyan-300">⚡ Regra de Ouro MORRO GOLD:</div>
               <div>• Nunca usamos capas geradas pelo Suno.</div>
               <div>• Todas as 20 faixas usam exclusivamente nossas capas limpas (sem texto, sem logo).</div>
               <div>• Baixe sempre o arquivo <b>WAV</b> da melhor versão (V1 ou V2) no Suno para enviar ao DistroKid!</div>
@@ -1003,7 +1003,7 @@ export const StudioCreateView: React.FC<Props> = ({
       {subTab === 'suno' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           <div className="lg:col-span-5 rounded-3xl glass-panel p-5 space-y-4">
-            <div className="font-display text-sm font-extrabold text-cyan-300">CONFIGURAR NOVA FAIXA LENKYX</div>
+            <div className="font-display text-sm font-extrabold text-cyan-300">CONFIGURAR NOVA FAIXA MORRO GOLD</div>
 
             <div className="grid grid-cols-12 gap-2.5">
               <div className="col-span-3">
@@ -1395,7 +1395,7 @@ export const StudioCreateView: React.FC<Props> = ({
                   Dica de Ouro para proteger sua conta na DistroKid com 1.000 músicas (10/dia):
                 </div>
                 <p>
-                  <strong>1. No seu App LENKYX e no YouTube:</strong> você pode soltar <strong>10 faixas por dia</strong> sem medo (ou 1 vídeo longo "Full Mix 10 faixas" + 3 Shorts por dia). Aqui a casa é 100% sua!
+                  <strong>1. No seu App MORRO GOLD e no YouTube:</strong> você pode soltar <strong>10 faixas por dia</strong> sem medo (ou 1 vídeo longo "Full Mix 10 faixas" + 3 Shorts por dia). Aqui a casa é 100% sua!
                 </p>
                 <p>
                   <strong>2. Na DistroKid / Spotify / Apple Music:</strong> subir 10 singles de IA todo santo dia costuma disparar filtros anti-spam das plataformas e pode bloquear a conta. A estratégia mais inteligente é agrupar em <strong>Álbuns de 10 a 20 faixas</strong> (1 álbum por semana) ou subir lá apenas as <strong>faixas campeãs que bombarem primeiro no seu App, WhatsApp e YouTube</strong> — sempre geradas com plano pago do Suno para ter direito comercial.

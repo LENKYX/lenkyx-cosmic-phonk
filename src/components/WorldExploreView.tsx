@@ -573,7 +573,7 @@ export const WorldExploreView: React.FC<Props> = ({
                 <span>Top 1 ao 5 · Artistas Mais Escutados & Recomendados</span>
               </h2>
               <p className="text-[11px] text-amber-100/75">
-                Classificação ao vivo dos artistas mais ouvidos pelos fãs no LENKYX
+                Classificação ao vivo dos artistas mais ouvidos pela galera no MORRO GOLD
               </p>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-200 text-[10px] font-black">

@@ -968,7 +968,7 @@ export const ShopCriaView: React.FC<Props> = ({
   const buildOrderWhatsappUrl = () => {
     const lines = cart.map((c) => `• ${c.qty}x ${c.item.name} (${c.item.priceLabel})`);
     const msg =
-      `Salve! Montei minha lista de compras na Loja dos Cria do LENKYX Brasil 🔥:\n\n` +
+      `Salve! Montei minha lista de compras na Loja dos Cria do MORRO GOLD 🔥:\n\n` +
       `${lines.join('\n')}\n\nTotal estimado: R$ ${totalPrice.toLocaleString('pt-BR')}`;
     const cleanPhone = (settings.whatsappStoreNumber || '').replace(/\D/g, '');
     return cleanPhone
@@ -1012,7 +1012,7 @@ export const ShopCriaView: React.FC<Props> = ({
           });
           onToast('⚡ Código extraído do link e salvo automaticamente!');
         } else {
-          onToast('⚡ Código extraído do link! Ative o Modo Criador (5 toques no logo LENKYX) para salvar.');
+          onToast('⚡ Código extraído do link! Ative o Modo Criador (5 toques no logo MORRO GOLD) para salvar.');
         }
         setPasteLink('');
       } else {
@@ -1696,7 +1696,7 @@ export const ShopCriaView: React.FC<Props> = ({
                     type="text"
                     value={mlWord}
                     onChange={(e) => setMlWord(e.target.value)}
-                    placeholder="Ex: lenkyx_loja"
+                    placeholder="Ex: morrogold_loja"
                     className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-white"
                   />
                 </div>
@@ -1720,7 +1720,7 @@ export const ShopCriaView: React.FC<Props> = ({
                     type="text"
                     value={amazonTag}
                     onChange={(e) => setAmazonTag(e.target.value)}
-                    placeholder="Ex: lenkyx-20"
+                    placeholder="Ex: morrogold-20"
                     className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-white"
                   />
                 </div>
@@ -1748,7 +1748,7 @@ export const ShopCriaView: React.FC<Props> = ({
             ) : (
               <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3.5 text-[11px] text-slate-300 space-y-2">
                 <p>
-                  🔐 Para salvar seus códigos de comissão direto no servidor, ative o <strong>Modo Criador</strong> (5 toques rápidos no logo <strong>LENKYX</strong>) e volte aqui!
+                  🔐 Para salvar seus códigos de comissão direto no servidor, ative o <strong>Modo Criador</strong> (5 toques rápidos no logo <strong>MORRO GOLD</strong>) e volte aqui!
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <a

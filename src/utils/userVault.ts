@@ -82,7 +82,7 @@ const DEFAULT_PLAYLISTS: UserPlaylist[] = [
   {
     id: 'pl-favoritas-treino',
     name: 'Meu Mix Cósmico',
-    description: 'Minhas favoritas da LENKYX e do mundo todo',
+    description: 'Minhas favoritas do MORRO GOLD e do mundo todo',
     emoji: '🚀',
     accentColor: 'from-pink-500 to-purple-600',
     trackIds: [],

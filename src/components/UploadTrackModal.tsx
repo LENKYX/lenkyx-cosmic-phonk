@@ -73,7 +73,7 @@ export const UploadTrackModal: React.FC<Props> = ({ open, onClose, editingTrack,
       const fd = new FormData();
       fd.append('title', title.trim());
       fd.append('emoji', emoji.trim() || '🎵');
-      fd.append('album', album.trim() || 'LENKYX Singles');
+      fd.append('album', album.trim() || 'MORRO GOLD Singles');
       fd.append('bpm', String(bpm));
       fd.append('key', keySig);
       fd.append('sunoPrompt', sunoPrompt);
@@ -287,7 +287,7 @@ export const UploadTrackModal: React.FC<Props> = ({ open, onClose, editingTrack,
                 [
                   ['suno', 'Áudio Suno'],
                   ['cover', 'Capa Pronta'],
-                  ['app', 'No App LENKYX'],
+                  ['app', 'No App MORRO GOLD'],
                   ['youtube', 'No YouTube'],
                   ['distrokid', 'Na DistroKid'],
                 ] as const

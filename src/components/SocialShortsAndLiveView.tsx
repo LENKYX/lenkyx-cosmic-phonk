@@ -651,7 +651,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     const key = normalizeChannelKey(channelName);
     const res = await toggleChannelSubscribe({
       channelId: key,
-      channelName: channelName || 'LENKYX Oficial',
+      channelName: channelName || 'MORRO GOLD Oficial',
       subscriberId,
     });
     if (res) {
@@ -1286,7 +1286,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
   const handleShareShort = async (s: CommunityShortItem) => {
     const appUrl = window.location.origin;
-    const shareText = `${s.title} — @${s.creator_name} no app LENKYX`;
+    const shareText = `${s.title} — @${s.creator_name} no app MORRO GOLD`;
     try {
       if (navigator.share) {
         await navigator.share({ title: s.title, text: shareText, url: appUrl });
@@ -1368,7 +1368,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     try {
       const created = await publishCommunityShort({
         title: newShortTitle.trim(),
-        creatorName: user?.name || 'Criador LENKYX',
+        creatorName: user?.name || 'Cria MORRO GOLD',
         creatorColor: user?.avatarColor || 'from-cyan-400 to-pink-500',
         description: newShortDesc.trim(),
         mediaType: newShortVideoData ? 'video' : 'cosmic_reel',
@@ -1444,9 +1444,9 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
         claimMediaFocus('reels');
         onPauseCatalogPlayer();
         const created = await updateLiveRoom({
-          hostName: user?.name || 'Criador LENKYX',
+          hostName: user?.name || 'Cria MORRO GOLD',
           hostColor: user?.avatarColor || 'from-rose-500 to-pink-500',
-          title: liveTitle.trim() || 'Live Cósmica LENKYX HD',
+          title: liveTitle.trim() || 'Live MORRO GOLD HD',
           theme: 'Cosmic Phonk Live HD',
           posterUrl: initialTrack?.coverUrl || '/covers/album-official.jpg',
           isLive: true,
@@ -2849,7 +2849,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 </div>
                 <a
                   href={recordedBlobUrl}
-                  download={`LENKYX-Live-HD-${Date.now()}.webm`}
+                  download={`MORRO-GOLD-Live-HD-${Date.now()}.webm`}
                   className="px-3.5 py-1.5 rounded-full bg-emerald-400 text-black text-xs font-black"
                 >
                   Baixar Vídeo HD
@@ -3032,7 +3032,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
           <VideoStudioView
             tracks={tracks}
             initialTrack={initialTrack}
-            creatorName={user?.name || 'Criador LENKYX'}
+            creatorName={user?.name || 'Cria MORRO GOLD'}
             creatorColor={user?.avatarColor || 'from-cyan-400 to-pink-500'}
             onPauseCatalogPlayer={onPauseCatalogPlayer}
             onAutoPublished={(createdShort) => {

@@ -1256,7 +1256,7 @@ app.post('/api/live-stats/share', (req, res) => {
 
 app.post('/api/live-stats/pix-pledge', (req, res) => {
   const amount = Math.round(Number(req.body?.amount || 0) * 100) / 100;
-  const donorName = String(req.body?.donorName || 'Fã LENKYX').trim().slice(0, 40) || 'Fã LENKYX';
+  const donorName = String(req.body?.donorName || 'Cria MORRO GOLD').trim().slice(0, 40) || 'Cria MORRO GOLD';
   const donorKey = String(req.body?.supporterId || donorName.toLowerCase().replace(/\s+/g, '-')).slice(0, 48);
   const existingOwned = Array.isArray(req.body?.ownedMascots) ? req.body.ownedMascots.map(Number) : [];
   const rawE2eId = String(req.body?.e2eId || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -1360,7 +1360,7 @@ app.post('/api/live-stats/pix-verify', auth.requireCreator, (req, res) => {
 
   // Approved: PIX confirmed in PicPay! Now unlock mascot & credit ranking/goal
   const amount = Number(pledge.amount || 0);
-  const donorName = pledge.donorName || 'Fã LENKYX';
+  const donorName = pledge.donorName || 'Cria MORRO GOLD';
   const donorKey = pledge.supporterId || donorName.toLowerCase().replace(/\s+/g, '-');
   const existingOwned = Array.isArray(pledge.ownedMascots) ? pledge.ownedMascots : [];
 
@@ -1594,7 +1594,7 @@ app.get('/api/audio-proxy', async (req, res) => {
     const cr = upstream.headers.get('content-range');
     const ar = upstream.headers.get('accept-ranges') || 'bytes';
     const asDownload = req.query.download === '1' || req.query.download === 'true';
-    const rawFile = String(req.query.filename || 'LENKYX-Media')
+    const rawFile = String(req.query.filename || 'MORRO-GOLD-Media')
       .replace(/[^a-zA-Z0-9._ -]+/g, '_')
       .trim()
       .slice(0, 80);
@@ -1958,7 +1958,7 @@ async function dispatchSocialWebhook(db, payload) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'User-Agent': 'LENKYX-AutoPublisher/2.2' },
       body: JSON.stringify({
-        source: 'LENKYX Cosmic Phonk',
+        source: 'MORRO GOLD',
         timestamp: new Date().toISOString(),
         ...payload,
       }),
@@ -1984,7 +1984,7 @@ app.get('/api/releases.json', (req, res) => {
       id: t.id,
       url: `${base}/?track=${encodeURIComponent(t.id)}`,
       title: `${t.title} — ${t.artist}`,
-      content_text: `Ouça "${t.title}" (${t.bpm} BPM) completo em LENKYX Cosmic Phonk! #LENKYX #CosmicPhonk`,
+      content_text: `Ouça "${t.title}" (${t.bpm} BPM) completo no MORRO GOLD! #LENKYX #CosmicPhonk`,
       image: t.coverUrl?.startsWith('http') ? t.coverUrl : `${base}${t.coverUrl}`,
       date_published: t.createdAt || new Date().toISOString(),
     })),
@@ -2001,13 +2001,13 @@ app.get('/api/feed.xml', (req, res) => {
     .reverse()
     .map((t) => {
       const link = `${base}/?track=${encodeURIComponent(t.id)}`;
-      return `<item><title>${esc(t.title)} — ${esc(t.artist)}</title><link>${esc(link)}</link><guid isPermaLink="false">${esc(t.id)}</guid><pubDate>${new Date(t.createdAt || Date.now()).toUTCString()}</pubDate><description>${esc(`Ouça ${t.title} (${t.bpm} BPM) grátis no Super App LENKYX! #LENKYX #CosmicPhonk`)}</description></item>`;
+      return `<item><title>${esc(t.title)} — ${esc(t.artist)}</title><link>${esc(link)}</link><guid isPermaLink="false">${esc(t.id)}</guid><pubDate>${new Date(t.createdAt || Date.now()).toUTCString()}</pubDate><description>${esc(`Ouça ${t.title} (${t.bpm} BPM) grátis no App MORRO GOLD! #LENKYX #CosmicPhonk`)}</description></item>`;
     })
     .join('\n');
   res
     .type('application/rss+xml')
     .send(
-      `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel><title>${esc(db.settings?.artistName || 'LENKYX')} — Cosmic Phonk</title><link>${esc(base)}</link><description>Lançamentos musicais, clipes, cinema e entretenimento global LENKYX</description>\n${itemsXml}\n</channel></rss>`
+      `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel><title>${esc(db.settings?.artistName || 'LENKYX')} — Cosmic Phonk</title><link>${esc(base)}</link><description>Lançamentos musicais, clipes, cinema e entretenimento MORRO GOLD</description>\n${itemsXml}\n</channel></rss>`
     );
 });
 
@@ -2015,7 +2015,7 @@ app.post('/api/social/auto-publish', auth.requireCreator, async (req, res) => {
   const db = readDb();
   const dispatched = await dispatchSocialWebhook(db, {
     event: 'manual_or_ai_social_publish',
-    title: req.body?.title || 'LENKYX Cosmic Phonk',
+    title: req.body?.title || 'MORRO GOLD',
     caption: req.body?.caption || '',
     url: req.body?.url || db.settings?.publicUrl || 'https://lenkyx-cosmic-phonk.onrender.com',
     coverUrl: req.body?.coverUrl || '',
@@ -2323,7 +2323,7 @@ app.get('/api/app-update', async (_req, res) => {
     latestVersionCode: 33,
     latestVersionName: '3.3.0-Cosmic3D',
     apkUrl: safeApkUrl,
-    releaseNotes: 'LENKYX Cosmic Phonk v3.3: Novo ícone 3D exclusivo da marca, Portal Site Oficial e Download direto do App para PC.',
+    releaseNotes: 'MORRO GOLD v76: Novo ícone 3D exclusivo da marca, Portal Site Oficial e Download direto do App para PC.',
     updateAvailable: false,
   };
   try {
@@ -2774,13 +2774,13 @@ app.post('/api/community/upload-short-video', upload.single('video'), async (req
     const videoUrl = `/storage/videos/${req.file.filename}`;
     const created = await createCommunityShort({
       title: req.body?.title || 'Cosmic Reel',
-      creatorName: req.body?.creatorName || 'Criador LENKYX',
+      creatorName: req.body?.creatorName || 'Cria MORRO GOLD',
       creatorColor: req.body?.creatorColor || 'from-cyan-400 to-pink-500',
       description: req.body?.description || '',
       mediaType: 'video',
       videoUrl,
       posterUrl: req.body?.posterUrl || '/covers/album-official.jpg',
-      audioTitle: req.body?.audioTitle || 'LENKYX Sound',
+      audioTitle: req.body?.audioTitle || 'MORRO GOLD Sound',
     });
     res.status(201).json({ ok: true, short: created, videoUrl });
   } catch (err) {
@@ -3409,7 +3409,7 @@ app.get('/api/worlds/satellites/qgis-layer.qlr', async (req, res) => {
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-    const safeName = String(layer.name || 'LENKYX Satellite')
+    const safeName = String(layer.name || 'MORRO GOLD Satellite')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
@@ -3677,7 +3677,7 @@ app.post('/api/jam/create', (req, res) => {
     messages: [
       {
         id: `jm-${Date.now()}`,
-        author: '🤖 LENKYX HUD',
+        author: '🤖 MORRO GOLD HUD',
         text: `Sala ${code} criada por ${hostName}! Compartilhe o código para ouvir junto no Brasil.`,
         ts: new Date().toISOString(),
       },
@@ -4318,7 +4318,7 @@ async function boot() {
     }
   }
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`LENKYX Cosmic Phonk Server running on http://0.0.0.0:${PORT}`);
+    console.log(`MORRO GOLD Server running on http://0.0.0.0:${PORT}`);
     console.log(
       `Storage mode: ${isSupabaseEnabled() ? 'Supabase Cloud PostgreSQL + local cache' : 'Local JSON'} | Data dir: ${DATA_DIR}`
     );

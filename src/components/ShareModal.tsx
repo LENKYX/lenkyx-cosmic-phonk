@@ -369,7 +369,7 @@ export const ShareModal: React.FC<Props> = ({
             {showQr && qrDataUrl && (
               <div className="pt-1 flex flex-col items-center gap-1.5">
                 <div className="p-2 rounded-2xl bg-white shadow-[0_0_30px_rgba(34,211,238,0.45)]">
-                  <img src={qrDataUrl} alt="QR Code LENKYX" className="w-28 h-28 rounded-lg" />
+                  <img src={qrDataUrl} alt="QR Code MORRO GOLD" className="w-28 h-28 rounded-lg" />
                 </div>
                 <span className="text-[10px] text-cyan-200/80 font-semibold">
                   ✨ Aponte a câmera (PC, TV ou qualquer celular) — baixa sem restrições!

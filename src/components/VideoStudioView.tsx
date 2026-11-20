@@ -450,7 +450,7 @@ export const VideoStudioView: React.FC<Props> = ({
 
         ctx.fillStyle = '#ffffff';
         ctx.font = '700 17px Inter, sans-serif';
-        ctx.fillText(`🎧 ${track.artist.toUpperCase()} · FEITO NO APP LENKYX`, w / 2, pillY + 6);
+        ctx.fillText(`🎧 ${track.artist.toUpperCase()} · FEITO NO APP MORRO GOLD`, w / 2, pillY + 6);
       }
       ctx.restore();
       ctx.restore();
@@ -488,7 +488,7 @@ export const VideoStudioView: React.FC<Props> = ({
       title: file.name.replace(/\.[^.]+$/, ''),
       emoji: '🎵',
       artist: 'Minha Música',
-      album: 'Estúdio LENKYX',
+      album: 'Estúdio MORRO GOLD',
       bpm: 128,
       key: 'Am',
       coverUrl: '/covers/album-official.jpg',
@@ -552,7 +552,7 @@ export const VideoStudioView: React.FC<Props> = ({
       const blob = new Blob(chunksRef.current, { type: mimeType });
       const suffix = format === 'youtube_16_9' ? 'YOUTUBE-16x9' : 'REELS-SHORTS-9x16';
       const cleanTitle = track.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const filename = `LENKYX-${cleanTitle}-${suffix}.webm`;
+      const filename = `MORRO-GOLD-${cleanTitle}-${suffix}.webm`;
       setIsRecording(false);
       setIsPreviewing(false);
       audio.pause();
@@ -564,7 +564,7 @@ export const VideoStudioView: React.FC<Props> = ({
           const fd = new FormData();
           fd.append('video', blob, filename);
           fd.append('title', hookText.trim() || track.title);
-          fd.append('creatorName', creatorName || 'Criador LENKYX');
+          fd.append('creatorName', creatorName || 'Cria MORRO GOLD');
           fd.append('creatorColor', creatorColor || 'from-cyan-400 to-pink-500');
           fd.append('description', `${track.title} — ${track.artist}`);
           fd.append('posterUrl', track.coverUrl || '/covers/album-official.jpg');
@@ -755,7 +755,7 @@ export const VideoStudioView: React.FC<Props> = ({
                 onChange={(e) => setShowCta(e.target.checked)}
                 className="accent-pink-500"
               />
-              Assinatura LENKYX
+              Assinatura MORRO GOLD
             </label>
           </div>
 

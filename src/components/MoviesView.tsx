@@ -232,7 +232,7 @@ export const MoviesView: React.FC<Props> = ({
     try {
       const res = await triggerDirectFileDownload({
         title: movie.title,
-        artist: movie.category || 'LENKYX Cinema',
+        artist: movie.category || 'MORRO GOLD Cinema',
         directUrl: movie.videoStreamUrl || undefined,
         kind: 'movie',
         onProgress: (pct, loadedMb) => {
@@ -276,8 +276,8 @@ export const MoviesView: React.FC<Props> = ({
     syncBackgroundMediaSession(
       {
         title: activeMovie.title,
-        artist: activeMovie.subtitle || 'LENKYX Cinema',
-        album: 'LENKYX Cinema & Séries',
+        artist: activeMovie.subtitle || 'MORRO GOLD Cinema',
+        album: 'MORRO GOLD Cinema & Séries',
         artworkUrl: activeMovie.posterUrl,
         isPlaying: true,
       },
@@ -1142,7 +1142,7 @@ export const MoviesView: React.FC<Props> = ({
                 <span>Top 1 ao 5 · Filmes & Séries Mais Assistidos e Recomendados</span>
               </h2>
               <p className="text-[11px] text-rose-100/75">
-                Os 5 melhores filmes, séries e animes mais assistidos agora no LENKYX
+                Os 5 melhores filmes, séries e animes mais assistidos agora no MORRO GOLD
               </p>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-rose-500/20 border border-rose-400/40 text-rose-200 text-[10px] font-black">
@@ -1193,7 +1193,7 @@ export const MoviesView: React.FC<Props> = ({
                           subtitle: m.subtitle || 'Top Recomendado',
                           category: 'Recomendados',
                           durationLabel: 'HD',
-                          sourceLabel: 'LENKYX Top 5',
+                          sourceLabel: 'MORRO GOLD Top 5',
                           posterUrl: m.posterUrl || '/covers/album-official.jpg',
                           youtubeVideoId: m.youtubeVideoId,
                           youtubePlaylistId: m.youtubePlaylistId,
@@ -1226,7 +1226,7 @@ export const MoviesView: React.FC<Props> = ({
                         {m.title}
                       </div>
                       <div className="text-[10px] text-slate-300/75 truncate">
-                        {m.subtitle || 'Cinema LENKYX'}
+                        {m.subtitle || 'Cinema MORRO GOLD'}
                       </div>
                     </div>
                   </button>

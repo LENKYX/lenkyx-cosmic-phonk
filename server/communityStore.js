@@ -16,7 +16,7 @@ const DEFAULT_SHORTS = [
   {
     id: 'short-lenkyx-01',
     title: '🌌 Cosmic Phonk Drift — Beat Visualizer',
-    creator_name: 'LENKYX Oficial',
+    creator_name: 'MORRO GOLD Oficial',
     creator_color: 'from-pink-500 to-cyan-400',
     description: 'Arraste para o lado ⬅️➡️ para ver mais vídeos curtos no universo Cosmic Phonk!',
     media_type: 'cosmic_reel',
@@ -30,7 +30,7 @@ const DEFAULT_SHORTS = [
   {
     id: 'short-lenkyx-02',
     title: '⚡ Bass Drop Espacial — Estúdio 9:16',
-    creator_name: 'LENKYX Oficial',
+    creator_name: 'MORRO GOLD Oficial',
     creator_color: 'from-purple-500 to-pink-500',
     description: 'Grave forte estilo JBL + luzes cósmicas em tela vertical.',
     media_type: 'cosmic_reel',
@@ -44,7 +44,7 @@ const DEFAULT_SHORTS = [
   {
     id: 'short-lenkyx-03',
     title: '🛸 Sinais da Galáxia — Galeria Phonk',
-    creator_name: 'LENKYX Oficial',
+    creator_name: 'MORRO GOLD Oficial',
     creator_color: 'from-cyan-400 to-emerald-400',
     description: 'Curta ❤️ e comente 💬 com outros fãs no chat da comunidade!',
     media_type: 'cosmic_reel',
@@ -58,7 +58,7 @@ const DEFAULT_SHORTS = [
   {
     id: 'short-lenkyx-04',
     title: '🔥 Eclipse Noturno — Cosmic Beats',
-    creator_name: 'LENKYX Oficial',
+    creator_name: 'MORRO GOLD Oficial',
     creator_color: 'from-amber-400 to-rose-500',
     description: 'Grave seu vídeo no Estúdio ou entre Ao Vivo para aparecer aqui!',
     media_type: 'cosmic_reel',
@@ -75,9 +75,9 @@ const DEFAULT_CHAT = [
   {
     id: 'chat-welcome-1',
     room_id: 'global',
-    author_name: 'LENKYX Oficial',
+    author_name: 'MORRO GOLD Oficial',
     author_color: 'from-pink-500 to-cyan-400',
-    message: '🌌 Bem-vindos ao Chat Espacial LENKYX! Comentem, curtam as músicas e compartilhem seus vídeos curtos!',
+    message: '🌌 Bem-vindos ao Chat Ao Vivo MORRO GOLD! Comentem, curtam as músicas e compartilhem seus vídeos curtos!',
     created_at: new Date().toISOString(),
   },
 ];
@@ -366,7 +366,7 @@ export async function createCommunityShort({
   const item = {
     id: `short-${crypto.randomUUID().slice(0, 10)}`,
     title: cleanTitle,
-    creator_name: String(creatorName || 'Criador LENKYX').trim().slice(0, 40),
+    creator_name: String(creatorName || 'Cria MORRO GOLD').trim().slice(0, 40),
     creator_color: String(creatorColor || 'from-cyan-400 to-pink-500').slice(0, 50),
     description: String(description || '').trim().slice(0, 260),
     media_type: String(mediaType || 'cosmic_reel').slice(0, 24),
@@ -510,9 +510,9 @@ export async function startOrUpdateLive({ id, hostName, hostColor, title, theme,
       }
       const item = {
         id: roomId,
-        host_name: String(hostName || 'Criador LENKYX').trim().slice(0, 40),
+        host_name: String(hostName || 'Cria MORRO GOLD').trim().slice(0, 40),
         host_color: String(hostColor || 'from-rose-500 to-pink-500').slice(0, 50),
-        title: String(title || 'Live Cósmica LENKYX').trim().slice(0, 120),
+        title: String(title || 'Live MORRO GOLD').trim().slice(0, 120),
         theme: String(theme || 'Cosmic Phonk Live').slice(0, 60),
         poster_url: String(posterUrl || '/covers/album-official.jpg').slice(0, 400),
         is_live: Boolean(isLive),
@@ -542,9 +542,9 @@ export async function startOrUpdateLive({ id, hostName, hostColor, title, theme,
   }
   const item = {
     id: roomId,
-    host_name: String(hostName || 'Criador LENKYX').trim().slice(0, 40),
+    host_name: String(hostName || 'Cria MORRO GOLD').trim().slice(0, 40),
     host_color: String(hostColor || 'from-rose-500 to-pink-500').slice(0, 50),
-    title: String(title || 'Live Cósmica LENKYX').trim().slice(0, 120),
+    title: String(title || 'Live MORRO GOLD').trim().slice(0, 120),
     theme: String(theme || 'Cosmic Phonk Live').slice(0, 60),
     poster_url: String(posterUrl || '/covers/album-official.jpg').slice(0, 400),
     is_live: Boolean(isLive),
@@ -626,7 +626,7 @@ export function createTvHandoffSession(payload) {
   const session = {
     code,
     shortPin: digits,
-    title: String(payload?.title || 'LENKYX Cosmic Phonk').slice(0, 140),
+    title: String(payload?.title || 'MORRO GOLD').slice(0, 140),
     artist: String(payload?.artist || 'LENKYX').slice(0, 80),
     mode: String(payload?.mode || 'galaxy').slice(0, 24),
     youtubeVideoId: String(payload?.youtubeVideoId || '').slice(0, 32),
