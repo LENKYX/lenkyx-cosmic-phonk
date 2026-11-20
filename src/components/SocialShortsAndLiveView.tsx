@@ -197,11 +197,14 @@ function loadYouTubeIframeApi(): Promise<void> {
   return ytApiPromise;
 }
 
+type ShortCropMode = 'grande' | 'normal' | 'wide';
+
 const YouTubeShortPlayer: React.FC<{
   videoId: string;
   loopOne: boolean;
   muted?: boolean;
   playbackRate?: number;
+  cropMode?: ShortCropMode;
   onDoubleTapLike?: () => void;
   onEnded: () => void;
   onUnavailable: () => void;
@@ -210,12 +213,15 @@ const YouTubeShortPlayer: React.FC<{
   loopOne,
   muted = false,
   playbackRate = 1,
+  cropMode = 'grande',
   onDoubleTapLike,
   onEnded,
   onUnavailable,
 }) => {
+  const stageBoxRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YTPlayerHandle | null>(null);
+  const [iframeSize, setIframeSize] = useState<{ w: string; h: string }>({ w: '100%', h: '100%' });
   const [paused, setPaused] = useState(false);
   const [curTime, setCurTime] = useState(0);
   const [durTime, setDurTime] = useState(0);
@@ -232,6 +238,35 @@ const YouTubeShortPlayer: React.FC<{
   mutedRef.current = muted;
   const rateRef = useRef(playbackRate);
   rateRef.current = playbackRate;
+
+  // Keep YouTube embed in landscape 16:9 and scale cleanly so YouTube's sidebars (logo/@channel/buttons)
+  // stay outside the overflow-hidden frame while the video fills the visible stage at crisp HD size!
+  useEffect(() => {
+    const el = stageBoxRef.current;
+    if (!el) return;
+    const recalc = () => {
+      const rect = el.getBoundingClientRect();
+      const W = Math.max(100, rect.width);
+      const H = Math.max(100, rect.height);
+      if (cropMode === 'wide') {
+        setIframeSize({ w: `${Math.round(W)}px`, h: `${Math.round(H)}px` });
+        return;
+      }
+      // Inside a 16:9 YT iframe of height H_yt, the 9:16 vertical video width is H_yt * 9/16.
+      // Force H_yt >= W * 16/9 and >= H so the center video covers W x H with zero black sidebars!
+      const H_yt = Math.max(H, (W * 16) / 9);
+      const W_yt = (H_yt * 16) / 9;
+      setIframeSize({ w: `${Math.ceil(W_yt)}px`, h: `${Math.ceil(H_yt)}px` });
+    };
+    recalc();
+    const ro = new ResizeObserver(recalc);
+    ro.observe(el);
+    window.addEventListener('resize', recalc);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', recalc);
+    };
+  }, [cropMode, videoId]);
 
   useEffect(() => {
     let destroyed = false;
@@ -394,8 +429,19 @@ const YouTubeShortPlayer: React.FC<{
   const pct = durTime > 0 ? Math.min(100, (curTime / durTime) * 100) : 0;
 
   return (
-    <div className="relative w-full h-full bg-black">
-      <div ref={hostRef} className="w-full h-full bg-black" />
+    <div ref={stageBoxRef} className="relative w-full h-full bg-black overflow-hidden">
+      <div
+        ref={hostRef}
+        style={{
+          width: iframeSize.w,
+          height: iframeSize.h,
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
+        className="bg-black"
+      />
       <button
         type="button"
         onClick={handleStageTap}
@@ -689,6 +735,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   const [shortsMuted, setShortsMuted] = useState(false);
   const [shortsRate, setShortsRate] = useState<number>(1);
   const [reelsExpanded, setReelsExpanded] = useState(false);
+  const [shortCropMode, setShortCropMode] = useState<ShortCropMode>('grande');
   const [downloadingShortId, setDownloadingShortId] = useState<string | null>(null);
   const [newShortDurationSec, setNewShortDurationSec] = useState<number>(0);
   const [likedShortIds, setLikedShortIds] = useState<Set<string>>(() => {
@@ -1660,6 +1707,23 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
+                onClick={() =>
+                  setShortCropMode((m) => (m === 'grande' ? 'normal' : m === 'normal' ? 'wide' : 'grande'))
+                }
+                className="px-2.5 sm:px-3 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center gap-1.5 text-white text-[11px] sm:text-xs font-bold transition active:scale-90 focus-visible:ring-2 focus-visible:ring-amber-400"
+                title="Alternar tamanho da imagem: Grande / Original / Clipe 16:9"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-amber-300" />
+                <span>
+                  {shortCropMode === 'grande'
+                    ? 'Tam: Grande'
+                    : shortCropMode === 'normal'
+                      ? 'Tam: 9:16'
+                      : 'Tam: Clipe 16:9'}
+                </span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setReelsExpanded((v) => !v)}
                 className="hidden sm:flex px-3 h-9 rounded-full bg-white/10 hover:bg-white/20 items-center gap-1.5 text-white text-xs font-bold transition active:scale-90 focus-visible:ring-2 focus-visible:ring-amber-400"
                 title={reelsExpanded ? 'Tamanho Padrão' : 'Aumentar Tela'}
@@ -1728,13 +1792,17 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
           )}
 
           {/* MAIN LARGE VIDEO STAGE + OUTSIDE RIGHT ACTION RAIL (PC / TV) */}
-          <div className="flex-1 min-h-0 flex items-center justify-center gap-4 px-0 sm:px-4 lg:px-8 py-0 sm:py-3 relative overflow-hidden">
-            {/* BIG CLIP-GRADE VIDEO CONTAINER (Pure Black, Zero Overlaid Text or Frozen Background!) */}
+          <div className="flex-1 min-h-0 flex items-center justify-center gap-3 sm:gap-5 px-0 sm:px-3 lg:px-6 py-0 sm:py-1.5 relative overflow-hidden">
+            {/* BIG CLIP-GRADE VIDEO CONTAINER (Crops out YouTube black sidebars & duplicate text!) */}
             <div
-              className={`relative h-full w-full rounded-none sm:rounded-2xl overflow-hidden bg-black border-0 sm:border sm:border-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.95)] transition-all duration-300 ${
-                reelsExpanded
-                  ? 'sm:max-w-[1320px]'
-                  : 'sm:max-w-[820px] md:max-w-[940px] lg:max-w-[1060px] xl:max-w-[1200px]'
+              className={`relative h-full rounded-none sm:rounded-2xl overflow-hidden bg-black border-0 sm:border sm:border-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.95)] transition-all duration-300 ${
+                shortCropMode === 'wide'
+                  ? 'w-full max-w-[1280px]'
+                  : shortCropMode === 'normal'
+                    ? 'w-full sm:w-auto sm:aspect-[9/16] sm:max-w-full'
+                    : reelsExpanded
+                      ? 'w-full sm:w-auto sm:aspect-[4/5] sm:max-w-full'
+                      : 'w-full sm:w-auto sm:aspect-[3/4] sm:max-w-full'
               }`}
             >
               {activeShort.video_url ? (
@@ -1754,6 +1822,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   loopOne={loopCurrentShort}
                   muted={shortsMuted}
                   playbackRate={shortsRate}
+                  cropMode={shortCropMode}
                   onDoubleTapLike={() => void handleLikeShort(activeShort, true)}
                   onEnded={handleShortEnded}
                   onUnavailable={() => handleShortUnavailable(activeShort.id)}
@@ -2058,11 +2127,19 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   className="flex items-center gap-2 text-xs sm:text-sm font-bold text-white min-w-0 hover:text-amber-300 transition"
                 >
                   <span
-                    className={`w-8 h-8 rounded-full bg-gradient-to-br ${
+                    className={`w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br ${
                       activeShort.creator_color || 'from-cyan-400 to-pink-500'
                     } text-xs font-black text-white flex items-center justify-center shrink-0`}
                   >
-                    {(activeShort.creator_name || 'C').slice(0, 1).toUpperCase()}
+                    {activeShort.poster_url ? (
+                      <img
+                        src={activeShort.poster_url}
+                        alt={activeShort.creator_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (activeShort.creator_name || 'C').slice(0, 1).toUpperCase()
+                    )}
                   </span>
                   <span className="truncate max-w-[140px] sm:max-w-[200px]">@{activeShort.creator_name}</span>
                 </button>
@@ -2679,7 +2756,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
       {/* === EXCLUSIVE FULL-FOCUS SHORTS MODAL === */}
       {exclusiveShortsOpen &&
         createPortal(
-          <div className="fixed inset-0 z-[9992] bg-black overscroll-contain overflow-hidden p-0 sm:p-4 flex flex-col">
+          <div className="fixed inset-0 z-[9992] bg-black overscroll-contain overflow-hidden p-0 flex flex-col">
             {renderShortsStage(true)}
           </div>,
           document.body
