@@ -92,7 +92,7 @@ export const PlaylistsView: React.FC<Props> = ({
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
-    onCreatePlaylist(newName.trim(), newDesc.trim() || 'Playlist personalizada no app LENKYX', newEmoji);
+    onCreatePlaylist(newName.trim(), newDesc.trim() || 'Playlist personalizada no app MORRO GOLD', newEmoji);
     setNewName('');
     setNewDesc('');
     setCreating(false);
@@ -134,7 +134,7 @@ export const PlaylistsView: React.FC<Props> = ({
               SUA BIBLIOTECA <span className="neon-text">& PLAYLISTS</span>
             </h1>
             <p className="text-xs text-purple-200/75">
-              Crie playlists, misture músicas da LENKYX com músicas do mundo e suba seus próprios áudios MP3/WAV!
+              Crie playlists, misture músicas do MORRO GOLD com músicas do mundo e suba seus próprios áudios MP3/WAV!
             </p>
           </div>
         </div>

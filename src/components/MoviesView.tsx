@@ -25,7 +25,9 @@ import {
   ArrowLeft,
   ChevronRight,
   Download,
+  MoreVertical,
 } from 'lucide-react';
+import { ToguroPromoBanner } from './ToguroPromoBanner';
 import { triggerDirectFileDownload } from '../utils/offlineCache';
 import { MovieItem, SeriesEpisodeItem, SeriesSeasonInfo } from '../types';
 import {
@@ -52,6 +54,8 @@ interface Props {
   onToggleMute?: () => void;
   onOpenPix?: () => void;
   onEmergencyStop?: () => void;
+  onMinimizeMovie?: (movie: MovieItem) => void;
+  onOpenToguroShop?: () => void;
   initialMovie?: MovieItem | null;
   onConsumeInitialMovie?: () => void;
 }
@@ -190,6 +194,8 @@ export const MoviesView: React.FC<Props> = ({
   onToggleMute,
   onOpenPix,
   onEmergencyStop,
+  onMinimizeMovie,
+  onOpenToguroShop,
   initialMovie = null,
   onConsumeInitialMovie,
 }) => {
@@ -211,6 +217,7 @@ export const MoviesView: React.FC<Props> = ({
   const [, setPrerollActive] = useState(false);
   const [cinemaQuality, setCinemaQuality] = useState<'auto' | 'large' | 'hd720' | 'hd1080' | 'hd2160'>('hd720');
   const [expandedView, setExpandedView] = useState(false);
+  const [movieMoreOpen, setMovieMoreOpen] = useState(false);
   const [downloadingMovie, setDownloadingMovie] = useState<{ pct: number; status: string } | null>(null);
 
   const handleDownloadActiveMovie = async (movie: MovieItem) => {
@@ -661,97 +668,130 @@ export const MoviesView: React.FC<Props> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-              <div className="flex items-center gap-1 px-2 py-1 rounded-xl bg-white/10 border border-cyan-400/35">
-                <Sparkles className="w-3 h-3 text-cyan-300 shrink-0" />
-                <select
-                  value={cinemaQuality}
-                  onChange={(e) => setCinemaQuality(e.target.value as typeof cinemaQuality)}
-                  className="bg-transparent text-[11px] font-black text-cyan-200 focus:outline-none cursor-pointer"
-                  title="Qualidade"
-                >
-                  <option value="hd720" className="bg-[#0b0618]">720p HD</option>
-                  <option value="large" className="bg-[#0b0618]">480p Leve</option>
-                  <option value="hd1080" className="bg-[#0b0618]">1080p FHD</option>
-                  <option value="hd2160" className="bg-[#0b0618]">4K Ultra</option>
-                  <option value="auto" className="bg-[#0b0618]">Auto</option>
-                </select>
-              </div>
-
-              {onVolume && onToggleMute && (
-                <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white/10 border border-white/10">
-                  <button onClick={onToggleMute} className="text-cyan-300 hover:text-white">
-                    {muted || volume === 0 ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
-                  </button>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.02}
-                    value={muted ? 0 : volume}
-                    onChange={(e) => onVolume(Number(e.target.value))}
-                    className="w-16 accent-cyan-400 cursor-pointer"
-                  />
-                </div>
-              )}
-
-              <button
-                type="button"
-                disabled={Boolean(downloadingMovie && downloadingMovie.pct > 0 && downloadingMovie.pct < 100)}
-                onClick={() => void handleDownloadActiveMovie(activeMovie)}
-                className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-100 text-[11px] font-black flex items-center gap-1 transition"
-                title="Baixar filme no aparelho"
-              >
-                {downloadingMovie && downloadingMovie.pct > 0 && downloadingMovie.pct < 100 ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Download className="w-3.5 h-3.5" />
-                )}
-                <span>{downloadingMovie ? downloadingMovie.status : 'Baixar'}</span>
-              </button>
-
-              <button
-                onClick={() => void toggleExpandPlayer()}
-                className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-[11px] font-black flex items-center gap-1"
-              >
-                {expandedView ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                <span className="hidden xs:inline">{expandedView ? 'Reduzir' : 'Ampliar'}</span>
-              </button>
-
-              {movieQueue.length > 1 && (
-                <>
-                  <button
-                    onClick={() => stepMovie(-1)}
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white"
-                    title="Anterior"
-                  >
-                    <SkipBack className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => stepMovie(1)}
-                    className="px-2.5 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold flex items-center gap-1"
-                    title="Próximo"
-                  >
-                    <span className="hidden sm:inline">Próximo</span>
-                    <SkipForward className="w-3.5 h-3.5" />
-                  </button>
-                </>
-              )}
-
-              {onOpenPix && (
+            <div className="flex items-center gap-1.5 flex-wrap shrink-0 relative">
+              {onMinimizeMovie && (
                 <button
-                  onClick={onOpenPix}
-                  className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 text-[11px] font-black flex items-center gap-1"
-                  title="Apoiar via PIX (QR Code)"
+                  type="button"
+                  onClick={() => {
+                    onMinimizeMovie(activeMovie);
+                    setActiveMovie(null);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black text-[11px] font-black flex items-center gap-1 shadow transition"
+                  title="Minimizar e continuar assistindo enquanto navega"
                 >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">PIX</span>
+                  <Minimize2 className="w-3.5 h-3.5" />
+                  <span>Minimizar</span>
                 </button>
               )}
 
               <button
+                onClick={() => void toggleExpandPlayer()}
+                className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-[11px] font-black flex items-center gap-1"
+                title={expandedView ? 'Reduzir' : 'Aumentar'}
+              >
+                {expandedView ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                <span>{expandedView ? 'Reduzir' : 'Aumentar'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMovieMoreOpen((v) => !v)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white"
+                title="Mais opções"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+
+              {movieMoreOpen && (
+                <div className="absolute right-0 top-11 z-40 w-60 rounded-2xl bg-[#110a24]/98 backdrop-blur-xl border border-amber-400/35 shadow-2xl p-2.5 space-y-2 text-xs">
+                  <div className="flex items-center justify-between gap-2 px-1">
+                    <span className="text-[11px] font-bold text-cyan-200 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> Qualidade
+                    </span>
+                    <select
+                      value={cinemaQuality}
+                      onChange={(e) => setCinemaQuality(e.target.value as typeof cinemaQuality)}
+                      className="bg-black/60 border border-white/15 rounded-lg px-2 py-1 text-[11px] font-black text-cyan-200 focus:outline-none cursor-pointer"
+                    >
+                      <option value="hd720" className="bg-[#0b0618]">720p HD</option>
+                      <option value="large" className="bg-[#0b0618]">480p Leve</option>
+                      <option value="hd1080" className="bg-[#0b0618]">1080p FHD</option>
+                      <option value="hd2160" className="bg-[#0b0618]">4K Ultra</option>
+                      <option value="auto" className="bg-[#0b0618]">Auto</option>
+                    </select>
+                  </div>
+
+                  {onVolume && onToggleMute && (
+                    <div className="flex items-center gap-2 px-1">
+                      <button onClick={onToggleMute} className="text-cyan-300 hover:text-white">
+                        {muted || volume === 0 ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
+                      </button>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.02}
+                        value={muted ? 0 : volume}
+                        onChange={(e) => onVolume(Number(e.target.value))}
+                        className="flex-1 accent-cyan-400 cursor-pointer"
+                      />
+                    </div>
+                  )}
+
+                  {movieQueue.length > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          stepMovie(-1);
+                          setMovieMoreOpen(false);
+                        }}
+                        className="flex-1 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center gap-1"
+                      >
+                        <SkipBack className="w-3.5 h-3.5" /> Anterior
+                      </button>
+                      <button
+                        onClick={() => {
+                          stepMovie(1);
+                          setMovieMoreOpen(false);
+                        }}
+                        className="flex-1 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center gap-1"
+                      >
+                        Próximo <SkipForward className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={Boolean(downloadingMovie && downloadingMovie.pct > 0 && downloadingMovie.pct < 100)}
+                    onClick={() => void handleDownloadActiveMovie(activeMovie)}
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-100 font-black flex items-center justify-center gap-1"
+                  >
+                    {downloadingMovie && downloadingMovie.pct > 0 && downloadingMovie.pct < 100 ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span>{downloadingMovie ? downloadingMovie.status : 'Baixar Filme'}</span>
+                  </button>
+
+                  {onOpenPix && (
+                    <button
+                      onClick={() => {
+                        setMovieMoreOpen(false);
+                        onOpenPix();
+                      }}
+                      className="w-full py-1.5 px-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-emerald-200 font-black flex items-center justify-center gap-1"
+                    >
+                      <QrCode className="w-3.5 h-3.5" /> Apoiar via PIX
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <button
                 onClick={() => setActiveMovie(null)}
-                className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-rose-600 text-white text-xs font-black flex items-center gap-1"
+                className="px-3 py-1.5 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1"
                 title="Fechar Cinema"
               >
                 <X className="w-4 h-4" /> Fechar
@@ -1125,6 +1165,10 @@ export const MoviesView: React.FC<Props> = ({
               })}
           </div>
         </section>
+      )}
+
+      {onOpenToguroShop && (
+        <ToguroPromoBanner variant="strip" onOpenToguroShop={onOpenToguroShop} />
       )}
 
       {/* === NETFLIX CATEGORY FILTER PILLS === */}

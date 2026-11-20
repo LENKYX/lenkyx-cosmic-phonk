@@ -25,6 +25,9 @@ import {
   Bell,
   BellRing,
   Share2,
+  MoreVertical,
+  Trash2,
+  Camera,
 } from 'lucide-react';
 import { AppMode, AppSettings, AudioVersion, Track, UserPlaylist } from '../types';
 import { copyTextReliable, isAndroidApk } from '../utils/androidBridge';
@@ -35,6 +38,7 @@ import {
 } from '../utils/communityApi';
 import { BailesAndEstiloView } from './BailesAndEstiloView';
 import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
+import { ToguroPromoBanner } from './ToguroPromoBanner';
 
 interface Props {
   tracks: Track[];
@@ -65,6 +69,10 @@ interface Props {
   onOpenGlobalChat?: () => void;
   onSearchWorld?: (query: string) => void;
   onOpenShop?: () => void;
+  onOpenToguroShop?: () => void;
+  onDeleteTrack?: (trackId: string) => void;
+  onUpdateTrackCover?: (trackId: string, coverUrl: string) => void;
+  onUpdateAlbumCover?: (coverUrl: string) => void;
   onToast: (msg: string) => void;
 }
 
@@ -102,12 +110,19 @@ export const CatalogView: React.FC<Props> = ({
   onOpenGlobalChat,
   onSearchWorld,
   onOpenShop,
+  onOpenToguroShop,
+  onDeleteTrack,
+  onUpdateTrackCover,
+  onUpdateAlbumCover,
   onToast,
 }) => {
   const [selectedAlbum, setSelectedAlbum] = useState<string>('ALL');
   const [viewLayout, setViewLayout] = useState<'feed' | 'list'>('feed');
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [pickerTrackId, setPickerTrackId] = useState<string | null>(null);
+  const [cardMoreTrackId, setCardMoreTrackId] = useState<string | null>(null);
+  const [albumsMoreOpen, setAlbumsMoreOpen] = useState(false);
+  const [myMusicFolderOpen, setMyMusicFolderOpen] = useState(false);
   const [channelSubscribed, setChannelSubscribed] = useState(false);
   const [channelSubsCount, setChannelSubsCount] = useState(1240);
   const subscriberId = useMemo(() => getClientSubscriberId(), []);
@@ -320,6 +335,12 @@ export const CatalogView: React.FC<Props> = ({
         </button>
       </section>
 
+      {/* PROPAGANDA OFICIAL MANSÃO MAROMBA · PRODUTOS DO TOGURO */}
+      <ToguroPromoBanner
+        variant="card"
+        onOpenToguroShop={() => (onOpenToguroShop || onOpenShop)?.()}
+      />
+
       {/* REAL TOP BRASIL ARTISTS STRIP */}
       {onSearchWorld && (
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -347,18 +368,81 @@ export const CatalogView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* FILTER PILLS + YOUTUBE/LIST VIEW TOGGLE */}
-      <div className="flex items-center justify-between gap-2">
+      {/* PASTA ORGANIZADA: MINHAS MÚSICAS (Não espalhadas pelo site; só tocam ao clicar!) */}
+      <section className="rounded-3xl cosmic-card-3d border border-amber-400/35 p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400/25 to-cyan-500/25 border border-amber-400/45 flex items-center justify-center text-amber-300 shrink-0">
+              <Headphones className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-black text-white flex items-center gap-2">
+                <span>Minhas Músicas Organizadas ({tracks.length})</span>
+                <span className="px-2 py-0.5 rounded-full bg-white/10 text-[10px] font-bold text-amber-200">
+                  {offlineCount} offline
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 truncate">
+                Guardadas em pasta organizada — só tocam quando você clicar na música.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {onUpdateAlbumCover && (
+              <label className="px-3.5 py-2 rounded-full lux-btn-obsidian hover:border-amber-300 text-xs font-black text-amber-200 flex items-center gap-1.5 cursor-pointer">
+                <Camera className="w-3.5 h-3.5" />
+                <span>Foto do Álbum</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === 'string') {
+                        onUpdateAlbumCover(reader.result);
+                      }
+                    };
+                    reader.readAsDataURL(f);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setMyMusicFolderOpen((v) => !v)}
+              className="px-4 py-2 rounded-full lux-btn-gold text-xs font-black flex items-center gap-1.5 shrink-0"
+            >
+              {myMusicFolderOpen ? (
+                <>
+                  <X className="w-3.5 h-3.5" /> Recolher Pasta
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-black" /> Abrir Minhas Músicas
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {(myMusicFolderOpen || Boolean(searchQuery.trim())) && (
+          <div className="space-y-3 pt-2 border-t border-white/10">
+      {/* CLEAN FILTER PILLS + 3-DOT EXTRA ALBUMS + VIEW TOGGLE */}
+      <div className="flex items-center justify-between gap-2 relative">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 flex-1 min-w-0">
-          {albums.map((alb) => {
+          {['ALL', 'OFFLINE', 'FAV'].map((alb) => {
             const label =
               alb === 'ALL'
                 ? `Todas (${tracks.length})`
                 : alb === 'OFFLINE'
                 ? `Offline (${offlineCount})`
-                : alb === 'FAV'
-                ? 'Curtidas'
-                : alb;
+                : 'Curtidas';
             const active = selectedAlbum === alb;
             return (
               <button
@@ -374,7 +458,47 @@ export const CatalogView: React.FC<Props> = ({
               </button>
             );
           })}
+
+          {albums.length > 3 && (
+            <button
+              type="button"
+              onClick={() => setAlbumsMoreOpen((v) => !v)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap flex items-center gap-1 border transition ${
+                !['ALL', 'OFFLINE', 'FAV'].includes(selectedAlbum)
+                  ? 'bg-amber-400 text-black border-amber-300'
+                  : 'bg-white/[0.06] hover:bg-white/[0.12] text-amber-200 border-white/15'
+              }`}
+              title="Mais álbuns"
+            >
+              <MoreVertical className="w-3.5 h-3.5" />
+              <span>{!['ALL', 'OFFLINE', 'FAV'].includes(selectedAlbum) ? selectedAlbum : 'Mais'}</span>
+            </button>
+          )}
         </div>
+
+        {albumsMoreOpen && albums.length > 3 && (
+          <div className="absolute left-0 top-11 z-30 rounded-2xl bg-[#141028]/98 backdrop-blur-xl border border-amber-400/35 p-2 shadow-2xl flex flex-wrap gap-1.5 max-w-sm">
+            {albums
+              .filter((alb) => !['ALL', 'OFFLINE', 'FAV'].includes(alb))
+              .map((alb) => (
+                <button
+                  key={alb}
+                  type="button"
+                  onClick={() => {
+                    setSelectedAlbum(alb);
+                    setAlbumsMoreOpen(false);
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${
+                    selectedAlbum === alb
+                      ? 'bg-amber-400 text-black'
+                      : 'bg-white/10 hover:bg-white/20 text-white'
+                  }`}
+                >
+                  {alb}
+                </button>
+              ))}
+          </div>
+        )}
 
         <div className="inline-flex items-center rounded-xl bg-white/[0.06] border border-white/10 p-0.5 backdrop-blur-md shrink-0">
           <button
@@ -404,7 +528,7 @@ export const CatalogView: React.FC<Props> = ({
             {selectedAlbum === 'OFFLINE'
               ? 'Nenhuma música salva offline ainda'
               : searchQuery.trim()
-                ? `Nenhuma faixa LENKYX para "${searchQuery.trim()}"`
+                ? `Nenhuma faixa no catálogo local para "${searchQuery.trim()}"`
                 : 'Nenhuma faixa encontrada'}
           </div>
           {searchQuery.trim() && onSearchWorld ? (
@@ -627,6 +751,15 @@ export const CatalogView: React.FC<Props> = ({
                       <Upload className="w-3.5 h-3.5" />
                     </button>
                   )}
+                  {onDeleteTrack && (
+                    <button
+                      onClick={() => onDeleteTrack(track.id)}
+                      className="p-1.5 rounded-lg hover:bg-rose-500/30 text-rose-300 transition"
+                      title="Remover do Álbum"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
 
                   {pickerTrackId === track.id && (
                     <div className="absolute right-0 top-9 z-30 w-48 rounded-xl bg-[#120829] border border-purple-400/40 shadow-2xl p-1.5 space-y-0.5">
@@ -740,7 +873,7 @@ export const CatalogView: React.FC<Props> = ({
                       <span>· {track.bpm} BPM · {(track.plays || 0).toLocaleString('pt-BR')}</span>
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between gap-1">
+                    <div className="mt-2 flex items-center justify-between gap-1 relative">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => onToggleOffline(track)}
@@ -772,48 +905,114 @@ export const CatalogView: React.FC<Props> = ({
                         >
                           <Heart className={`w-3.5 h-3.5 ${track.favorite ? 'fill-pink-500' : ''}`} />
                         </button>
-                        {onCommentTrack && (
-                          <button
-                            onClick={() => onCommentTrack(track)}
-                            className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-cyan-500/20 border border-white/10 text-cyan-300 transition"
-                            title="Comentar"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => onSetLyricsTrack(track)}
-                          className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-white/15 border border-white/10 text-purple-200 transition"
-                          title="Letra"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                        </button>
                       </div>
 
                       <div className="flex items-center gap-1 relative">
                         <button
-                          onClick={() => setPickerTrackId(pickerTrackId === track.id ? null : track.id)}
-                          className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-white/15 border border-white/10 text-purple-200 transition"
-                          title="Adicionar à Playlist"
+                          type="button"
+                          onClick={() => setCardMoreTrackId(cardMoreTrackId === track.id ? null : track.id)}
+                          className="p-1.5 rounded-lg bg-white/[0.08] hover:bg-white/20 border border-white/15 text-slate-200 transition"
+                          title="Mais opções"
                         >
-                          <ListPlus className="w-3.5 h-3.5" />
+                          <MoreVertical className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => onShareTrack(track)}
-                          className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-emerald-500/20 border border-white/10 text-emerald-300 transition"
-                          title="Compartilhar"
-                        >
-                          <Share2 className="w-3.5 h-3.5" />
-                        </button>
+
+                        {cardMoreTrackId === track.id && (
+                          <div className="absolute right-0 bottom-9 z-30 w-44 rounded-xl bg-[#120829] border border-amber-400/40 shadow-2xl p-1.5 space-y-1 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPickerTrackId(pickerTrackId === track.id ? null : track.id);
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-white flex items-center gap-2"
+                            >
+                              <ListPlus className="w-3.5 h-3.5 text-amber-300" /> Adicionar à Playlist
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onSetLyricsTrack(track);
+                                setCardMoreTrackId(null);
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-white flex items-center gap-2"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-cyan-300" /> Ver Letra
+                            </button>
+                            {onCommentTrack && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onCommentTrack(track);
+                                  setCardMoreTrackId(null);
+                                }}
+                                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-white flex items-center gap-2"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5 text-cyan-300" /> Comentar
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onShareTrack(track);
+                                setCardMoreTrackId(null);
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-emerald-300 flex items-center gap-2"
+                            >
+                              <Share2 className="w-3.5 h-3.5" /> Compartilhar
+                            </button>
+                            {onUpdateTrackCover && (
+                              <label className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-amber-200 flex items-center gap-2 cursor-pointer">
+                                <Camera className="w-3.5 h-3.5" /> Trocar Foto
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (!f) return;
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      if (typeof reader.result === 'string') {
+                                        onUpdateTrackCover(track.id, reader.result);
+                                      }
+                                    };
+                                    reader.readAsDataURL(f);
+                                    setCardMoreTrackId(null);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
+                            )}
+                            {onDeleteTrack && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onDeleteTrack(track.id);
+                                  setCardMoreTrackId(null);
+                                }}
+                                className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-rose-500/30 text-rose-300 flex items-center gap-2"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> Remover do Álbum
+                              </button>
+                            )}
+                          </div>
+                        )}
+
                         {pickerTrackId === track.id && (
-                          <div className="absolute right-0 bottom-9 z-30 w-44 rounded-xl bg-[#120829] border border-purple-400/40 shadow-2xl p-1.5 space-y-0.5">
-                            <div className="text-[10px] font-bold text-purple-300 px-2 py-1 uppercase">Salvar em:</div>
+                          <div className="absolute right-0 bottom-9 z-40 w-44 rounded-xl bg-[#120829] border border-purple-400/40 shadow-2xl p-1.5 space-y-0.5">
+                            <div className="text-[10px] font-bold text-purple-300 px-2 py-1 uppercase flex justify-between">
+                              <span>Salvar em:</span>
+                              <button type="button" onClick={() => setPickerTrackId(null)}>
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
                             {playlists.map((pl) => (
                               <button
                                 key={pl.id}
                                 onClick={() => {
                                   onAddToPlaylist(pl.id, track);
                                   setPickerTrackId(null);
+                                  setCardMoreTrackId(null);
                                 }}
                                 className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-pink-500/25 text-xs text-white flex items-center gap-1.5"
                               >
@@ -832,6 +1031,9 @@ export const CatalogView: React.FC<Props> = ({
           })}
         </div>
       )}
+          </div>
+        )}
+      </section>
 
       {/* LYRICS MODAL */}
       {lyricsTrack && (

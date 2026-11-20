@@ -606,7 +606,9 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
   };
 
   if (ai.isCosmic || options.includeArchiveSpace) {
-    pushUnique(archiveTracks);
+    if (ai.isCosmic) {
+      pushUnique(archiveTracks);
+    }
     pushUnique(ytTracks);
     pushUnique(ytMoreTracks);
     pushUnique(audiusTracks);
@@ -614,7 +616,6 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
     pushUnique(ytTracks);
     pushUnique(ytMoreTracks);
     pushUnique(audiusTracks);
-    pushUnique(archiveTracks);
   }
 
   const artistProfile =
@@ -629,15 +630,17 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
         }
       : null;
 
-  // Strict Artist Isolation: when viewing a specific artist, filter out unrelated artists so there is ZERO interference!
+  // Strict Artist Isolation: when viewing or searching a specific artist, filter out unrelated artists so there is ZERO interference!
   let finalTracks = combined;
-  if (artistProfile?.name) {
-    const tokens = artistProfile.name
+  const isolationTarget = artistProfile?.name || effectiveQuery;
+  if (isolationTarget && !ai.isCosmic) {
+    const rawTokens = isolationTarget
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .split(/\s+/)
-      .filter((w) => w.length >= 3);
+      .filter((w) => w.length >= 3 && !['mc', 'dj', 'de', 'da', 'do', 'oficial', 'official', 'musicas', 'music'].includes(w));
+    const tokens = rawTokens.length > 0 ? rawTokens : [isolationTarget.toLowerCase().trim()].filter(Boolean);
     if (tokens.length > 0) {
       const matchedOnly = combined.filter((t) => {
         const hay = `${t.artist || ''} ${t.title || ''}`
@@ -646,7 +649,7 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
           .replace(/[\u0300-\u036f]/g, '');
         return tokens.some((tok) => hay.includes(tok));
       });
-      if (matchedOnly.length >= 4) {
+      if (matchedOnly.length >= 1) {
         finalTracks = matchedOnly.map((t, i) => ({ ...t, number: i + 1 }));
       }
     }

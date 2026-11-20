@@ -19,9 +19,10 @@ import {
   X,
   AudioWaveform,
   Repeat,
-  Gauge,
   BatteryCharging,
   Disc3,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { AudioVersion, Track } from '../types';
 
@@ -108,6 +109,7 @@ export const MiniPlayer: React.FC<Props> = ({
   onCloseMenu,
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const [minimizedPill, setMinimizedPill] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const bigCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -168,20 +170,24 @@ export const MiniPlayer: React.FC<Props> = ({
       {expanded && (
         <div className="fixed inset-0 z-50 bg-gradient-to-b from-[#20134c]/98 via-[#120b2e]/98 to-[#0a061c]/99 backdrop-blur-3xl flex flex-col justify-between p-4 sm:p-8 overflow-y-auto">
           <div className="max-w-xl w-full mx-auto flex flex-col justify-between flex-1 gap-5">
-            {/* Simple Top Header (Zero Duplicate Buttons) */}
+            {/* Simple Top Header: Minimizar, Ampliar/Fechar */}
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={() => setExpanded(false)}
-                className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition"
-                title="Minimizar"
+                onClick={() => {
+                  setExpanded(false);
+                  setMinimizedPill(true);
+                }}
+                className="px-3 py-2 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1.5 transition"
+                title="Minimizar para janela flutuante"
               >
-                <ChevronDown className="w-5 h-5" />
+                <Minimize2 className="w-4 h-4" />
+                <span>Minimizar</span>
               </button>
 
               <div className="text-center min-w-0">
-                <div className="text-[11px] font-black uppercase tracking-widest text-cyan-300">
-                  {track.album || 'LENKYX'}
+                <div className="text-[11px] font-black uppercase tracking-widest text-amber-300 truncate">
+                  {track.album || 'MORRO GOLD'}
                 </div>
               </div>
 
@@ -193,12 +199,25 @@ export const MiniPlayer: React.FC<Props> = ({
                       setExpanded(false);
                       onOpenMediaMenu();
                     }}
-                    className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-cyan-200 flex items-center justify-center transition"
-                    title="Fila & 2º Plano"
+                    className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-cyan-200 flex items-center justify-center transition"
+                    title="Efeitos, Som Alto & 2º Plano"
                   >
                     <Disc3 className="w-4 h-4" />
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExpanded(false);
+                    if (onEmergencyStop) onEmergencyStop();
+                    else if (onCloseMenu) onCloseMenu();
+                  }}
+                  className="px-3 py-2 rounded-full bg-rose-500/85 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1 transition"
+                  title="Fechar Player"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Fechar</span>
+                </button>
               </div>
             </div>
 
@@ -403,7 +422,66 @@ export const MiniPlayer: React.FC<Props> = ({
         </div>
       )}
 
+      {/* MINIMIZED FLOATING AUDIO PILL (Continues playing across the entire platform) */}
+      {minimizedPill && !expanded && (
+        <div className="fixed bottom-16 md:bottom-4 right-3 z-40 flex items-center gap-2 rounded-full bg-[#161030]/95 backdrop-blur-2xl border border-amber-400/50 pl-1.5 pr-2 py-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.75)] max-w-[290px]">
+          <button
+            type="button"
+            onClick={() => setMinimizedPill(false)}
+            className="flex items-center gap-2 min-w-0 text-left"
+            title="Restaurar barra"
+          >
+            <img
+              src={track.coverUrl}
+              alt={track.title}
+              className={`w-9 h-9 rounded-full object-cover border border-amber-300/60 shrink-0 ${
+                isPlaying ? 'animate-[spin_6s_linear_infinite]' : ''
+              }`}
+            />
+            <div className="min-w-0">
+              <div className="text-[11px] font-black text-white truncate max-w-[115px]">{track.title}</div>
+              <div className="text-[9px] text-amber-200 truncate max-w-[115px]">{track.artist}</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={onTogglePlay}
+            className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0 hover:scale-105 transition"
+            title={isPlaying ? 'Pausar' : 'Tocar'}
+          >
+            {isPlaying ? <Pause className="w-3.5 h-3.5 fill-black" /> : <Play className="w-3.5 h-3.5 fill-black ml-0.5" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMinimizedPill(false);
+              setExpanded(true);
+            }}
+            className="w-8 h-8 rounded-full bg-white/15 hover:bg-cyan-400/30 text-cyan-200 flex items-center justify-center shrink-0 transition"
+            title="Aumentar Player"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMinimizedPill(false);
+              if (onEmergencyStop) onEmergencyStop();
+              else if (onCloseMenu) onCloseMenu();
+            }}
+            className="w-8 h-8 rounded-full bg-rose-500/80 hover:bg-rose-500 text-white flex items-center justify-center shrink-0 transition"
+            title="Fechar Áudio"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* CLEAN ILLUMINATED COMPACT BOTTOM PLAYER BAR */}
+      {!minimizedPill && (
       <div className="fixed bottom-14 md:bottom-0 left-0 md:left-60 lg:left-64 right-0 z-40 bg-[#140e2d]/95 backdrop-blur-2xl border-t border-white/15 shadow-[0_-10px_35px_rgba(0,0,0,0.65)]">
         <div
           onClick={(e) => {
@@ -414,7 +492,7 @@ export const MiniPlayer: React.FC<Props> = ({
           className="h-1.5 w-full bg-white/15 cursor-pointer"
         >
           <div
-            className="h-full bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 transition-all duration-150"
+            className="h-full bg-gradient-to-r from-amber-400 via-pink-500 to-cyan-400 transition-all duration-150"
             style={{ width: `${progressPct}%` }}
           />
         </div>
@@ -463,7 +541,7 @@ export const MiniPlayer: React.FC<Props> = ({
             <button
               type="button"
               onClick={onOpenVisualizer}
-              className="px-2 py-1.5 rounded-xl bg-white/10 hover:bg-cyan-500/25 border border-white/15 hover:border-cyan-400/50 transition cursor-pointer flex items-center"
+              className="hidden sm:flex px-2 py-1.5 rounded-xl bg-white/10 hover:bg-cyan-500/25 border border-white/15 hover:border-cyan-400/50 transition cursor-pointer items-center"
               title="Abrir Efeitos Visuais do Som (Fogo, Água, Vento, Terra)"
             >
               <canvas ref={canvasRef} width={34} height={18} className="rounded opacity-95" />
@@ -472,13 +550,13 @@ export const MiniPlayer: React.FC<Props> = ({
               <button
                 onClick={onOpenMediaMenu}
                 className="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-[11px] font-black text-cyan-200 flex items-center gap-1 transition"
-                title="Player & 2º Plano"
+                title="Efeitos, Som Alto & 2º Plano"
               >
                 <Disc3 className={`w-3.5 h-3.5 ${isPlaying ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Player</span>
+                <span className="hidden md:inline">Efeitos</span>
               </button>
             )}
-            <div className="hidden md:flex items-center gap-1 w-24">
+            <div className="hidden lg:flex items-center gap-1 w-24">
               <button onClick={onToggleMute} className="p-1 text-white/85 hover:text-cyan-300 shrink-0">
                 {muted || volume === 0 ? (
                   <VolumeX className="w-4 h-4 text-rose-400" />
@@ -496,18 +574,37 @@ export const MiniPlayer: React.FC<Props> = ({
                 className="dj-slider h-1 w-full"
               />
             </div>
-            {onCloseMenu && (
-              <button
-                onClick={onCloseMenu}
-                className="p-1.5 rounded-full bg-white/10 hover:bg-rose-500/80 text-white transition"
-                title="Ocultar Barra"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setMinimizedPill(true)}
+              className="p-1.5 rounded-full bg-white/10 hover:bg-white/25 text-white transition"
+              title="Minimizar para o canto"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="p-1.5 rounded-full bg-cyan-500/25 hover:bg-cyan-400/40 text-cyan-200 transition"
+              title="Aumentar Player"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (onEmergencyStop) onEmergencyStop();
+                else if (onCloseMenu) onCloseMenu();
+              }}
+              className="p-1.5 rounded-full bg-rose-500/75 hover:bg-rose-500 text-white transition"
+              title="Fechar Áudio"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
+      )}
     </>
   );
 };

@@ -78,6 +78,7 @@ import {
 import { TargetCommentsModal } from './CommunityChatModal';
 import { LiveSpaceCreatures, SpaceCreatureSpecies } from './LiveSpaceCreatures';
 import { CosmicScrollRow } from './CosmicScrollRow';
+import { ToguroPromoBanner } from './ToguroPromoBanner';
 import { claimMediaFocus, registerMediaStopper } from '../utils/mediaCoordinator';
 import { recordSmartInteraction } from '../utils/smartEngine';
 
@@ -97,6 +98,8 @@ interface Props {
   onPauseCatalogPlayer: () => void;
   onOpenUserAuth: () => void;
   onOpenPartners?: () => void;
+  onMinimizeReel?: (short: CommunityShortItem) => void;
+  onOpenToguroShop?: () => void;
   onOpenTvCast?: (media: {
     title: string;
     artist?: string;
@@ -623,10 +626,14 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   onPauseCatalogPlayer,
   onOpenUserAuth,
   onOpenPartners,
+  onMinimizeReel,
+  onOpenToguroShop,
   onOpenTvCast,
   onToast,
 }) => {
   const [subTab, setSubTab] = useState<SubTab>('shorts');
+  const [hubMoreOpen, setHubMoreOpen] = useState(false);
+  const [topCreatorsDrawerOpen, setTopCreatorsDrawerOpen] = useState(false);
   const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
   const [subscribedChannels, setSubscribedChannels] = useState<Set<string>>(new Set());
   const subscriberId = getClientSubscriberId(user?.id);
@@ -877,7 +884,8 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   };
 
   useEffect(() => {
-    void loadShorts('all', '');
+    const shouldAutoPlay = initialAction !== 'create_reel' && initialAction !== 'go_live';
+    void loadShorts('all', '', false, shouldAutoPlay);
     void fetchActiveLives().then(setLives);
     void fetchWorldShorts('live', '', [], false, subscriberId, localCountryCode).then(setYtLives);
     fetch('/api/community/br-creators')
@@ -917,6 +925,13 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
       setExclusiveShortsOpen(false);
     } else if (initialAction === 'shorts') {
       setSubTab('shorts');
+      if (shorts.length > 0) {
+        claimMediaFocus('reels');
+        onPauseCatalogPlayer();
+        setExclusiveShortsOpen(true);
+      } else {
+        void loadShorts(shortCategory, shortSearch, false, true);
+      }
     }
   }, [actionNonce, initialAction]);
 
@@ -1598,48 +1613,69 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 </div>
               )}
 
-              {/* CLEAN YOUTUBE TOP BAR OVERLAY (Only Back + 3 minimal right icons: Chat/Live, Search, More) */}
+              {/* CLEAN TOP BAR OVERLAY: Back, Minimize (keeps playing!), Expand, 3-Dots & Close */}
               <div
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-3 pt-3 pb-6 bg-gradient-to-b from-black/65 via-black/25 to-transparent pointer-events-none"
+                className="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-3 pt-3 pb-6 bg-gradient-to-b from-black/75 via-black/30 to-transparent pointer-events-none"
               >
-                <button
-                  type="button"
-                  onClick={() => setExclusiveShortsOpen(false)}
-                  className="pointer-events-auto w-10 h-10 rounded-full hover:bg-white/15 flex items-center justify-center text-white drop-shadow transition active:scale-90"
-                  title="Voltar"
-                >
-                  <ArrowLeft className="w-6 h-6" />
-                </button>
+                <div className="pointer-events-auto flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setExclusiveShortsOpen(false)}
+                    className="w-9 h-9 rounded-full bg-black/55 hover:bg-white/20 flex items-center justify-center text-white drop-shadow transition active:scale-90"
+                    title="Voltar para Grade"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  {onMinimizeReel && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onMinimizeReel(activeShort);
+                        setExclusiveShortsOpen(false);
+                      }}
+                      className="px-2.5 h-9 rounded-full bg-black/55 hover:bg-amber-400 hover:text-black border border-white/20 flex items-center gap-1 text-white text-[11px] font-black drop-shadow transition active:scale-90"
+                      title="Minimizar e continuar assistindo pela plataforma"
+                    >
+                      <Minimize2 className="w-3.5 h-3.5" />
+                      <span className="hidden xs:inline">Minimizar</span>
+                    </button>
+                  )}
+                </div>
 
                 <div className="pointer-events-auto flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => {
-                      setExclusiveShortsOpen(false);
-                      setSubTab('live');
-                    }}
-                    className="w-10 h-10 rounded-full hover:bg-white/15 flex items-center justify-center text-white drop-shadow transition active:scale-90"
-                    title="Ao Vivo & Chat"
+                    onClick={() => setReelsExpanded((v) => !v)}
+                    className="w-9 h-9 rounded-full bg-black/55 hover:bg-white/20 flex items-center justify-center text-white drop-shadow transition active:scale-90"
+                    title={reelsExpanded ? 'Reduzir Tela' : 'Aumentar Tela'}
                   >
-                    <MessageCircle className="w-5 h-5" />
+                    {reelsExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShortsSearchBarOpen((v) => !v)}
-                    className="w-10 h-10 rounded-full hover:bg-white/15 flex items-center justify-center text-white drop-shadow transition active:scale-90"
+                    className="w-9 h-9 rounded-full bg-black/55 hover:bg-white/20 flex items-center justify-center text-white drop-shadow transition active:scale-90"
                     title="Buscar Shorts"
                   >
-                    <Search className="w-5 h-5" />
+                    <Search className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setShortsMoreOpen(true)}
-                    className="w-10 h-10 rounded-full hover:bg-white/15 flex items-center justify-center text-white drop-shadow transition active:scale-90"
+                    className="w-9 h-9 rounded-full bg-black/55 hover:bg-white/20 flex items-center justify-center text-white drop-shadow transition active:scale-90"
                     title="Mais opções"
                   >
                     <MoreVertical className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExclusiveShortsOpen(false)}
+                    className="w-9 h-9 rounded-full bg-rose-600/85 hover:bg-rose-500 flex items-center justify-center text-white drop-shadow transition active:scale-90"
+                    title="Fechar Reels"
+                  >
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -1842,6 +1878,56 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                         <Zap className="w-4 h-4 text-cyan-300" />
                         <span>Velocidade: {shortsRate}x</span>
                       </button>
+                      {onMinimizeReel && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShortsMoreOpen(false);
+                            onMinimizeReel(activeShort);
+                            setExclusiveShortsOpen(false);
+                          }}
+                          className="px-3 py-2.5 rounded-xl bg-amber-400 text-black font-black flex items-center gap-2"
+                        >
+                          <Minimize2 className="w-4 h-4" />
+                          <span>Minimizar na Tela</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShortsMoreOpen(false);
+                          setExclusiveShortsOpen(false);
+                          setSubTab('live');
+                        }}
+                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
+                      >
+                        <Radio className="w-4 h-4 text-rose-400" />
+                        <span>Ao Vivo HD</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShortsMoreOpen(false);
+                          setExclusiveShortsOpen(false);
+                          setTopCreatorsDrawerOpen(true);
+                        }}
+                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
+                      >
+                        <Crown className="w-4 h-4 text-amber-300" />
+                        <span>Top 5 Youtubers</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShortsMoreOpen(false);
+                          setExclusiveShortsOpen(false);
+                          setPublishOpen(true);
+                        }}
+                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
+                      >
+                        <Upload className="w-4 h-4 text-emerald-400" />
+                        <span>Publicar Short</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => setLoopCurrentShort((v) => !v)}
@@ -1878,6 +1964,20 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                         <span>{shortsFilterSubscribed ? 'Ver Todos' : 'Só Inscrições'}</span>
                       </button>
                     </div>
+                    {onOpenToguroShop && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShortsMoreOpen(false);
+                          setExclusiveShortsOpen(false);
+                          onOpenToguroShop();
+                        }}
+                        className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-400 to-emerald-400 text-black font-black text-xs flex items-center justify-center gap-1.5"
+                      >
+                        <Crown className="w-4 h-4" />
+                        <span>🥃 Produtos do Toguro · Mansão Maromba (-30% OFF)</span>
+                      </button>
+                    )}
                     <div className="flex items-center gap-2 pt-1">
                       <button
                         type="button"
@@ -1912,28 +2012,43 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     }
 
     return (
-      <div className="space-y-4">
-        {/* 🏆 TOP 1 AO TOP 5 · YOUTUBERS BRASILEIROS (MEMES & PEGADINHAS) */}
-        {brTop5.length > 0 && (
+      <div className="space-y-3">
+        {/* PROPAGANDA TOGURO DISCRETA + OPCIONAL */}
+        {onOpenToguroShop && (
+          <ToguroPromoBanner variant="strip" onOpenToguroShop={onOpenToguroShop} />
+        )}
+
+        {/* TOP 5 YOUTUBERS BR — ONLY SHOWN WHEN OPENED VIA ⋮ MENU */}
+        {topCreatorsDrawerOpen && brTop5.length > 0 && (
           <section className="rounded-3xl cosmic-card-3d p-3.5 sm:p-4 space-y-3 border border-cyan-400/35">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300 flex items-center gap-1.5">
-                  <Crown className="w-3.5 h-3.5" /> TOP 1 AO TOP 5 · YOUTUBERS BRASILEIROS DE MEMES & PEGADINHAS
+                  <Crown className="w-3.5 h-3.5" /> TOP 1 AO TOP 5 · YOUTUBERS BRASILEIROS
                 </div>
                 <h3 className="font-display text-sm sm:text-base font-black text-white">
-                  Mídia dos Cria no YouTube Brasil 🇧🇷 (Toque para assistir & reconhecer!)
+                  Mídia dos Cria no YouTube Brasil 🇧🇷
                 </h3>
               </div>
-              {onOpenPartners && (
+              <div className="flex items-center gap-1.5">
+                {onOpenPartners && (
+                  <button
+                    type="button"
+                    onClick={onOpenPartners}
+                    className="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-[11px] font-black flex items-center gap-1 shadow shrink-0"
+                  >
+                    <Share2 className="w-3 h-3" /> Patrocínio
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={onOpenPartners}
-                  className="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-[11px] font-black flex items-center gap-1 shadow shrink-0"
+                  onClick={() => setTopCreatorsDrawerOpen(false)}
+                  className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                  title="Fechar"
                 >
-                  <Share2 className="w-3 h-3" /> Convidar Canais & Patrocínio
+                  <X className="w-4 h-4" />
                 </button>
-              )}
+              </div>
             </div>
 
             <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
@@ -2039,80 +2154,66 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
           </section>
         )}
 
-        {/* Clean Grid Filter & Controls (Zero Duplicates) */}
+        {/* ULTRA-CLEAN SHORTS BAR: Play Now + Quick Search + 3-Dot Organized Menu */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            {visibleShorts.length > 0 && (
+              <button
+                onClick={() => openShortIndividual(activeIndex)}
+                className="px-4 py-2 rounded-full bg-gradient-to-r from-amber-400 to-cyan-400 text-black text-xs font-black flex items-center gap-1.5 shadow-[0_0_24px_rgba(250,204,21,0.35)] hover:brightness-110 transition"
+              >
+                <Play className="w-3.5 h-3.5 fill-black" /> Assistir Reels Agora
+              </button>
+            )}
             <button
+              type="button"
               onClick={() => setShortsMenuOpen((v) => !v)}
-              className="px-3 py-1.5 rounded-full lux-btn-obsidian text-xs font-black text-amber-200 flex items-center gap-1.5"
+              className="px-3 py-2 rounded-full lux-btn-obsidian text-xs font-black text-amber-200 flex items-center gap-1.5"
             >
-              <Search className="w-3.5 h-3.5" />
-              {shortsMenuOpen ? 'Fechar' : 'Categorias BR'}
-            </button>
-            <button
-              onClick={() => {
-                setShortCategory('memes');
-                setShortSearch('');
-                void loadShorts('memes', '', true, true);
-              }}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-black transition ${
-                shortCategory === 'memes'
-                  ? 'lux-btn-gold'
-                  : 'lux-btn-obsidian text-amber-200'
-              }`}
-            >
-              😂 Memes BR
-            </button>
-            <button
-              onClick={() => {
-                setShortCategory('pegadinhas');
-                setShortSearch('');
-                void loadShorts('pegadinhas', '', true, true);
-              }}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-black transition ${
-                shortCategory === 'pegadinhas'
-                  ? 'lux-btn-gold'
-                  : 'lux-btn-obsidian text-pink-200'
-              }`}
-            >
-              🎭 Pegadinhas
-            </button>
-            <button
-              onClick={() => setShortsFilterSubscribed((v) => !v)}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-black flex items-center gap-1 transition ${
-                shortsFilterSubscribed
-                  ? 'bg-red-600 text-white shadow'
-                  : 'bg-white/[0.08] border border-white/15 text-slate-200 hover:bg-white/15'
-              }`}
-            >
-              <Bell className="w-3.5 h-3.5" />
-              <span>Inscrições ({subscribedChannels.size})</span>
-            </button>
-            <button
-              onClick={() => {
-                setShortsFilterSubscribed(false);
-                void loadShorts(shortCategory, shortSearch, true);
-              }}
-              disabled={shortsLoading}
-              className="px-3 py-1.5 rounded-full bg-white/[0.08] hover:bg-white/15 border border-white/10 text-[11px] font-bold text-emerald-300 flex items-center gap-1 transition"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${shortsLoading ? 'animate-spin' : ''}`} />
-              <span>Novos</span>
+              <MoreVertical className="w-3.5 h-3.5" />
+              <span>{shortsMenuOpen ? 'Fechar Opções' : 'Mais Funções'}</span>
             </button>
           </div>
 
-          {visibleShorts.length > 0 && (
-            <button
-              onClick={() => openShortIndividual(activeIndex)}
-              className="px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 text-black text-xs font-black flex items-center gap-1.5 shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:brightness-110 transition"
-            >
-              <Play className="w-3.5 h-3.5 fill-black" /> Soltar os Reels
-            </button>
-          )}
+          <button
+            onClick={() => {
+              setShortsFilterSubscribed(false);
+              void loadShorts(shortCategory, shortSearch, true, true);
+            }}
+            disabled={shortsLoading}
+            className="px-3 py-2 rounded-full bg-white/[0.08] hover:bg-white/15 border border-white/10 text-[11px] font-bold text-emerald-300 flex items-center gap-1 transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${shortsLoading ? 'animate-spin' : ''}`} />
+            <span>Atualizar</span>
+          </button>
         </div>
 
         {shortsMenuOpen && (
-          <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3 space-y-2.5">
+          <div className="rounded-2xl bg-[#110c24]/95 border border-amber-400/30 p-3 space-y-2.5 shadow-xl">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setTopCreatorsDrawerOpen((v) => !v);
+                  setShortsMenuOpen(false);
+                }}
+                className="px-3 py-1.5 rounded-full lux-btn-obsidian text-[11px] font-black text-amber-200 flex items-center gap-1"
+              >
+                <Crown className="w-3.5 h-3.5" /> Top 5 Youtubers BR
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShortsFilterSubscribed((v) => !v);
+                  setShortsMenuOpen(false);
+                }}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-black flex items-center gap-1 ${
+                  shortsFilterSubscribed ? 'bg-red-600 text-white' : 'lux-btn-obsidian text-slate-200'
+                }`}
+              >
+                <Bell className="w-3.5 h-3.5" /> Inscrições ({subscribedChannels.size})
+              </button>
+            </div>
             <div className="flex items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-1">
               {SHORT_CATEGORIES.map((c) => (
                 <button
@@ -2145,7 +2246,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   type="text"
                   value={shortSearch}
                   onChange={(e) => setShortSearch(e.target.value)}
-                  placeholder="Buscar Reels ou Lives (ex: phonk, funk brasil, DJ, espaço)..."
+                  placeholder="Buscar Reels ou Lives (ex: mc oruan, funk, humor)..."
                   className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/45 border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400"
                 />
               </div>
@@ -2280,51 +2381,81 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
       {/* Hidden source video element for HD Canvas compositor */}
       <video ref={rawVideoRef} muted autoPlay playsInline className="hidden" />
 
-      {/* Clean Organized Sub-Navigation */}
-      <div className="rounded-2xl glass-panel p-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+      {/* Clean Sub-Navigation Collapsed into 1 Simple Header + 3-Dot Hub Menu */}
+      <div className="rounded-2xl glass-panel px-3 py-2 flex items-center justify-between gap-2 relative">
+        <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={() => setSubTab('shorts')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${
               subTab === 'shorts'
-                ? 'bg-gradient-to-r from-pink-500 to-cyan-500 text-white shadow'
+                ? 'lux-btn-gold'
                 : 'bg-white/[0.06] hover:bg-white/15 text-purple-100'
             }`}
           >
-            <Film className="w-4 h-4" />
-            <span>Reels Mundiais (1 por 1)</span>
+            <Film className="w-3.5 h-3.5" />
+            <span>Reels & Shorts</span>
           </button>
-          <button
-            onClick={() => setSubTab('live')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${
-              subTab === 'live'
-                ? 'bg-gradient-to-r from-rose-600 to-pink-500 text-white shadow'
-                : 'bg-white/[0.06] hover:bg-white/15 text-rose-200'
-            }`}
-          >
-            <Radio className="w-4 h-4 animate-pulse" />
-            <span>Ao Vivo HD & Criaturinhas IA ({lives.length})</span>
-          </button>
-          <button
-            onClick={() => setSubTab('studio')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition ${
-              subTab === 'studio'
-                ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black shadow'
-                : 'bg-white/[0.06] hover:bg-white/15 text-cyan-200'
-            }`}
-          >
-            <Video className="w-4 h-4" />
-            <span>Estúdio Criar Vídeo</span>
-          </button>
+          {subTab !== 'shorts' && (
+            <span className="text-xs font-black text-amber-200 truncate">
+              {subTab === 'live' ? '🔴 Ao Vivo HD' : '🎬 Estúdio Vídeo'}
+            </span>
+          )}
         </div>
 
-        {subTab === 'shorts' && (
-          <button
-            onClick={() => setPublishOpen((v) => !v)}
-            className="px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-black flex items-center gap-1.5 shadow transition"
-          >
-            <Upload className="w-3.5 h-3.5" /> Publicar Vídeo Curto
-          </button>
+        <button
+          type="button"
+          onClick={() => setHubMoreOpen((v) => !v)}
+          className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-black text-white flex items-center gap-1.5 transition shrink-0"
+          title="Mais funções de Reels, Lives e Estúdio"
+        >
+          <MoreVertical className="w-4 h-4" />
+          <span>Mais</span>
+        </button>
+
+        {hubMoreOpen && (
+          <div className="absolute right-2 top-12 z-40 w-60 rounded-2xl bg-[#140e28]/98 backdrop-blur-xl border border-amber-400/40 shadow-2xl p-2 space-y-1 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => {
+                setSubTab('shorts');
+                setHubMoreOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 text-white flex items-center gap-2"
+            >
+              <Film className="w-4 h-4 text-amber-300" /> Reels & Shorts
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSubTab('live');
+                setHubMoreOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 text-rose-200 flex items-center gap-2"
+            >
+              <Radio className="w-4 h-4 text-rose-400" /> Ao Vivo HD ({lives.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSubTab('studio');
+                setHubMoreOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 text-cyan-200 flex items-center gap-2"
+            >
+              <Video className="w-4 h-4 text-cyan-400" /> Estúdio Criar Vídeo
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSubTab('shorts');
+                setPublishOpen(true);
+                setHubMoreOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 text-emerald-300 flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" /> Publicar Vídeo Curto
+            </button>
+          </div>
         )}
       </div>
 

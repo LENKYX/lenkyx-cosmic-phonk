@@ -20,7 +20,7 @@ import {
 import { AppMode, AppSettings } from '../types';
 import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 
-type ShopCat =
+export type ShopCat =
   | 'all'
   | 'mansao'
   | 'roupas'
@@ -758,13 +758,29 @@ const CATEGORIES: { id: ShopCat; label: string; liveQuery: string }[] = [
 interface Props {
   settings: AppSettings;
   mode: AppMode;
+  initialCategory?: ShopCat;
+  categoryNonce?: number;
   onSaveSettings: (partial: Partial<AppSettings>) => Promise<void>;
   onToast: (msg: string) => void;
 }
 
-export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, onToast }) => {
-  const [cat, setCat] = useState<ShopCat>('all');
+export const ShopCriaView: React.FC<Props> = ({
+  settings,
+  mode,
+  initialCategory,
+  categoryNonce,
+  onSaveSettings,
+  onToast,
+}) => {
+  const [cat, setCat] = useState<ShopCat>(initialCategory || 'all');
   const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    if (initialCategory) {
+      setCat(initialCategory);
+      setQuery('');
+    }
+  }, [initialCategory, categoryNonce]);
   const [onlyDiscounts, setOnlyDiscounts] = useState(false);
   const [cart, setCart] = useState<{ item: CriaProduct; qty: number }[]>([]);
   const [cartOpen, setCartOpen] = useState(false);

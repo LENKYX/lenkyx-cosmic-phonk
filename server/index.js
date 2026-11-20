@@ -794,9 +794,10 @@ app.get('/api/world-search', async (req, res) => {
   const space = req.query.space === '1' || req.query.space === 'true';
   try {
     const payload = await runSmartWorldSearch(q, { includeArchiveSpace: space });
-    if (q.length >= 2) {
+    const qLow = q.toLowerCase();
+    // Only surface user/MORRO GOLD local tracks when the user explicitly searches for their own catalog!
+    if (q.length >= 2 && (qLow.includes('lenkyx') || qLow.includes('morro gold'))) {
       const db = readDb();
-      const qLow = q.toLowerCase();
       const localMatches = (db.tracks || []).filter((t) =>
         `${t.artist || ''} ${t.title || ''}`.toLowerCase().includes(qLow)
       );
@@ -806,12 +807,12 @@ app.get('/api/world-search', async (req, res) => {
           (t, i) => ({ ...t, number: i + 1 })
         );
         payload.tracks = merged;
-        if (!payload.artistProfile && qLow.includes('lenkyx')) {
+        if (!payload.artistProfile) {
           payload.artistProfile = {
-            name: 'LENKYX',
-            photoUrl: '/covers/icon-512.png',
-            bio: 'Catálogo oficial LENKYX Cosmic Phonk — todas as faixas originais completas sem anúncios.',
-            genre: 'Cosmic Phonk / Trap',
+            name: 'MORRO GOLD',
+            photoUrl: '/covers/morro-gold-emblema-grosso.png',
+            bio: 'Catálogo oficial MORRO GOLD — suas faixas originais completas sem anúncios.',
+            genre: 'Favela / Phonk / Trap',
             era: 'Oficial',
             wikiUrl: '',
           };
@@ -2145,15 +2146,14 @@ function resolveOfficialSiteUrl(req, db) {
     : 'https://lenkyx-cosmic-phonk.onrender.com';
 }
 
-// Instant PC App Download (Windows / Mac / Linux standalone desktop launcher + 3D icon shortcut)
+// Instant PC App Download (Windows / Mac / Linux standalone desktop app — NO shortcuts created!)
 app.get(['/download/pc', '/download/pc/windows', '/download/pc/mac', '/pc'], (req, res) => {
   const db = readDb();
   const siteUrl = resolveOfficialSiteUrl(req, db);
-  const icoUrl = `${siteUrl}/covers/lenkyx-app.ico`;
 
   const winBat = [
     '@echo off',
-    'title LENKYX - Aplicativo Oficial para PC',
+    'title MORRO GOLD - Aplicativo Oficial para PC',
     'set "SITE_URL=' + siteUrl + '"',
     'where msedge >nul 2>nul && (start "" msedge --app="%SITE_URL%" & exit /b 0)',
     'if exist "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe" (start "" "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe" --app="%SITE_URL%" & exit /b 0)',
@@ -2163,32 +2163,6 @@ app.get(['/download/pc', '/download/pc/windows', '/download/pc/mac', '/pc'], (re
     'start "" "%SITE_URL%"',
     'exit /b 0',
   ].join('\r\n');
-
-  const winShortcutBat = [
-    '@echo off',
-    'title LENKYX - Criar Atalho na Area de Trabalho',
-    'powershell -NoProfile -ExecutionPolicy Bypass -Command "' +
-      '$desktop = [Environment]::GetFolderPath(\'Desktop\'); ' +
-      '$icoDir = Join-Path $env:LOCALAPPDATA \'LENKYX\'; ' +
-      'New-Item -ItemType Directory -Force -Path $icoDir | Out-Null; ' +
-      '$icoPath = Join-Path $icoDir \'lenkyx-app.ico\'; ' +
-      'try { Invoke-WebRequest -Uri \'' + icoUrl + '\' -OutFile $icoPath -UseBasicParsing } catch {}; ' +
-      '$edge = @($env:ProgramFiles + \'\\Microsoft\\Edge\\Application\\msedge.exe\', ${env:ProgramFiles(x86)} + \'\\Microsoft\\Edge\\Application\\msedge.exe\') | Where-Object { Test-Path $_ } | Select-Object -First 1; ' +
-      '$chrome = @($env:ProgramFiles + \'\\Google\\Chrome\\Application\\chrome.exe\', ${env:ProgramFiles(x86)} + \'\\Google\\Chrome\\Application\\chrome.exe\') | Where-Object { Test-Path $_ } | Select-Object -First 1; ' +
-      '$ws = New-Object -ComObject WScript.Shell; ' +
-      '$sc = $ws.CreateShortcut((Join-Path $desktop \'MORRO GOLD.lnk\')); ' +
-      'if ($edge) { $sc.TargetPath = $edge; $sc.Arguments = \'--app=' + siteUrl + '\'; } ' +
-      'elseif ($chrome) { $sc.TargetPath = $chrome; $sc.Arguments = \'--app=' + siteUrl + '\'; } ' +
-      'else { $sc.TargetPath = \'' + siteUrl + '\'; } ' +
-      'if (Test-Path $icoPath) { $sc.IconLocation = $icoPath; } ' +
-      '$sc.Description = \'MORRO GOLD - Som, Bailes, Loja VIP e Clipes\'; ' +
-      '$sc.Save();"',
-    'echo.',
-    'echo [OK] Atalho 3D do MORRO GOLD criado na sua Area de Trabalho!',
-    'timeout /t 3 >nul',
-  ].join('\r\n');
-
-  const urlFile = ['[InternetShortcut]', `URL=${siteUrl}`, 'IconIndex=0'].join('\r\n');
 
   const macCmd = [
     '#!/usr/bin/env bash',
@@ -2210,53 +2184,45 @@ app.get(['/download/pc', '/download/pc/windows', '/download/pc/mac', '/pc'], (re
 
   const readme = [
     '====================================================',
-    '   MORRO GOLD — APLICATIVO OFICIAL PARA PC (VIP 3D)',
+    '   MORRO GOLD — APLICATIVO OFICIAL PARA PC',
     '====================================================',
     `Site Oficial: ${siteUrl}`,
     '',
-    'COMO USAR NO WINDOWS:',
-    '1. Extraia esta pasta em qualquer lugar (ou Area de Trabalho).',
-    '2. Clique duas vezes em "Criar-Atalho-Area-de-Trabalho.bat"',
-    '   para colocar o icone 3D do MORRO GOLD na sua Area de Trabalho.',
-    '3. Ou clique duas vezes em "Abrir-MORRO-GOLD-App.bat" para abrir',
-    '   o aplicativo em janela propria (sem abas, sem anuncios).',
+    'COMO ABRIR NO WINDOWS (SEM ATALHOS):',
+    '1. Extraia esta pasta.',
+    '2. Execute "MORRO-GOLD-App.bat" para abrir o aplicativo',
+    '   original em janela propria (sem abas de navegador).',
     '',
-    'COMO USAR NO MAC / LINUX:',
-    ' - Execute "Abrir-MORRO-GOLD-Mac-Linux.command".',
-    '',
-    'DICA EXTRA (1 CLIQUE NO NAVEGADOR):',
-    ' - No Chrome ou Edge, abra o Site Oficial e clique no icone',
-    '   "Instalar MORRO GOLD" no canto direito da barra de endereco!',
+    'COMO ABRIR NO MAC / LINUX:',
+    ' - Execute "MORRO-GOLD-App-Mac-Linux.command".',
     '====================================================',
   ].join('\r\n');
 
   const launcherHtml = [
     '<!DOCTYPE html>',
     '<html lang="pt-BR">',
-    '<head><meta charset="UTF-8"><title>MORRO GOLD 3D</title>',
+    '<head><meta charset="UTF-8"><title>MORRO GOLD</title>',
     '<style>',
     'body{margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#04050a;color:#fff;font-family:system-ui,sans-serif;overflow:hidden}',
     '.wrap{position:relative;width:168px;height:168px;border-radius:38px;display:flex;align-items:center;justify-content:center;isolation:isolate}',
     '.aurora{position:absolute;inset:-6px;border-radius:42px;background:conic-gradient(#f5c84c,#fef08a,#d97706,#22d3ee,#fbbf24,#f5c84c);filter:blur(10px);z-index:-1;animation:spin 4s linear infinite}',
     '.badge{position:relative;overflow:hidden;width:100%;height:100%;border-radius:38px;background:#05060b;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 40px rgba(245,200,76,.45)}',
-    '.badge img{width:100%;height:100%;object-fit:cover}',
+    '.badge img{width:100%;height:100%;object-fit:contain}',
     '.sheen{position:absolute;inset:-40%;background:linear-gradient(115deg,transparent 35%,rgba(245,200,76,.35) 45%,rgba(255,255,255,.78) 50%,rgba(34,211,238,.25) 55%,transparent 65%);animation:sweep 2.9s ease-in-out infinite}',
     '@keyframes spin{to{transform:rotate(360deg)}}',
     '@keyframes sweep{0%{transform:translateX(-110%) skewX(-18deg)}60%,100%{transform:translateX(125%) skewX(-18deg)}}',
     'h1{margin:20px 0 6px;letter-spacing:.22em;font-size:28px;color:#f5c84c}p{margin:0;color:#fde68a;font-size:13px}',
     '</style></head><body>',
-    `<div class="wrap"><div class="aurora"></div><div class="badge"><img src="${siteUrl}/covers/morro-gold-logo.png" alt="MORRO GOLD"/><div class="sheen"></div></div></div>`,
+    `<div class="wrap"><div class="aurora"></div><div class="badge"><img src="${siteUrl}/covers/morro-gold-emblema-grosso.png?v=74" alt="MORRO GOLD"/><div class="sheen"></div></div></div>`,
     '<h1>MORRO GOLD</h1><p>Abrindo Aplicativo Oficial VIP...</p>',
     `<script>setTimeout(function(){window.location.href=${JSON.stringify(siteUrl)};},950);</script>`,
     '</body></html>',
   ].join('');
 
   const entries = [
-    { name: 'MORRO-GOLD-App-PC/Abrir-MORRO-GOLD-App.bat', content: winBat },
-    { name: 'MORRO-GOLD-App-PC/Criar-Atalho-Area-de-Trabalho.bat', content: winShortcutBat },
-    { name: 'MORRO-GOLD-App-PC/MORRO-GOLD-Launcher-3D.html', content: launcherHtml },
-    { name: 'MORRO-GOLD-App-PC/MORRO-GOLD-Site-Oficial.url', content: urlFile },
-    { name: 'MORRO-GOLD-App-PC/Abrir-MORRO-GOLD-Mac-Linux.command', content: macCmd, mode: (0o100755 << 16) >>> 0 },
+    { name: 'MORRO-GOLD-App-PC/MORRO-GOLD-App.bat', content: winBat },
+    { name: 'MORRO-GOLD-App-PC/MORRO-GOLD-App-3D.html', content: launcherHtml },
+    { name: 'MORRO-GOLD-App-PC/MORRO-GOLD-App-Mac-Linux.command', content: macCmd, mode: (0o100755 << 16) >>> 0 },
     { name: 'MORRO-GOLD-App-PC/LEIA-ME.txt', content: readme },
   ];
 
@@ -2277,9 +2243,11 @@ app.get(['/site-oficial', '/oficial', '/baixar', '/download'], (_req, res) => {
   res.redirect(302, '/?install=1');
 });
 
-// Direct Android APK download endpoint — streams local APK or opens Instant 2s PWA App Install (never sends to old Drive virus screen)
+// Direct Android APK download endpoint — streams local APK or opens Instant PWA App Install
 app.get('/download/apk', (_req, res) => {
   const candidates = [
+    path.join(ROOT, 'downloads', 'MORRO-GOLD.apk'),
+    path.join(PUBLIC_DIR, 'MORRO-GOLD.apk'),
     path.join(ROOT, 'downloads', 'LENKYX-Cosmic-Phonk.apk'),
     path.join(PUBLIC_DIR, 'LENKYX-Cosmic-Phonk.apk'),
     path.resolve(ROOT, '..', 'LENKYX-Cosmic-Phonk.apk'),
@@ -2287,7 +2255,7 @@ app.get('/download/apk', (_req, res) => {
   const found = candidates.find((p) => fs.existsSync(p));
   if (found) {
     res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-    return res.download(found, 'LENKYX-Cosmic-Phonk.apk');
+    return res.download(found, 'MORRO-GOLD.apk');
   }
   const db = readDb();
   const customUrl = (db.settings?.apkDownloadUrl || '').trim();

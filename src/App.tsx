@@ -102,6 +102,7 @@ import {
   Track,
   UserPlaylist,
 } from './types';
+import { ShopCat as ShopCategory, ShopCriaView } from './components/ShopCriaView';
 import { copyTextReliable, isAndroidApk } from './utils/androidBridge';
 import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
@@ -109,7 +110,6 @@ import { PlaylistsView } from './components/PlaylistsView';
 import { CosmicSpaceBackdrop } from './components/CosmicSpaceBackdrop';
 import { LenkyxEdgeLogo } from './components/LenkyxEdgeLogo';
 import { playLenkyxStartupSound } from './utils/startupSound';
-import { ShopCriaView } from './components/ShopCriaView';
 import {
   FuturisticFeaturesModal,
   FuturisticTab,
@@ -295,19 +295,33 @@ export function App() {
           } catch {
             // ignore
           }
-          showToast('App instalado no seu aparelho em segundos! 🚀');
+          showToast('MORRO GOLD instalado em 1 clique! 🚀');
           setDeferredInstallPrompt(null);
           setInstallModalOpen(false);
           return;
         }
       } catch {
-        // fallback to modal
+        // fallback below
       }
+    }
+    const ua = navigator.userAgent || '';
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+    const isTv = /SmartTV|TV|Tizen|WebOS|BRAVIA|AFT|CrKey/i.test(ua);
+    // Desktop/PC 1-click direct app download (no extra clicks, no shortcuts!)
+    if (!isMobile && !isTv) {
+      const a = document.createElement('a');
+      a.href = '/download/pc';
+      a.download = 'MORRO-GOLD-App-PC.zip';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast('💻 Baixando o App MORRO GOLD original em 1 clique!');
+      return;
     }
     setInstallModalOpen(true);
   }, [deferredInstallPrompt]);
 
-  // 1-Click PC Download / Install (Edge/Chrome desktop PWA install OR direct 1-click PC ZIP)
+  // 1-Click PC Download / Install (Edge/Chrome desktop PWA install OR direct 1-click PC app)
   const handleOneClickPcDownload = useCallback(async () => {
     if (deferredInstallPrompt) {
       try {
@@ -320,7 +334,7 @@ export function App() {
           return;
         }
       } catch {
-        // fall through to direct ZIP download
+        // fall through to direct app download
       }
     }
     const a = document.createElement('a');
@@ -567,6 +581,8 @@ export function App() {
   const directAudioRawUrlRef = useRef('');
   const audioProxyRetriedRef = useRef(false);
   const ytStallTimerRef = useRef<number | null>(null);
+  const lastTrackStartTsRef = useRef(0);
+  const autoSkipCountRef = useRef(0);
   const handlePlayTrackRef = useRef<
     ((track: Track, requestedVersion?: AudioVersion, customQueue?: Track[]) => Promise<void>) | null
   >(null);
@@ -631,6 +647,41 @@ export function App() {
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
+  const [clipMinimized, setClipMinimized] = useState(false);
+  const [clipMoreOpen, setClipMoreOpen] = useState(false);
+  const [shopInitialCategory, setShopInitialCategory] = useState<ShopCategory | undefined>(undefined);
+  const [shopCategoryNonce, setShopCategoryNonce] = useState(0);
+  const [minimizedReel, setMinimizedReel] = useState<{
+    id: string;
+    title: string;
+    creatorName: string;
+    youtubeVideoId?: string;
+    videoUrl?: string;
+  } | null>(null);
+  const [minimizedMovie, setMinimizedMovie] = useState<MovieItem | null>(null);
+  const [hiddenTrackIds, setHiddenTrackIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('morro_gold_hidden_tracks_v1');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [customTrackCovers, setCustomTrackCovers] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem('morro_gold_track_covers_v1');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [albumCoverOverride, setAlbumCoverOverride] = useState<string>(() => {
+    try {
+      return localStorage.getItem('morro_gold_album_cover_v1') || '';
+    } catch {
+      return '';
+    }
+  });
   const [, setClipPrerollActive] = useState(false);
   const clipTheaterOpenRef = useRef(false);
   useEffect(() => {
@@ -827,22 +878,40 @@ export function App() {
     }
   }, []);
 
+  const visibleTracks = useMemo(() => {
+    const hiddenSet = new Set(hiddenTrackIds);
+    return tracks
+      .filter((t) => !hiddenSet.has(t.id))
+      .map((t) => ({
+        ...t,
+        coverUrl: customTrackCovers[t.id] || albumCoverOverride || t.coverUrl,
+      }));
+  }, [tracks, hiddenTrackIds, customTrackCovers, albumCoverOverride]);
+
   const allTracksPool = useMemo(() => {
+    const hiddenSet = new Set(hiddenTrackIds);
     const map = new Map<string, Track>();
-    tracks.forEach((t) => map.set(t.id, t));
-    userTracks.forEach((t) => map.set(t.id, t));
+    visibleTracks.forEach((t) => map.set(t.id, t));
+    userTracks
+      .filter((t) => !hiddenSet.has(t.id))
+      .forEach((t) =>
+        map.set(t.id, {
+          ...t,
+          coverUrl: customTrackCovers[t.id] || albumCoverOverride || t.coverUrl,
+        })
+      );
     worldCacheTracks.forEach((t) => {
-      if (!map.has(t.id)) map.set(t.id, t);
+      if (!hiddenSet.has(t.id) && !map.has(t.id)) map.set(t.id, t);
     });
     playlists.forEach((pl) => {
       if (pl.savedExternalTracks) {
         Object.values(pl.savedExternalTracks).forEach((t) => {
-          if (!map.has(t.id)) map.set(t.id, t);
+          if (!hiddenSet.has(t.id) && !map.has(t.id)) map.set(t.id, t);
         });
       }
     });
     return Array.from(map.values());
-  }, [tracks, userTracks, worldCacheTracks, playlists]);
+  }, [visibleTracks, userTracks, worldCacheTracks, playlists, hiddenTrackIds, customTrackCovers, albumCoverOverride]);
 
   useEffect(() => {
     void loadUserTracks().then((loaded: Track[]) => setUserTracks(loaded));
@@ -973,6 +1042,7 @@ export function App() {
     };
     const onPlaying = () => {
       clearStallTimer();
+      autoSkipCountRef.current = 0;
       setIsPlaying(true);
       isPlayingRef.current = true;
       if (Number.isFinite(audio.duration) && audio.duration > 0) {
@@ -997,6 +1067,12 @@ export function App() {
     const recoverOrAdvance = (reason: 'error' | 'stalled') => {
       clearStallTimer();
       if (userPausedRef.current) return;
+      // Ignore residual <audio> errors when audio has no active src or when YouTube is actively playing this track!
+      const activeSrc = audio.getAttribute('src') || '';
+      if (!activeSrc) return;
+      const curTrack = currentTrackRef.current;
+      if (curTrack?.youtubeVideoId && !bgHandoffActiveRef.current) return;
+
       const rawUrl = directAudioRawUrlRef.current;
       // 1st automatic recovery: if direct HTTPS stream failed/stalled, retry once via streaming /api/audio-proxy
       if (
@@ -1012,7 +1088,7 @@ export function App() {
         void audio.play().catch(() => {});
         return;
       }
-      // 2nd automatic recovery: resolve clean backup audio or skip to next track so playback never hangs
+      // 2nd automatic recovery: resolve clean backup audio for this SAME track (do NOT blindly jump tracks)
       const cur = currentTrackRef.current;
       if (cur && !audioProxyRetriedRef.current && cur.title) {
         audioProxyRetriedRef.current = true;
@@ -1024,12 +1100,13 @@ export function App() {
             void audio.play().catch(() => {});
             return;
           }
-          if (reason === 'error') {
+          if (reason === 'error' && autoSkipCountRef.current < 1) {
             const list = playQueueRef.current.length ? playQueueRef.current : [];
             if (list.length > 1 && handlePlayTrackRef.current) {
               const idx = list.findIndex((t) => t.id === cur.id);
               const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
               if (next && next.id !== cur.id) {
+                autoSkipCountRef.current += 1;
                 showToast('Fonte indisponível — pulando para a próxima...');
                 void handlePlayTrackRef.current(next, 'v1', list);
               }
@@ -1038,12 +1115,13 @@ export function App() {
         });
         return;
       }
-      if (reason === 'error' && cur) {
+      if (reason === 'error' && cur && autoSkipCountRef.current < 1) {
         const list = playQueueRef.current;
         if (list.length > 1 && handlePlayTrackRef.current) {
           const idx = list.findIndex((t) => t.id === cur.id);
           const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
           if (next && next.id !== cur.id) {
+            autoSkipCountRef.current += 1;
             showToast('Áudio instável — avançando para a próxima...');
             void handlePlayTrackRef.current(next, 'v1', list);
           }
@@ -1052,14 +1130,15 @@ export function App() {
     };
 
     const armStallWatchdog = () => {
-      if (userPausedRef.current || !audio.src || audio.paused) return;
+      if (userPausedRef.current || !audio.getAttribute('src') || audio.paused) return;
+      if (currentTrackRef.current?.youtubeVideoId && !bgHandoffActiveRef.current) return;
       if (stallTimer !== null) return;
       stallTimer = window.setTimeout(() => {
         stallTimer = null;
-        if (!userPausedRef.current && audio.src && !audio.paused && audio.readyState < 3) {
+        if (!userPausedRef.current && audio.getAttribute('src') && !audio.paused && audio.readyState < 3) {
           recoverOrAdvance('stalled');
         }
-      }, 7500);
+      }, 15000);
     };
 
     const onError = () => recoverOrAdvance('error');
@@ -1067,6 +1146,10 @@ export function App() {
     const onEnded = () => {
       clearStallTimer();
       if (userPausedRef.current) return;
+      // Ignore <audio> ended if YouTube is the active engine for this track or track started < 3s ago
+      if (currentTrackRef.current?.youtubeVideoId && !bgHandoffActiveRef.current) return;
+      if (Date.now() - lastTrackStartTsRef.current < 3000) return;
+
       if (loopTrackRef.current) {
         audio.currentTime = 0;
         void audio.play().catch(() => {});
@@ -1225,7 +1308,7 @@ export function App() {
             }
           },
           onError: () => {
-            if (!currentTrackRef.current?.youtubeVideoId) return;
+            if (!currentTrackRef.current?.youtubeVideoId || bgHandoffActiveRef.current) return;
             const cur = currentTrackRef.current;
             // Try direct audio fallback first before skipping the song
             const fallbackUrl = bgBackupUrlRef.current;
@@ -1243,6 +1326,13 @@ export function App() {
               showToast('🎵 Tocando versão áudio direta!');
               return;
             }
+            if (autoSkipCountRef.current >= 1) {
+              setIsPlaying(false);
+              isPlayingRef.current = false;
+              showToast('Este clipe bloqueou player embutido — escolha outra faixa ou toque em Próxima.');
+              return;
+            }
+            autoSkipCountRef.current += 1;
             showToast('Este clipe bloqueou player embutido — pulando para o próximo...');
             const list = playQueueRef.current.length ? playQueueRef.current : tracks;
             if (cur && list.length > 1) {
@@ -1257,6 +1347,7 @@ export function App() {
             if (!currentTrackRef.current?.youtubeVideoId) return;
             if (ev.data === 1) {
               bgHandoffActiveRef.current = false;
+              autoSkipCountRef.current = 0;
               setIsPlaying(true);
               isPlayingRef.current = true;
               const dur = ytPlayerRef.current?.getDuration?.() || 0;
@@ -1318,14 +1409,26 @@ export function App() {
                 isPlayingRef.current = false;
               }
             } else if (ev.data === 0) {
+              // Ignore spurious ENDED events during audio handoff or right after switching tracks!
+              if (bgHandoffActiveRef.current) return;
+              if (Date.now() - lastTrackStartTsRef.current < 4000) return;
+              const ytDur = ytPlayerRef.current?.getDuration?.() || 0;
+              const ytCt = ytPlayerRef.current?.getCurrentTime?.() || 0;
+              if (ytDur > 15 && ytCt > 0 && ytCt < ytDur - 5) return;
+
+              if (loopTrackRef.current) {
+                ytPlayerRef.current?.seekTo?.(0, true);
+                ytPlayerRef.current?.playVideo?.();
+                return;
+              }
               setIsPlaying(false);
               isPlayingRef.current = false;
-              const list = playQueueRef.current.length ? playQueueRef.current : tracks;
+              const list = playQueueRef.current;
               const cur = currentTrackRef.current;
-              if (cur && list.length > 0) {
+              if (cur && list.length > 1) {
                 const idx = list.findIndex((t) => t.id === cur.id);
                 const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
-                if (!next) return;
+                if (!next || next.id === cur.id) return;
                 if (document.hidden && backgroundModeRef.current && audioRef.current) {
                   void (async () => {
                     setMobileBackgroundKeepalive(true);
@@ -1666,12 +1769,95 @@ export function App() {
     });
   }, [showToast]);
 
+  const openToguroShop = useCallback(() => {
+    setShopInitialCategory('mansao');
+    setShopCategoryNonce((n) => n + 1);
+    navigateTab('shop');
+    showToast('🥃 Mansão Maromba · Produtos Oficiais do Toguro com -30% OFF!');
+  }, [navigateTab, showToast]);
+
+  const handleDeleteOrHideTrack = useCallback(
+    (trackId: string) => {
+      setHiddenTrackIds((prev) => {
+        const next = prev.includes(trackId) ? prev : [...prev, trackId];
+        try {
+          localStorage.setItem('morro_gold_hidden_tracks_v1', JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+      setPlayQueue((prev) => {
+        const next = prev.filter((t) => t.id !== trackId);
+        playQueueRef.current = next;
+        return next;
+      });
+      showToast('🗑️ Música removida do seu álbum!');
+    },
+    [showToast]
+  );
+
+  const handleUpdateTrackCover = useCallback(
+    (trackId: string, coverUrl: string) => {
+      setCustomTrackCovers((prev) => {
+        const next = { ...prev, [trackId]: coverUrl };
+        try {
+          localStorage.setItem('morro_gold_track_covers_v1', JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+      if (currentTrackRef.current?.id === trackId) {
+        setCurrentTrack((prev) => (prev ? { ...prev, coverUrl } : prev));
+      }
+      showToast('📷 Foto atualizada na capa da música!');
+    },
+    [showToast]
+  );
+
+  const handleUpdateAlbumCover = useCallback(
+    (coverUrl: string) => {
+      setAlbumCoverOverride(coverUrl);
+      try {
+        localStorage.setItem('morro_gold_album_cover_v1', coverUrl);
+      } catch {
+        // ignore
+      }
+      if (currentTrackRef.current) {
+        setCurrentTrack((prev) => (prev ? { ...prev, coverUrl } : prev));
+      }
+      showToast('📷 Sua foto foi aplicada no seu álbum! Agora você pode remover qualquer música que não combine.');
+    },
+    [showToast]
+  );
+
+  const handleRemoveFromQueue = useCallback(
+    (trackId: string) => {
+      setPlayQueue((prev) => {
+        const next = prev.filter((t) => t.id !== trackId);
+        playQueueRef.current = next;
+        return next;
+      });
+      showToast('Música removida da fila.');
+    },
+    [showToast]
+  );
+
+  const handleClearQueue = useCallback(() => {
+    const keep = currentTrackRef.current ? [currentTrackRef.current] : [];
+    setPlayQueue(keep);
+    playQueueRef.current = keep;
+    showToast('🧹 Fila limpa! Mantendo apenas a música atual.');
+  }, [showToast]);
+
   const handlePlayTrack = useCallback(
     async (track: Track, requestedVersion?: AudioVersion, customQueue?: Track[]) => {
       const audio = audioRef.current;
       if (!audio) return;
       claimMediaFocus('catalog');
       const mySeq = ++playSeqRef.current;
+      lastTrackStartTsRef.current = Date.now();
       userPausedRef.current = false;
       bgHandoffActiveRef.current = false;
       audioProxyRetriedRef.current = false;
@@ -1693,6 +1879,10 @@ export function App() {
       if (customQueue && customQueue.length > 0) {
         setPlayQueue(customQueue);
         playQueueRef.current = customQueue;
+      } else if (!playQueueRef.current.some((q) => q.id === track.id)) {
+        const singleQueue = [track];
+        setPlayQueue(singleQueue);
+        playQueueRef.current = singleQueue;
       }
 
       const targetVersion: AudioVersion =
@@ -1816,14 +2006,14 @@ export function App() {
           ytPendingVideoRef.current = track.youtubeVideoId;
         }
 
-        // If YouTube player stays blocked/unstarted after 4.5s, seamlessly fall back to direct audio stream!
+        // If YouTube player stays blocked/unstarted after 9.5s (and NOT actively buffering), fall back to direct audio stream!
         ytStallTimerRef.current = window.setTimeout(() => {
           ytStallTimerRef.current = null;
           if (playSeqRef.current !== mySeq || userPausedRef.current || currentTrackRef.current?.id !== track.id) {
             return;
           }
           const st = ytPlayerRef.current?.getPlayerState?.();
-          if (st !== 1 && bgBackupUrlRef.current && !clipTheaterOpenRef.current) {
+          if (st !== 1 && st !== 3 && bgBackupUrlRef.current && !clipTheaterOpenRef.current) {
             bgHandoffActiveRef.current = true;
             directAudioRawUrlRef.current = bgBackupUrlRef.current;
             audio.removeAttribute('crossorigin');
@@ -1835,7 +2025,7 @@ export function App() {
             audio.load();
             void audio.play().catch(() => {});
           }
-        }, 4500);
+        }, 9500);
         return;
       }
 
@@ -3506,7 +3696,7 @@ export function App() {
               <>
                 {activeTab === 'catalog' && (
                   <CatalogView
-                    tracks={globalSearch.trim() ? tracks : rankTracksBySmartTaste(tracks)}
+                    tracks={globalSearch.trim() ? visibleTracks : rankTracksBySmartTaste(visibleTracks)}
                     settings={settings}
                     mode={mode}
                     searchQuery={globalSearch}
@@ -3517,7 +3707,7 @@ export function App() {
                     offlineTrackIds={offlineTrackIds}
                     downloadingIds={downloadingIds}
                     downloadingAll={downloadingAll}
-                    onPlayTrack={(t, ver) => void handlePlayTrack(t, ver, tracks)}
+                    onPlayTrack={(t, ver) => void handlePlayTrack(t, ver, visibleTracks)}
                     onLikeTrack={(t) => void handleLikeTrack(t)}
                     onShareTrack={(t) => {
                       setShareTrack(t);
@@ -3547,6 +3737,10 @@ export function App() {
                     onOpenGlobalChat={() => setChatModalOpen(true)}
                     onSearchWorld={triggerWorldSearchDirect}
                     onOpenShop={() => navigateTab('shop')}
+                    onOpenToguroShop={openToguroShop}
+                    onDeleteTrack={handleDeleteOrHideTrack}
+                    onUpdateTrackCover={handleUpdateTrackCover}
+                    onUpdateAlbumCover={handleUpdateAlbumCover}
                     onToast={showToast}
                   />
                 )}
@@ -3567,10 +3761,24 @@ export function App() {
                       actionNonce={reelsActionNonce}
                       initialShortsQuery={shortsTriggerQuery}
                       initialShortsNonce={shortsTriggerNonce}
-                      onPlayTrack={(t) => void handlePlayTrack(t, 'v1', allTracksPool)}
+                      onPlayTrack={(t) => void handlePlayTrack(t, 'v1', [t])}
                       onPauseCatalogPlayer={pauseCatalogPlayer}
                       onOpenUserAuth={() => setChatModalOpen(true)}
                       onOpenPartners={() => openFuturisticFeature('partners')}
+                      onMinimizeReel={(short) => {
+                        setMinimizedMovie(null);
+                        setClipMinimized(false);
+                        setClipTheaterOpen(false);
+                        setMinimizedReel({
+                          id: short.id,
+                          title: short.title,
+                          creatorName: short.creator_name,
+                          youtubeVideoId: short.youtube_id,
+                          videoUrl: short.video_url,
+                        });
+                        showToast('🎬 Reels minimizado! Continua tocando enquanto você navega.');
+                      }}
+                      onOpenToguroShop={openToguroShop}
                       onToast={showToast}
                     />
                   </Suspense>
@@ -3580,6 +3788,8 @@ export function App() {
                   <ShopCriaView
                     settings={settings}
                     mode={mode}
+                    initialCategory={shopInitialCategory}
+                    categoryNonce={shopCategoryNonce}
                     onSaveSettings={handleSaveSettings}
                     onToast={showToast}
                   />
@@ -3595,6 +3805,7 @@ export function App() {
                     onPlayTrack={(t, queue) => void handlePlayTrack(t, 'v1', queue)}
                     onWatchClip={openClipWithIntro}
                     onAddToPlaylist={addTrackToPlaylist}
+                    onOpenToguroShop={openToguroShop}
                   />
                 )}
 
@@ -3633,6 +3844,14 @@ export function App() {
                         setPixOpen(true);
                       }}
                       onEmergencyStop={handleEmergencyStop}
+                      onMinimizeMovie={(movie) => {
+                        setMinimizedReel(null);
+                        setClipMinimized(false);
+                        setClipTheaterOpen(false);
+                        setMinimizedMovie(movie);
+                        showToast('🍿 Filme minimizado! Continua tocando enquanto você navega.');
+                      }}
+                      onOpenToguroShop={openToguroShop}
                       initialMovie={pendingMovie}
                       onConsumeInitialMovie={() => setPendingMovie(null)}
                     />
@@ -3701,8 +3920,8 @@ export function App() {
         </main>
       </div>
 
-      {/* ON-DEMAND MUSIC PLAYER BAR: Shown ONLY when actively playing music in music sections! */}
-      {!watchingMovie && isPlayerAllowedTab && !['reels', 'movies', 'sports', 'studio', 'search'].includes(activeTab) && currentTrack && isPlaying && musicMenuOpen && (
+      {/* PERSISTENT MUSIC PLAYER BAR: Always stays visible after clicking any track in ANY tab! */}
+      {!watchingMovie && currentTrack && musicMenuOpen && (
         <MiniPlayer
           track={currentTrack}
           activeVersion={activeVersion}
@@ -3896,7 +4115,7 @@ export function App() {
         open={mediaPlayerMenuOpen}
         onClose={() => setMediaPlayerMenuOpen(false)}
         track={currentTrack}
-        queue={playQueue.length ? playQueue : tracks}
+        queue={playQueue.length ? playQueue : currentTrack ? [currentTrack] : []}
         isPlaying={isPlaying}
         isCurrentTrackOffline={currentTrack ? offlineTrackIds.has(currentTrack.id) : false}
         isDownloadingOffline={currentTrack ? downloadingIds.has(currentTrack.id) : false}
@@ -3913,7 +4132,10 @@ export function App() {
         loudMode={loudMode}
         pipOpen={gamingPipOpen}
         sleepMinutesLeft={sleepMinutesLeft}
-        onSelectTrack={(t) => void handlePlayTrack(t, 'v1', playQueue.length ? playQueue : tracks)}
+        onSelectTrack={(t) => void handlePlayTrack(t, 'v1', playQueue.length ? playQueue : [t])}
+        onRemoveFromQueue={handleRemoveFromQueue}
+        onClearQueue={handleClearQueue}
+        onUpdateTrackCover={handleUpdateTrackCover}
         onTogglePlay={() => {
           if (!currentTrack && tracks.length > 0) {
             void handlePlayTrack(tracks[0], 'v1', tracks);
@@ -4282,15 +4504,9 @@ export function App() {
                   </a>
 
                   <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-1.5 text-[11px] text-slate-200 leading-relaxed">
-                    <div className="font-black text-cyan-300">Como instalar no PC em 2 segundos:</div>
+                    <div className="font-black text-cyan-300">Instalação Rápida em 1 Clique (App Original · Sem Atalhos):</div>
                     <p>
-                      • <strong>Pelo Arquivo .ZIP (Windows/Mac):</strong> Extraia e clique em{' '}
-                      <strong className="text-emerald-300">Criar-Atalho-Area-de-Trabalho.bat</strong> para ter o ícone 3D
-                      do MORRO GOLD no seu computador (abre em janela própria sem navegador).
-                    </p>
-                    <p>
-                      • <strong>Pelo Chrome ou Edge:</strong> Clique no ícone{' '}
-                      <strong className="text-cyan-300">⊕ Instalar MORRO GOLD</strong> no canto direito da barra de endereço.
+                      • Clique no botão acima para instalar ou baixar o aplicativo oficial <strong className="text-amber-300">MORRO GOLD</strong> direto no seu computador sem criar atalhos.
                     </p>
                   </div>
                 </div>
@@ -4378,16 +4594,129 @@ export function App() {
         </div>
       )}
 
-      {/* CLIP THEATER (with Netflix-style pre-roll intro before clip rolls, 100% pure LENKYX) */}
+      {/* FLOATING MINIMIZED REELS PiP (keeps playing while navigating platform!) */}
+      {minimizedReel && (
+        <div className="fixed bottom-16 md:bottom-4 right-3 z-[88] w-60 sm:w-64 rounded-2xl overflow-hidden bg-[#080514] border border-amber-400/55 shadow-[0_14px_45px_rgba(0,0,0,0.92)]">
+          <div className="px-2.5 py-1.5 bg-black/85 border-b border-white/10 flex items-center justify-between gap-2">
+            <span className="text-[10px] font-black text-amber-300 truncate">
+              🎬 Reels · {minimizedReel.title}
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setMinimizedReel(null);
+                  setReelsAction('shorts');
+                  setReelsActionNonce((n) => n + 1);
+                  navigateTab('reels');
+                }}
+                className="px-2 py-0.5 rounded-md bg-cyan-400/20 hover:bg-cyan-400 hover:text-black text-[10px] font-black text-cyan-200 transition"
+                title="Aumentar Reels"
+              >
+                ⤢ Aumentar
+              </button>
+              <button
+                type="button"
+                onClick={() => setMinimizedReel(null)}
+                className="p-1 rounded-md bg-rose-600/80 hover:bg-rose-500 text-white"
+                title="Fechar Reels"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+          <div className="aspect-[9/12] max-h-56 w-full bg-black">
+            {minimizedReel.videoUrl && !minimizedReel.youtubeVideoId ? (
+              <video
+                src={minimizedReel.videoUrl}
+                autoPlay
+                loop
+                playsInline
+                controls
+                className="w-full h-full object-cover"
+              />
+            ) : minimizedReel.youtubeVideoId ? (
+              <iframe
+                src={`https://www.youtube.com/embed/${minimizedReel.youtubeVideoId}?autoplay=1&loop=1&playlist=${minimizedReel.youtubeVideoId}&playsinline=1&rel=0`}
+                title={minimizedReel.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                className="w-full h-full border-0"
+              />
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING MINIMIZED MOVIE / VIDEO PiP (keeps playing while navigating platform!) */}
+      {minimizedMovie && (
+        <div className="fixed bottom-16 md:bottom-4 right-3 z-[88] w-72 sm:w-80 rounded-2xl overflow-hidden bg-[#080514] border border-cyan-400/55 shadow-[0_14px_45px_rgba(0,0,0,0.92)]">
+          <div className="px-2.5 py-1.5 bg-black/85 border-b border-white/10 flex items-center justify-between gap-2">
+            <span className="text-[10px] font-black text-cyan-200 truncate">
+              🍿 {minimizedMovie.title}
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const m = minimizedMovie;
+                  setMinimizedMovie(null);
+                  setPendingMovie(m);
+                  navigateTab('movies');
+                }}
+                className="px-2 py-0.5 rounded-md bg-amber-400 hover:bg-amber-300 text-black text-[10px] font-black transition"
+                title="Aumentar Filme"
+              >
+                ⤢ Aumentar
+              </button>
+              <button
+                type="button"
+                onClick={() => setMinimizedMovie(null)}
+                className="p-1 rounded-md bg-rose-600/80 hover:bg-rose-500 text-white"
+                title="Fechar Vídeo"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+          <div className="aspect-video w-full bg-black">
+            {minimizedMovie.videoStreamUrl && !minimizedMovie.youtubeVideoId && !minimizedMovie.youtubePlaylistId ? (
+              <video
+                src={minimizedMovie.videoStreamUrl}
+                autoPlay
+                controls
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <iframe
+                src={
+                  minimizedMovie.youtubePlaylistId
+                    ? `https://www.youtube.com/embed/videoseries?list=${minimizedMovie.youtubePlaylistId}&autoplay=1&rel=0&playsinline=1`
+                    : minimizedMovie.youtubeVideoId
+                      ? `https://www.youtube.com/embed/${minimizedMovie.youtubeVideoId}?autoplay=1&rel=0&playsinline=1`
+                      : minimizedMovie.videoStreamUrl || ''
+                }
+                title={minimizedMovie.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                className="w-full h-full border-0"
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CLIP THEATER (with Minimize floating PiP + clean Expand/Close controls) */}
       <div
         onClick={(e) => {
-          if (clipTheaterOpen && e.target === e.currentTarget) setClipTheaterOpen(false);
+          if (clipTheaterOpen && !clipMinimized && e.target === e.currentTarget) setClipTheaterOpen(false);
         }}
         className={
           clipTheaterOpen && currentTrack?.youtubeVideoId
-            ? `fixed inset-0 z-[9995] bg-black flex items-center justify-center ${
-                clipFitMode === 'fullscreen' ? 'p-0' : 'p-0 sm:p-4'
-              }`
+            ? clipMinimized
+              ? 'fixed bottom-16 md:bottom-4 right-3 z-[92] w-72 sm:w-80 shadow-[0_14px_45px_rgba(0,0,0,0.92)]'
+              : `fixed inset-0 z-[9995] bg-black flex items-center justify-center ${
+                  clipFitMode === 'fullscreen' ? 'p-0' : 'p-0 sm:p-4'
+                }`
             : 'fixed bottom-0 right-0 w-[220px] h-[140px] opacity-[0.02] pointer-events-none z-0 overflow-hidden'
         }
       >
@@ -4395,18 +4724,48 @@ export function App() {
           ref={clipStageRef}
           className={
             clipTheaterOpen && currentTrack?.youtubeVideoId
-              ? `w-full flex flex-col overflow-hidden bg-[#090418] border border-cyan-400/40 shadow-[0_0_70px_rgba(236,72,153,0.35)] relative ${
-                  clipFitMode === 'fullscreen' || isNativeFullscreen
-                    ? 'h-[100dvh] max-w-none rounded-none border-0'
-                    : clipFitMode === 'compact'
-                      ? 'max-w-2xl max-h-[85dvh] rounded-3xl'
-                      : 'max-w-5xl h-[100dvh] sm:h-[92dvh] sm:rounded-3xl'
-                }`
+              ? clipMinimized
+                ? 'w-full flex flex-col overflow-hidden bg-[#090418] border border-amber-400/55 rounded-2xl'
+                : `w-full flex flex-col overflow-hidden bg-[#090418] border border-cyan-400/40 shadow-[0_0_70px_rgba(236,72,153,0.35)] relative ${
+                    clipFitMode === 'fullscreen' || isNativeFullscreen
+                      ? 'h-[100dvh] max-w-none rounded-none border-0'
+                      : clipFitMode === 'compact'
+                        ? 'max-w-2xl max-h-[85dvh] rounded-3xl'
+                        : 'max-w-5xl h-[100dvh] sm:h-[92dvh] sm:rounded-3xl'
+                  }`
               : 'w-full h-full'
           }
         >
-          {clipTheaterOpen && currentTrack?.youtubeVideoId && (
-            <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e] shrink-0">
+          {clipTheaterOpen && currentTrack?.youtubeVideoId && clipMinimized && (
+            <div className="px-2.5 py-1.5 bg-black/90 border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
+              <span className="text-[10px] font-black text-amber-300 truncate">
+                🎬 {currentTrack.title}
+              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setClipMinimized(false)}
+                  className="px-2 py-0.5 rounded-md bg-amber-400 hover:bg-amber-300 text-black text-[10px] font-black"
+                >
+                  ⤢ Aumentar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClipMinimized(false);
+                    setClipTheaterOpen(false);
+                  }}
+                  className="p-1 rounded-md bg-rose-600/85 hover:bg-rose-500 text-white"
+                  title="Fechar"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {clipTheaterOpen && currentTrack?.youtubeVideoId && !clipMinimized && (
+            <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e] shrink-0 relative">
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <button
                   onClick={() => setClipTheaterOpen(false)}
@@ -4424,85 +4783,107 @@ export function App() {
               </div>
               <div className="flex items-center gap-1.5 flex-wrap shrink-0">
                 <button
-                  onClick={handleCycleBassBoost}
-                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-black flex items-center gap-1 transition ${
-                    bassBoostLevel > 0
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 border-pink-300 text-white shadow-[0_0_14px_rgba(236,72,153,0.5)]'
-                      : 'bg-white/10 hover:bg-white/20 border-white/15 text-purple-100'
-                  }`}
-                  title="Turbina os graves do som"
+                  type="button"
+                  onClick={() => {
+                    setClipMoreOpen(false);
+                    setClipMinimized(true);
+                    showToast('🎬 Clipe minimizado! Continua tocando enquanto você navega.');
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black text-[11px] font-black flex items-center gap-1"
+                  title="Minimizar e continuar assistindo"
                 >
-                  <AudioWaveform className="w-3.5 h-3.5" />
-                  <span>
-                    {bassBoostLevel === 3
-                      ? 'Subwoofer'
-                      : bassBoostLevel === 2
-                        ? 'Pesado'
-                        : bassBoostLevel === 1
-                          ? 'Suave'
-                          : 'Graves +'}
-                  </span>
+                  <Minimize2 className="w-3.5 h-3.5" />
+                  <span>Minimizar</span>
+                </button>
+                <button
+                  onClick={() =>
+                    setClipFitMode((m) => (m === 'fullscreen' ? 'standard' : 'fullscreen'))
+                  }
+                  className="px-2.5 py-1.5 rounded-xl bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-[11px] font-black flex items-center gap-1"
+                  title="Aumentar / Reduzir"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>{clipFitMode === 'fullscreen' ? 'Reduzir' : 'Aumentar'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClipMoreOpen((v) => !v)}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white"
+                  title="Mais opções"
+                >
+                  <MoreVertical className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => {
+                    setClipMinimized(false);
                     setClipTheaterOpen(false);
-                    setPixInitialTab('donate');
-                    setPixOpen(true);
                   }}
-                  className="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 text-[11px] font-black flex items-center gap-1"
-                  title="Abrir QR Code PIX"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">PIX</span>
-                </button>
-                <select
-                  value={clipQuality}
-                  onChange={(e) => {
-                    const q = e.target.value as typeof clipQuality;
-                    setClipQuality(q);
-                    if (q !== 'default') ytPlayerRef.current?.setPlaybackQuality?.(q);
-                  }}
-                  className="px-2 py-1.5 rounded-xl bg-white/10 border border-cyan-400/35 text-cyan-100 text-[11px] font-black focus:outline-none cursor-pointer"
-                >
-                  <option value="hd720" className="bg-[#090418]">720p HD</option>
-                  <option value="large" className="bg-[#090418]">480p Leve</option>
-                  <option value="medium" className="bg-[#090418]">360p Rápido</option>
-                  <option value="default" className="bg-[#090418]">Auto</option>
-                </select>
-                <button
-                  onClick={() =>
-                    setClipFitMode((m) =>
-                      m === 'standard' ? 'fullscreen' : m === 'fullscreen' ? 'compact' : 'standard'
-                    )
-                  }
-                  className="px-2.5 py-1.5 rounded-xl bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-[11px] font-black flex items-center gap-1"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  <span className="hidden xs:inline">
-                    {clipFitMode === 'fullscreen' ? 'Tela Cheia' : clipFitMode === 'compact' ? 'Compacto' : 'Ajustar'}
-                  </span>
-                </button>
-                <button
-                  onClick={() => setClipTheaterOpen(false)}
                   className="px-2.5 py-1.5 rounded-full bg-rose-600/85 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1"
                 >
                   <X className="w-3.5 h-3.5" />
                   <span>Fechar</span>
                 </button>
               </div>
+
+              {clipMoreOpen && (
+                <div className="absolute right-3 top-12 z-40 w-56 rounded-2xl bg-[#110a24]/98 backdrop-blur-xl border border-amber-400/35 shadow-2xl p-2.5 space-y-2 text-xs">
+                  <select
+                    value={clipQuality}
+                    onChange={(e) => {
+                      const q = e.target.value as typeof clipQuality;
+                      setClipQuality(q);
+                      if (q !== 'default') ytPlayerRef.current?.setPlaybackQuality?.(q);
+                    }}
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-black/60 border border-cyan-400/35 text-cyan-100 text-[11px] font-black focus:outline-none cursor-pointer"
+                  >
+                    <option value="hd720" className="bg-[#090418]">Qualidade: 720p HD</option>
+                    <option value="large" className="bg-[#090418]">Qualidade: 480p Leve</option>
+                    <option value="medium" className="bg-[#090418]">Qualidade: 360p Rápido</option>
+                    <option value="default" className="bg-[#090418]">Qualidade: Auto</option>
+                  </select>
+                  <button
+                    onClick={handleCycleBassBoost}
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-purple-100 font-black flex items-center justify-center gap-1"
+                  >
+                    <AudioWaveform className="w-3.5 h-3.5" />
+                    <span>
+                      {bassBoostLevel === 3
+                        ? 'Grave: Subwoofer'
+                        : bassBoostLevel === 2
+                          ? 'Grave: Pesado'
+                          : bassBoostLevel === 1
+                            ? 'Grave: Suave'
+                            : 'Turbina Graves +'}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setClipMoreOpen(false);
+                      setClipTheaterOpen(false);
+                      setPixInitialTab('donate');
+                      setPixOpen(true);
+                    }}
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 font-black flex items-center justify-center gap-1"
+                  >
+                    <QrCode className="w-3.5 h-3.5" /> Apoiar via PIX
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           <div
             className={
               clipTheaterOpen
-                ? 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center relative overflow-hidden'
+                ? clipMinimized
+                  ? 'aspect-video w-full bg-black relative overflow-hidden'
+                  : 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center relative overflow-hidden'
                 : 'w-full h-full bg-black relative'
             }
           >
             <div id="lenkyx-yt-audio-host" className="w-full h-full" />
 
-            {clipTheaterOpen && currentTrack?.youtubeVideoId && !isPlaying && (
+            {clipTheaterOpen && !clipMinimized && currentTrack?.youtubeVideoId && !isPlaying && (
               <div
                 onClick={() => void handleTogglePlay()}
                 className="absolute inset-0 z-10 cursor-pointer flex items-center justify-center bg-black/70 backdrop-blur-sm transition"
@@ -4520,7 +4901,7 @@ export function App() {
             )}
           </div>
 
-          {clipTheaterOpen && currentTrack?.youtubeVideoId && (
+          {clipTheaterOpen && !clipMinimized && currentTrack?.youtubeVideoId && (
             <div className="px-3 sm:px-4 py-2.5 border-t border-white/10 flex flex-col gap-2 bg-[#090418] shrink-0">
               <div className="flex items-center gap-2 text-[10px] font-mono text-purple-200/85">
                 <span className="w-9 text-right">
