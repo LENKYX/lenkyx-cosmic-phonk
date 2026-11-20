@@ -12,23 +12,23 @@ const SNOWFLAKES = [
 export const CosmicSpaceBackdrop: React.FC<{ intense?: boolean; paused?: boolean }> = () => {
   return (
     <div
-      className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#040814]"
+      className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#04050a]"
       style={{
         backgroundImage: [
-          'radial-gradient(ellipse 80% 50% at 14% 4%, rgba(0, 245, 255, 0.17), transparent 62%)',
-          'radial-gradient(ellipse 75% 45% at 88% 8%, rgba(236, 72, 153, 0.15), transparent 62%)',
-          'radial-gradient(ellipse 65% 45% at 50% 48%, rgba(16, 185, 129, 0.12), transparent 68%)',
-          'radial-gradient(ellipse 70% 40% at 20% 95%, rgba(245, 158, 11, 0.13), transparent 65%)',
+          'radial-gradient(ellipse 75% 48% at 15% 4%, rgba(245, 200, 76, 0.14), transparent 62%)',
+          'radial-gradient(ellipse 70% 45% at 88% 8%, rgba(34, 211, 238, 0.13), transparent 62%)',
+          'radial-gradient(ellipse 60% 40% at 50% 48%, rgba(212, 175, 55, 0.08), transparent 68%)',
+          'radial-gradient(ellipse 70% 40% at 20% 95%, rgba(16, 185, 129, 0.09), transparent 65%)',
         ].join(', '),
       }}
     >
       {/* Futuristic Cyber-Robot Circuit Grid */}
       <div
-        className="absolute inset-0 opacity-[0.14]"
+        className="absolute inset-0 opacity-[0.11]"
         style={{
           backgroundImage:
-            'linear-gradient(to right, rgba(34,211,238,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(34,211,238,0.18) 1px, transparent 1px)',
-          backgroundSize: '44px 44px',
+            'linear-gradient(to right, rgba(212,175,55,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(34,211,238,0.16) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
           maskImage: 'radial-gradient(ellipse 92% 85% at 50% 35%, black 35%, transparent 100%)',
           WebkitMaskImage: 'radial-gradient(ellipse 92% 85% at 50% 35%, black 35%, transparent 100%)',
         }}

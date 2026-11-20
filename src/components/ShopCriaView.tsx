@@ -606,6 +606,7 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
   const [liveItems, setLiveItems] = useState<LivePublishedItem[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
   const [affiliateClicks, setAffiliateClicks] = useState(0);
+  const [brokenPhotoIds, setBrokenPhotoIds] = useState<Record<string, boolean>>({});
 
   // Commission / Affiliate configuration modal
   const [affModalOpen, setAffModalOpen] = useState(false);
@@ -827,19 +828,19 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
 
   return (
     <div className="space-y-5 pb-36 md:pb-28 cosmic-scene">
-      {/* Header */}
+      {/* LUXURY VIP BOUTIQUE HEADER */}
       <section className="rounded-3xl cosmic-card-3d p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <LenkyxEdgeLogo size="md" className="shrink-0" />
           <div className="min-w-0">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-amber-400" /> TUDO QUE OS CRIA GOSTAM DE OSTENTAR · BRASIL 🇧🇷
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300 flex items-center gap-1.5">
+              <Flame className="w-3.5 h-3.5 text-amber-400" /> BOUTIQUE VIP BLACK · IMAGENS REAIS DAS MARCAS 🇧🇷
             </div>
-            <h1 className="font-display text-base sm:text-xl font-black text-white truncate">
-              🛍️ Loja dos Cria · Grife, Ouro, Motos & Naves ({CRIA_CATALOG.length} Kits)
+            <h1 className="font-display text-base sm:text-xl font-black lux-gold-text truncate">
+              👑 Loja dos Cria VIP · Grife, Ouro, Motos & Naves ({CRIA_CATALOG.length} Kits)
             </h1>
             <p className="text-[11px] text-slate-300">
-              Lacoste, Oakley Juliet, Invicta, Correntes Ouro 18k, Hornet, S1000RR, BMW, Porsche & JBL com links de comissão!
+              Lacoste, Oakley Juliet, Invicta, Ouro 18k, Hornet, S1000RR, BMW, Porsche & JBL com fotos reais e comissão ativa!
             </p>
           </div>
         </div>
@@ -848,25 +849,25 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
           <button
             type="button"
             onClick={() => setAffModalOpen(true)}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-black flex items-center gap-1.5 border transition ${
+            className={`px-3.5 py-2 rounded-full text-xs font-black flex items-center gap-1.5 transition ${
               hasAnyAffiliate
-                ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
-                : 'bg-amber-400/20 border-amber-400/50 text-amber-200 hover:bg-amber-400 hover:text-black'
+                ? 'lux-btn-obsidian border-emerald-400/50 text-emerald-200'
+                : 'lux-btn-obsidian border-amber-400/50 text-amber-200'
             }`}
           >
-            <DollarSign className="w-4 h-4" />
-            <span>{hasAnyAffiliate ? `Comissão Ativa (${affiliateClicks} cliques)` : 'Ativar Minhas Comissões'}</span>
+            <DollarSign className="w-4 h-4 text-emerald-300" />
+            <span>{hasAnyAffiliate ? `Comissão Ativa (${affiliateClicks})` : 'Ativar Comissões'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setCartOpen(true)}
-            className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-400 text-black text-xs font-black flex items-center gap-2 shadow-[0_0_24px_rgba(34,211,238,0.4)] hover:brightness-110 transition"
+            className="px-4 py-2 rounded-full lux-btn-gold text-xs font-black flex items-center gap-2"
           >
             <ShoppingBag className="w-4 h-4" />
             <span>Sacola ({totalItems})</span>
             {totalPrice > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-black/20 font-mono text-[10px]">
+              <span className="px-2 py-0.5 rounded-full bg-black/15 font-mono text-[10px]">
                 R$ {totalPrice.toLocaleString('pt-BR')}
               </span>
             )}
@@ -874,29 +875,27 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
         </div>
       </section>
 
-      {/* Search + Categories */}
+      {/* Search + Luxury Category Capsules */}
       <div className="space-y-2.5">
         <div className="relative">
-          <Search className="w-4 h-4 text-cyan-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-amber-300 absolute left-4 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar kit pesado: Lacoste, Juliet, Romeo 2, Invicta, Corrente Ouro 18k, Hornet, BMW, JBL..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-black/50 border border-cyan-400/25 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400"
+            placeholder="Buscar marca ou nave: Lacoste, Juliet, Romeo 2, Invicta, Ouro 18k, Hornet, BMW, Porsche, JBL..."
+            className="w-full pl-11 pr-4 py-2.5 rounded-full bg-black/60 border border-amber-400/25 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-300 shadow-[inset_0_1px_4px_rgba(0,0,0,0.6)]"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
               type="button"
               onClick={() => setCat(c.id)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition shrink-0 ${
-                cat === c.id
-                  ? 'bg-gradient-to-r from-cyan-400 to-emerald-400 text-black shadow'
-                  : 'bg-white/[0.07] hover:bg-white/15 text-slate-200 border border-white/10'
+              className={`px-3.5 py-1.5 rounded-full text-xs font-black whitespace-nowrap shrink-0 ${
+                cat === c.id ? 'lux-btn-gold' : 'lux-btn-obsidian text-slate-200'
               }`}
             >
               {c.label}
@@ -905,15 +904,15 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
         </div>
       </div>
 
-      {/* LIVE PUBLISHED ITEMS STRIP (Real Photos + Real Store Links + Affiliate Commission) */}
-      <section className="rounded-3xl cosmic-card-3d p-4 space-y-3 border border-cyan-400/30">
+      {/* LIVE PUBLISHED ITEMS STRIP (Proxied Real Photos + Real Store Links + Affiliate Commission) */}
+      <section className="rounded-3xl cosmic-card-3d p-4 space-y-3 border border-amber-400/25">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300 flex items-center gap-1.5">
-              <BadgeCheck className="w-3.5 h-3.5" /> OFERTAS PUBLICADAS AO VIVO DO BRASIL (COMISSÃO POR VENDA)
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300 flex items-center gap-1.5">
+              <BadgeCheck className="w-3.5 h-3.5 text-emerald-300" /> VITRINE AO VIVO DO BRASIL · FOTOS REAIS E COMISSÃO
             </div>
             <h2 className="font-display text-sm sm:text-base font-black text-white">
-              Produtos Reais na Vitrine Agora ({liveItems.length})
+              Ofertas Publicadas Agora ({liveItems.length})
             </h2>
           </div>
           <button
@@ -923,17 +922,17 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
               void fetchLiveOffers(query.trim() || activeCatObj.liveQuery);
             }}
             disabled={liveLoading}
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-cyan-200 flex items-center gap-1.5"
+            className="px-3.5 py-1.5 rounded-full lux-btn-obsidian text-xs font-bold text-amber-200 flex items-center gap-1.5"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${liveLoading ? 'animate-spin' : ''}`} />
-            Atualizar Ofertas
+            <RefreshCw className={`w-3.5 h-3.5 text-amber-300 ${liveLoading ? 'animate-spin' : ''}`} />
+            Atualizar Vitrine
           </button>
         </div>
 
         {liveLoading && liveItems.length === 0 ? (
-          <div className="py-8 flex items-center justify-center gap-2 text-xs text-cyan-200">
-            <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
-            <span>Buscando anúncios reais publicados no Brasil...</span>
+          <div className="py-8 flex items-center justify-center gap-2 text-xs text-amber-200">
+            <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+            <span>Carregando anúncios oficiais do Brasil...</span>
           </div>
         ) : liveItems.length === 0 ? (
           <p className="text-xs text-slate-300">
@@ -948,24 +947,24 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={trackAndOpenOffer}
-                className="group w-44 sm:w-48 shrink-0 rounded-2xl overflow-hidden bg-black/55 border border-white/15 hover:border-cyan-400/70 transition flex flex-col justify-between"
+                className="group w-44 sm:w-48 shrink-0 rounded-2xl overflow-hidden bg-[#0a0c14] border border-amber-400/20 hover:border-amber-300/70 transition flex flex-col justify-between shadow-lg"
               >
                 <div className="relative aspect-square bg-white overflow-hidden">
                   <img
-                    src={it.imageUrl}
+                    src={`/api/shop/img-proxy?url=${encodeURIComponent(it.imageUrl)}&q=${encodeURIComponent(it.title)}`}
                     alt={it.title}
                     loading="lazy"
-                    className="w-full h-full object-contain p-1.5 group-hover:scale-105 transition duration-300"
+                    className="w-full h-full object-contain p-2 group-hover:scale-105 transition duration-300"
                   />
-                  <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/80 text-emerald-300 text-[9px] font-black">
+                  <span className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/85 border border-amber-400/35 text-amber-200 text-[9px] font-black">
                     {it.storeName}
                   </span>
                 </div>
-                <div className="p-2.5 space-y-1.5">
+                <div className="p-2.5 space-y-2">
                   <div className="text-[11px] font-bold text-white line-clamp-2 leading-snug">
                     {it.title}
                   </div>
-                  <div className="w-full py-1.5 px-2 rounded-lg bg-gradient-to-r from-cyan-400 to-emerald-400 text-black text-[10px] font-black flex items-center justify-center gap-1">
+                  <div className="w-full py-1.5 px-2 rounded-full lux-btn-gold text-[10px] font-black flex items-center justify-center gap-1">
                     <span>Comprar · Comissão</span>
                     <ExternalLink className="w-3 h-3" />
                   </div>
@@ -976,68 +975,102 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
         )}
       </section>
 
-      {/* Complete Curated "Tudo que os Cria Ostentam" Grid */}
+      {/* Complete Luxury Curated Grid with REAL Brand Photos */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((item) => {
           const offerUrl = buildCommissionUrl(item.searchQuery, item.category);
+          const photoFailed = Boolean(brokenPhotoIds[item.id]);
+          const realPhotoUrl = `/api/shop/photo?q=${encodeURIComponent(item.searchQuery)}`;
           return (
             <div
               key={item.id}
-              className="rounded-3xl cosmic-card-3d overflow-hidden flex flex-col justify-between p-4 space-y-3"
+              className="group rounded-3xl cosmic-card-3d overflow-hidden flex flex-col justify-between"
             >
-              <div className="space-y-2.5">
-                <div
-                  className={`rounded-2xl bg-gradient-to-br ${item.accent} border border-white/15 p-4 flex items-center justify-between`}
-                >
-                  <span className="text-4xl select-none">{item.emoji}</span>
-                  <div className="text-right space-y-1">
-                    <span className="px-2.5 py-0.5 rounded-full bg-black/60 border border-cyan-400/35 text-[9px] font-black text-cyan-200 block">
+              <div>
+                {/* Real Brand/Product Photo Frame */}
+                <div className="relative aspect-[4/3] bg-gradient-to-br from-[#0f1320] to-[#06070c] overflow-hidden border-b border-amber-400/20">
+                  {!photoFailed ? (
+                    <img
+                      src={realPhotoUrl}
+                      alt={`${item.brand} — ${item.name}`}
+                      loading="lazy"
+                      onError={() =>
+                        setBrokenPhotoIds((prev) => ({
+                          ...prev,
+                          [item.id]: true,
+                        }))
+                      }
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                    />
+                  ) : (
+                    <div
+                      className={`w-full h-full bg-gradient-to-br ${item.accent} flex flex-col items-center justify-center gap-1.5 p-4`}
+                    >
+                      <span className="text-5xl select-none drop-shadow-lg">{item.emoji}</span>
+                      <span className="font-logo text-xs font-black tracking-[0.2em] lux-gold-text uppercase">
+                        {item.brand}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Luxury Dark Gradient Vignette + Brand Badges */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#070910] via-black/15 to-black/35 pointer-events-none" />
+
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2">
+                    <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-amber-400/40 text-[9px] font-black text-amber-200 tracking-wide truncate">
                       {item.badge}
                     </span>
-                    <div className="font-mono text-sm font-black text-emerald-300">{item.priceLabel}</div>
-                    <div className="text-[9px] font-bold text-amber-300">{item.commissionEst}</div>
+                    <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-emerald-400/40 text-[9px] font-black text-emerald-300 shrink-0">
+                      {item.commissionEst}
+                    </span>
+                  </div>
+
+                  <div className="absolute bottom-2.5 left-3 right-3 flex items-end justify-between gap-2">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-black/75 border border-white/15 text-[10px] font-black uppercase tracking-wider text-white">
+                      {item.brand}
+                    </span>
+                    <span className="px-3 py-1 rounded-xl bg-black/85 border border-amber-400/50 font-mono text-sm font-black lux-gold-text shadow-lg">
+                      {item.priceLabel}
+                    </span>
                   </div>
                 </div>
 
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-wider text-cyan-300">
-                    {item.brand}
-                  </div>
+                <div className="p-4 pb-2 space-y-1">
                   <h3 className="font-display text-sm font-black text-white leading-snug">
                     {item.name}
                   </h3>
-                  <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">{item.specs}</p>
+                  <p className="text-[11px] text-slate-300/90 leading-relaxed">{item.specs}</p>
                 </div>
               </div>
 
-              <div className="space-y-2 pt-1">
+              <div className="p-4 pt-2 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => addToCart(item)}
-                    className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1 transition"
+                    className="py-2 px-3 rounded-full lux-btn-obsidian text-xs font-bold flex items-center justify-center gap-1.5"
                   >
-                    <Plus className="w-3.5 h-3.5 text-cyan-300" /> Na Sacola
+                    <Plus className="w-3.5 h-3.5 text-amber-300" /> Na Sacola
                   </button>
                   <a
                     href={offerUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={trackAndOpenOffer}
-                    className="py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-xs font-black flex items-center justify-center gap-1 transition"
+                    className="py-2 px-3 rounded-full lux-btn-gold text-xs font-black flex items-center justify-center gap-1.5"
                   >
                     <span>Comprar</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
                 {item.category !== 'motos' && item.category !== 'carros' && (
-                  <div className="flex items-center gap-1.5 text-[10px]">
+                  <div className="grid grid-cols-3 gap-1.5 text-[10px]">
                     <a
                       href={buildStoreUrl(item.searchQuery, 'ml')}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={trackAndOpenOffer}
-                      className="flex-1 py-1 rounded-lg bg-yellow-400/15 hover:bg-yellow-400/25 border border-yellow-400/30 text-yellow-200 font-bold text-center transition"
+                      className="py-1.5 rounded-full bg-amber-400/10 hover:bg-amber-400/25 border border-amber-400/30 text-amber-200 font-bold text-center transition"
                     >
                       Mercado Livre
                     </a>
@@ -1046,7 +1079,7 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={trackAndOpenOffer}
-                      className="flex-1 py-1 rounded-lg bg-orange-500/15 hover:bg-orange-500/25 border border-orange-400/30 text-orange-200 font-bold text-center transition"
+                      className="py-1.5 rounded-full bg-orange-500/10 hover:bg-orange-500/25 border border-orange-400/30 text-orange-200 font-bold text-center transition"
                     >
                       Shopee
                     </a>
@@ -1055,7 +1088,7 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={trackAndOpenOffer}
-                      className="flex-1 py-1 rounded-lg bg-cyan-400/15 hover:bg-cyan-400/25 border border-cyan-400/30 text-cyan-200 font-bold text-center transition"
+                      className="py-1.5 rounded-full bg-cyan-400/10 hover:bg-cyan-400/25 border border-cyan-400/30 text-cyan-200 font-bold text-center transition"
                     >
                       Amazon
                     </a>

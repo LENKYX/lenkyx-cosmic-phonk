@@ -3812,6 +3812,141 @@ app.get('/api/shop/live', async (req, res) => {
   }
 });
 
+// === v67: REAL BRAND/PRODUCT PHOTO RESOLVER & CACHE ===
+const shopPhotoCache = new Map();
+
+function isSafePublicHttpUrl(rawUrl) {
+  try {
+    const u = new URL(rawUrl);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+    const h = u.hostname.toLowerCase();
+    if (
+      h === 'localhost' ||
+      h.startsWith('127.') ||
+      h.startsWith('10.') ||
+      h.startsWith('192.168.') ||
+      h.startsWith('169.254.') ||
+      h === '0.0.0.0' ||
+      h === '::1'
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function fetchImageBuffer(imgUrl) {
+  if (!isSafePublicHttpUrl(imgUrl)) return null;
+  try {
+    const r = await fetch(imgUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      },
+      signal: AbortSignal.timeout(5500),
+    });
+    if (!r.ok) return null;
+    const ct = (r.headers.get('content-type') || '').toLowerCase();
+    if (!ct.startsWith('image/')) return null;
+    const arr = await r.arrayBuffer();
+    if (arr.byteLength < 2500 || arr.byteLength > 4 * 1024 * 1024) return null;
+    return { contentType: ct.split(';')[0], buffer: Buffer.from(arr) };
+  } catch {
+    return null;
+  }
+}
+
+async function resolveBrandPhotoForQuery(qRaw) {
+  const key = qRaw.toLowerCase();
+  const cached = shopPhotoCache.get(key);
+  if (cached && Date.now() - cached.ts < 24 * 60 * 60 * 1000) {
+    return cached;
+  }
+  const bingUrl = `https://www.bing.com/images/async?q=${encodeURIComponent(
+    `${qRaw} produto foto oficial`
+  )}&first=1&count=12&mkt=pt-BR`;
+  const r = await fetch(bingUrl, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+      'Accept-Language': 'pt-BR,pt;q=0.9',
+    },
+    signal: AbortSignal.timeout(6500),
+  });
+  const rawHtml = await r.text();
+  const unescape = (s) =>
+    String(s || '')
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+  const blocks = rawHtml.match(/m="\{[^"]*\}"/g) || [];
+  const candidates = [];
+  for (const blk of blocks) {
+    try {
+      const obj = JSON.parse(unescape(blk.slice(3, -1)));
+      if (obj.murl && isSafePublicHttpUrl(obj.murl)) candidates.push(String(obj.murl));
+      if (obj.turl && isSafePublicHttpUrl(obj.turl)) candidates.push(String(obj.turl));
+    } catch {
+      // ignore
+    }
+  }
+  for (const cand of candidates.slice(0, 8)) {
+    const img = await fetchImageBuffer(cand);
+    if (img) {
+      const entry = { ...img, ts: Date.now() };
+      if (shopPhotoCache.size >= 140) {
+        const oldestKey = shopPhotoCache.keys().next().value;
+        if (oldestKey) shopPhotoCache.delete(oldestKey);
+      }
+      shopPhotoCache.set(key, entry);
+      return entry;
+    }
+  }
+  return null;
+}
+
+app.get('/api/shop/photo', async (req, res) => {
+  const qRaw = String(req.query.q || 'Lacoste Brasil').trim().slice(0, 120);
+  try {
+    const entry = await resolveBrandPhotoForQuery(qRaw);
+    if (entry) {
+      res.setHeader('Content-Type', entry.contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(entry.buffer);
+    }
+  } catch {
+    // ignore
+  }
+  return res.status(404).end();
+});
+
+app.get('/api/shop/img-proxy', async (req, res) => {
+  const rawUrl = String(req.query.url || '').trim();
+  const qFallback = String(req.query.q || '').trim().slice(0, 120);
+  if (rawUrl) {
+    const img = await fetchImageBuffer(rawUrl);
+    if (img) {
+      res.setHeader('Content-Type', img.contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(img.buffer);
+    }
+  }
+  if (qFallback) {
+    const entry = await resolveBrandPhotoForQuery(qFallback).catch(() => null);
+    if (entry) {
+      res.setHeader('Content-Type', entry.contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(entry.buffer);
+    }
+  }
+  return res.status(404).end();
+});
+
 app.post('/api/shop/track-click', (_req, res) => {
   const db = readDb();
   const nextClicks = Number(db.settings?.shopAffiliateClicks || 0) + 1;

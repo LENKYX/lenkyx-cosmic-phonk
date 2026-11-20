@@ -2301,24 +2301,24 @@ export function App() {
         </div>
       )}
 
-      {/* === DESKTOP & SMART TV LEFT SIDEBAR === */}
+      {/* === DESKTOP & SMART TV LEFT SIDEBAR (LUXURY OBSIDIAN + GOLD + TECH) === */}
         <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
         <div
           onClick={handleBrandTap}
-          className="h-16 px-3.5 flex items-center justify-between border-b border-cyan-400/20 cursor-pointer hover:bg-white/[0.03] select-none"
+          className="h-16 px-3.5 flex items-center justify-between border-b border-amber-400/20 bg-gradient-to-r from-amber-500/[0.06] via-transparent to-cyan-500/[0.06] cursor-pointer hover:bg-white/[0.03] select-none"
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <LenkyxEdgeLogo size="sm" className="shrink-0" />
             <div className="min-w-0">
-              <span className="font-logo text-sm font-black tracking-[0.14em] text-white block leading-none">
+              <span className="font-logo text-sm font-black tracking-[0.16em] lux-gold-text block leading-none">
                 LENKYX
               </span>
-              <span className="text-[9px] font-bold text-cyan-300/90">🤖 Favela Tech · Brasil 🇧🇷</span>
+              <span className="text-[9px] font-bold text-amber-200/80 tracking-wider">VIP BLACK · FAVELA TECH 🇧🇷</span>
             </div>
           </div>
         </div>
 
-        {/* 5 Clean Focused Tabs */}
+        {/* Organized Luxury Navigation Capsules */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-2.5 py-3 space-y-3">
           <nav className="space-y-1">
             {sidebarMain.map((tab) => {
@@ -2327,67 +2327,75 @@ export function App() {
                 <button
                   key={tab.id}
                   onClick={() => navigateTab(tab.id)}
-                  className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all ${
+                  className={`w-full px-3 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 transition-all ${
                     active
-                      ? 'bg-gradient-to-r from-white/[0.12] via-cyan-500/15 to-transparent text-white border border-cyan-300/35 shadow-[inset_2px_0_0_#22d3ee]'
-                      : 'text-slate-300/80 hover:text-white hover:bg-white/[0.05] border border-transparent'
+                      ? 'bg-gradient-to-r from-amber-400/20 via-amber-500/10 to-cyan-500/10 text-amber-100 border border-amber-400/45 shadow-[inset_3px_0_0_#f5c84c,0_6px_18px_rgba(212,175,55,0.14)]'
+                      : 'text-slate-300/85 hover:text-white hover:bg-white/[0.05] border border-transparent'
                   }`}
                 >
-                  <span className={active ? 'text-cyan-300' : 'text-slate-400'}>{tab.icon}</span>
+                  <span
+                    className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition ${
+                      active
+                        ? 'bg-amber-400/20 text-amber-300 border border-amber-400/35'
+                        : 'bg-white/[0.04] text-slate-400'
+                    }`}
+                  >
+                    {tab.icon}
+                  </span>
                   <span className="truncate tracking-wide">{tab.label}</span>
                 </button>
               );
             })}
           </nav>
 
-          <div className="space-y-1 pt-2 border-t border-white/[0.07]">
-            <div className="px-3 text-[9px] font-extrabold uppercase tracking-[0.2em] text-cyan-300/85 mb-1">
-              Criar & Lançar (Grátis)
+          <div className="space-y-1.5 pt-2.5 border-t border-amber-400/15">
+            <div className="px-2.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-300/85">
+              Estúdio VIP
             </div>
             <button
               onClick={() => navigateTab('studio')}
-              className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 transition ${
+              className={`w-full px-3 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2.5 transition ${
                 activeTab === 'studio'
-                  ? 'bg-gradient-to-r from-cyan-500/25 to-pink-500/20 text-white border border-cyan-400/45'
-                  : 'text-slate-200 hover:text-white hover:bg-white/[0.06]'
+                  ? 'lux-btn-gold'
+                  : 'lux-btn-obsidian'
               }`}
             >
-              <Wand2 className="w-4 h-4 text-cyan-300" />
-              <span>Criar Som · IA</span>
+              <Wand2 className={`w-4 h-4 ${activeTab === 'studio' ? 'text-black' : 'text-amber-300'}`} />
+              <span>Criar Som · IA Grátis</span>
             </button>
           </div>
 
-          {/* Robô HUD Recursos Pro */}
-          <div className="space-y-1 pt-2 border-t border-cyan-400/15">
-            <div className="px-3 text-[9px] font-extrabold uppercase tracking-[0.2em] text-cyan-300/85 mb-1">
-              🤖 Central dos Cria
+          {/* Robô HUD Recursos Pro (Uniform 2x2 Grid) */}
+          <div className="space-y-1.5 pt-2.5 border-t border-amber-400/15">
+            <div className="px-2.5 text-[9px] font-black uppercase tracking-[0.22em] text-cyan-300/85">
+              Central dos Cria
             </div>
-            <div className="grid grid-cols-2 gap-1.5 px-1">
+            <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => openFuturisticFeature('shazam')}
-                className="py-1.5 px-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-400 hover:text-black border border-cyan-400/30 text-[10px] font-black text-cyan-100 transition truncate"
+                className="py-2 px-2 rounded-xl lux-btn-obsidian text-[10px] font-black text-cyan-200 truncate text-center"
               >
                 🎙️ Radar Som
               </button>
               <button
                 type="button"
                 onClick={() => openFuturisticFeature('jam')}
-                className="py-1.5 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-400 hover:text-black border border-emerald-400/30 text-[10px] font-black text-emerald-100 transition truncate"
+                className="py-2 px-2 rounded-xl lux-btn-obsidian text-[10px] font-black text-emerald-200 truncate text-center"
               >
                 🎧 Ouvir Junto
               </button>
               <button
                 type="button"
                 onClick={() => openFuturisticFeature('wrapped')}
-                className="py-1.5 px-2 rounded-xl bg-amber-500/15 hover:bg-amber-400 hover:text-black border border-amber-400/30 text-[10px] font-black text-amber-100 transition truncate"
+                className="py-2 px-2 rounded-xl lux-btn-obsidian text-[10px] font-black text-amber-200 truncate text-center"
               >
                 📊 Seu Top BR
               </button>
               <button
                 type="button"
                 onClick={() => openFuturisticFeature('partners')}
-                className="py-1.5 px-2 rounded-xl bg-pink-500/15 hover:bg-pink-400 hover:text-black border border-pink-400/30 text-[10px] font-black text-pink-100 transition truncate"
+                className="py-2 px-2 rounded-xl lux-btn-obsidian text-[10px] font-black text-pink-200 truncate text-center"
               >
                 🤝 Patrocínio
               </button>
@@ -2395,12 +2403,12 @@ export function App() {
           </div>
 
           {/* Playlists Quick List */}
-          <div className="space-y-1 pt-2 border-t border-white/[0.07]">
-            <div className="px-3 flex items-center justify-between text-[9px] font-extrabold uppercase tracking-[0.2em] text-slate-400 mb-1">
+          <div className="space-y-1 pt-2.5 border-t border-amber-400/15">
+            <div className="px-2.5 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
               <span>Suas Playlists</span>
               <button
                 onClick={() => navigateTab('playlists')}
-                className="text-cyan-300 hover:underline normal-case font-bold"
+                className="text-amber-300 hover:underline normal-case font-bold"
               >
                 + Nova
               </button>
@@ -2409,36 +2417,36 @@ export function App() {
               <button
                 key={pl.id}
                 onClick={() => navigateTab('playlists')}
-                className="w-full px-3 py-1.5 rounded-lg hover:bg-white/[0.05] text-left text-[11px] text-slate-300/85 hover:text-white flex items-center justify-between gap-2 transition"
+                className="w-full px-2.5 py-1.5 rounded-xl hover:bg-white/[0.05] text-left text-[11px] text-slate-300/85 hover:text-amber-100 flex items-center justify-between gap-2 transition"
               >
                 <span className="truncate">
                   {pl.emoji} {pl.name}
                 </span>
-                <span className="text-[10px] text-slate-500 shrink-0">{pl.trackIds.length}</span>
+                <span className="text-[10px] text-amber-300/65 shrink-0 font-mono">{pl.trackIds.length}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Clean Utility Dock (PIX QR + Ranking + 1-Click PC + Share + Legal) */}
-        <div className="p-2.5 border-t border-white/[0.08] bg-black/25 space-y-2">
+        {/* Clean Luxury Utility Dock */}
+        <div className="p-2.5 border-t border-amber-400/20 bg-black/45 space-y-1.5">
           <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => {
                 setPixInitialTab('donate');
                 setPixOpen(true);
               }}
-              className="py-2 px-2 rounded-xl bg-gradient-to-r from-emerald-500/25 to-cyan-500/25 hover:from-emerald-500/40 hover:to-cyan-500/40 border border-emerald-400/45 text-emerald-100 text-[11px] font-black flex items-center justify-center gap-1 transition"
+              className="py-2 px-2 rounded-xl lux-btn-obsidian border-emerald-400/40 text-emerald-200 text-[11px] font-black flex items-center justify-center gap-1"
               title="Abrir QR Code PIX & Meta Diária"
             >
-              <QrCode className="w-3.5 h-3.5 text-emerald-300" /> PIX QR
+              <QrCode className="w-3.5 h-3.5 text-emerald-300" /> PIX VIP
             </button>
             <button
               onClick={() => {
                 setPixInitialTab('ranking');
                 setPixOpen(true);
               }}
-              className="py-2 px-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-pink-500/20 hover:from-amber-500/35 hover:to-pink-500/35 border border-amber-400/40 text-amber-100 text-[11px] font-black flex items-center justify-center gap-1 transition"
+              className="py-2 px-2 rounded-xl lux-btn-obsidian border-amber-400/40 text-amber-200 text-[11px] font-black flex items-center justify-center gap-1"
               title="Ver Ranking de Apoiadores"
             >
               <Crown className="w-3.5 h-3.5 text-amber-300" /> Ranking
@@ -2451,13 +2459,13 @@ export function App() {
                 setShareTrack(null);
                 setShareOpen(true);
               }}
-              className="py-1.5 px-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-slate-200 text-[10px] font-bold flex items-center justify-center gap-1 transition"
+              className="py-1.5 px-2 rounded-xl lux-btn-obsidian text-slate-200 text-[10px] font-bold flex items-center justify-center gap-1"
             >
-              <Share2 className="w-3 h-3 text-emerald-300" /> Convidar Amigos
+              <Share2 className="w-3 h-3 text-cyan-300" /> Convidar
             </button>
             <button
               onClick={() => setLegalOpen(true)}
-              className="py-1.5 px-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-slate-300 text-[10px] font-bold flex items-center justify-center gap-1 transition"
+              className="py-1.5 px-2 rounded-xl lux-btn-obsidian text-slate-300 text-[10px] font-bold flex items-center justify-center gap-1"
             >
               <Scale className="w-3 h-3 text-amber-300" /> Termos
             </button>
@@ -2467,16 +2475,16 @@ export function App() {
             <button
               type="button"
               onClick={() => void handleOneClickPcDownload()}
-              className="w-full py-2 px-2.5 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400 hover:brightness-110 text-black text-[11px] font-black flex items-center justify-center gap-1.5 shadow-[0_0_16px_rgba(34,211,238,0.35)] transition"
+              className="w-full py-2 px-2.5 rounded-xl lux-btn-gold text-[11px] font-black flex items-center justify-center gap-1.5"
             >
-              <Download className="w-3.5 h-3.5" /> Baixar no PC (1 Clique)
+              <Download className="w-3.5 h-3.5" /> Baixar App no PC
             </button>
           )}
 
           {mode === 'creator' && (
             <button
               onClick={() => setCreatorModalOpen(true)}
-              className="w-full py-1.5 px-2 rounded-xl border bg-amber-500/15 border-amber-400/35 text-amber-200 text-[11px] font-bold flex items-center justify-center gap-1"
+              className="w-full py-1.5 px-2 rounded-xl border bg-amber-500/15 border-amber-400/45 text-amber-200 text-[11px] font-black flex items-center justify-center gap-1 hover:bg-amber-400/25 transition"
             >
               <Sparkles className="w-3.5 h-3.5" /> Painel Criador
             </button>
@@ -2486,16 +2494,16 @@ export function App() {
 
       {/* === MAIN CONTENT SHELL === */}
       <div className="relative z-10 flex-1 min-w-0 h-full overflow-hidden flex flex-col md:pl-60 lg:pl-64">
-        {/* TOP HEADER (YouTube Clean Architecture) */}
-        <header className="shrink-0 z-30 bg-[#080514]/92 backdrop-blur-xl border-b border-white/[0.08] h-13 px-3 sm:px-5 flex items-center justify-between gap-3">
+        {/* TOP HEADER (Luxury Obsidian Glass Bar) */}
+        <header className="shrink-0 z-30 bg-[#06070d]/90 backdrop-blur-2xl border-b border-amber-400/15 h-14 px-3 sm:px-5 flex items-center justify-between gap-3 shadow-[0_6px_28px_rgba(0,0,0,0.45)]">
           <div className="flex items-center gap-2 shrink-0 min-w-0">
             {activeTab !== 'catalog' && (
               <button
                 onClick={goBackTab}
-                className="p-1.5 rounded-full hover:bg-white/10 text-white transition shrink-0"
+                className="w-9 h-9 rounded-full lux-btn-obsidian flex items-center justify-center text-amber-200 shrink-0"
                 title="Voltar"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4" />
               </button>
             )}
 
@@ -2504,7 +2512,7 @@ export function App() {
               className="flex md:hidden items-center gap-2 shrink-0 cursor-pointer select-none"
             >
               <LenkyxEdgeLogo size="xs" />
-              <span className="font-display text-sm font-black tracking-wider text-white">LENKYX</span>
+              <span className="font-logo text-sm font-black tracking-[0.14em] lux-gold-text">LENKYX</span>
             </div>
           </div>
 
@@ -2597,43 +2605,55 @@ export function App() {
             )}
           </div>
 
-          {/* CLEAN YOUTUBE-STYLE RIGHT ACTION ICONS (Only 3 simple icons + overflow menu) */}
-          <div className="flex items-center gap-1 shrink-0 relative">
+          {/* ORGANIZED LUXURY RIGHT ACTION CLUSTER */}
+          <div className="flex items-center gap-1.5 shrink-0 relative">
             <button
               type="button"
               onClick={() => setCreateMenuOpen(true)}
-              className="hidden sm:flex px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold items-center gap-1.5 transition"
+              className="hidden sm:flex px-3.5 py-1.5 rounded-full lux-btn-gold text-xs font-black items-center gap-1.5"
               title="Criar Reel, Live HD ou Música"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Criar</span>
             </button>
 
             <button
               type="button"
+              onClick={() => navigateTab('shop')}
+              className={`hidden sm:flex px-3 py-1.5 rounded-full text-xs font-black items-center gap-1.5 transition ${
+                activeTab === 'shop' ? 'lux-btn-gold' : 'lux-btn-obsidian text-amber-200'
+              }`}
+              title="Abrir Loja dos Cria"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Loja VIP</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setChatModalOpen(true)}
-              className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-white transition"
+              className="w-9 h-9 rounded-full lux-btn-obsidian flex items-center justify-center text-amber-200"
               title="Notificações & Chat Ao Vivo"
             >
-              <Bell className="w-5 h-5" />
+              <Bell className="w-4 h-4" />
             </button>
 
             <button
               type="button"
               onClick={() => setMobileIosSearchOpen(true)}
-              className="md:hidden w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-white transition"
+              className="md:hidden w-9 h-9 rounded-full lux-btn-obsidian flex items-center justify-center text-white"
               title="Pesquisar"
             >
-              <Search className="w-5 h-5" />
+              <Search className="w-4 h-4" />
             </button>
 
             <button
               type="button"
               onClick={() => setTopOverflowOpen((v) => !v)}
-              className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-white transition"
+              className="w-9 h-9 rounded-full lux-btn-obsidian flex items-center justify-center text-white"
               title="Mais opções"
             >
-              <MoreVertical className="w-5 h-5" />
+              <MoreVertical className="w-4 h-4" />
             </button>
 
             {mode === 'creator' && (
@@ -3118,16 +3138,16 @@ export function App() {
         />
       )}
 
-      {/* YOUTUBE-IDENTICAL 5-SLOT MOBILE BOTTOM NAVIGATION BAR (Início · Shorts · + · Explorar · Você) */}
+      {/* LUXURY 5-SLOT MOBILE BOTTOM DOCK */}
       {!watchingMovie && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#0f0f0f]/98 backdrop-blur-2xl border-t border-white/10 grid grid-cols-5 px-1">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-15 bg-[#06070d]/95 backdrop-blur-2xl border-t border-amber-400/20 grid grid-cols-5 px-1.5 shadow-[0_-10px_30px_rgba(0,0,0,0.65)]">
           {(
             [
               { id: 'catalog' as TabId, label: 'Início', icon: <Home className="w-5 h-5" /> },
               { id: 'reels' as TabId, label: 'Shorts', icon: <Film className="w-5 h-5" /> },
-              { id: 'studio' as TabId, label: '', icon: <Plus className="w-6 h-6 stroke-[2]" />, center: true },
+              { id: 'studio' as TabId, label: '', icon: <Plus className="w-6 h-6 stroke-[2.5]" />, center: true },
+              { id: 'shop' as TabId, label: 'Loja VIP', icon: <ShoppingBag className="w-5 h-5" /> },
               { id: 'explore' as TabId, label: 'Explorar', icon: <Compass className="w-5 h-5" /> },
-              { id: 'playlists' as TabId, label: 'Você', icon: <User className="w-5 h-5" /> },
             ] as { id: TabId; label: string; icon: React.ReactNode; center?: boolean }[]
           ).map((item) => {
             const active = activeTab === item.id;
@@ -3140,7 +3160,7 @@ export function App() {
                   className="flex flex-col items-center justify-center py-1 transition"
                   title="Criar"
                 >
-                  <span className="w-10 h-10 rounded-full flex items-center justify-center bg-white/12 hover:bg-white/20 text-white transition active:scale-90">
+                  <span className="w-10 h-10 rounded-full lux-btn-gold flex items-center justify-center transition active:scale-90">
                     {item.icon}
                   </span>
                 </button>
@@ -3151,11 +3171,11 @@ export function App() {
                 key={item.id}
                 onClick={() => navigateTab(item.id)}
                 className={`flex flex-col items-center justify-center gap-0.5 py-1 transition ${
-                  active ? 'text-white' : 'text-white/65'
+                  active ? 'text-amber-300 font-bold' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {item.icon}
-                <span className="text-[10px] font-medium truncate max-w-full">{item.label}</span>
+                <span className="text-[10px] font-semibold truncate max-w-full">{item.label}</span>
               </button>
             );
           })}

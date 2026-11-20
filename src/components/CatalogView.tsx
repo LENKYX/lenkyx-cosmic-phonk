@@ -171,26 +171,26 @@ export const CatalogView: React.FC<Props> = ({
 
   return (
     <div className="space-y-4 pb-36 md:pb-28 cosmic-scene">
-      {/* CLEAN COMPACT HEADER BAR (Edge-3D Logo + Christmas Brazil) */}
-      <section className="rounded-2xl cosmic-card-3d px-3.5 py-3 flex flex-wrap items-center justify-between gap-2.5">
+      {/* LUXURY VIP COMMAND HEADER BAR */}
+      <section className="rounded-3xl cosmic-card-3d px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <LenkyxEdgeLogo size="md" className="shrink-0" />
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h1 className="font-display text-sm sm:text-base font-black text-white truncate">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="font-display text-sm sm:text-base font-black lux-gold-text truncate">
                 LENKYX · Mídia & Som dos Cria
               </h1>
-              <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-cyan-500/25 via-pink-500/20 to-emerald-500/25 border border-cyan-400/40 text-[9px] font-black text-cyan-200">
-                🤖 Favela Tech 3D · Brasil 🇧🇷
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/40 text-[9px] font-black text-amber-200 tracking-wide">
+                👑 VIP BLACK · FAVELA TECH 🇧🇷
               </span>
             </div>
-            <div className="text-[11px] text-cyan-200/80 flex items-center gap-2">
-              <span>{tracks.length} faixas</span>
-              <span>·</span>
+            <div className="text-[11px] text-slate-300 flex items-center gap-2 mt-0.5">
+              <span className="text-amber-200/90 font-semibold">{tracks.length} faixas</span>
+              <span className="text-amber-400/50">·</span>
               <span>{totalPlays.toLocaleString('pt-BR')} plays</span>
               {offlineCount > 0 && (
                 <>
-                  <span>·</span>
+                  <span className="text-amber-400/50">·</span>
                   <span className="text-emerald-300 font-bold">{offlineCount} offline</span>
                 </>
               )}
@@ -198,34 +198,34 @@ export const CatalogView: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => tracks[0] && onPlayTrack(tracks[0], 'v1')}
-            className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400 hover:brightness-110 text-black font-black text-xs flex items-center gap-1.5 shadow transition active:scale-95"
+            className="px-4 py-2 rounded-full lux-btn-gold font-black text-xs flex items-center gap-1.5"
           >
             <Play className="w-3.5 h-3.5 fill-black" /> Soltar o Som
           </button>
           <button
             onClick={onDownloadAllOffline}
             disabled={downloadingAll}
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold text-xs flex items-center gap-1.5 transition"
+            className="px-3.5 py-2 rounded-full lux-btn-obsidian font-bold text-xs flex items-center gap-1.5"
           >
             {downloadingAll ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
             ) : offlineCount >= tracks.length && tracks.length > 0 ? (
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             ) : (
-              <DownloadCloud className="w-3.5 h-3.5 text-cyan-300" />
+              <DownloadCloud className="w-3.5 h-3.5 text-amber-300" />
             )}
             <span>{offlineCount >= tracks.length && tracks.length > 0 ? 'Salvas' : 'Offline'}</span>
           </button>
           <button
             type="button"
             onClick={() => void handleToggleMainChannelSubscribe()}
-            className={`px-3 py-1.5 rounded-full font-extrabold text-xs flex items-center gap-1 transition ${
+            className={`px-3.5 py-2 rounded-full font-black text-xs flex items-center gap-1.5 transition ${
               channelSubscribed
-                ? 'bg-white/15 border border-white/25 text-white'
-                : 'bg-gradient-to-r from-red-600 to-pink-500 text-white hover:brightness-110'
+                ? 'lux-btn-obsidian text-emerald-200 border-emerald-400/40'
+                : 'bg-gradient-to-r from-rose-600 via-pink-600 to-amber-500 text-white shadow-[0_6px_20px_rgba(244,63,94,0.35)] hover:brightness-110'
             }`}
           >
             {channelSubscribed ? <BellRing className="w-3.5 h-3.5 text-emerald-300" /> : <Bell className="w-3.5 h-3.5" />}
@@ -234,7 +234,7 @@ export const CatalogView: React.FC<Props> = ({
           {mode === 'creator' && (
             <button
               onClick={onAddTrack}
-              className="px-3 py-1.5 rounded-full bg-white text-black hover:bg-purple-100 font-extrabold text-xs flex items-center gap-1 transition"
+              className="px-3.5 py-2 rounded-full lux-btn-gold font-black text-xs flex items-center gap-1"
             >
               <Plus className="w-3.5 h-3.5" /> Nova
             </button>
@@ -242,9 +242,9 @@ export const CatalogView: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* SIMPLE ARTISTS STRIP INSIDE MÚSICAS (LENKYX equal alongside all other artists!) */}
+      {/* LUXURY ARTISTS STRIP */}
       {onSearchWorld && (
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           {[
             'LENKYX',
             'The Weeknd',
@@ -261,7 +261,7 @@ export const CatalogView: React.FC<Props> = ({
               key={artistName}
               type="button"
               onClick={() => onSearchWorld(artistName)}
-              className="px-3 py-1.5 rounded-full bg-white/[0.08] hover:bg-gradient-to-r hover:from-emerald-400 hover:to-cyan-400 hover:text-black border border-white/15 text-xs font-extrabold text-white whitespace-nowrap shrink-0 flex items-center gap-1.5 transition"
+              className="px-3.5 py-1.5 rounded-full lux-btn-obsidian hover:border-amber-300 text-xs font-extrabold text-amber-100 whitespace-nowrap shrink-0 flex items-center gap-1.5"
             >
               <span>{artistName}</span>
             </button>
