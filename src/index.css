@@ -888,3 +888,25 @@ html[data-theme='light'] ::placeholder {
   color: var(--mg-sub) !important;
   opacity: 1;
 }
+
+/* ============================================================ */
+/* JANELAS FLUTUANTES + BOTÕES DE VÍDEO PADRÃO YOUTUBE / TIKTOK */
+/* ============================================================ */
+@keyframes mgLogoAura {
+  0%, 100% { opacity: 0.62; scale: 1; }
+  50% { opacity: 1; scale: 1.12; }
+}
+.mg-vid-btn,
+.mg-vid-btn * {
+  font-family: 'Roboto', 'Helvetica Neue', 'Segoe UI', Arial, system-ui, sans-serif;
+}
+.mg-vid-btn {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.mg-vid-icon {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
+}

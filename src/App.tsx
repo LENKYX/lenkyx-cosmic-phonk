@@ -208,7 +208,39 @@ function getOrCreateSessionId(): string {
   }
 }
 
+/** Arrasta as janelas flutuantes (PiP minimizado) para qualquer lugar da tela. */
+function useFloatingDrag() {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const offset = useRef<{ dx: number; dy: number; w: number; h: number } | null>(null);
+  const onPointerDown = (e: any) => {
+    if ((e.target as HTMLElement).closest('button, input, a, select, textarea, video, iframe')) return;
+    const el = e.currentTarget as HTMLElement;
+    const r = el.getBoundingClientRect();
+    offset.current = { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height };
+    setPos({ x: r.left, y: r.top });
+    try { el.setPointerCapture(e.pointerId); } catch { /* ok */ }
+  };
+  const onPointerMove = (e: any) => {
+    const o = offset.current;
+    if (!o) return;
+    const x = Math.min(Math.max(4, e.clientX - o.dx), Math.max(4, window.innerWidth - o.w - 4));
+    const y = Math.min(Math.max(4, e.clientY - o.dy), Math.max(4, window.innerHeight - o.h - 4));
+    setPos({ x, y });
+  };
+  const onPointerUp = (e: any) => {
+    if (!offset.current) return;
+    offset.current = null;
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ok */ }
+  };
+  const style = pos ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto', touchAction: 'none' as const } : {};
+  return { style, dragHandlers: { onPointerDown, onPointerMove, onPointerUp } };
+}
+
 export function App() {
+  const reelDrag = useFloatingDrag();
+  const movieDrag = useFloatingDrag();
+  const clipDrag = useFloatingDrag();
+
   const [tracks, setTracks] = useState<Track[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -2956,56 +2988,15 @@ export function App() {
               ].join(', '),
             }}
           />
-          {/* Raios de luz dourados 24k */}
-          <div
-            className="absolute inset-0 opacity-70 pointer-events-none"
-            style={{
-              mixBlendMode: 'screen',
-              background:
-                'conic-gradient(from 0deg at 50% 30%, rgba(255,235,170,0.24) 0deg, transparent 14deg, transparent 44deg, rgba(255,235,170,0.18) 58deg, transparent 72deg, transparent 104deg, rgba(255,235,170,0.20) 118deg, transparent 132deg, transparent 164deg, rgba(255,235,170,0.16) 178deg, transparent 192deg, transparent 224deg, rgba(255,235,170,0.20) 238deg, transparent 252deg, transparent 284deg, rgba(255,235,170,0.16) 298deg, transparent 312deg, transparent 344deg, rgba(255,235,170,0.24) 360deg)',
-            }}
-          />
-          {/* Partículas douradas flutuantes */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {[
-              { l: '12%', t: '18%', d: '0s', sz: 8 },
-              { l: '22%', t: '64%', d: '0.8s', sz: 6 },
-              { l: '35%', t: '26%', d: '1.6s', sz: 5 },
-              { l: '58%', t: '14%', d: '0.4s', sz: 7 },
-              { l: '70%', t: '58%', d: '1.2s', sz: 6 },
-              { l: '82%', t: '30%', d: '2s', sz: 8 },
-              { l: '90%', t: '72%', d: '1s', sz: 5 },
-              { l: '46%', t: '80%', d: '1.8s', sz: 6 },
-            ].map((pt, i) => (
-              <span
-                key={i}
-                className="absolute rounded-full animate-pulse"
-                style={{
-                  left: pt.l,
-                  top: pt.t,
-                  width: pt.sz,
-                  height: pt.sz,
-                  animationDelay: pt.d,
-                  background: 'radial-gradient(circle, rgba(255,240,180,0.95), rgba(255,210,110,0.25))',
-                  boxShadow: '0 0 14px rgba(255,225,150,0.9)',
-                }}
-              />
-            ))}
-          </div>
-
           <div className="relative z-10 edge-entrance-logo flex flex-col items-center gap-2.5 sm:gap-3 px-4 py-4 sm:py-5 text-center w-full max-w-[min(94vw,520px)]">
-            {/* Logo Grande VIP (emblema com aura) - tamanho responsivo para caber em qualquer tela */}
-            <LenkyxEdgeLogo size="hero" className="shrink-0" />
-
-            {/* Equalizador do beat de abertura (Pancadao VIP) */}
-            <div className="flex items-end gap-[3px] h-5 sm:h-6 mt-0.5" aria-hidden="true">
-              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => (
-                <span
-                  key={i}
-                  className="mg-eq-bar"
-                  style={{ animationDelay: `${(i % 6) * 0.07}s`, animationDuration: `${0.4348 + (i % 4) * 0.03}s` }}
-                />
-              ))}
+            {/* Apenas a logo, com seus efeitos (aura 24k pulsante + entrada) */}
+            <div className="relative shrink-0">
+              <div
+                aria-hidden="true"
+                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[125%] h-[125%] rounded-full pointer-events-none animate-[mgLogoAura_2.6s_ease-in-out_infinite]"
+                style={{ background: 'radial-gradient(circle, rgba(255,226,130,0.5) 0%, rgba(255,205,90,0.2) 46%, transparent 72%)' }}
+              />
+              <LenkyxEdgeLogo size="hero" className="shrink-0" />
             </div>
 
           </div>
@@ -5068,7 +5059,11 @@ export function App() {
 
       {/* FLOATING MINIMIZED REELS PiP (keeps playing while navigating platform!) */}
       {minimizedReel && (
-        <div className="fixed bottom-16 md:bottom-4 right-3 z-[88] w-60 sm:w-64 rounded-2xl overflow-hidden bg-[#080514] border border-amber-400/55 shadow-[0_14px_45px_rgba(0,0,0,0.92)]">
+        <div
+          {...reelDrag.dragHandlers}
+          style={reelDrag.style}
+          className="fixed bottom-16 md:bottom-4 right-3 z-[88] w-60 sm:w-64 rounded-2xl overflow-hidden bg-[#080514] border border-amber-400/55 shadow-[0_14px_45px_rgba(0,0,0,0.92)] cursor-move select-none"
+        >
           <div className="px-2.5 py-1.5 bg-black/85 border-b border-white/10 flex items-center justify-between gap-2">
             <span className="text-[10px] font-black text-amber-300 truncate">
               🎬 Reels · {minimizedReel.title}
@@ -5121,7 +5116,11 @@ export function App() {
 
       {/* FLOATING MINIMIZED MOVIE / VIDEO PiP (keeps playing while navigating platform!) */}
       {minimizedMovie && (
-        <div className="fixed bottom-16 md:bottom-4 right-3 z-[88] w-72 sm:w-80 rounded-2xl overflow-hidden bg-[#080514] border border-cyan-400/55 shadow-[0_14px_45px_rgba(0,0,0,0.92)]">
+        <div
+          {...movieDrag.dragHandlers}
+          style={movieDrag.style}
+          className="fixed bottom-16 md:bottom-4 right-3 z-[88] w-72 sm:w-80 rounded-2xl overflow-hidden bg-[#080514] border border-cyan-400/55 shadow-[0_14px_45px_rgba(0,0,0,0.92)] cursor-move select-none"
+        >
           <div className="px-2.5 py-1.5 bg-black/85 border-b border-white/10 flex items-center justify-between gap-2">
             <span className="text-[10px] font-black text-cyan-200 truncate">
               🍿 {minimizedMovie.title}
@@ -5182,10 +5181,12 @@ export function App() {
         onClick={(e) => {
           if (clipTheaterOpen && !clipMinimized && e.target === e.currentTarget) setClipTheaterOpen(false);
         }}
+        {...(clipMinimized ? clipDrag.dragHandlers : {})}
+        style={clipMinimized ? clipDrag.style : undefined}
         className={
           clipTheaterOpen && currentTrack?.youtubeVideoId
             ? clipMinimized
-              ? 'fixed bottom-16 md:bottom-4 right-3 z-[92] w-72 sm:w-80 shadow-[0_14px_45px_rgba(0,0,0,0.92)]'
+              ? 'fixed bottom-16 md:bottom-4 right-3 z-[92] w-72 sm:w-80 shadow-[0_14px_45px_rgba(0,0,0,0.92)] cursor-move select-none'
               : `fixed inset-0 z-[9995] bg-black flex items-center justify-center ${
                   clipFitMode === 'fullscreen' ? 'p-0' : 'p-0 sm:p-4'
                 }`

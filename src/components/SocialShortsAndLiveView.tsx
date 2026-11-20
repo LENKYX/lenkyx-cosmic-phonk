@@ -2011,19 +2011,19 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => void handleLikeShort(activeShort)}
-                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1"
+                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1 mg-vid-btn"
                 title="Curtir"
               >
-                <span className="w-12 h-12 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition active:scale-90">
+                <span className="w-12 h-12 rounded-full flex items-center justify-center transition active:scale-90 group-hover:bg-white/15">
                   <Heart
-                    className={`w-6 h-6 ${
+                    className={`w-7 h-7 mg-vid-icon ${
                       likedShortIds.has(activeShort.id) || activeShort.liked_by_me
                         ? 'fill-red-500 text-red-500'
                         : 'text-white'
                     }`}
                   />
                 </span>
-                <span className="text-[11px] font-semibold text-slate-200">{fmtCompactCount(activeShort.likes)}</span>
+                <span className="text-white">{fmtCompactCount(activeShort.likes)}</span>
               </button>
 
               <button
@@ -2035,42 +2035,42 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                     youtubeId: activeShort.youtube_id,
                   })
                 }
-                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1"
+                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1 mg-vid-btn"
                 title="Comentários"
               >
-                <span className="w-12 h-12 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition active:scale-90">
-                  <MessageCircle className="w-6 h-6" />
+                <span className="w-12 h-12 rounded-full flex items-center justify-center transition active:scale-90 group-hover:bg-white/15">
+                  <MessageCircle className="w-7 h-7 mg-vid-icon" />
                 </span>
-                <span className="text-[11px] font-semibold text-slate-200">Coment.</span>
+                <span className="text-white">Coment.</span>
               </button>
 
               <button
                 type="button"
                 disabled={downloadingShortId === activeShort.id}
                 onClick={() => void handleDownloadShort(activeShort)}
-                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1"
+                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1 mg-vid-btn"
                 title="Salvar"
               >
-                <span className="w-12 h-12 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition active:scale-90">
+                <span className="w-12 h-12 rounded-full flex items-center justify-center transition active:scale-90 group-hover:bg-white/15">
                   {downloadingShortId === activeShort.id ? (
                     <Loader2 className="w-6 h-6 animate-spin" />
                   ) : (
-                    <Bookmark className="w-6 h-6" />
+                    <Bookmark className="w-7 h-7 mg-vid-icon" />
                   )}
                 </span>
-                <span className="text-[11px] font-semibold text-slate-200">Salvar</span>
+                <span className="text-white">Salvar</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => void handleShareShort(activeShort)}
-                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1"
+                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1 mg-vid-btn"
                 title="Compartilhar"
               >
-                <span className="w-12 h-12 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition active:scale-90">
-                  <Share2 className="w-6 h-6" />
+                <span className="w-12 h-12 rounded-full flex items-center justify-center transition active:scale-90 group-hover:bg-white/15">
+                  <Share2 className="w-7 h-7 mg-vid-icon" />
                 </span>
-                <span className="text-[11px] font-semibold text-slate-200">Compart.</span>
+                <span className="text-white">Compart.</span>
               </button>
 
               <button
@@ -2143,7 +2143,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => void handleLikeShort(activeShort)}
-                className="flex-1 py-1.5 rounded-xl bg-white/[0.08] flex items-center justify-center gap-1 text-white text-[11px] font-bold active:scale-95"
+                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn"
               >
                 <Heart
                   className={`w-4 h-4 ${
@@ -2163,7 +2163,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                     youtubeId: activeShort.youtube_id,
                   })
                 }
-                className="flex-1 py-1.5 rounded-xl bg-white/[0.08] flex items-center justify-center gap-1 text-white text-[11px] font-bold active:scale-95"
+                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>Coment.</span>
@@ -2172,7 +2172,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 type="button"
                 disabled={downloadingShortId === activeShort.id}
                 onClick={() => void handleDownloadShort(activeShort)}
-                className="flex-1 py-1.5 rounded-xl bg-white/[0.08] flex items-center justify-center gap-1 text-white text-[11px] font-bold active:scale-95"
+                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn"
               >
                 {downloadingShortId === activeShort.id ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -2184,7 +2184,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => void handleShareShort(activeShort)}
-                className="flex-1 py-1.5 rounded-xl bg-white/[0.08] flex items-center justify-center gap-1 text-white text-[11px] font-bold active:scale-95"
+                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn"
               >
                 <Share2 className="w-4 h-4" />
                 <span>Enviar</span>

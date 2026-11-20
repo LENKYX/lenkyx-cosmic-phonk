@@ -78,6 +78,34 @@ function fmt(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/** Arrasta a janela flutuante minimizada para qualquer lugar da tela. */
+function useFloatingDrag() {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const offset = useRef<{ dx: number; dy: number; w: number; h: number } | null>(null);
+  const onPointerDown = (e: any) => {
+    if ((e.target as HTMLElement).closest('button, input, a, select, textarea, video, iframe')) return;
+    const el = e.currentTarget as HTMLElement;
+    const r = el.getBoundingClientRect();
+    offset.current = { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height };
+    setPos({ x: r.left, y: r.top });
+    try { el.setPointerCapture(e.pointerId); } catch { /* ok */ }
+  };
+  const onPointerMove = (e: any) => {
+    const o = offset.current;
+    if (!o) return;
+    const x = Math.min(Math.max(4, e.clientX - o.dx), Math.max(4, window.innerWidth - o.w - 4));
+    const y = Math.min(Math.max(4, e.clientY - o.dy), Math.max(4, window.innerHeight - o.h - 4));
+    setPos({ x, y });
+  };
+  const onPointerUp = (e: any) => {
+    if (!offset.current) return;
+    offset.current = null;
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ok */ }
+  };
+  const style = pos ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto', touchAction: 'none' as const } : {};
+  return { style, dragHandlers: { onPointerDown, onPointerMove, onPointerUp } };
+}
+
 export const MiniPlayer: React.FC<Props> = ({
   track,
   isPlaying,
@@ -115,6 +143,7 @@ export const MiniPlayer: React.FC<Props> = ({
   onCloseMenu,
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const pillDrag = useFloatingDrag();
   const [minimizedPill, setMinimizedPill] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const bigCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -455,7 +484,11 @@ export const MiniPlayer: React.FC<Props> = ({
 
       {/* MINIMIZED FLOATING AUDIO PILL (Continues playing across the entire platform) */}
       {minimizedPill && !expanded && (
-        <div className="fixed bottom-16 md:bottom-4 right-3 z-40 flex items-center gap-2 rounded-full bg-[#161030]/95 backdrop-blur-2xl border border-amber-400/50 pl-1.5 pr-2 py-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.75)] max-w-[290px]">
+        <div
+          {...pillDrag.dragHandlers}
+          style={pillDrag.style}
+          className="fixed bottom-16 md:bottom-4 right-3 z-40 flex items-center gap-2 rounded-full bg-[#161030]/95 backdrop-blur-2xl border border-amber-400/50 pl-1.5 pr-2 py-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.75)] max-w-[290px] cursor-move select-none"
+        >
           <button
             type="button"
             onClick={() => setMinimizedPill(false)}
