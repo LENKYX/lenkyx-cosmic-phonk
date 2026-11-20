@@ -803,7 +803,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     }
   })();
 
-  const loadShorts = async (cat = shortCategory, q = shortSearch, forceRefresh = false) => {
+  const loadShorts = async (cat = shortCategory, q = shortSearch, forceRefresh = false, autoOpen = false) => {
     setShortsLoading(true);
     try {
       // Mark currently visible batch as seen when user explicitly refreshes so they NEVER repeat!
@@ -823,6 +823,20 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
       }
       setShorts(list);
       setActiveIndex(0);
+      if (autoOpen && list.length > 0) {
+        claimMediaFocus('reels');
+        onPauseCatalogPlayer();
+        setExclusiveShortsOpen(true);
+        const first = list[0];
+        if (first) {
+          recordSmartInteraction({
+            kind: 'watch_reel',
+            artist: first.creator_name,
+            title: first.title,
+            category: cat,
+          });
+        }
+      }
     } finally {
       setShortsLoading(false);
     }
@@ -878,10 +892,9 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   useEffect(() => {
     if (!initialShortsNonce || !initialShortsQuery.trim()) return;
     setSubTab('shorts');
-    setExclusiveShortsOpen(false);
     setShortCategory('creators');
     setShortSearch(initialShortsQuery);
-    void loadShorts('creators', initialShortsQuery, true);
+    void loadShorts('creators', initialShortsQuery, true, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialShortsNonce, initialShortsQuery]);
 
@@ -1929,10 +1942,17 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 return (
                   <div
                     key={c.id}
-                    className={`w-56 shrink-0 rounded-2xl p-3 border transition flex flex-col justify-between gap-2 ${
+                    onClick={() => {
+                      setSelectedCreatorFilter(c.id);
+                      setShortCategory('creators');
+                      setShortSearch(c.shortsQuery);
+                      void loadShorts('creators', c.shortsQuery, true, true);
+                      onToast(`🔥 Entrando direto nos vídeos de ${c.name}!`);
+                    }}
+                    className={`w-56 shrink-0 rounded-2xl p-3 border transition flex flex-col justify-between gap-2 cursor-pointer ${
                       isSelected
                         ? 'bg-cyan-500/20 border-cyan-300 shadow-[0_0_24px_rgba(34,211,238,0.35)]'
-                        : 'bg-black/45 border-white/15 hover:border-cyan-400/50'
+                        : 'bg-black/45 border-white/15 hover:border-amber-400/60'
                     }`}
                   >
                     <div className="space-y-1">
@@ -1956,21 +1976,25 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                     <div className="flex items-center gap-1.5 pt-1">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedCreatorFilter(c.id);
                           setShortCategory('creators');
                           setShortSearch(c.shortsQuery);
-                          void loadShorts('creators', c.shortsQuery, true);
-                          onToast(`🔥 Puxando os Shorts de ${c.name}, cria!`);
+                          void loadShorts('creators', c.shortsQuery, true, true);
+                          onToast(`🔥 Entrando direto nos vídeos de ${c.name}!`);
                         }}
-                        className="flex-1 py-1.5 px-2 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-black text-[10px] font-black flex items-center justify-center gap-1"
+                        className="flex-1 py-1.5 px-2 rounded-full lux-btn-gold text-[10px] font-black flex items-center justify-center gap-1"
                       >
-                        <Play className="w-3 h-3 fill-black" /> Ver Reels
+                        <Play className="w-3 h-3 fill-black" /> Assistir Agora
                       </button>
                       <button
                         type="button"
-                        onClick={() => void handleVoteBrCreator(c.id, c.name)}
-                        className="py-1.5 px-2 rounded-xl bg-amber-400/20 hover:bg-amber-400 hover:text-black border border-amber-400/40 text-amber-200 text-[10px] font-black"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleVoteBrCreator(c.id, c.name);
+                        }}
+                        className="py-1.5 px-2 rounded-full lux-btn-obsidian border-amber-400/40 text-amber-200 text-[10px] font-black"
                         title="Reconhecer este criador no Top 5"
                       >
                         +1 🏆
@@ -1979,7 +2003,8 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                         href={c.youtubeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/35 text-red-200"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 rounded-full bg-red-500/20 hover:bg-red-500/35 text-red-200"
                         title={`Abrir canal oficial ${c.handle}`}
                       >
                         <ExternalLink className="w-3 h-3" />
@@ -2001,9 +2026,10 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                       setSelectedCreatorFilter(c.id);
                       setShortCategory('creators');
                       setShortSearch(c.shortsQuery);
-                      void loadShorts('creators', c.shortsQuery, true);
+                      void loadShorts('creators', c.shortsQuery, true, true);
+                      onToast(`🔥 Entrando direto nos vídeos de ${c.name}!`);
                     }}
-                    className="px-2.5 py-1 rounded-full bg-white/[0.06] hover:bg-cyan-400 hover:text-black border border-white/10 text-[10px] font-bold text-slate-200 whitespace-nowrap transition shrink-0"
+                    className="px-3 py-1 rounded-full lux-btn-obsidian hover:border-amber-300 text-[10px] font-bold text-amber-100 whitespace-nowrap transition shrink-0"
                   >
                     {c.name}
                   </button>
@@ -2018,7 +2044,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => setShortsMenuOpen((v) => !v)}
-              className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-black text-cyan-200 flex items-center gap-1.5 transition"
+              className="px-3 py-1.5 rounded-full lux-btn-obsidian text-xs font-black text-amber-200 flex items-center gap-1.5"
             >
               <Search className="w-3.5 h-3.5" />
               {shortsMenuOpen ? 'Fechar' : 'Categorias BR'}
@@ -2027,12 +2053,12 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               onClick={() => {
                 setShortCategory('memes');
                 setShortSearch('');
-                void loadShorts('memes', '', true);
+                void loadShorts('memes', '', true, true);
               }}
               className={`px-3 py-1.5 rounded-full text-[11px] font-black transition ${
                 shortCategory === 'memes'
-                  ? 'bg-amber-400 text-black'
-                  : 'bg-white/[0.08] border border-white/15 text-amber-200 hover:bg-white/15'
+                  ? 'lux-btn-gold'
+                  : 'lux-btn-obsidian text-amber-200'
               }`}
             >
               😂 Memes BR
@@ -2041,12 +2067,12 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               onClick={() => {
                 setShortCategory('pegadinhas');
                 setShortSearch('');
-                void loadShorts('pegadinhas', '', true);
+                void loadShorts('pegadinhas', '', true, true);
               }}
               className={`px-3 py-1.5 rounded-full text-[11px] font-black transition ${
                 shortCategory === 'pegadinhas'
-                  ? 'bg-pink-400 text-black'
-                  : 'bg-white/[0.08] border border-white/15 text-pink-200 hover:bg-white/15'
+                  ? 'lux-btn-gold'
+                  : 'lux-btn-obsidian text-pink-200'
               }`}
             >
               🎭 Pegadinhas
@@ -2093,12 +2119,12 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   key={c.id}
                   onClick={() => {
                     setShortCategory(c.id);
-                    void loadShorts(c.id, shortSearch);
+                    void loadShorts(c.id, shortSearch, false, true);
                   }}
                   className={`px-3 py-1.5 rounded-full text-[11px] font-extrabold whitespace-nowrap transition ${
                     shortCategory === c.id
-                      ? 'bg-gradient-to-r from-pink-500 to-cyan-400 text-black shadow'
-                      : 'bg-white/[0.07] hover:bg-white/15 text-purple-100'
+                      ? 'lux-btn-gold'
+                      : 'lux-btn-obsidian text-purple-100'
                   }`}
                 >
                   {c.label}
@@ -2109,7 +2135,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                void loadShorts(shortCategory, shortSearch);
+                void loadShorts(shortCategory, shortSearch, true, true);
               }}
               className="flex items-center gap-2"
             >

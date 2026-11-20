@@ -52,10 +52,12 @@ import {
   MoreVertical,
   Compass,
   Bell,
-  User,
   ShoppingBag,
   Mic,
   Handshake,
+  TrendingUp,
+  Headphones,
+  MessageSquare,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
@@ -367,6 +369,7 @@ export function App() {
   const [downloadProgress, setDownloadProgress] = useState<{ label: string; pct: number; mb: number } | null>(null);
 
   const navigateTab = useCallback((next: TabId) => {
+    setMoreSheetOpen(false);
     setActiveTab((prev) => {
       if (prev === next) return prev;
       setTabHistory((h) => [...h.slice(-15), prev]);
@@ -440,6 +443,7 @@ export function App() {
   const [mediaPlayerMenuOpen, setMediaPlayerMenuOpen] = useState(false);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [topOverflowOpen, setTopOverflowOpen] = useState(false);
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [reelsAction, setReelsAction] = useState<'shorts' | 'create_reel' | 'go_live'>('shorts');
   const [reelsActionNonce, setReelsActionNonce] = useState(0);
   const [chatModalOpen, setChatModalOpen] = useState(false);
@@ -2227,15 +2231,13 @@ export function App() {
   };
 
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'catalog', label: 'Início · Quebrada', icon: <Home className="w-4 h-4" /> },
-    { id: 'reels', label: 'Reels & Memes BR', icon: <Film className="w-4 h-4" /> },
-    { id: 'explore', label: 'Explorar Clipes', icon: <Compass className="w-4 h-4" /> },
-    { id: 'shop', label: 'Loja dos Cria', icon: <ShoppingBag className="w-4 h-4" /> },
-    { id: 'movies', label: 'Cinema & Séries', icon: <Clapperboard className="w-4 h-4" /> },
-    { id: 'sports', label: 'Futebol & UFC', icon: <Trophy className="w-4 h-4" /> },
-    { id: 'offline', label: 'Som Offline', icon: <Car className="w-4 h-4" /> },
-    { id: 'search', label: 'Pesquisar', icon: <Search className="w-4 h-4" /> },
-    { id: 'playlists', label: 'Você · Listas', icon: <ListMusic className="w-4 h-4" /> },
+    { id: 'catalog', label: 'Início', icon: <Home className="w-5 h-5" /> },
+    { id: 'reels', label: 'Reels & Memes', icon: <Film className="w-5 h-5" /> },
+    { id: 'explore', label: 'Música & Clipes', icon: <Compass className="w-5 h-5" /> },
+    { id: 'shop', label: 'Loja dos Cria VIP', icon: <ShoppingBag className="w-5 h-5" /> },
+    { id: 'movies', label: 'Filmes & Séries', icon: <Clapperboard className="w-5 h-5" /> },
+    { id: 'sports', label: 'Futebol & Ao Vivo', icon: <Trophy className="w-5 h-5" /> },
+    { id: 'offline', label: 'Som Offline', icon: <Car className="w-5 h-5" /> },
   ];
 
   const clipSuggestions = useMemo(() => {
@@ -2318,156 +2320,136 @@ export function App() {
           </div>
         </div>
 
-        {/* Organized Luxury Navigation Capsules */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-2.5 py-3 space-y-3">
-          <nav className="space-y-1">
+        {/* Clean YouTube-Style Two-Section Navigation */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2.5 space-y-2.5">
+          <nav className="space-y-0.5">
             {sidebarMain.map((tab) => {
-              const active = activeTab === tab.id;
+              const active = activeTab === tab.id && !moreSheetOpen;
               return (
                 <button
                   key={tab.id}
                   onClick={() => navigateTab(tab.id)}
-                  className={`w-full px-3 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 transition-all ${
+                  className={`w-full px-3 py-2.5 rounded-xl text-[13px] font-semibold flex items-center gap-3.5 transition-all ${
                     active
-                      ? 'bg-gradient-to-r from-amber-400/20 via-amber-500/10 to-cyan-500/10 text-amber-100 border border-amber-400/45 shadow-[inset_3px_0_0_#f5c84c,0_6px_18px_rgba(212,175,55,0.14)]'
-                      : 'text-slate-300/85 hover:text-white hover:bg-white/[0.05] border border-transparent'
+                      ? 'bg-white/[0.09] text-amber-200 border border-amber-400/35 shadow-[inset_3px_0_0_#f5c84c]'
+                      : 'text-slate-200/90 hover:text-white hover:bg-white/[0.05] border border-transparent'
                   }`}
                 >
-                  <span
-                    className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition ${
-                      active
-                        ? 'bg-amber-400/20 text-amber-300 border border-amber-400/35'
-                        : 'bg-white/[0.04] text-slate-400'
-                    }`}
-                  >
-                    {tab.icon}
-                  </span>
-                  <span className="truncate tracking-wide">{tab.label}</span>
+                  <span className={`shrink-0 ${active ? 'text-amber-300' : 'text-slate-300'}`}>{tab.icon}</span>
+                  <span className="truncate">{tab.label}</span>
                 </button>
               );
             })}
           </nav>
 
-          <div className="space-y-1.5 pt-2.5 border-t border-amber-400/15">
-            <div className="px-2.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-300/85">
-              Estúdio VIP
-            </div>
+          {/* Subtle Divider + Ecossistema LENKYX (exact YouTube-style colorful suite) */}
+          <div className="pt-2.5 border-t border-white/10 space-y-0.5">
             <button
-              onClick={() => navigateTab('studio')}
-              className={`w-full px-3 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2.5 transition ${
-                activeTab === 'studio'
-                  ? 'lux-btn-gold'
-                  : 'lux-btn-obsidian'
-              }`}
-            >
-              <Wand2 className={`w-4 h-4 ${activeTab === 'studio' ? 'text-black' : 'text-amber-300'}`} />
-              <span>Criar Som · IA Grátis</span>
-            </button>
-          </div>
-
-          {/* Robô HUD Recursos Pro (Uniform 2x2 Grid) */}
-          <div className="space-y-1.5 pt-2.5 border-t border-amber-400/15">
-            <div className="px-2.5 text-[9px] font-black uppercase tracking-[0.22em] text-cyan-300/85">
-              Central dos Cria
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                onClick={() => openFuturisticFeature('shazam')}
-                className="py-2 px-2 rounded-xl lux-btn-obsidian text-[10px] font-black text-cyan-200 truncate text-center"
-              >
-                🎙️ Radar Som
-              </button>
-              <button
-                type="button"
-                onClick={() => openFuturisticFeature('jam')}
-                className="py-2 px-2 rounded-xl lux-btn-obsidian text-[10px] font-black text-emerald-200 truncate text-center"
-              >
-                🎧 Ouvir Junto
-              </button>
-              <button
-                type="button"
-                onClick={() => openFuturisticFeature('wrapped')}
-                className="py-2 px-2 rounded-xl lux-btn-obsidian text-[10px] font-black text-amber-200 truncate text-center"
-              >
-                📊 Seu Top BR
-              </button>
-              <button
-                type="button"
-                onClick={() => openFuturisticFeature('partners')}
-                className="py-2 px-2 rounded-xl lux-btn-obsidian text-[10px] font-black text-pink-200 truncate text-center"
-              >
-                🤝 Patrocínio
-              </button>
-            </div>
-          </div>
-
-          {/* Playlists Quick List */}
-          <div className="space-y-1 pt-2.5 border-t border-amber-400/15">
-            <div className="px-2.5 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
-              <span>Suas Playlists</span>
-              <button
-                onClick={() => navigateTab('playlists')}
-                className="text-amber-300 hover:underline normal-case font-bold"
-              >
-                + Nova
-              </button>
-            </div>
-            {playlists.slice(0, 4).map((pl) => (
-              <button
-                key={pl.id}
-                onClick={() => navigateTab('playlists')}
-                className="w-full px-2.5 py-1.5 rounded-xl hover:bg-white/[0.05] text-left text-[11px] text-slate-300/85 hover:text-amber-100 flex items-center justify-between gap-2 transition"
-              >
-                <span className="truncate">
-                  {pl.emoji} {pl.name}
-                </span>
-                <span className="text-[10px] text-amber-300/65 shrink-0 font-mono">{pl.trackIds.length}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Clean Luxury Utility Dock */}
-        <div className="p-2.5 border-t border-amber-400/20 bg-black/45 space-y-1.5">
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
+              type="button"
               onClick={() => {
                 setPixInitialTab('donate');
                 setPixOpen(true);
               }}
-              className="py-2 px-2 rounded-xl lux-btn-obsidian border-emerald-400/40 text-emerald-200 text-[11px] font-black flex items-center justify-center gap-1"
-              title="Abrir QR Code PIX & Meta Diária"
+              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-white flex items-center gap-3.5 transition"
             >
-              <QrCode className="w-3.5 h-3.5 text-emerald-300" /> PIX VIP
+              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 text-black flex items-center justify-center shrink-0">
+                <Crown className="w-3.5 h-3.5" />
+              </span>
+              <span className="truncate">LENKYX VIP & PIX</span>
             </button>
+
             <button
-              onClick={() => {
-                setPixInitialTab('ranking');
-                setPixOpen(true);
-              }}
-              className="py-2 px-2 rounded-xl lux-btn-obsidian border-amber-400/40 text-amber-200 text-[11px] font-black flex items-center justify-center gap-1"
-              title="Ver Ranking de Apoiadores"
+              type="button"
+              onClick={() => navigateTab('studio')}
+              className={`w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition ${
+                activeTab === 'studio' ? 'bg-white/[0.09] text-amber-200' : 'text-white'
+              }`}
             >
-              <Crown className="w-3.5 h-3.5 text-amber-300" /> Ranking
+              <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 text-white flex items-center justify-center shrink-0">
+                <Wand2 className="w-3.5 h-3.5" />
+              </span>
+              <span className="truncate">LENKYX Studio</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateTab('playlists')}
+              className={`w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition ${
+                activeTab === 'playlists' ? 'bg-white/[0.09] text-amber-200' : 'text-white'
+              }`}
+            >
+              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white flex items-center justify-center shrink-0">
+                <Music className="w-3.5 h-3.5" />
+              </span>
+              <span className="truncate">LENKYX Music</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCreateMenuOpen(true)}
+              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-white flex items-center gap-3.5 transition"
+            >
+              <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-rose-500 to-cyan-400 text-white flex items-center justify-center shrink-0">
+                <Sparkles className="w-3.5 h-3.5" />
+              </span>
+              <span className="truncate">LENKYX Criar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openFuturisticFeature('wrapped')}
+              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition"
+            >
+              <TrendingUp className="w-5 h-5 text-amber-300 shrink-0" />
+              <span className="truncate">Paradas & Top BR</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openFuturisticFeature('shazam')}
+              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition"
+            >
+              <Mic className="w-5 h-5 text-cyan-300 shrink-0" />
+              <span className="truncate">Radar Som</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openFuturisticFeature('jam')}
+              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition"
+            >
+              <Headphones className="w-5 h-5 text-emerald-300 shrink-0" />
+              <span className="truncate">Ouvir Junto</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openFuturisticFeature('partners')}
+              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition"
+            >
+              <Handshake className="w-5 h-5 text-pink-300 shrink-0" />
+              <span className="truncate">Patrocínio</span>
             </button>
           </div>
+        </div>
 
+        {/* Clean Luxury Utility Footer */}
+        <div className="p-2.5 border-t border-white/10 bg-black/45 space-y-1.5">
           <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => {
                 setShareTrack(null);
                 setShareOpen(true);
               }}
-              className="py-1.5 px-2 rounded-xl lux-btn-obsidian text-slate-200 text-[10px] font-bold flex items-center justify-center gap-1"
+              className="py-1.5 px-2 rounded-xl lux-btn-obsidian text-slate-200 text-[11px] font-bold flex items-center justify-center gap-1"
             >
-              <Share2 className="w-3 h-3 text-cyan-300" /> Convidar
+              <Share2 className="w-3.5 h-3.5 text-cyan-300" /> Convidar
             </button>
             <button
               onClick={() => setLegalOpen(true)}
-              className="py-1.5 px-2 rounded-xl lux-btn-obsidian text-slate-300 text-[10px] font-bold flex items-center justify-center gap-1"
+              className="py-1.5 px-2 rounded-xl lux-btn-obsidian text-slate-300 text-[11px] font-bold flex items-center justify-center gap-1"
             >
-              <Scale className="w-3 h-3 text-amber-300" /> Termos
+              <Scale className="w-3.5 h-3.5 text-amber-300" /> Termos
             </button>
           </div>
 
@@ -2605,8 +2587,8 @@ export function App() {
             )}
           </div>
 
-          {/* ORGANIZED LUXURY RIGHT ACTION CLUSTER */}
-          <div className="flex items-center gap-1.5 shrink-0 relative">
+          {/* CLEAN YOUTUBE-STYLE RIGHT ICON CLUSTER */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0 relative">
             <button
               type="button"
               onClick={() => setCreateMenuOpen(true)}
@@ -2619,41 +2601,41 @@ export function App() {
 
             <button
               type="button"
-              onClick={() => navigateTab('shop')}
-              className={`hidden sm:flex px-3 py-1.5 rounded-full text-xs font-black items-center gap-1.5 transition ${
-                activeTab === 'shop' ? 'lux-btn-gold' : 'lux-btn-obsidian text-amber-200'
-              }`}
-              title="Abrir Loja dos Cria"
+              onClick={() => setChatModalOpen(true)}
+              className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-white transition"
+              title="Chat da Quebrada"
             >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Loja VIP</span>
+              <MessageSquare className="w-5 h-5" />
             </button>
 
             <button
               type="button"
-              onClick={() => setChatModalOpen(true)}
-              className="w-9 h-9 rounded-full lux-btn-obsidian flex items-center justify-center text-amber-200"
-              title="Notificações & Chat Ao Vivo"
+              onClick={() => {
+                setPixInitialTab('ranking');
+                setPixOpen(true);
+              }}
+              className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-amber-300 transition"
+              title="VIP & Ranking"
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="w-5 h-5" />
             </button>
 
             <button
               type="button"
               onClick={() => setMobileIosSearchOpen(true)}
-              className="md:hidden w-9 h-9 rounded-full lux-btn-obsidian flex items-center justify-center text-white"
+              className="md:hidden w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-white transition"
               title="Pesquisar"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-5 h-5" />
             </button>
 
             <button
               type="button"
               onClick={() => setTopOverflowOpen((v) => !v)}
-              className="w-9 h-9 rounded-full lux-btn-obsidian flex items-center justify-center text-white"
+              className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition"
               title="Mais opções"
             >
-              <MoreVertical className="w-4 h-4" />
+              <MoreVertical className="w-5 h-5" />
             </button>
 
             {mode === 'creator' && (
@@ -2798,42 +2780,231 @@ export function App() {
           </div>
         </header>
 
-        {/* CLEAN YOUTUBE-STYLE CATEGORY CHIPS BAR (Mobile) */}
-        <div className="md:hidden shrink-0 z-20 px-3 py-2 border-b border-white/[0.06] bg-[#080514]/80">
-          <div className="max-w-[1380px] mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar">
+        {/* CLEAN YOUTUBE-STYLE UNDERLINED TOP TAB BAR */}
+        <div className="shrink-0 z-20 px-3 sm:px-5 border-b border-white/[0.08] bg-[#06070d]/90 backdrop-blur-xl">
+          <div className="max-w-[1380px] mx-auto flex items-center gap-5 sm:gap-7 overflow-x-auto no-scrollbar">
             {(
               [
-                { id: 'catalog' as TabId, label: 'Tudo dos Cria' },
-                { id: 'reels' as TabId, label: 'Reels & Memes' },
-                { id: 'explore' as TabId, label: 'Clipes HD' },
-                { id: 'shop' as TabId, label: '🛍️ Loja dos Cria' },
-                { id: 'movies' as TabId, label: 'Cinema' },
-                { id: 'sports' as TabId, label: 'Ao Vivo' },
-                { id: 'offline' as TabId, label: 'Offline' },
-                { id: 'playlists' as TabId, label: 'Você' },
+                { id: 'catalog', label: 'Início' },
+                { id: 'reels', label: 'Reels' },
+                { id: 'explore', label: 'Música' },
+                { id: 'sports', label: 'Ao vivo' },
+                { id: 'shop', label: 'Loja VIP' },
               ] as { id: TabId; label: string }[]
-            ).map((chip) => {
-              const active = activeTab === chip.id;
+            ).map((tab) => {
+              const active = !moreSheetOpen && activeTab === tab.id;
               return (
                 <button
-                  key={chip.id}
+                  key={tab.id}
                   type="button"
-                  onClick={() => navigateTab(chip.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition shrink-0 ${
+                  onClick={() => navigateTab(tab.id)}
+                  className={`py-2.5 text-[13px] font-semibold whitespace-nowrap border-b-2 transition shrink-0 ${
                     active
-                      ? 'bg-white text-black'
-                      : 'bg-white/[0.1] hover:bg-white/[0.18] text-white'
+                      ? 'border-amber-400 text-white'
+                      : 'border-transparent text-slate-300/85 hover:text-white'
                   }`}
                 >
-                  {chip.label}
+                  {tab.label}
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setMoreSheetOpen((v) => !v)}
+              className={`py-2.5 text-[13px] font-semibold whitespace-nowrap border-b-2 transition shrink-0 ${
+                moreSheetOpen
+                  ? 'border-amber-400 text-white'
+                  : 'border-transparent text-slate-300/85 hover:text-white'
+              }`}
+            >
+              Mais
+            </button>
           </div>
         </div>
 
+        {/* YOUTUBE-STYLE "MAIS" CLEAN TWO-SECTION MENU */}
+        {moreSheetOpen && (
+          <div className="flex-1 overflow-y-auto bg-[#07080e] text-white px-4 sm:px-8 py-4">
+            <div className="max-w-xl mx-auto space-y-1">
+              <button
+                type="button"
+                onClick={() => navigateTab('movies')}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <Clapperboard className="w-5 h-5 text-white shrink-0" />
+                <span>Filmes & Séries</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreSheetOpen(false);
+                  openFuturisticFeature('wrapped');
+                }}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <TrendingUp className="w-5 h-5 text-white shrink-0" />
+                <span>Paradas & Top BR</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigateTab('shop')}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <ShoppingBag className="w-5 h-5 text-amber-300 shrink-0" />
+                <span>Loja dos Cria VIP</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreSheetOpen(false);
+                  openFuturisticFeature('shazam');
+                }}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <Mic className="w-5 h-5 text-white shrink-0" />
+                <span>Podcasts & Radar Som</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigateTab('sports')}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <Gamepad2 className="w-5 h-5 text-white shrink-0" />
+                <span>Futebol & Ao Vivo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreSheetOpen(false);
+                  openFuturisticFeature('jam');
+                }}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <Headphones className="w-5 h-5 text-white shrink-0" />
+                <span>Ouvir Junto (Sala Festa)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigateTab('offline')}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <Car className="w-5 h-5 text-white shrink-0" />
+                <span>Som Offline</span>
+              </button>
+
+              <div className="my-3 border-t border-white/10" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreSheetOpen(false);
+                  setPixInitialTab('donate');
+                  setPixOpen(true);
+                }}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <span className="w-6 h-6 rounded-md bg-gradient-to-br from-amber-400 to-yellow-600 text-black flex items-center justify-center shrink-0">
+                  <Crown className="w-3.5 h-3.5" />
+                </span>
+                <span>LENKYX VIP & PIX</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigateTab('studio')}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 text-white flex items-center justify-center shrink-0">
+                  <Wand2 className="w-3.5 h-3.5" />
+                </span>
+                <span>LENKYX Studio</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigateTab('playlists')}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <span className="w-6 h-6 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white flex items-center justify-center shrink-0">
+                  <Music className="w-3.5 h-3.5" />
+                </span>
+                <span>LENKYX Music</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreSheetOpen(false);
+                  setCreateMenuOpen(true);
+                }}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-rose-500 to-cyan-400 text-white flex items-center justify-center shrink-0">
+                  <Sparkles className="w-3.5 h-3.5" />
+                </span>
+                <span>LENKYX Criar Vídeo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreSheetOpen(false);
+                  openFuturisticFeature('partners');
+                }}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <span className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 text-black flex items-center justify-center shrink-0">
+                  <Handshake className="w-3.5 h-3.5" />
+                </span>
+                <span>Patrocínio & Criadores</span>
+              </button>
+
+              <div className="my-3 border-t border-white/10" />
+
+              <div className="flex flex-wrap items-center gap-2 pt-1 pb-20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreSheetOpen(false);
+                    setShareTrack(null);
+                    setShareOpen(true);
+                  }}
+                  className="px-4 py-2 rounded-full lux-btn-obsidian text-xs font-bold flex items-center gap-1.5"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-cyan-300" /> Convidar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreSheetOpen(false);
+                    setLegalOpen(true);
+                  }}
+                  className="px-4 py-2 rounded-full lux-btn-obsidian text-xs font-bold flex items-center gap-1.5"
+                >
+                  <Scale className="w-3.5 h-3.5 text-amber-300" /> Termos
+                </button>
+                {!isAndroidApk() && (
+                  <button
+                    type="button"
+                    onClick={() => void handleOneClickPcDownload()}
+                    className="px-4 py-2 rounded-full lux-btn-gold text-xs font-black flex items-center gap-1.5"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Baixar App
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ACTIVE VIEW CONTAINER */}
-        <main id="lenkyx-main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full">
+        <main id="lenkyx-main-scroll" className={`flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full ${moreSheetOpen ? 'hidden' : ''}`}>
           <div className="w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-3">
             {appUpdateInfo && (
               <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
@@ -3138,47 +3309,71 @@ export function App() {
         />
       )}
 
-      {/* LUXURY 5-SLOT MOBILE BOTTOM DOCK */}
+      {/* CLEAN YOUTUBE-STYLE 5-SLOT MOBILE BOTTOM DOCK */}
       {!watchingMovie && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-15 bg-[#06070d]/95 backdrop-blur-2xl border-t border-amber-400/20 grid grid-cols-5 px-1.5 shadow-[0_-10px_30px_rgba(0,0,0,0.65)]">
-          {(
-            [
-              { id: 'catalog' as TabId, label: 'Início', icon: <Home className="w-5 h-5" /> },
-              { id: 'reels' as TabId, label: 'Shorts', icon: <Film className="w-5 h-5" /> },
-              { id: 'studio' as TabId, label: '', icon: <Plus className="w-6 h-6 stroke-[2.5]" />, center: true },
-              { id: 'shop' as TabId, label: 'Loja VIP', icon: <ShoppingBag className="w-5 h-5" /> },
-              { id: 'explore' as TabId, label: 'Explorar', icon: <Compass className="w-5 h-5" /> },
-            ] as { id: TabId; label: string; icon: React.ReactNode; center?: boolean }[]
-          ).map((item) => {
-            const active = activeTab === item.id;
-            if (item.center) {
-              return (
-                <button
-                  key="create-plus-btn"
-                  type="button"
-                  onClick={() => setCreateMenuOpen(true)}
-                  className="flex flex-col items-center justify-center py-1 transition"
-                  title="Criar"
-                >
-                  <span className="w-10 h-10 rounded-full lux-btn-gold flex items-center justify-center transition active:scale-90">
-                    {item.icon}
-                  </span>
-                </button>
-              );
-            }
-            return (
-              <button
-                key={item.id}
-                onClick={() => navigateTab(item.id)}
-                className={`flex flex-col items-center justify-center gap-0.5 py-1 transition ${
-                  active ? 'text-amber-300 font-bold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {item.icon}
-                <span className="text-[10px] font-semibold truncate max-w-full">{item.label}</span>
-              </button>
-            );
-          })}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#06070d]/96 backdrop-blur-2xl border-t border-white/10 grid grid-cols-5 px-2">
+          <button
+            type="button"
+            onClick={() => navigateTab('catalog')}
+            className={`flex flex-col items-center justify-center gap-0.5 transition ${
+              !moreSheetOpen && activeTab === 'catalog' ? 'text-white' : 'text-slate-400 hover:text-white'
+            }`}
+            title="Início"
+          >
+            <Home className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Início</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigateTab('reels')}
+            className={`flex flex-col items-center justify-center gap-0.5 transition ${
+              !moreSheetOpen && activeTab === 'reels' ? 'text-white' : 'text-slate-400 hover:text-white'
+            }`}
+            title="Reels & Shorts"
+          >
+            <Film className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Reels</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCreateMenuOpen(true)}
+            className="flex items-center justify-center transition"
+            title="Criar"
+          >
+            <span className="w-9 h-9 rounded-full border border-white/60 hover:border-amber-300 bg-white/[0.06] flex items-center justify-center text-white active:scale-90 transition">
+              <Plus className="w-5 h-5" />
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigateTab('shop')}
+            className={`flex flex-col items-center justify-center gap-0.5 transition ${
+              !moreSheetOpen && activeTab === 'shop' ? 'text-amber-300' : 'text-slate-400 hover:text-white'
+            }`}
+            title="Loja VIP"
+          >
+            <ShoppingBag className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Loja</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMoreSheetOpen((v) => !v)}
+            className={`flex flex-col items-center justify-center gap-0.5 transition ${
+              moreSheetOpen ? 'text-amber-300' : 'text-slate-400 hover:text-white'
+            }`}
+            title="Mais & Você"
+          >
+            <span className={`w-6 h-6 rounded-full overflow-hidden border flex items-center justify-center ${
+              moreSheetOpen ? 'border-amber-400' : 'border-white/30'
+            }`}>
+              <img src="/covers/icon-192.png" alt="LENKYX" className="w-full h-full object-cover" />
+            </span>
+            <span className="text-[10px] font-medium">Você</span>
+          </button>
         </nav>
       )}
 
