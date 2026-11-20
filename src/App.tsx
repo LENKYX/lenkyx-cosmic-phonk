@@ -553,10 +553,7 @@ export function App() {
   }, []);
 
   const dismissEntrySplash = useCallback((withSound = true) => {
-    // Se o autoplay foi bloqueado, o toque do usuario solta o beat pesado
-    if (withSound && !isStartupBeatPlaying()) {
-      void playLenkyxStartupSound(true);
-    }
+    // Intro SEM som — apenas o logo
     setEntrySplashExiting(true);
     window.setTimeout(() => setShowEntrySplash(false), 320);
   }, []);
@@ -569,21 +566,12 @@ export function App() {
   }, [showEntrySplash]);
 
   useEffect(() => {
-    // Beat de abertura "Pancadao VIP" (novo, pesado). Se o navegador bloquear o autoplay,
-    // o primeiro toque do usuario dispara o beat.
-    void playLenkyxStartupSound(false);
-    const unlockOnce = () => {
-      void playLenkyxStartupSound(false);
-    };
-    window.addEventListener('pointerdown', unlockOnce, { once: true });
-    // Abertura curta: emblema e efeito por 5 segundos; encerra também qualquer áudio residual.
+    // Abertura SEM som: so o logo 24k por 5 segundos.
     const autoClose = window.setTimeout(() => {
-      stopLenkyxStartupSound(0);
       setEntrySplashExiting(true);
       window.setTimeout(() => setShowEntrySplash(false), 320);
     }, 5000);
     return () => {
-      window.removeEventListener('pointerdown', unlockOnce);
       window.clearTimeout(autoClose);
     };
   }, []);
@@ -3080,37 +3068,21 @@ export function App() {
       {/* === FAVELA OSTENTAÇÃO VIP ENTRY SPLASH (Logo Grosso + Palco VIP Diamante Iluminado) === */}
       {showEntrySplash && (
         <div
-          onClick={() => dismissEntrySplash(true)}
-          className={`fixed inset-0 z-[120] flex flex-col items-center justify-center bg-[#241a33] overflow-hidden cursor-pointer transition-opacity duration-300 ${
+          onClick={() => dismissEntrySplash(false)}
+          className={`fixed inset-0 z-[120] flex items-center justify-center bg-[#0a0612] overflow-hidden cursor-pointer transition-opacity duration-300 ${
             entrySplashExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
         >
-          {/* Bright VIP Party + Illuminated Favela Backdrop (fundo claro e luminoso 24k) */}
-          <img
-            src="/covers/baile-verao-vip.jpg"
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-85 brightness-135 contrast-105 saturate-130 scale-105"
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background: [
-                'radial-gradient(circle at 50% 30%, rgba(255, 250, 214, 0.58) 0%, rgba(255, 224, 140, 0.30) 36%, rgba(140, 180, 255, 0.16) 66%, rgba(255, 240, 190, 0.14) 100%)',
-                'linear-gradient(180deg, rgba(255, 240, 190, 0.38) 0%, rgba(170, 205, 255, 0.22) 45%, rgba(255, 226, 150, 0.34) 100%)',
-              ].join(', '),
-            }}
-          />
-          <div className="relative z-10 edge-entrance-logo flex flex-col items-center gap-2.5 sm:gap-3 px-4 py-4 sm:py-5 text-center w-full max-w-[min(94vw,520px)]">
-            {/* Apenas a logo, com seus efeitos (aura 24k pulsante + entrada) */}
-            <div className="relative shrink-0">
-              <div
-                aria-hidden="true"
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[125%] h-[125%] rounded-full pointer-events-none animate-[mgLogoAura_2.6s_ease-in-out_infinite]"
-                style={{ background: 'radial-gradient(circle, rgba(255,226,130,0.5) 0%, rgba(255,205,90,0.2) 46%, transparent 72%)' }}
+          {/* SO O LOGO: quadrado, cantos arredondados, borda de ouro, 3D 24k, fixo */}
+          <div className="relative w-[min(58vw,42vh)] h-[min(58vw,42vh)] rounded-[28px] bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-600 p-[5px] shadow-[0_28px_80px_rgba(245,200,76,0.35)]">
+            <div className="w-full h-full rounded-[22px] bg-[#120a1e] flex items-center justify-center overflow-hidden shadow-[inset_0_2px_24px_rgba(255,215,90,0.18)]">
+              <img
+                src="/covers/morro-gold-emblema-grosso.png"
+                alt="MORRO GOLD"
+                className="w-[88%] h-[88%] object-contain select-none drop-shadow-[0_10px_28px_rgba(255,205,80,0.35)]"
+                draggable={false}
               />
-              <LenkyxEdgeLogo size="hero" className="shrink-0" />
             </div>
-
           </div>
         </div>
       )}
@@ -3857,6 +3829,7 @@ export function App() {
                       initialTrack={currentTrack}
                       user={null}
                       initialAction={reelsAction}
+                      onGoHome={() => navigateTab('catalog')}
                       actionNonce={reelsActionNonce}
                       initialShortsQuery={shortsTriggerQuery}
                       initialShortsNonce={shortsTriggerNonce}
@@ -4894,7 +4867,7 @@ export function App() {
           className={
             clipTheaterOpen && currentTrack?.youtubeVideoId
               ? clipMinimized
-                ? 'w-full flex flex-col overflow-hidden bg-[#090418] border border-amber-400/55 rounded-2xl'
+                ? 'relative w-full flex flex-col overflow-hidden bg-[#090418] border border-amber-400/55 rounded-2xl'
                 : `w-full flex flex-col overflow-hidden bg-[#090418] border border-cyan-400/40 shadow-[0_0_70px_rgba(236,72,153,0.35)] relative ${
                     clipFitMode === 'fullscreen' || isNativeFullscreen
                       ? 'h-[100dvh] max-w-none rounded-none border-0'
@@ -4905,76 +4878,9 @@ export function App() {
               : 'w-full h-full'
           }
         >
-          {clipTheaterOpen && currentTrack?.youtubeVideoId && clipMinimized && (
-            <div className="px-2.5 py-1.5 bg-black/90 border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
-              <span className="text-[10px] font-black text-amber-300 truncate">
-                🎬 {currentTrack.title}
-              </span>
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setClipMinimized(false)}
-                  className="px-2 py-0.5 rounded-md bg-amber-400 hover:bg-amber-300 text-black text-[10px] font-black"
-                >
-                  ⤢ Aumentar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setClipMinimized(false);
-                    setClipTheaterOpen(false);
-                    showToast('🎬 Voltou pro app — o clipe continua tocando no player.');
-                  }}
-                  className="px-2 py-0.5 rounded-md bg-white/15 hover:bg-white/25 text-white text-[10px] font-black flex items-center gap-1"
-                  title="Voltar para o app (o vídeo continua tocando)"
-                >
-                  <ArrowLeft className="w-3 h-3" /> Voltar
-                </button>
-              </div>
-            </div>
-          )}
 
-          {clipTheaterOpen && currentTrack?.youtubeVideoId && !clipMinimized && (
-            <div
-              className={`px-3 sm:px-4 py-2.5 border-b border-amber-400/20 flex flex-wrap items-center justify-between gap-2 mg24k-bar shrink-0 relative z-20 transition-all duration-300 ${
-                clipChrome.visible ? 'opacity-100' : 'opacity-0 pointer-events-none -translate-y-1'
-              }`}
-            >
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <button
-                  onClick={() => {
-                    if (document.fullscreenElement) {
-                      void document.exitFullscreen().catch(() => {});
-                      setClipFitMode('standard');
-                      return;
-                    }
-                    if (clipFitMode === 'fullscreen') {
-                      setClipFitMode('standard');
-                      return;
-                    }
-                    setClipMinimized(true);
-                    showToast('🎬 Clipe minimizado! Continua tocando enquanto você navega.');
-                  }}
-                  className="mg24k-btn shrink-0"
-                  title="Voltar sem perder o vídeo"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Voltar</span>
-                </button>
-                <div className="min-w-0">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-cyan-300 truncate flex items-center gap-1">
-                    <Film className="w-3 h-3" /> Clipe Oficial · MORRO GOLD
-                  </div>
-                  <div className="text-xs sm:text-sm font-black text-white truncate">{currentTrack.title}</div>
-                </div>
-                <LenkyxEdgeLogo size="xs" className="shrink-0 hidden sm:inline-flex" />
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                <span className="mg24k-chip hidden sm:inline-flex">Clipe Oficial · Sem Anúncios</span>
-              </div>
 
-            </div>
-          )}
+
 
           <div
             ref={clipStageBoxRef}
@@ -4985,249 +4891,32 @@ export function App() {
               clipTheaterOpen
                 ? clipMinimized
                   ? 'aspect-video w-full bg-black relative overflow-hidden'
-                  : 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center relative overflow-hidden cursor-pointer'
+                  : 'flex-1 min-h-0 w-full bg-black relative overflow-hidden'
                 : 'w-full h-full bg-black relative'
             }
           >
-            {/* Quadro com a proporção correta (sem tarjas pretas) */}
-            <div
-              className="relative flex items-center justify-center bg-black"
-              style={{
-                width: clipMinimized ? '100%' : clipFitted.width ? clipFitted.width : '100%',
-                height: clipMinimized ? '100%' : clipFitted.height ? clipFitted.height : '100%',
-                maxWidth: '100%',
-                maxHeight: '100%',
-              }}
-            >
+            {/* Video preenche toda a janela */}
+            <div className="absolute inset-0 w-full h-full bg-black">
               <div id="lenkyx-yt-audio-host" className="w-full h-full" />
             </div>
 
-            {/* Dica: toque para mostrar/esconder os controles */}
-            {clipTheaterOpen && !clipMinimized && !clipChrome.visible && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 border border-white/15 text-[10px] font-black text-white/85 pointer-events-none animate-pulse">
-                👆 Toque na tela para mostrar os controles
-              </div>
-            )}
           </div>
 
-          {clipTheaterOpen && !clipMinimized && currentTrack?.youtubeVideoId && (
-            <div
-              className={`px-2 sm:px-4 py-2.5 border-t border-amber-400/20 flex flex-col gap-2 mg24k-taskbar shrink-0 transition-all duration-300 ${
-                clipChrome.visible ? 'opacity-100' : 'opacity-0 pointer-events-none translate-y-1'
-              }`}
+          {/* Casinha transparente — unico botao: volta pra home, musica continua */}
+          {clipTheaterOpen && currentTrack?.youtubeVideoId && (
+            <button
+              type="button"
+              onClick={() => {
+                setClipMinimized(false);
+                setClipTheaterOpen(false);
+                navigateTab('catalog');
+                showToast('🎬 Voltou pro app — o clipe continua tocando no player.');
+              }}
+              className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[60] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-[2px] flex items-center justify-center text-white/85 active:scale-90 transition"
+              title="Início"
             >
-              <div className="flex items-center gap-2 text-[10px] font-mono text-purple-200/85">
-                <span className="w-9 text-right">
-                  {`${Math.floor(currentTime / 60)}:${String(Math.floor(currentTime % 60)).padStart(2, '0')}`}
-                </span>
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || currentTrack.durationSec || 180}
-                  step={1}
-                  value={Math.min(currentTime, duration || currentTrack.durationSec || 180)}
-                  onChange={(e) => handleSeek(Number(e.target.value))}
-                  className="flex-1 h-1.5 accent-pink-500 cursor-pointer"
-                />
-                <span className="w-9">
-                  {`${Math.floor((duration || currentTrack.durationSec || 180) / 60)}:${String(
-                    Math.floor((duration || currentTrack.durationSec || 180) % 60)
-                  ).padStart(2, '0')}`}
-                </span>
-              </div>
-
-              <div className="relative flex flex-wrap items-center justify-center sm:justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
-                  <div className="text-[10px] text-cyan-300/80">Reprodução contínua sem anúncios</div>
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-                    <div className="mg24k-chip hidden sm:flex items-center gap-1.5">
-                      <button onClick={handleToggleMute} className="text-cyan-300" title={muted ? 'Ativar som' : 'Silenciar'}>
-                        {muted || volume === 0 ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
-                      </button>
-                      <input
-                        type="range"
-                        min={0}
-                        max={1}
-                        step={0.02}
-                        value={muted ? 0 : volume}
-                        onChange={(e) => handleVolume(Number(e.target.value))}
-                        className="w-16 accent-cyan-400 cursor-pointer"
-                        title="Volume"
-                      />
-                    </div>
-                    <button
-                      onClick={() => handlePrevNext(-1)}
-                      className="mg24k-btn"
-                      title="Faixa anterior"
-                    >
-                      <SkipBack className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => void handleTogglePlay()}
-                      className="mg24k-btn mg24k-btn-gold !w-9 !h-9 !min-w-[36px] !p-0 rounded-full"
-                      title={isPlaying ? 'Pausar' : 'Tocar'}
-                    >
-                      {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black ml-0.5" />}
-                    </button>
-                    <button
-                      onClick={() => handlePrevNext(1)}
-                      className="mg24k-btn"
-                      title="Próxima faixa"
-                    >
-                      <SkipForward className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        clipAspect.cycle();
-                        showToast(`📐 Proporção do vídeo: ${clipAspect.label}`);
-                      }}
-                      className="mg24k-btn"
-                      title={`Proporção do vídeo (${clipAspect.label})`}
-                    >
-                      <Crop className="w-4 h-4 text-amber-300" />
-                      <span className="hidden sm:inline">{clipAspect.label}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        openCommentTarget(
-                          `track:${currentTrack.id}`,
-                          `🎬 ${currentTrack.title} — ${currentTrack.artist}`,
-                          currentTrack.youtubeVideoId
-                        )
-                      }
-                      className="mg24k-btn"
-                      title="Comentários do clipe"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span className="hidden sm:inline">Comentar</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (document.fullscreenElement) {
-                          void document.exitFullscreen().catch(() => {});
-                        }
-                        setClipFitMode('standard');
-                        setClipMinimized(true);
-                        showToast('🎬 Clipe minimizado! Continua tocando enquanto você navega.');
-                      }}
-                      className="mg24k-btn mg24k-btn-gold"
-                      title="Minimizar e continuar assistindo"
-                    >
-                      <Minimize2 className="w-4 h-4" />
-                      <span className="hidden sm:inline">Minimizar</span>
-                    </button>
-                    <button
-                      onClick={async () => {
-                        try {
-                          if (!document.fullscreenElement) {
-                            await clipStageRef.current?.requestFullscreen?.();
-                          } else {
-                            await document.exitFullscreen?.();
-                          }
-                        } catch {
-                          setClipFitMode((m) => (m === 'fullscreen' ? 'standard' : 'fullscreen'));
-                        }
-                      }}
-                      className="mg24k-btn"
-                      title={isNativeFullscreen ? 'Reduzir' : 'Tela Cheia'}
-                    >
-                      {isNativeFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                      <span className="hidden sm:inline">{isNativeFullscreen ? 'Reduzir' : 'Tela Cheia'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setClipMoreOpen((v) => !v)}
-                      className="mg24k-btn"
-                      title="Mais opções"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                      <span className="hidden sm:inline">Mais</span>
-                    </button>
-                  </div>
-              {clipMoreOpen && (
-                <div className="mg-on-video absolute right-2 bottom-12 z-40 w-56 rounded-2xl bg-[#110a24]/98 backdrop-blur-xl border border-amber-400/35 shadow-2xl p-2.5 space-y-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setClipMoreOpen(false);
-                      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-                      setClipFitMode('standard');
-                      setClipMinimized(true);
-                      setMediaPlayerMenuOpen(true);
-                    }}
-                    className="w-full py-1.5 px-2.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/35 border border-amber-400/40 text-amber-200 font-black flex items-center justify-center gap-1"
-                  >
-                    <Disc3 className="w-3.5 h-3.5" /> Efeitos, Som Alto & Fila
-                  </button>
-                  <select
-                    value={clipQuality}
-                    onChange={(e) => {
-                      const q = e.target.value as typeof clipQuality;
-                      setClipQuality(q);
-                      if (q !== 'default') ytPlayerRef.current?.setPlaybackQuality?.(q);
-                    }}
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-black/60 border border-cyan-400/35 text-cyan-100 text-[11px] font-black focus:outline-none cursor-pointer"
-                  >
-                    <option value="hd720" className="bg-[#090418]">Qualidade: 720p HD</option>
-                    <option value="large" className="bg-[#090418]">Qualidade: 480p Leve</option>
-                    <option value="medium" className="bg-[#090418]">Qualidade: 360p Rápido</option>
-                    <option value="default" className="bg-[#090418]">Qualidade: Auto</option>
-                  </select>
-                  <button
-                    onClick={handleCycleBassBoost}
-                    className="w-full py-1.5 px-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-purple-100 font-black flex items-center justify-center gap-1"
-                  >
-                    <AudioWaveform className="w-3.5 h-3.5" />
-                    <span>
-                      {bassBoostLevel === 3
-                        ? 'Grave: Subwoofer'
-                        : bassBoostLevel === 2
-                          ? 'Grave: Pesado'
-                          : bassBoostLevel === 1
-                            ? 'Grave: Suave'
-                            : 'Turbina Graves +'}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setClipMoreOpen(false);
-                      setClipTheaterOpen(false);
-                      setPixInitialTab('donate');
-                      setPixOpen(true);
-                    }}
-                    className="w-full py-1.5 px-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-400/40 text-emerald-200 font-black flex items-center justify-center gap-1"
-                  >
-                    <QrCode className="w-3.5 h-3.5" /> Apoiar via PIX
-                  </button>
-                </div>
-              )}
-              </div>
-
-              {/* Clickable Clip Suggestions Strip (Auto-Fading Arrows + Interactive Grid + Closable) */}
-              {clipFitMode !== 'fullscreen' && !isNativeFullscreen && clipSuggestions.length > 0 && (
-                <div className="-mx-3 sm:-mx-4 -mb-2.5 mt-1">
-                  <PlayerQueueStrip
-                    title="🎬 Sugestões para assistir a seguir"
-                    accent="cyan"
-                    items={clipSuggestions.map((sug) => ({
-                      id: sug.id,
-                      title: sug.title,
-                      subtitle: sug.artist,
-                      imageUrl: sug.coverUrl || '/covers/album-official.jpg',
-                    }))}
-                    onSelect={(id) => {
-                      const picked = clipSuggestions.find((x) => x.id === id);
-                      if (picked) {
-                        openClipWithIntro(picked, playQueue.length ? playQueue : clipSuggestions);
-                      }
-                    }}
-                  />
-                </div>
-              )}
-            </div>
+              <span className="text-[22px] leading-none select-none">🏠</span>
+            </button>
           )}
         </div>
       </div>
