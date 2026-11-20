@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -13,6 +13,9 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { submitCopyrightReport } from '../utils/communityApi';
+import { getPrimaryDeviceAccount } from '../utils/fanAuth';
+
+const REPORTER_MEMORY_KEY = 'morro_gold_legal_reporter_v1';
 
 interface Props {
   open: boolean;
@@ -37,6 +40,26 @@ export const LegalCharterModal: React.FC<Props> = ({
   const [details, setDetails] = useState('');
   const [sending, setSending] = useState(false);
   const [sentOk, setSentOk] = useState(false);
+  const [autofilled, setAutofilled] = useState(false);
+
+  // Preenchimento automático: dados da conta do usuário / última notificação + contexto atual
+  useEffect(() => {
+    if (!open) return;
+    const acc = getPrimaryDeviceAccount();
+    let saved: { name?: string; email?: string } = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(REPORTER_MEMORY_KEY) || '{}') || {};
+    } catch {
+      saved = {};
+    }
+    const autoName = String(saved.name || acc?.name || '').trim();
+    const autoEmail = String(saved.email || acc?.email || '').trim();
+    setReporterName(autoName);
+    setReporterEmail(autoEmail);
+    setTargetTitle(initialTargetTitle || '');
+    setAutofilled(Boolean(autoName || autoEmail));
+    setSentOk(false);
+  }, [open, initialTargetTitle]);
 
   if (!open) return null;
 
@@ -56,6 +79,14 @@ export const LegalCharterModal: React.FC<Props> = ({
     });
     setSending(false);
     if (ok) {
+      try {
+        localStorage.setItem(
+          REPORTER_MEMORY_KEY,
+          JSON.stringify({ name: reporterName.trim(), email: reporterEmail.trim() })
+        );
+      } catch {
+        // ignore
+      }
       setSentOk(true);
       onToast?.('⚖️ Notificação registrada no protocolo Marco Civil Art. 19 / Anti-Plágio!');
     } else {
@@ -285,6 +316,12 @@ export const LegalCharterModal: React.FC<Props> = ({
                       className="px-3.5 py-2.5 rounded-xl bg-white/[0.06] border border-white/15 text-xs text-white focus:outline-none focus:border-amber-400"
                     />
                   </div>
+                  {autofilled && (
+                    <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-300/85 -mt-1 px-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Preenchido automaticamente com os dados da sua conta — edite se precisar
+                    </div>
+                  )}
                   <input
                     type="text"
                     value={targetTitle}

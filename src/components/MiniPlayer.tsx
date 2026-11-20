@@ -23,8 +23,10 @@ import {
   Disc3,
   Maximize2,
   Minimize2,
+  ArrowLeft,
 } from 'lucide-react';
 import { AudioVersion, Track } from '../types';
+import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 
 export type BassBoostLevel = 0 | 1 | 2 | 3;
 
@@ -189,9 +191,12 @@ export const MiniPlayer: React.FC<Props> = ({
                 <span>Minimizar</span>
               </button>
 
-              <div className="text-center min-w-0">
-                <div className="text-[11px] font-black uppercase tracking-widest text-amber-300 truncate">
-                  {track.album || 'MORRO GOLD'}
+              <div className="flex items-center gap-2 min-w-0 justify-center">
+                <LenkyxEdgeLogo size="xs" className="shrink-0" />
+                <div className="text-center min-w-0">
+                  <div className="text-[11px] font-black uppercase tracking-widest text-amber-300 truncate">
+                    {track.album || 'MORRO GOLD'}
+                  </div>
                 </div>
               </div>
 
@@ -216,11 +221,11 @@ export const MiniPlayer: React.FC<Props> = ({
                     if (onEmergencyStop) onEmergencyStop();
                     else if (onCloseMenu) onCloseMenu();
                   }}
-                  className="px-3 py-2 rounded-full bg-rose-500/85 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1 transition"
-                  title="Fechar Player"
+                  className="px-3 py-2 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1 transition"
+                  title="Voltar (o som continua tocando)"
                 >
-                  <X className="w-4 h-4" />
-                  <span>Fechar</span>
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Voltar</span>
                 </button>
               </div>
             </div>

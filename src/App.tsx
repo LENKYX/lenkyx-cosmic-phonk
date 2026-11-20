@@ -4469,7 +4469,10 @@ export function App() {
         onClose={() => setCharterOpen(false)}
         onToast={showToast}
         initialTab={charterTab}
-        initialTargetTitle={charterTarget}
+        initialTargetTitle={
+          charterTarget ||
+          (currentTrack ? `${currentTrack.title} — ${currentTrack.artist}` : '')
+        }
       />
       <MobileIosSearchModal
         open={mobileIosSearchOpen}

@@ -809,28 +809,50 @@ app.get('/api/world-search', async (req, res) => {
     const payload = await runSmartWorldSearch(q, { includeArchiveSpace: space });
     const qLow = q.toLowerCase();
     // Only surface user/MORRO GOLD local tracks when the user explicitly searches for their own catalog!
-    if (q.length >= 2 && (qLow.includes('lenkyx') || qLow.includes('morro gold'))) {
+    const brandQuery = q.length >= 2 && (qLow.includes('lenkyx') || qLow.includes('morro gold'));
+    if (brandQuery) {
       const db = readDb();
-      const localMatches = (db.tracks || []).filter((t) =>
+      const ownCatalog = db.tracks || [];
+      let localMatches = ownCatalog.filter((t) =>
         `${t.artist || ''} ${t.title || ''}`.toLowerCase().includes(qLow)
       );
-      if (localMatches.length > 0) {
-        const existing = new Set((payload.tracks || []).map((t) => t.id));
-        const merged = [...localMatches.filter((t) => !existing.has(t.id)), ...(payload.tracks || [])].map(
-          (t, i) => ({ ...t, number: i + 1 })
-        );
-        payload.tracks = merged;
-        if (!payload.artistProfile) {
-          payload.artistProfile = {
-            name: 'MORRO GOLD',
-            photoUrl: '/covers/morro-gold-emblema-grosso.png',
-            bio: 'Catálogo oficial MORRO GOLD — suas faixas originais completas sem anúncios.',
-            genre: 'Favela / Phonk / Trap',
-            era: 'Oficial',
-            wikiUrl: '',
-          };
+      if (localMatches.length === 0) {
+        // remove as palavras da marca e tenta casar com título/faixa do catálogo
+        const bare = qLow.replace(/lenkyx|morro gold/g, '').trim();
+        if (bare) {
+          localMatches = ownCatalog.filter((t) =>
+            `${t.artist || ''} ${t.title || ''}`.toLowerCase().includes(bare)
+          );
         }
       }
+      if (localMatches.length === 0) localMatches = ownCatalog;
+      const existing = new Set((payload.tracks || []).map((t) => t.id));
+      const merged = [...localMatches.filter((t) => !existing.has(t.id)), ...(payload.tracks || [])].map(
+        (t, i) => ({ ...t, number: i + 1 })
+      );
+      payload.tracks = merged;
+      // Canal oficial SEMPRE vence em busca da própria marca (estilo canal do YouTube)
+      const isGold = qLow.includes('morro gold');
+      const localName = isGold ? 'MORRO GOLD' : 'LENKYX';
+      const localSlug = isGold ? 'morrogold' : 'lenkyx';
+      payload.artistProfile = {
+        name: localName,
+        photoUrl: '/covers/morro-gold-emblema-grosso.png',
+        bio: `Catálogo oficial ${localName} — tudo que o artista já lançou de músicas e clipes, completo e sem anúncios.`,
+        genre: 'Favela / Phonk / Trap',
+        era: 'Oficial',
+        wikiUrl: '',
+        handle: `@${localSlug}`,
+        bannerUrl: '/covers/favela-night-skyline.jpg',
+        country: 'Brasil',
+        musicCount: merged.length,
+        clipCount: merged.filter((t) => t.youtubeVideoId).length,
+        links: {
+          youtube: `https://www.youtube.com/results?search_query=${encodeURIComponent(localName + ' official')}`,
+          instagram: `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(localName)}`,
+          wikipedia: '',
+        },
+      };
     }
     res.json(payload);
   } catch {

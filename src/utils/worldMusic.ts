@@ -1,6 +1,7 @@
 import {
   Track,
   WorldArtistDirectoryItem,
+  WorldArtistProfile,
   WorldCuratedPlaylist,
   WorldSearchPayload,
 } from '../types';
@@ -226,9 +227,38 @@ export async function getWorldTrending(): Promise<WorldSearchPayload> {
   };
 }
 
+// Canal do artista montado no cliente — garante que o clique no artista
+// SEMPRE abra um canal completo, mesmo sem o servidor/API no ar.
+function synthesizeArtistProfile(query: string, tracks: Track[]): WorldArtistProfile {
+  const name = query.trim().replace(/\s+/g, ' ').slice(0, 60) || 'Artista';
+  const slug =
+    name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '') || 'artista';
+  const cover = tracks.find((t) => Boolean(t.coverUrl))?.coverUrl || '/covers/album-official.jpg';
+  return {
+    name,
+    photoUrl: cover,
+    bio: `Canal de ${name} — tudo que o artista já lançou de músicas e clipes, reunido no MORRO GOLD.`,
+    genre: tracks[0]?.genre || 'Música',
+    era: 'Canal Oficial',
+    handle: `@${slug}`,
+    bannerUrl: cover,
+    country: 'Brasil',
+    musicCount: tracks.length,
+    clipCount: tracks.filter((t) => Boolean((t as { youtubeVideoId?: string }).youtubeVideoId)).length,
+    links: {
+      youtube: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} official`)}`,
+      instagram: `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(name)}`,
+    },
+  };
+}
+
 export async function searchWorldMusic(
   query: string,
-  options?: { includeArchiveSpace?: boolean }
+  options?: { includeArchiveSpace?: boolean; artistChannel?: boolean }
 ): Promise<WorldSearchPayload> {
   const q = query.trim();
   if (!q) return getWorldTrending();
@@ -240,6 +270,8 @@ export async function searchWorldMusic(
   if (data && Array.isArray(data.tracks) && data.tracks.length > 0) {
     return {
       ...data,
+      artistProfile:
+        data.artistProfile || (options?.artistChannel ? synthesizeArtistProfile(q, data.tracks) : null),
       playlists: data.playlists?.length ? data.playlists : FALLBACK_CURATED_PLAYLISTS,
     };
   }
@@ -252,7 +284,7 @@ export async function searchWorldMusic(
       summary: `${audius.length} faixas completas encontradas.`,
       tags: ['Versões Completas'],
     },
-    artistProfile: null,
+    artistProfile: options?.artistChannel ? synthesizeArtistProfile(q, audius) : null,
     tracks: audius,
     playlists: FALLBACK_CURATED_PLAYLISTS,
   };

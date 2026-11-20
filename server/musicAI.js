@@ -396,7 +396,7 @@ export async function fetchArtistPhotoAndBio(artistName, lang = 'pt', explicitWi
       return {
         name: d.title || artistName,
         photoUrl: photo ? wrapArtistPhotoUrl(photo) : '',
-        bio: (d.extract || '').slice(0, 220),
+        bio: (d.extract || '').slice(0, 600),
         wikiUrl: d?.content_urls?.desktop?.page || '',
       };
     } catch {
@@ -762,6 +762,26 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
         },
       ]
     : CURATED_PLAYLISTS;
+
+  // Enrich artist channel profile (YouTube-style): handle, banner, links, counts
+  if (artistProfile) {
+    const slug = String(artistProfile.name || q)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '');
+    const isBR = (ai.matchedArtist?.lang === 'pt') || /brasil|favela|sertanejo|pagode|nacional|rio|sp\b/i.test(`${artistProfile.genre || ''} ${artistProfile.era || ''}`);
+    artistProfile.handle = `@${slug || 'artista'}`;
+    artistProfile.bannerUrl = ytTracks[0]?.coverUrl || finalTracks[0]?.coverUrl || artistProfile.photoUrl || '';
+    artistProfile.country = isBR ? 'Brasil' : 'Internacional';
+    artistProfile.musicCount = finalTracks.length;
+    artistProfile.clipCount = finalTracks.filter((t) => t.youtubeVideoId).length;
+    artistProfile.links = {
+      youtube: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${artistProfile.name} official`) }`,
+      instagram: `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(artistProfile.name)}`,
+      wikipedia: artistProfile.wikiUrl || '',
+    };
+  }
 
   const payload = {
     query: q,

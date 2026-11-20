@@ -28,6 +28,7 @@ import {
   MoreVertical,
   MessageCircle,
   Radio,
+  Crop,
 } from 'lucide-react';
 import { ToguroPromoBanner } from './ToguroPromoBanner';
 import { triggerDirectFileDownload } from '../utils/offlineCache';
@@ -45,6 +46,8 @@ import {
   syncBackgroundMediaSession,
 } from '../utils/backgroundAudioGuard';
 import { PlayerQueueStrip } from './PlayerQueueStrip';
+import { useVideoAspect, useFittedSize, useAutoHideChrome } from '../utils/videoChrome';
+import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 import { claimMediaFocus, registerMediaStopper } from '../utils/mediaCoordinator';
 
 interface Props {
@@ -265,6 +268,17 @@ export const MoviesView: React.FC<Props> = ({
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const heroTouchStartX = useRef<number | null>(null);
+
+  // === CINEMA: proporção automática + menus que somem ao tocar na tela ===
+  const cinemaAspect = useVideoAspect('auto');
+  const cinemaStageRef = useRef<HTMLDivElement | null>(null);
+  const cinemaFitted = useFittedSize(cinemaStageRef, cinemaAspect.ratio);
+  const cinemaChrome = useAutoHideChrome({ enabled: Boolean(activeMovie), delayMs: 3800 });
+
+  useEffect(() => {
+    if (activeMovie) cinemaChrome.hide();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMovie?.id]);
 
   // Keep cinema audio/video active continuously even when minimizing or locking screen (never stop at 30s!)
   useEffect(() => {
@@ -674,14 +688,29 @@ export const MoviesView: React.FC<Props> = ({
               : 'h-[100dvh] sm:h-auto sm:max-h-[94dvh] sm:max-w-6xl sm:rounded-3xl sm:border sm:border-white/15 shadow-[0_0_90px_rgba(220,38,38,0.3)]'
           }`}
         >
-          {/* Compact Mobile-Friendly Header */}
-          <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#070414] shrink-0">
+          {/* Compact Mobile-Friendly Header (some ao tocar no vídeo e volta com um toque) */}
+          <div
+            className={`px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#070414] shrink-0 transition-all duration-300 ${
+              cinemaChrome.visible ? 'opacity-100' : 'opacity-0 pointer-events-none -translate-y-1'
+            }`}
+          >
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <button
                 type="button"
-                onClick={() => setActiveMovie(null)}
+                onClick={() => {
+                  if (document.fullscreenElement) {
+                    void document.exitFullscreen().catch(() => {});
+                    setExpandedView(false);
+                    return;
+                  }
+                  if (expandedView) {
+                    setExpandedView(false);
+                    return;
+                  }
+                  setActiveMovie(null);
+                }}
                 className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-black flex items-center gap-1 shrink-0 transition"
-                title="Voltar"
+                title={expandedView ? 'Voltar ao tamanho normal sem sair do vídeo' : 'Voltar'}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Voltar</span>
@@ -694,6 +723,7 @@ export const MoviesView: React.FC<Props> = ({
                   {activeMovie.isDubbed ? ' · Dublado PT-BR' : ''}
                 </div>
               </div>
+              <LenkyxEdgeLogo size="xs" className="shrink-0 hidden sm:inline-flex" />
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap shrink-0 relative">
@@ -734,10 +764,21 @@ export const MoviesView: React.FC<Props> = ({
                 </button>
               )}
 
+              {onVolume && (
+                <button
+                  type="button"
+                  onClick={() => onVolume(1)}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/30 border border-amber-300/35 text-amber-100 text-[11px] font-black flex items-center gap-1"
+                  title="Aumentar o volume ao máximo"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Som no máximo</span>
+                </button>
+              )}
               <button
                 onClick={() => void toggleExpandPlayer()}
                 className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-[11px] font-black flex items-center gap-1"
-                title={expandedView ? 'Reduzir' : 'Aumentar'}
+                title={expandedView ? 'Reduzir' : 'Tela inteira'}
               >
                 {expandedView ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                 <span>{expandedView ? 'Reduzir' : 'Aumentar'}</span>
@@ -840,43 +881,69 @@ export const MoviesView: React.FC<Props> = ({
               )}
 
               <button
-                onClick={() => setActiveMovie(null)}
-                className="px-3 py-1.5 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1"
-                title="Fechar Cinema"
+                type="button"
+                onClick={() => {
+                  cinemaAspect.cycle();
+                }}
+                className="px-2 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-cyan-100 text-[11px] font-black flex items-center gap-1"
+                title={`Proporção do vídeo (${cinemaAspect.label})`}
               >
-                <X className="w-4 h-4" /> Fechar
+                <Crop className="w-3.5 h-3.5 text-amber-300" />
+                <span>{cinemaAspect.label}</span>
               </button>
             </div>
           </div>
 
           <div
-            className="relative w-full bg-black flex-1 min-h-[220px] sm:aspect-video flex items-center justify-center overflow-hidden"
+            ref={cinemaStageRef}
+            onClick={() => cinemaChrome.toggle()}
+            className="relative w-full bg-black flex-1 min-h-[220px] sm:aspect-video flex items-center justify-center overflow-hidden cursor-pointer"
           >
-            {activeMovie.videoStreamUrl && !activeMovie.youtubeVideoId && !activeMovie.youtubePlaylistId ? (
-              <video
-                ref={videoElRef}
-                key={activeMovie.id}
-                src={activeMovie.videoStreamUrl}
-                controls
-                autoPlay
-                playsInline
-                className="w-full h-full object-contain bg-black"
-              />
-            ) : (
-              <iframe
-                key={`${activeMovie.id}-${cinemaQuality}`}
-                src={
-                  activeMovie.youtubePlaylistId
-                    ? `https://www.youtube.com/embed/videoseries?list=${activeMovie.youtubePlaylistId}&autoplay=1&rel=0&playsinline=1${cinemaQuality !== 'auto' ? `&vq=${cinemaQuality}` : ''}&hl=pt-BR&cc_lang_pref=pt`
-                    : activeMovie.youtubeVideoId
-                      ? `https://www.youtube.com/embed/${activeMovie.youtubeVideoId}?autoplay=1&rel=0&playsinline=1${cinemaQuality !== 'auto' ? `&vq=${cinemaQuality}` : ''}&hl=pt-BR&cc_lang_pref=pt`
-                      : activeMovie.videoStreamUrl || ''
-                }
-                title={activeMovie.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                allowFullScreen
-                className="w-full h-full border-0"
-              />
+            {/* Quadro na proporção correta (sem tarjas pretas) */}
+            <div
+              className="relative flex items-center justify-center bg-black"
+              style={{
+                width: cinemaFitted.width ? cinemaFitted.width : '100%',
+                height: cinemaFitted.height ? cinemaFitted.height : '100%',
+                maxWidth: '100%',
+                maxHeight: '100%',
+              }}
+            >
+              {activeMovie.videoStreamUrl && !activeMovie.youtubeVideoId && !activeMovie.youtubePlaylistId ? (
+                <video
+                  ref={videoElRef}
+                  key={activeMovie.id}
+                  src={activeMovie.videoStreamUrl}
+                  controls
+                  autoPlay
+                  playsInline
+                  onLoadedMetadata={(e) => {
+                    const el = e.currentTarget;
+                    cinemaAspect.detect(el.videoWidth, el.videoHeight);
+                  }}
+                  className="w-full h-full object-contain bg-black"
+                />
+              ) : (
+                <iframe
+                  key={`${activeMovie.id}-${cinemaQuality}`}
+                  src={
+                    activeMovie.youtubePlaylistId
+                      ? `https://www.youtube.com/embed/videoseries?list=${activeMovie.youtubePlaylistId}&autoplay=1&rel=0&playsinline=1&fs=0${cinemaQuality !== 'auto' ? `&vq=${cinemaQuality}` : ''}&hl=pt-BR&cc_lang_pref=pt`
+                      : activeMovie.youtubeVideoId
+                        ? `https://www.youtube.com/embed/${activeMovie.youtubeVideoId}?autoplay=1&rel=0&playsinline=1&fs=0${cinemaQuality !== 'auto' ? `&vq=${cinemaQuality}` : ''}&hl=pt-BR&cc_lang_pref=pt`
+                        : activeMovie.videoStreamUrl || ''
+                  }
+                  title={activeMovie.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  className="w-full h-full border-0"
+                />
+              )}
+            </div>
+
+            {activeMovie && !cinemaChrome.visible && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 border border-white/15 text-[10px] font-black text-white/85 pointer-events-none animate-pulse">
+                👆 Toque na tela para mostrar os controles
+              </div>
             )}
           </div>
 

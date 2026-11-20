@@ -284,6 +284,16 @@ export interface WorldArtistProfile {
   genre?: string;
   era?: string;
   wikiUrl?: string;
+  handle?: string;
+  bannerUrl?: string;
+  country?: string;
+  musicCount?: number;
+  clipCount?: number;
+  links?: {
+    youtube?: string;
+    instagram?: string;
+    wikipedia?: string;
+  };
 }
 
 export interface WorldAiInsight {

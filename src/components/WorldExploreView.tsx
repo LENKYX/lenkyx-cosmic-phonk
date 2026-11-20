@@ -20,6 +20,17 @@ import {
   Download,
   MessageCircle,
   Radio,
+  X,
+  Youtube,
+  Instagram,
+  Globe,
+  Mail,
+  ExternalLink,
+  Info,
+  Users,
+  Video,
+  MapPin,
+  Link2,
 } from 'lucide-react';
 import { triggerDirectFileDownload } from '../utils/offlineCache';
 import {
@@ -91,6 +102,15 @@ const ARTIST_REGION_FILTERS = [
   { id: 'sertanejo', label: '🤠 Sertanejo' },
   { id: 'global', label: '🌍 Globais' },
 ];
+
+function artistHandle(name: string): string {
+  const slug = String(name || 'artista')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+  return `@${slug || 'artista'}`;
+}
 
 function fmtDur(sec?: number): string {
   if (!sec || sec <= 0) return '3:30';
@@ -190,6 +210,9 @@ export const WorldExploreView: React.FC<Props> = ({
   const [sunoTracks, setSunoTracks] = useState<Track[]>([]);
   const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
   const [subscribedChannels, setSubscribedChannels] = useState<Set<string>>(new Set());
+  const [artistTab, setArtistTab] = useState<'inicio' | 'musicas' | 'clipes' | 'playlists'>('inicio');
+  const [showArtistInfo, setShowArtistInfo] = useState(false);
+  const [bioExpanded, setBioExpanded] = useState(false);
   const [downloadingRowId, setDownloadingRowId] = useState<string | null>(null);
   const [downloadRowPct, setDownloadRowPct] = useState<number>(0);
   const resultsListRef = React.useRef<HTMLDivElement | null>(null);
@@ -247,7 +270,8 @@ export const WorldExploreView: React.FC<Props> = ({
     term: string,
     label?: string,
     includeArchiveSpace = false,
-    autoPlayFirst = false
+    autoPlayFirst = false,
+    artistChannel = false
   ) => {
     setLoading(true);
     setActiveLabel(label || (term ? `Artista: ${term}` : '🔥 Em Alta'));
@@ -257,11 +281,16 @@ export const WorldExploreView: React.FC<Props> = ({
     }
     try {
       const payload = term.trim()
-        ? await searchWorldMusic(term, { includeArchiveSpace })
+        ? await searchWorldMusic(term, { includeArchiveSpace, artistChannel })
         : await getWorldTrending();
       const loadedTracks = payload.tracks || [];
       setResults(loadedTracks);
       setArtistProfile(payload.artistProfile || null);
+      if (payload.artistProfile) {
+        setArtistTab('inicio');
+        setShowArtistInfo(false);
+        setBioExpanded(false);
+      }
       if (payload.playlists?.length) setCuratedPlaylists(payload.playlists);
 
       if (autoPlayFirst && loadedTracks.length > 0) {
@@ -349,6 +378,18 @@ export const WorldExploreView: React.FC<Props> = ({
     () => results.filter((t) => Boolean(t.youtubeVideoId)).slice(0, 20),
     [results]
   );
+
+  const openArtistChannel = (artistName: string) => {
+    const name = String(artistName || '').trim();
+    if (!name) return;
+    setArtistTab('inicio');
+    setShowArtistInfo(false);
+    setBioExpanded(false);
+    void runSearch(name, `🎤 ${name}`, false, false, true);
+    window.setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 80);
+  };
 
   const handlePlayRow = (track: Track, customQueue?: Track[]) => {
     recordPlayTaste(track.artist, track.genre, track.title);
@@ -455,27 +496,37 @@ export const WorldExploreView: React.FC<Props> = ({
 
       {/* === MODERN GLASSMORPHIC ARTIST SPOTLIGHT HERO (when selected) === */}
       {artistProfile && (
-        <section className="relative rounded-[30px] overflow-hidden border border-white/15 shadow-[0_24px_70px_rgba(0,0,0,0.85)]">
-          {artistProfile.photoUrl && (
-            <img
-              src={artistProfile.photoUrl}
-              alt={artistProfile.name}
-              className="absolute inset-0 w-full h-full object-cover opacity-40 blur-md scale-110"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#04010c] via-[#070316]/75 to-transparent" />
+        <section className="relative rounded-[30px] overflow-hidden border border-white/15 shadow-[0_24px_70px_rgba(0,0,0,0.85)] bg-[#0a0618]">
+          {/* Banner do canal (foto/capa do artista) */}
+          <div className="relative h-36 sm:h-52 bg-black">
+            {(artistProfile.bannerUrl || artistProfile.photoUrl) && (
+              <img
+                src={artistProfile.bannerUrl || artistProfile.photoUrl}
+                alt={`Banner de ${artistProfile.name}`}
+                className="absolute inset-0 w-full h-full object-cover opacity-70"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0618] via-[#0a0618]/35 to-transparent" />
+            <button
+              type="button"
+              onClick={() => void runSearch('', '🔥 Em Alta')}
+              className="absolute top-3 left-3 px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 text-white text-[11px] font-black flex items-center gap-1 backdrop-blur transition"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Voltar
+            </button>
+            <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-emerald-400 text-black text-[9px] font-black flex items-center gap-1 shadow-lg">
+              <BadgeCheck className="w-3 h-3" /> CANAL OFICIAL
+            </span>
+          </div>
 
-          <div className="relative z-10 p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-end gap-5">
-            <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-3xl p-[2px] bg-gradient-to-br from-emerald-400 via-cyan-400 to-pink-500 shrink-0 shadow-[0_0_40px_rgba(34,211,238,0.45)] overflow-hidden">
-              <div className="w-full h-full rounded-[22px] overflow-hidden bg-black">
+          <div className="relative z-10 px-5 sm:px-8 pb-5 -mt-10 sm:-mt-14 flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6">
+            <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full p-[3px] bg-gradient-to-br from-emerald-400 via-cyan-400 to-pink-500 shrink-0 shadow-[0_0_40px_rgba(34,211,238,0.45)]">
+              <div className="w-full h-full rounded-full overflow-hidden bg-black border-4 border-[#0a0618]">
                 <ArtistPortrait name={artistProfile.name} photoUrl={artistProfile.photoUrl} />
               </div>
-              <span className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-full bg-emerald-400 text-black text-[9px] font-black flex items-center gap-0.5 shadow-lg">
-                <BadgeCheck className="w-3 h-3" /> OFICIAL
-              </span>
             </div>
 
-            <div className="flex-1 text-center sm:text-left space-y-2 min-w-0">
+            <div className="flex-1 text-center sm:text-left space-y-2 min-w-0 pt-2">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                 {artistProfile.genre && (
                   <span className="px-2.5 py-0.5 rounded-full bg-pink-500/25 border border-pink-400/40 text-pink-200 text-[10px] font-extrabold">
@@ -487,31 +538,95 @@ export const WorldExploreView: React.FC<Props> = ({
                     {artistProfile.era}
                   </span>
                 )}
+                {artistProfile.country && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-purple-100 text-[10px] font-extrabold flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> {artistProfile.country}
+                  </span>
+                )}
               </div>
               <h1 className="font-display text-2xl sm:text-4xl font-black text-white tracking-tight truncate">
                 {artistProfile.name}
               </h1>
+              <div className="text-xs text-purple-200/85 font-semibold truncate">
+                {artistProfile.handle || artistHandle(artistProfile.name)}
+                {'  ·  '}
+                {(channelCounts[normalizeChannelKey(artistProfile.name)] || 0).toLocaleString('pt-BR')} inscritos no MORRO GOLD
+                {'  ·  '}
+                {artistProfile.musicCount ?? results.length} músicas
+                {'  ·  '}
+                {artistProfile.clipCount ?? clipTracks.length} clipes
+              </div>
               {artistProfile.bio && (
-                <p className="text-xs text-purple-100/85 line-clamp-2 max-w-2xl leading-relaxed">
+                <p className={`text-xs text-purple-100/85 max-w-2xl leading-relaxed ${bioExpanded ? '' : 'line-clamp-2'}`}>
                   {artistProfile.bio}
+                  {artistProfile.bio.length > 140 && (
+                    <button
+                      type="button"
+                      onClick={() => setBioExpanded((v) => !v)}
+                      className="ml-1 font-black text-cyan-300 hover:text-cyan-200"
+                    >
+                      {bioExpanded ? '...menos' : '...mais'}
+                    </button>
+                  )}
                 </p>
               )}
 
+              {/* Links oficiais do artista */}
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                {(artistProfile.links?.instagram || true) && (
+                  <a
+                    href={artistProfile.links?.instagram || `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(artistProfile.name)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-500/25 to-purple-500/25 hover:from-pink-500/40 hover:to-purple-500/40 border border-pink-400/40 text-pink-100 text-[11px] font-black flex items-center gap-1.5 transition"
+                  >
+                    <Instagram className="w-3.5 h-3.5" /> Instagram
+                  </a>
+                )}
+                <a
+                  href={artistProfile.links?.youtube || `https://www.youtube.com/results?search_query=${encodeURIComponent(`${artistProfile.name} official`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-full bg-red-500/20 hover:bg-red-500/35 border border-red-400/40 text-red-100 text-[11px] font-black flex items-center gap-1.5 transition"
+                >
+                  <Youtube className="w-3.5 h-3.5" /> YouTube
+                </a>
+                {artistProfile.links?.wikipedia && (
+                  <a
+                    href={artistProfile.links.wikipedia}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-[11px] font-black flex items-center gap-1.5 transition"
+                  >
+                    <Globe className="w-3.5 h-3.5" /> Wikipedia
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowArtistInfo(true)}
+                  className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-[11px] font-black flex items-center gap-1.5 transition"
+                >
+                  <Info className="w-3.5 h-3.5" /> Mais informações
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2">
                 {results.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => handlePlayRow(results[0])}
                     className="px-5 py-2.5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black text-xs font-black flex items-center gap-1.5 shadow-lg transition active:scale-95"
                   >
-                    <Play className="w-3.5 h-3.5 fill-black" /> Play Automático ({results.length} músicas)
+                    <Play className="w-3.5 h-3.5 fill-black" /> Reproduzir tudo ({results.length} músicas)
                   </button>
                 )}
                 {clipTracks[0] && onWatchClip && (
                   <button
+                    type="button"
                     onClick={() => onWatchClip(clipTracks[0], clipTracks)}
                     className="px-4 py-2.5 rounded-full bg-rose-600/85 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1.5 transition"
                   >
-                    <Film className="w-3.5 h-3.5" /> Assistir Clipes
+                    <Film className="w-3.5 h-3.5" /> Assistir Clipes ({clipTracks.length})
                   </button>
                 )}
                 <button
@@ -519,8 +634,8 @@ export const WorldExploreView: React.FC<Props> = ({
                   onClick={() => void handleToggleArtistSubscribe(artistProfile.name)}
                   className={`px-4 py-2.5 rounded-full text-xs font-black flex items-center gap-1.5 transition ${
                     subscribedChannels.has(normalizeChannelKey(artistProfile.name))
-                      ? 'bg-white/20 border border-white/25 text-white'
-                      : 'bg-gradient-to-r from-red-600 to-pink-500 text-white shadow hover:brightness-110'
+                      ? 'bg-white/15 border border-white/25 text-white hover:bg-white/25'
+                      : 'bg-white text-black hover:bg-purple-100 shadow'
                   }`}
                 >
                   {subscribedChannels.has(normalizeChannelKey(artistProfile.name)) ? (
@@ -536,7 +651,7 @@ export const WorldExploreView: React.FC<Props> = ({
                   )}
                   {(channelCounts[normalizeChannelKey(artistProfile.name)] || 0) > 0 && (
                     <span className="opacity-85">
-                      · {channelCounts[normalizeChannelKey(artistProfile.name)]}
+                      · {(channelCounts[normalizeChannelKey(artistProfile.name)] || 0).toLocaleString('pt-BR')}
                     </span>
                   )}
                 </button>
@@ -551,12 +666,61 @@ export const WorldExploreView: React.FC<Props> = ({
                     <MessageCircle className="w-3.5 h-3.5" /> Comentários
                   </button>
                 )}
-                <button
-                  onClick={() => void runSearch('', '🔥 Em Alta')}
-                  className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white flex items-center gap-1 transition"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Todos os Artistas
-                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Abas do canal — estilo YouTube */}
+          <div className="relative z-10 flex items-center gap-1 px-4 sm:px-8 border-t border-white/10 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            {(
+              [
+                { id: 'inicio', label: 'Início' },
+                { id: 'musicas', label: `Músicas (${artistProfile.musicCount ?? results.length})` },
+                { id: 'clipes', label: `Clipes (${artistProfile.clipCount ?? clipTracks.length})` },
+                { id: 'playlists', label: 'Playlists' },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setArtistTab(tab.id)}
+                className={`px-4 py-3 text-xs sm:text-sm font-black whitespace-nowrap border-b-2 transition ${
+                  artistTab === tab.id
+                    ? 'border-white text-white'
+                    : 'border-transparent text-purple-300/70 hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Destaque: clipe em alta do artista (aba Início) */}
+      {artistProfile && artistTab === 'inicio' && clipTracks[0] && onWatchClip && (
+        <section className="rounded-3xl cosmic-card-3d overflow-hidden">
+          <div
+            className="relative aspect-video bg-black cursor-pointer group"
+            onClick={() => onWatchClip(clipTracks[0], clipTracks)}
+          >
+            <img
+              src={clipTracks[0].coverUrl || '/covers/album-official.jpg'}
+              alt={clipTracks[0].title}
+              loading="lazy"
+              className="w-full h-full object-cover group-hover:scale-105 transition"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/30" />
+            <span className="absolute top-3 left-3 px-2.5 py-1 rounded bg-rose-600 text-[10px] font-black text-white flex items-center gap-1">
+              <Video className="w-3 h-3" /> CLIPE EM ALTA
+            </span>
+            <span className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-black/70 border border-white/40 text-white flex items-center justify-center group-hover:bg-rose-600 group-hover:scale-110 transition">
+              <Play className="w-7 h-7 fill-white ml-1" />
+            </span>
+            <div className="absolute bottom-0 inset-x-0 p-4">
+              <div className="text-sm sm:text-base font-black text-white truncate">{clipTracks[0].title}</div>
+              <div className="text-[11px] text-purple-200/85 truncate">
+                {artistProfile.name} · {fmtDur(clipTracks[0].durationSec)} · Reproduzir tudo
               </div>
             </div>
           </div>
@@ -605,7 +769,7 @@ export const WorldExploreView: React.FC<Props> = ({
               return (
                 <button
                   key={art.name}
-                  onClick={() => void runSearch(art.name, `🏆 #${displayRank} ${art.name}`, false, true)}
+                  onClick={() => openArtistChannel(art.name)}
                   className={`group relative rounded-3xl overflow-hidden bg-[#0a0619] text-left transition duration-300 hover:-translate-y-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.65)] ${
                     displayRank === 1
                       ? 'border-2 border-amber-400/80 shadow-[0_0_34px_rgba(251,191,36,0.28)]'
@@ -752,19 +916,20 @@ export const WorldExploreView: React.FC<Props> = ({
               <span>Artistas de Música IA do Suno (Ao Vivo no App)</span>
             </>
           }
-          subtitle="Criadores mundiais do Suno IA — toque em um artista ou faixa para ouvir direto com Graves+"
+          subtitle="Criadores mundiais do Suno IA — toque em um artista para abrir o canal completo com músicas e clipes"
           count={sunoArtists.length}
           collapsible
         >
           {sunoArtists.map((art) => (
-            <button
+            <div
               key={art.id}
-              onClick={() => {
-                if (art.tracks.length > 0) {
-                  handlePlayRow(art.tracks[0], [...art.tracks, ...sunoTracks]);
-                }
+              role="button"
+              tabIndex={0}
+              onClick={() => openArtistChannel(art.name)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') openArtistChannel(art.name);
               }}
-              className="group w-40 sm:w-44 shrink-0 rounded-3xl overflow-hidden bg-gradient-to-b from-cyan-500/15 to-black/60 backdrop-blur-xl border border-cyan-400/25 hover:border-cyan-300/70 text-left snap-start transition duration-300 hover:-translate-y-1"
+              className="group w-40 sm:w-44 shrink-0 rounded-3xl overflow-hidden bg-gradient-to-b from-cyan-500/15 to-black/60 backdrop-blur-xl border border-cyan-400/25 hover:border-cyan-300/70 text-left snap-start transition duration-300 hover:-translate-y-1 cursor-pointer"
             >
               <div className="relative aspect-[4/3.6] w-full overflow-hidden bg-black">
                 <ArtistPortrait
@@ -776,9 +941,19 @@ export const WorldExploreView: React.FC<Props> = ({
                 <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-cyan-400 text-black text-[9px] font-black">
                   🤖 SUNO IA
                 </span>
-                <span className="opacity-0 group-hover:opacity-100 absolute bottom-2.5 right-2.5 w-9 h-9 rounded-full bg-cyan-400 text-black flex items-center justify-center shadow-lg transition">
+                <button
+                  type="button"
+                  aria-label={`Tocar ${art.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (art.tracks.length > 0) {
+                      handlePlayRow(art.tracks[0], [...art.tracks, ...sunoTracks]);
+                    }
+                  }}
+                  className="opacity-0 group-hover:opacity-100 absolute bottom-2.5 right-2.5 w-9 h-9 rounded-full bg-cyan-400 text-black flex items-center justify-center shadow-lg transition"
+                >
                   <Play className="w-4 h-4 fill-black ml-0.5" />
-                </span>
+                </button>
               </div>
               <div className="p-2.5 space-y-0.5">
                 <div className="text-xs font-black text-white truncate group-hover:text-cyan-300">
@@ -788,7 +963,7 @@ export const WorldExploreView: React.FC<Props> = ({
                   {art.tracks[0]?.title || art.genre}
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </CosmicScrollRow>
       )}
@@ -826,7 +1001,7 @@ export const WorldExploreView: React.FC<Props> = ({
           {filteredArtists.map((art) => (
             <button
               key={art.name}
-              onClick={() => void runSearch(art.name, `🎤 ${art.name}`, false, true)}
+              onClick={() => openArtistChannel(art.name)}
               className="group w-44 sm:w-52 shrink-0 rounded-3xl overflow-hidden bg-gradient-to-b from-white/[0.10] to-black/60 backdrop-blur-xl border border-white/15 hover:border-cyan-400/65 text-left snap-start transition duration-300 hover:-translate-y-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.65)]"
             >
               <div className="relative aspect-[4/4.5] w-full overflow-hidden bg-black">
@@ -914,6 +1089,7 @@ export const WorldExploreView: React.FC<Props> = ({
       )}
 
       {/* === SECTION 3: PLAYLISTS (Artist-specific when artist selected!) === */}
+      {(!artistProfile || artistTab === 'playlists' || artistTab === 'inicio') && (
       <CosmicScrollRow
         title={
           <>
@@ -958,14 +1134,15 @@ export const WorldExploreView: React.FC<Props> = ({
           </div>
         ))}
       </CosmicScrollRow>
+      )}
 
       {/* === SECTION 4: CLIPES OFICIAIS HD === */}
-      {clipTracks.length > 0 && onWatchClip && (
+      {clipTracks.length > 0 && onWatchClip && (!artistProfile || artistTab === 'clipes' || artistTab === 'inicio') && (
         <CosmicScrollRow
           title={
             <>
               <Film className="w-4 h-4 text-rose-400" />
-              <span>Clipes Oficiais HD — {activeLabel}</span>
+              <span>{artistProfile ? `Clipes de ${artistProfile.name}` : `Clipes Oficiais HD — ${activeLabel}`}</span>
             </>
           }
           count={clipTracks.length}
@@ -1001,6 +1178,7 @@ export const WorldExploreView: React.FC<Props> = ({
       )}
 
       {/* Results Header */}
+      {(!artistProfile || artistTab === 'musicas' || artistTab === 'inicio') && (
       <div ref={resultsListRef} className="flex items-center justify-between text-xs text-purple-200/80 px-1 pt-1">
         <div className="flex items-center gap-1.5 font-bold text-white">
           <Flame className="w-4 h-4 text-pink-400" />
@@ -1017,6 +1195,7 @@ export const WorldExploreView: React.FC<Props> = ({
           </button>
         )}
       </div>
+      )}
 
       {/* Clean Modern Track List */}
       {loading ? (
@@ -1054,6 +1233,30 @@ export const WorldExploreView: React.FC<Props> = ({
                   )}
                 </button>
 
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleToggleArtistSubscribe(t.artist);
+                  }}
+                  aria-label={subscribedChannels.has(normalizeChannelKey(t.artist)) ? `Cancelar inscrição em ${t.artist}` : `Inscrever-se em ${t.artist}`}
+                  title={subscribedChannels.has(normalizeChannelKey(t.artist)) ? `Inscrito em ${t.artist}` : `Inscrever-se no artista ${t.artist}`}
+                  className={`shrink-0 h-8 px-2 rounded-lg border flex items-center gap-1 transition ${
+                    subscribedChannels.has(normalizeChannelKey(t.artist))
+                      ? 'bg-emerald-500/15 border-emerald-400/30 text-emerald-200 hover:bg-rose-500/20'
+                      : 'bg-rose-500/15 border-rose-400/30 text-rose-200 hover:bg-rose-500/30'
+                  }`}
+                >
+                  {subscribedChannels.has(normalizeChannelKey(t.artist)) ? (
+                    <BellRing className="w-3.5 h-3.5" />
+                  ) : (
+                    <Bell className="w-3.5 h-3.5" />
+                  )}
+                  <span className="hidden md:inline text-[9px] font-black">
+                    {subscribedChannels.has(normalizeChannelKey(t.artist)) ? 'Inscrito' : 'Inscrever'}
+                  </span>
+                </button>
+
                 <img
                   src={t.coverUrl || '/covers/album-official.jpg'}
                   alt={t.title}
@@ -1072,8 +1275,19 @@ export const WorldExploreView: React.FC<Props> = ({
                       {t.sourceLabel || 'Completa'}
                     </span>
                   </div>
-                  <div className="text-[11px] text-purple-200/70 truncate">
-                    {t.artist} {t.genre ? `· ${t.genre}` : ''}
+                  <div className="text-[11px] text-purple-200/70 truncate flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openArtistChannel(t.artist);
+                      }}
+                      title={`Ver canal de ${t.artist} — músicas e clipes`}
+                      className="font-bold text-purple-100/90 hover:text-cyan-300 hover:underline underline-offset-2 truncate max-w-[60vw] sm:max-w-none"
+                    >
+                      {t.artist}
+                    </button>
+                    {t.genre ? <span className="shrink-0">· {t.genre}</span> : null}
                   </div>
                 </div>
 
@@ -1162,6 +1376,146 @@ export const WorldExploreView: React.FC<Props> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* === MODAL: MAIS INFORMAÇÕES DO ARTISTA (estilo YouTube) === */}
+      {artistProfile && showArtistInfo && (
+        <div
+          className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowArtistInfo(false)}
+        >
+          <div
+            className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl bg-[#14101f] border border-white/15 shadow-2xl p-5 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="font-display text-lg font-black text-white truncate">{artistProfile.name}</h2>
+              <button
+                type="button"
+                onClick={() => setShowArtistInfo(false)}
+                aria-label="Fechar"
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <h3 className="mt-4 text-sm font-black text-white">Links</h3>
+            <div className="mt-2 space-y-3">
+              <a
+                href={artistProfile.links?.instagram || `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(artistProfile.name)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 group"
+              >
+                <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white shrink-0">
+                  <Instagram className="w-4 h-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-bold text-white">Instagram</span>
+                  <span className="block text-[11px] text-cyan-300 group-hover:underline truncate">
+                    instagram.com — buscar {artistProfile.name}
+                  </span>
+                </span>
+                <ExternalLink className="w-3.5 h-3.5 text-purple-300 ml-auto shrink-0" />
+              </a>
+              <a
+                href={artistProfile.links?.youtube || `https://www.youtube.com/results?search_query=${encodeURIComponent(`${artistProfile.name} official`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 group"
+              >
+                <span className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white shrink-0">
+                  <Youtube className="w-4 h-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-bold text-white">YouTube</span>
+                  <span className="block text-[11px] text-cyan-300 group-hover:underline truncate">
+                    youtube.com — canal de {artistProfile.name}
+                  </span>
+                </span>
+                <ExternalLink className="w-3.5 h-3.5 text-purple-300 ml-auto shrink-0" />
+              </a>
+              {artistProfile.links?.wikipedia && (
+                <a href={artistProfile.links.wikipedia} target="_blank" rel="noreferrer" className="flex items-center gap-3 group">
+                  <span className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center text-white shrink-0">
+                    <Globe className="w-4 h-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-bold text-white">Wikipedia</span>
+                    <span className="block text-[11px] text-cyan-300 group-hover:underline truncate">Biografia completa</span>
+                  </span>
+                  <ExternalLink className="w-3.5 h-3.5 text-purple-300 ml-auto shrink-0" />
+                </a>
+              )}
+            </div>
+
+            <h3 className="mt-5 text-sm font-black text-white">Mais informações</h3>
+            <div className="mt-2 space-y-3 text-xs">
+              <div className="flex items-center gap-3">
+                <Mail className="w-4 h-4 text-purple-300 shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => setShowArtistInfo(false)}
+                  className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold"
+                >
+                  Ver endereço de e-mail
+                </button>
+                <span className="text-[10px] text-purple-300/70">e-mail público não divulgado — use os links oficiais acima</span>
+              </div>
+              <div className="flex items-center gap-3 text-purple-100">
+                <Youtube className="w-4 h-4 text-purple-300 shrink-0" />
+                <span className="truncate">youtube.com/{artistProfile.handle || artistHandle(artistProfile.name)}</span>
+              </div>
+              <div className="flex items-center gap-3 text-purple-100">
+                <MapPin className="w-4 h-4 text-purple-300 shrink-0" />
+                <span>{artistProfile.country || 'Brasil'}</span>
+              </div>
+              {artistProfile.genre && (
+                <div className="flex items-center gap-3 text-purple-100">
+                  <Music2 className="w-4 h-4 text-purple-300 shrink-0" />
+                  <span>{artistProfile.genre}{artistProfile.era ? ` · ${artistProfile.era}` : ''}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-3 text-purple-100">
+                <Users className="w-4 h-4 text-purple-300 shrink-0" />
+                <span>
+                  {(channelCounts[normalizeChannelKey(artistProfile.name)] || 0).toLocaleString('pt-BR')} inscritos no MORRO GOLD
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-purple-100">
+                <Video className="w-4 h-4 text-purple-300 shrink-0" />
+                <span>
+                  {artistProfile.musicCount ?? results.length} músicas · {artistProfile.clipCount ?? clipTracks.length} clipes no app
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-purple-100">
+                <Link2 className="w-4 h-4 text-purple-300 shrink-0" />
+                <span>Canal completo no MORRO GOLD — tudo que o artista já lançou de músicas e clipes</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void handleToggleArtistSubscribe(artistProfile.name)}
+              className={`mt-5 w-full py-2.5 rounded-full text-xs font-black flex items-center justify-center gap-1.5 transition ${
+                subscribedChannels.has(normalizeChannelKey(artistProfile.name))
+                  ? 'bg-white/15 border border-white/25 text-white'
+                  : 'bg-white text-black hover:bg-purple-100'
+              }`}
+            >
+              {subscribedChannels.has(normalizeChannelKey(artistProfile.name)) ? (
+                <>
+                  <BellRing className="w-3.5 h-3.5 text-emerald-300" /> Inscrito
+                </>
+              ) : (
+                <>
+                  <Bell className="w-3.5 h-3.5" /> Inscrever-se no canal
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>
