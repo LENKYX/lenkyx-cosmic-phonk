@@ -240,6 +240,7 @@ export function App() {
   const reelDrag = useFloatingDrag();
   const movieDrag = useFloatingDrag();
   const clipDrag = useFloatingDrag();
+  const [catRowOpen, setCatRowOpen] = useState(false);
 
   // ===== MODO TV (Smart TV / navegador de TV) — estável e legível como o YouTube =====
   useEffect(() => {
@@ -3811,18 +3812,26 @@ export function App() {
             >
               <MoreVertical className="w-4 h-4 text-amber-300" /> Mais
             </button>
+            <button
+              type="button"
+              onClick={() => setCatRowOpen((v) => !v)}
+              className={`py-2.5 text-[13px] font-semibold whitespace-nowrap border-b-2 transition shrink-0 flex items-center gap-1 ${
+                catRowOpen
+                  ? 'border-amber-400 text-white'
+                  : 'border-transparent text-slate-300/85 hover:text-white'
+              }`}
+              title="Mostrar ou ocultar as categorias"
+            >
+              ▾ Categorias
+            </button>
           </div>
 
-          {/* YOUTUBE-STYLE HORIZONTAL CATEGORY FILTER CHIPS (Mobile, PC & Smart TV) */}
-          {!moreSheetOpen && (
+          {/* CATEGORIAS (recolhidas por padrão — toque em "Categorias" para abrir) */}
+          {!moreSheetOpen && catRowOpen && (
             <div className="max-w-[1380px] mx-auto flex items-center gap-2 py-2 border-t border-white/[0.06]">
               <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto no-scrollbar">
               {(
                 [
-                  { id: 'tudo', label: 'Tudo', run: () => navigateTab('catalog') },
-                  { id: 'shorts', label: 'Shorts', run: () => navigateTab('reels') },
-                  { id: 'canais', label: 'Canais', run: () => navigateTab('channels') },
-                  { id: 'musica', label: 'Música', run: () => navigateTab('explore') },
                   {
                     id: 'funk',
                     label: 'Funk & Baile',
@@ -3838,10 +3847,8 @@ export function App() {
                     label: 'Pagode',
                     run: () => triggerWorldSearchDirect('pagode 2026 menos e mais'),
                   },
-                  { id: 'aovivo', label: 'Ao vivo', run: () => navigateTab('sports') },
                   { id: 'filmes', label: 'Filmes & Animes', run: () => navigateTab('movies') },
                   { id: 'jogos', label: 'Jogos', run: () => navigateTab('arcade') },
-                  { id: 'loja', label: 'Loja dos Cria', run: () => navigateTab('shop') },
                 ] as { id: string; label: string; run: () => void }[]
               ).map((chip) => {
                 const selected = activeYtChip === chip.id;
@@ -3864,15 +3871,7 @@ export function App() {
                 );
               })}
               </div>
-              <button
-                type="button"
-                onClick={() => setMoreSheetOpen((v) => !v)}
-                className="p-1.5 rounded-lg bg-white/[0.08] hover:bg-amber-400/20 border border-amber-300/20 text-amber-200 shrink-0"
-                title="Mais categorias e seções"
-                aria-label="Mais categorias e seções"
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
+
             </div>
           )}
         </div>
