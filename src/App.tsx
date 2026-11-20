@@ -2636,21 +2636,29 @@ export function App() {
     <div className="h-dvh overflow-hidden bg-[#070b18] text-white flex relative">
       <CosmicSpaceBackdrop />
 
-      {/* === FAVELA OSTENTAÇÃO VIP ENTRY SPLASH (Logo Grande + Som de Favela + Gíria de Cria) === */}
+      {/* === FAVELA OSTENTAÇÃO VIP ENTRY SPLASH (Logo Grosso + Palco VIP Diamante Iluminado) === */}
       {showEntrySplash && (
         <div
           onClick={() => dismissEntrySplash(true)}
-          className={`fixed inset-0 z-[120] flex flex-col items-center justify-center bg-[#04050a] overflow-hidden cursor-pointer transition-opacity duration-300 ${
+          className={`fixed inset-0 z-[120] flex flex-col items-center justify-center bg-[#120d22] overflow-hidden cursor-pointer transition-opacity duration-300 ${
             entrySplashExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
         >
-          {/* Favela Night Luxury Skyline Backdrop */}
+          {/* Bright VIP Party + Illuminated Favela Backdrop (Option 2) */}
           <img
-            src="/covers/favela-night-skyline.jpg"
+            src="/covers/baile-verao-vip.jpg"
             alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-35 scale-105"
+            className="absolute inset-0 w-full h-full object-cover opacity-65 brightness-125 contrast-105 saturate-125 scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#04050a]/85 via-[#04050a]/65 to-[#04050a]" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: [
+                'radial-gradient(circle at 50% 36%, rgba(255, 245, 190, 0.44) 0%, rgba(56, 189, 248, 0.24) 38%, rgba(14, 12, 28, 0.45) 88%)',
+                'linear-gradient(180deg, rgba(56, 189, 248, 0.20) 0%, rgba(250, 204, 21, 0.16) 46%, rgba(10, 8, 18, 0.82) 100%)',
+              ].join(', '),
+            }}
+          />
 
           <div className="relative z-10 edge-entrance-logo flex flex-col items-center gap-4 px-5 text-center max-w-lg w-full">
             {/* Logo Grande VIP */}

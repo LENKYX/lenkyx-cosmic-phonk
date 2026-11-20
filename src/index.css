@@ -78,88 +78,131 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  perspective: 950px;
   isolation: isolate;
 }
 
-.edge-3d-aurora {
-  position: absolute;
-  inset: -3px;
-  border-radius: inherit;
-  background: conic-gradient(
-    from 0deg,
-    #f5c84c,
-    #fef08a,
-    #d97706,
-    #22d3ee,
-    #fbbf24,
-    #f59e0b,
-    #f5c84c
-  );
-  filter: blur(6px);
-  opacity: 0.9;
-  z-index: -1;
-  animation: edgeAuroraSpin 4.2s linear infinite;
+.edge-3d-hero-stage {
+  padding-bottom: 14px;
 }
 
-.edge-3d-badge {
-  position: relative;
-  overflow: hidden;
-  background: radial-gradient(circle at 30% 25%, #161822 0%, #05060b 100%);
+.edge-vip-halo-gold {
+  position: absolute;
+  inset: -6%;
+  border-radius: 50%;
+  border: 2px solid rgba(253, 224, 71, 0.62);
   box-shadow:
-    inset 0 1px 3px rgba(254, 240, 138, 0.5),
-    inset 0 -3px 8px rgba(245, 158, 11, 0.25),
-    0 12px 32px rgba(245, 200, 76, 0.35),
-    0 2px 10px rgba(0, 0, 0, 0.75);
+    0 0 42px rgba(250, 204, 21, 0.52),
+    inset 0 0 36px rgba(56, 189, 248, 0.36);
+  pointer-events: none;
+  animation: edgeVipRingPulse 3.2s ease-in-out infinite;
 }
 
-.edge-3d-sheen {
+.edge-vip-halo-diamond {
   position: absolute;
-  inset: -40%;
-  background: linear-gradient(
-    115deg,
-    transparent 35%,
-    rgba(245, 200, 76, 0.34) 45%,
-    rgba(255, 255, 255, 0.78) 50%,
-    rgba(34, 211, 238, 0.25) 55%,
-    transparent 65%
-  );
+  inset: -15%;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(125, 211, 252, 0.58);
   pointer-events: none;
-  animation: edgeSheenSweep 3.1s ease-in-out infinite;
+  animation: edgeVipRingSpin 18s linear infinite;
+}
+
+.edge-3d-floor-glow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 82%;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(253, 224, 71, 0.78) 0%, rgba(245, 158, 11, 0.32) 48%, transparent 75%);
+  filter: blur(7px);
+  pointer-events: none;
+  animation: edgeFloorPulse 3s ease-in-out infinite;
+}
+
+.edge-3d-emblem-3d {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  background: transparent;
+}
+
+.edge-3d-spin-hero {
+  animation: edgeCoin3DHero 4.6s ease-in-out infinite;
+}
+
+.edge-3d-spin-mini {
+  animation: edgeCoin3DMini 4.8s ease-in-out infinite;
 }
 
 .edge-3d-img-hue {
-  animation: edgeGoldPulse 4.5s ease-in-out infinite;
+  animation: edgeGoldPulse 2.8s ease-in-out infinite;
 }
 
-@keyframes edgeAuroraSpin {
-  0% {
-    transform: rotate(0deg) scale(1);
+@keyframes edgeCoin3DHero {
+  0%,
+  100% {
+    transform: perspective(900px) rotateY(-14deg) rotateX(5deg) translateY(0px) scale(1);
   }
   50% {
-    transform: rotate(180deg) scale(1.05);
-  }
-  100% {
-    transform: rotate(360deg) scale(1);
+    transform: perspective(900px) rotateY(14deg) rotateX(-4deg) translateY(-10px) scale(1.05);
   }
 }
 
-@keyframes edgeSheenSweep {
-  0% {
-    transform: translateX(-110%) skewX(-18deg);
-  }
-  55%,
+@keyframes edgeCoin3DMini {
+  0%,
   100% {
-    transform: translateX(125%) skewX(-18deg);
+    transform: rotateY(-11deg) rotateX(4deg) translateY(0px);
+  }
+  50% {
+    transform: rotateY(11deg) rotateX(-4deg) translateY(-2px);
+  }
+}
+
+@keyframes edgeVipRingPulse {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes edgeVipRingSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes edgeFloorPulse {
+  0%,
+  100% {
+    transform: translateX(-50%) scaleX(0.92);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translateX(-50%) scaleX(1.08);
+    opacity: 1;
   }
 }
 
 @keyframes edgeGoldPulse {
   0%,
   100% {
-    filter: brightness(1) contrast(1.04) drop-shadow(0 0 6px rgba(245, 200, 76, 0.25));
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.58)) drop-shadow(0 0 22px rgba(250, 204, 21, 0.65)) brightness(1.05);
   }
   50% {
-    filter: brightness(1.1) contrast(1.08) drop-shadow(0 0 14px rgba(245, 200, 76, 0.5));
+    filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.62)) drop-shadow(0 0 38px rgba(253, 224, 71, 0.95)) brightness(1.16);
   }
 }
 
@@ -227,14 +270,14 @@
 }
 
 .glass-panel {
-  background: linear-gradient(165deg, rgba(13, 16, 28, 0.94), rgba(5, 7, 13, 0.97));
-  backdrop-filter: blur(30px) saturate(165%);
-  -webkit-backdrop-filter: blur(30px) saturate(165%);
-  border: 1px solid rgba(212, 175, 55, 0.24);
+  background: linear-gradient(165deg, rgba(20, 22, 42, 0.84), rgba(10, 12, 24, 0.90));
+  backdrop-filter: blur(26px) saturate(175%);
+  -webkit-backdrop-filter: blur(26px) saturate(175%);
+  border: 1px solid rgba(250, 204, 21, 0.28);
   box-shadow:
-    inset 0 1px 0 rgba(255, 243, 196, 0.16),
-    inset 0 0 0 1px rgba(56, 189, 248, 0.08),
-    0 24px 64px rgba(0, 0, 0, 0.82);
+    inset 0 1px 0 rgba(255, 243, 196, 0.22),
+    inset 0 0 0 1px rgba(56, 189, 248, 0.14),
+    0 24px 64px rgba(0, 0, 0, 0.72);
 }
 
 /* Futuristic Cyber-Robot Luxury HUD Cards */
@@ -244,10 +287,10 @@
 
 .cosmic-card-3d {
   position: relative;
-  background: linear-gradient(165deg, rgba(16, 19, 32, 0.90), rgba(7, 9, 16, 0.96));
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid rgba(212, 175, 55, 0.22);
+  background: linear-gradient(165deg, rgba(24, 26, 48, 0.80), rgba(11, 14, 26, 0.88));
+  backdrop-filter: blur(22px) saturate(165%);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
+  border: 1px solid rgba(250, 204, 21, 0.26);
   box-shadow:
     inset 0 1px 0 rgba(255, 243, 196, 0.18),
     inset 0 0 26px rgba(212, 175, 55, 0.03),

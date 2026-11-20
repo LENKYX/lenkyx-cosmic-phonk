@@ -12,24 +12,25 @@ const SNOWFLAKES = [
 export const CosmicSpaceBackdrop: React.FC<{ intense?: boolean; paused?: boolean }> = () => {
   return (
     <div
-      className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#04050a]"
+      className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#100d1e]"
       style={{
         backgroundImage: [
-          'radial-gradient(ellipse 75% 48% at 15% 4%, rgba(245, 200, 76, 0.14), transparent 62%)',
-          'radial-gradient(ellipse 70% 45% at 88% 8%, rgba(34, 211, 238, 0.13), transparent 62%)',
-          'radial-gradient(ellipse 60% 40% at 50% 48%, rgba(212, 175, 55, 0.08), transparent 68%)',
-          'radial-gradient(ellipse 70% 40% at 20% 95%, rgba(16, 185, 129, 0.09), transparent 65%)',
+          'radial-gradient(ellipse 82% 55% at 50% 16%, rgba(255, 240, 175, 0.28), transparent 64%)',
+          'radial-gradient(ellipse 75% 48% at 15% 6%, rgba(250, 204, 21, 0.24), transparent 62%)',
+          'radial-gradient(ellipse 72% 48% at 88% 10%, rgba(56, 189, 248, 0.26), transparent 62%)',
+          'radial-gradient(ellipse 65% 45% at 50% 52%, rgba(245, 196, 66, 0.16), transparent 68%)',
+          'radial-gradient(ellipse 75% 42% at 22% 94%, rgba(16, 185, 129, 0.16), transparent 65%)',
         ].join(', '),
       }}
     >
-      {/* Atmospheric Favela Night Skyline & Luxury Cars/Bikes Backdrop */}
+      {/* Bright Illuminated VIP Baile & Favela Skyline Backdrop */}
       <img
         src="/covers/favela-night-skyline.jpg"
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover opacity-[0.14] mix-blend-screen scale-105"
+        className="absolute inset-0 w-full h-full object-cover opacity-[0.30] brightness-125 contrast-105 saturate-125 scale-105"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#04050a]/80 via-[#04050a]/75 to-[#04050a]/95" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#1a1430]/55 via-[#0f1326]/50 to-[#090b16]/82" />
 
       {/* Futuristic Cyber-Robot Circuit Grid */}
       <div
