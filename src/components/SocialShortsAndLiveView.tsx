@@ -2093,6 +2093,61 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
             onClick={(e) => e.stopPropagation()}
             className="shrink-0 z-30 mg24k-bar border-t border-amber-400/20 px-3 sm:px-6 py-2.5 space-y-2"
           >
+            <div className="flex items-center gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const vid = activeShort?.youtube_id;
+                  if (vid) {
+                    window.open(`https://www.youtube.com/shorts/${encodeURIComponent(String(vid))}`, '_blank', 'noopener');
+                  } else {
+                    const el = document.querySelector('video[data-active-short]') as HTMLVideoElement | null;
+                    if (el) {
+                      el.muted = false;
+                      void el.play().catch(() => {});
+                      void el.requestFullscreen?.().catch(() => {});
+                    }
+                  }
+                }}
+                className="flex-1 py-2 rounded-full lux-btn-gold text-xs font-black flex items-center justify-center gap-1.5"
+              >
+                ▶ Assistir direto
+              </button>
+              <button
+                type="button"
+                onClick={() => document.getElementById('mg-camera-input')?.click()}
+                className="flex-1 py-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-xs font-black flex items-center justify-center gap-1.5"
+              >
+                🎥 Criar com a câmera
+              </button>
+              <input
+                id="mg-camera-input"
+                type="file"
+                accept="video/*"
+                capture="environment"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const fd = new FormData();
+                  fd.append('video', f);
+                  fd.append('title', 'Zueira do Cria · MORRO GOLD');
+                  try {
+                    const r = await fetch('/api/shorts/upload', { method: 'POST', body: fd });
+                    const d = await r.json();
+                    if (d?.ok) {
+                      window.alert('🎬 Vídeo enviado para a internet! Aperte OK para assistir.');
+                      window.open(d.url, '_blank', 'noopener');
+                    } else {
+                      window.alert('Não deu pra enviar agora. Tente de novo.');
+                    }
+                  } catch {
+                    window.alert('Sem conexão para enviar. Tente de novo.');
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </div>
             <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <button
@@ -2143,7 +2198,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => void handleLikeShort(activeShort)}
-                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn"
+                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn [&>span]:hidden sm:[&>span]:inline"
               >
                 <Heart
                   className={`w-4 h-4 ${
@@ -2163,7 +2218,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                     youtubeId: activeShort.youtube_id,
                   })
                 }
-                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn"
+                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn [&>span]:hidden sm:[&>span]:inline"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>Coment.</span>
@@ -2172,7 +2227,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 type="button"
                 disabled={downloadingShortId === activeShort.id}
                 onClick={() => void handleDownloadShort(activeShort)}
-                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn"
+                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn [&>span]:hidden sm:[&>span]:inline"
               >
                 {downloadingShortId === activeShort.id ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -2184,7 +2239,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => void handleShareShort(activeShort)}
-                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn"
+                className="flex-1 py-1.5 rounded-xl hover:bg-white/10 flex items-center justify-center gap-1.5 text-white active:scale-95 mg-vid-btn [&>span]:hidden sm:[&>span]:inline"
               >
                 <Share2 className="w-4 h-4" />
                 <span>Enviar</span>

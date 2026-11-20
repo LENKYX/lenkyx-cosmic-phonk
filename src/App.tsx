@@ -241,6 +241,29 @@ export function App() {
   const movieDrag = useFloatingDrag();
   const clipDrag = useFloatingDrag();
 
+  // Botão "voltar" do celular NÃO fecha o app: mantém a música tocando e volta ao início
+  useEffect(() => {
+    const pushGuard = () => {
+      try {
+        window.history.pushState({ mgAppGuard: true }, '');
+      } catch {
+        // ok
+      }
+    };
+    pushGuard();
+    const onPopState = () => {
+      pushGuard();
+      try {
+        const main = document.getElementById('lenkyx-main-scroll');
+        if (main) main.scrollTop = 0;
+      } catch {
+        // ok
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
   const [tracks, setTracks] = useState<Track[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -3219,6 +3242,7 @@ export function App() {
               onClick={() => {
                 setShareTrack(null);
                 setShareOpen(true);
+                try { const voz = new Audio('/audio/compartilha-crias.mp3'); void voz.play().catch(() => {}); } catch { /* ok */ }
               }}
               className="py-1.5 px-2 rounded-xl lux-btn-obsidian text-slate-200 text-[11px] font-bold flex items-center justify-center gap-1"
             >
@@ -3677,6 +3701,7 @@ export function App() {
                       setTopOverflowOpen(false);
                       setShareTrack(null);
                       setShareOpen(true);
+                try { const voz = new Audio('/audio/compartilha-crias.mp3'); void voz.play().catch(() => {}); } catch { /* ok */ }
                     }}
                     className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
                   >
@@ -3988,6 +4013,7 @@ export function App() {
                     setMoreSheetOpen(false);
                     setShareTrack(null);
                     setShareOpen(true);
+                try { const voz = new Audio('/audio/compartilha-crias.mp3'); void voz.play().catch(() => {}); } catch { /* ok */ }
                   }}
                   className="px-4 py-2 rounded-full lux-btn-obsidian text-xs font-bold flex items-center gap-1.5"
                 >
@@ -4114,6 +4140,7 @@ export function App() {
                     onShareTrack={(t) => {
                       setShareTrack(t);
                       setShareOpen(true);
+                try { const voz = new Audio('/audio/compartilha-crias.mp3'); void voz.play().catch(() => {}); } catch { /* ok */ }
                     }}
                     onOpenPix={() => {
                       setPixInitialTab('donate');
@@ -4394,6 +4421,7 @@ export function App() {
           onShare={(t) => {
             setShareTrack(t);
             setShareOpen(true);
+                try { const voz = new Audio('/audio/compartilha-crias.mp3'); void voz.play().catch(() => {}); } catch { /* ok */ }
           }}
           onOpenLyrics={(t) => {
             setActiveTab('catalog');

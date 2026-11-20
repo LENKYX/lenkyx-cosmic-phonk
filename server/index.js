@@ -3699,6 +3699,43 @@ app.get('/app', (_req, res) => {
 });
 
 // === v62: BRAZILIAN YOUTUBERS (MEMES & PEGADINHAS) TOP 1-5 ===
+// === REELS DO CRIA · GRAVAR NA CÂMERA E ENVIAR DIRETO PARA A INTERNET ===
+
+const SHORTS_UPLOAD_DIR = path.join(DATA_DIR, 'shorts');
+fs.mkdirSync(SHORTS_UPLOAD_DIR, { recursive: true });
+const shortsUpload = multer({
+  storage: multer.diskStorage({
+    destination: SHORTS_UPLOAD_DIR,
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file?.originalname || '') || '.mp4';
+      cb(null, 'short-' + Date.now() + ext);
+    },
+  }),
+  limits: { fileSize: 80 * 1024 * 1024 },
+});
+
+app.use('/shorts-media', express.static(SHORTS_UPLOAD_DIR, { maxAge: '7d' }));
+
+app.post('/api/shorts/upload', shortsUpload.single('video'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Envie um vídeo' });
+  const url = `/shorts-media/${req.file.filename}`;
+  const listPath = path.join(SHORTS_UPLOAD_DIR, 'index.json');
+  const list = readJsonFileSafe(listPath, { shorts: [] });
+  list.shorts = Array.isArray(list.shorts) ? list.shorts : [];
+  list.shorts.unshift({
+    id: path.parse(req.file.filename).name,
+    title: String(req.body?.title || 'Zueira do Cria').slice(0, 120),
+    url,
+    createdAt: new Date().toISOString(),
+  });
+  writeJsonFileSafe(listPath, list);
+  res.json({ ok: true, url, title: String(req.body?.title || 'Zueira do Cria') });
+});
+
+app.get('/api/shorts/list', (_req, res) => {
+  res.json(readJsonFileSafe(path.join(SHORTS_UPLOAD_DIR, 'index.json'), { shorts: [] }));
+});
+
 app.get('/api/community/br-creators', (_req, res) => {
   res.json(getBrCreatorsRanked());
 });
