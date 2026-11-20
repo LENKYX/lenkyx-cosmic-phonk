@@ -258,6 +258,19 @@ app.get('/api/health', (req, res) => {
 });
 
 // Static assets
+// Versao do build em execucao (barrinha verde de atualizacao do app)
+app.get('/api/version', (req, res) => {
+  try {
+    const assetsDir = path.join(DIST_DIR, 'assets');
+    const js = fs.readdirSync(assetsDir).filter((f) => /^index-.*\.js$/.test(f)).sort().pop() || '';
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ js, t: Date.now() });
+  } catch (err) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ js: '', t: Date.now() });
+  }
+});
+
 app.use('/storage', express.static(STORAGE_ROOT, { maxAge: '7d' }));
 app.use('/covers', (req, res, next) => {
   if (/^\/(icon-|favicon|apple-touch-icon|lenkyx-app)/i.test(req.path)) {
@@ -266,8 +279,8 @@ app.use('/covers', (req, res, next) => {
   next();
 }, express.static(path.join(PUBLIC_DIR, 'covers'), { maxAge: '7d' }));
 app.use('/audio', express.static(path.join(PUBLIC_DIR, 'audio'), { maxAge: '7d' }));
-app.use('/manifest.json', express.static(path.join(PUBLIC_DIR, 'manifest.json')));
-app.use('/sw.js', express.static(path.join(PUBLIC_DIR, 'sw.js')));
+app.use('/manifest.json', (req, res, next) => { res.setHeader('Cache-Control', 'no-cache'); next(); }, express.static(path.join(PUBLIC_DIR, 'manifest.json')));
+app.use('/sw.js', (req, res, next) => { res.setHeader('Cache-Control', 'no-cache'); next(); }, express.static(path.join(PUBLIC_DIR, 'sw.js')));
 
 // === AUTHENTICATION ROUTES ===
 app.get('/api/auth/status', (req, res) => {

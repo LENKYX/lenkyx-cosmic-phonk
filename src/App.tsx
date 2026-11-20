@@ -240,6 +240,69 @@ export function App() {
   const reelDrag = useFloatingDrag();
   const movieDrag = useFloatingDrag();
   const clipDrag = useFloatingDrag();
+
+  // === BARRINHA VERDE DE ATUALIZACAO (reinicia o site e abre atualizado) ===
+  const [updPct, setUpdPct] = useState<number | null>(null);
+  const updRunningRef = useRef(false);
+
+  const runSiteUpdate = useCallback(() => {
+    if (updRunningRef.current) return;
+    updRunningRef.current = true;
+    try { sessionStorage.setItem('mg_upd_v1', '1'); } catch { /* ok */ }
+    setUpdPct(6);
+    const t0 = Date.now();
+    const iv = window.setInterval(() => {
+      setUpdPct(Math.min(78, 6 + ((Date.now() - t0) / 2200) * 72));
+    }, 90);
+    void (async () => {
+      try {
+        const v = await fetch('/api/version?_=' + Date.now(), { cache: 'no-store' }).then((r) => r.json());
+        if (v && v.js) await fetch('/assets/' + v.js, { cache: 'no-store' }).catch(() => {});
+      } catch { /* ok */ }
+      await new Promise((r) => setTimeout(r, 1500));
+      window.clearInterval(iv);
+      window.location.reload();
+    })();
+  }, []);
+
+  // Conclui a atualizacao apos o reinicio e abre o site
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('mg_upd_v1') !== '1') return;
+      sessionStorage.removeItem('mg_upd_v1');
+    } catch { return; }
+    setUpdPct(78);
+    const t0 = Date.now();
+    const iv = window.setInterval(() => {
+      const p = Math.min(100, 78 + ((Date.now() - t0) / 1100) * 22);
+      setUpdPct(p);
+      if (p >= 100) {
+        window.clearInterval(iv);
+        window.setTimeout(() => setUpdPct(null), 450);
+      }
+    }, 80);
+    return () => window.clearInterval(iv);
+  }, []);
+
+  // Detecta atualizacao nova no servidor (reinicia sozinho com a barrinha verde)
+  useEffect(() => {
+    const myName = (Array.from(document.scripts).map((s) => s.src || '').find((s) => s.indexOf('assets/index-') >= 0) || '').split('/').pop() || '';
+    if (!myName) return;
+    let stopped = false;
+    const check = async () => {
+      if (stopped || document.hidden || updRunningRef.current) return;
+      try {
+        const v = await fetch('/api/version?_=' + Date.now(), { cache: 'no-store' }).then((r) => r.json());
+        if (!stopped && v && v.js && v.js !== myName) runSiteUpdate();
+      } catch { /* ok */ }
+    };
+    const iv = window.setInterval(() => void check(), 60000);
+    const onVis = () => { if (!document.hidden) void check(); };
+    document.addEventListener('visibilitychange', onVis);
+    const tm = window.setTimeout(() => void check(), 7000);
+    return () => { stopped = true; window.clearInterval(iv); window.clearTimeout(tm); document.removeEventListener('visibilitychange', onVis); };
+  }, [runSiteUpdate]);
+
   const [catRowOpen, setCatRowOpen] = useState(false);
 
   // ===== MODO TV (Smart TV / navegador de TV) — estável e legível como o YouTube =====
@@ -3005,6 +3068,15 @@ export function App() {
     <div className="h-dvh overflow-hidden bg-[#070b18] text-white flex relative">
       <CosmicSpaceBackdrop />
 
+      {updPct !== null && (
+        <div className="fixed top-0 left-0 right-0 z-[999] h-[3px] pointer-events-none">
+          <div
+            className="h-full bg-gradient-to-r from-emerald-400 via-green-400 to-lime-300 shadow-[0_0_16px_rgba(16,185,129,0.85)] transition-[width] duration-150 ease-out"
+            style={{ width: updPct + '%' }}
+          />
+        </div>
+      )}
+
       {/* === FAVELA OSTENTAÇÃO VIP ENTRY SPLASH (Logo Grosso + Palco VIP Diamante Iluminado) === */}
       {showEntrySplash && (
         <div
@@ -3043,271 +3115,12 @@ export function App() {
         </div>
       )}
 
-      {/* === DESKTOP & SMART TV LEFT SIDEBAR (LUXURY OBSIDIAN + GOLD + TECH) === */}
-        <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
-        <div
-          onClick={handleBrandTap}
-          className="h-16 px-3.5 flex items-center justify-center border-b border-amber-400/20 bg-gradient-to-r from-amber-500/[0.06] via-transparent to-cyan-500/[0.06] cursor-pointer hover:bg-white/[0.03] select-none"
-        >
-          {/* Somente o emblema da logo (sem wordmark duplicado) */}
-          <LenkyxEdgeLogo size="md" className="shrink-0" />
-        </div>
-
-        {/* Clean YouTube-Style Multi-Section Navigation (Início, Inscrições, Você) */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2.5 space-y-3">
-          <nav className="space-y-0.5">
-            {sidebarMain.map((tab) => {
-              const active = activeTab === tab.id && !moreSheetOpen;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => navigateTab(tab.id)}
-                  className={`w-full px-3 py-2.5 rounded-xl text-[13px] font-semibold flex items-center gap-3.5 transition-all focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                    active
-                      ? 'bg-white/[0.09] text-amber-200 border border-amber-400/35 shadow-[inset_3px_0_0_#f5c84c]'
-                      : 'text-slate-200/90 hover:text-white hover:bg-white/[0.05] border border-transparent'
-                  }`}
-                >
-                  <span className={`shrink-0 ${active ? 'text-amber-300' : 'text-slate-300'}`}>{tab.icon}</span>
-                  <span className="truncate">{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Inscrições Section (Identical to YouTube Sidebar!) */}
-          <div className="pt-2.5 border-t border-white/10 space-y-1">
-            <button
-              type="button"
-              onClick={() => {
-                setShortsTriggerQuery('__subscribed__');
-                setShortsTriggerNonce((n) => n + 1);
-                navigateTab('reels');
-              }}
-              className="w-full px-3 py-1.5 rounded-xl hover:bg-white/[0.06] flex items-center justify-between text-xs font-black text-white tracking-wide transition focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <span>Inscrições</span>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </button>
-            {(subscribedChannelsList.length > 0
-              ? subscribedChannelsList.slice(0, 7)
-              : ['MORRO GOLD Oficial', 'MC Ryan SP', 'Podpah', 'Grupo Menos É Mais', 'CazéTV']
-            ).map((ch, idx) => {
-              const label = ch.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-              const colors = [
-                'from-amber-400 to-rose-500',
-                'from-cyan-400 to-blue-600',
-                'from-emerald-400 to-teal-600',
-                'from-pink-500 to-purple-600',
-                'from-yellow-400 to-orange-500',
-              ];
-              return (
-                <button
-                  key={ch}
-                  type="button"
-                  onClick={() => {
-                    setShortsTriggerQuery(label);
-                    setShortsTriggerNonce((n) => n + 1);
-                    navigateTab('reels');
-                  }}
-                  className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[12.5px] font-semibold text-slate-200 flex items-center justify-between gap-2 transition focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  <span className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className={`w-6 h-6 rounded-full bg-gradient-to-br ${colors[idx % colors.length]} text-[10px] font-black text-white flex items-center justify-center shrink-0`}
-                    >
-                      {label.slice(0, 1).toUpperCase()}
-                    </span>
-                    <span className="truncate">{label}</span>
-                  </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0" title="Novidades" />
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Você / Ecossistema MORRO GOLD Section */}
-          <div className="pt-2.5 border-t border-white/10 space-y-0.5">
-            <button
-              type="button"
-              onClick={() => navigateTab('playlists')}
-              className="w-full px-3 py-1.5 rounded-xl hover:bg-white/[0.06] flex items-center justify-between text-xs font-black text-white tracking-wide transition focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <span>Você</span>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setPixInitialTab('donate');
-                setPixOpen(true);
-              }}
-              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-white flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 text-black flex items-center justify-center shrink-0">
-                <Crown className="w-3.5 h-3.5" />
-              </span>
-              <span className="truncate">MORRO GOLD VIP & PIX</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigateTab('channels')}
-              className={`w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                activeTab === 'channels' ? 'bg-white/[0.09] text-amber-200' : 'text-white'
-              }`}
-            >
-              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 text-black flex items-center justify-center shrink-0">
-                <Tv className="w-3.5 h-3.5" />
-              </span>
-              <span className="truncate">Seu Canal (YouTube da Favela)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setCharterTab('charter');
-                setCharterTarget('');
-                setCharterOpen(true);
-              }}
-              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-amber-200 flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <Scale className="w-5 h-5 text-amber-300 shrink-0" />
-              <span className="truncate">Lei da Favela & Licenças</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigateTab('studio')}
-              className={`w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                activeTab === 'studio' ? 'bg-white/[0.09] text-amber-200' : 'text-white'
-              }`}
-            >
-              <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 text-white flex items-center justify-center shrink-0">
-                <Wand2 className="w-3.5 h-3.5" />
-              </span>
-              <span className="truncate">MORRO GOLD Studio</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigateTab('playlists')}
-              className={`w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                activeTab === 'playlists' ? 'bg-white/[0.09] text-amber-200' : 'text-white'
-              }`}
-            >
-              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white flex items-center justify-center shrink-0">
-                <Music className="w-3.5 h-3.5" />
-              </span>
-              <span className="truncate">Minhas Playlists</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCreateMenuOpen(true)}
-              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-white flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-rose-500 to-cyan-400 text-white flex items-center justify-center shrink-0">
-                <Sparkles className="w-3.5 h-3.5" />
-              </span>
-              <span className="truncate">MORRO GOLD Criar</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openFuturisticFeature('wrapped')}
-              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <TrendingUp className="w-5 h-5 text-amber-300 shrink-0" />
-              <span className="truncate">Paradas & Top BR</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openFuturisticFeature('shazam')}
-              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <Mic className="w-5 h-5 text-cyan-300 shrink-0" />
-              <span className="truncate">Radar Som</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openFuturisticFeature('jam')}
-              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <Headphones className="w-5 h-5 text-emerald-300 shrink-0" />
-              <span className="truncate">Ouvir Junto</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openFuturisticFeature('partners')}
-              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <Handshake className="w-5 h-5 text-pink-300 shrink-0" />
-              <span className="truncate">Patrocínio</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Clean Luxury Utility Footer */}
-        <div className="p-2.5 border-t border-white/10 bg-black/45 space-y-1.5">
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => {
-                setShareTrack(null);
-                setShareOpen(true);
-                try { const voz = new Audio('/audio/compartilha-crias.mp3'); void voz.play().catch(() => {}); } catch { /* ok */ }
-              }}
-              className="py-1.5 px-2 rounded-xl lux-btn-obsidian text-slate-200 text-[11px] font-bold flex items-center justify-center gap-1"
-            >
-              <Share2 className="w-3.5 h-3.5 text-cyan-300" /> Convidar
-            </button>
-            <button
-              onClick={() => setLegalOpen(true)}
-              className="py-1.5 px-2 rounded-xl lux-btn-obsidian text-slate-300 text-[11px] font-bold flex items-center justify-center gap-1"
-            >
-              <Scale className="w-3.5 h-3.5 text-amber-300" /> Termos
-            </button>
-          </div>
-
-          {!isAndroidApk() && (
-            <button
-              type="button"
-              onClick={() => void handleOneClickPcDownload()}
-              className="w-full py-2 px-2.5 rounded-xl lux-btn-gold text-[11px] font-black flex items-center justify-center gap-1.5"
-            >
-              <Download className="w-3.5 h-3.5" /> Baixar App no PC
-            </button>
-          )}
-
-          {mode === 'creator' && (
-            <button
-              onClick={() => setCreatorModalOpen(true)}
-              className="w-full py-1.5 px-2 rounded-xl border bg-amber-500/15 border-amber-400/45 text-amber-200 text-[11px] font-black flex items-center justify-center gap-1 hover:bg-amber-400/25 transition"
-            >
-              <Sparkles className="w-3.5 h-3.5" /> Painel Criador
-            </button>
-          )}
-        </div>
-      </aside>
 
       {/* === MAIN CONTENT SHELL === */}
-      <div className="relative z-10 flex-1 min-w-0 h-full overflow-hidden flex flex-col md:pl-60 lg:pl-64">
+      <div className="relative z-10 flex-1 min-w-0 h-full overflow-hidden flex flex-col">
         {/* TOP HEADER (Luxury Obsidian Glass Bar) */}
         <header className="shrink-0 z-30 mg24k-bar border-b border-amber-400/15 h-14 px-3 sm:px-5 flex items-center justify-between gap-3 shadow-[0_6px_28px_rgba(0,0,0,0.45)]">
           <div className="flex items-center gap-2 shrink-0 min-w-0">
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen((v) => !v)}
-              className="md:hidden w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-white shrink-0"
-              aria-label={mobileNavOpen ? 'Fechar menu lateral' : 'Abrir menu lateral'}
-              title="Menu de navegação"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
             {activeTab !== 'catalog' && (
               <button
                 onClick={goBackTab}
@@ -3320,7 +3133,7 @@ export function App() {
 
             <div
               onClick={handleBrandTap}
-              className="flex md:hidden items-center justify-center shrink-0 cursor-pointer select-none"
+              className="flex items-center justify-center shrink-0 cursor-pointer select-none"
               title="MORRO GOLD"
             >
               <LenkyxEdgeLogo size="sm" />
@@ -3418,17 +3231,7 @@ export function App() {
 
           {/* CLEAN YOUTUBE-STYLE RIGHT ICON CLUSTER */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 relative">
-            {!isAppInstalledOnDevice && (
-              <button
-                type="button"
-                onClick={() => void handleOneClickPcDownload()}
-                className="px-2.5 sm:px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-[11px] font-black flex items-center gap-1 shadow-[0_0_16px_rgba(16,185,129,0.45)] hover:brightness-110 transition active:scale-95 shrink-0"
-                title="Baixar App Rápido no seu aparelho"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline sm:inline">Baixar App</span>
-              </button>
-            )}
+            
 
             <button
               type="button"
@@ -3624,57 +3427,17 @@ export function App() {
                     type="button"
                     onClick={() => {
                       setTopOverflowOpen(false);
-                      void handleForceAppUpdate();
+                      runSiteUpdate();
                     }}
                     className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
                   >
                     <RefreshCw className={`w-4 h-4 text-emerald-300 ${updatingApp ? 'animate-spin' : ''}`} />
                     <span>Atualizar MORRO GOLD</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTopOverflowOpen(false);
-                      openFuturisticFeature('shazam');
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
-                  >
-                    <Mic className="w-4 h-4 text-cyan-300" />
-                    <span>Identificar Som (Radar)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTopOverflowOpen(false);
-                      openFuturisticFeature('jam');
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
-                  >
-                    <Radio className="w-4 h-4 text-emerald-300" />
-                    <span>Ouvir Junto (Sala Festa)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTopOverflowOpen(false);
-                      openFuturisticFeature('wrapped');
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
-                  >
-                    <Trophy className="w-4 h-4 text-amber-300" />
-                    <span>Seu Top Brasil & Histórico</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTopOverflowOpen(false);
-                      openFuturisticFeature('partners');
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
-                  >
-                    <Handshake className="w-4 h-4 text-pink-300" />
-                    <span>Convidar Canais & Patrocínio</span>
-                  </button>
+                  
+                  
+                  
+                  
                   {mode === 'creator' && (
                     <button
                       type="button"
@@ -3689,86 +3452,16 @@ export function App() {
                       <Lock className="w-3 h-3 ml-auto text-amber-300" />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTopOverflowOpen(false);
-                      void handleOneClickPcDownload();
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
-                  >
-                    <Download className="w-4 h-4 text-cyan-300" />
-                    <span>Baixar no PC (1 Clique)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTopOverflowOpen(false);
-                      setPixInitialTab('donate');
-                      setPixOpen(true);
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
-                  >
-                    <QrCode className="w-4 h-4 text-emerald-300" />
-                    <span>PIX Solidário & Ranking</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTopOverflowOpen(false);
-                      setShareTrack(null);
-                      setShareOpen(true);
-                try { const voz = new Audio('/audio/compartilha-crias.mp3'); void voz.play().catch(() => {}); } catch { /* ok */ }
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
-                  >
-                    <Share2 className="w-4 h-4 text-cyan-300" />
-                    <span>Compartilhar MORRO GOLD</span>
-                  </button>
+                  
+                  
+                  
                 </div>
               </>
             )}
           </div>
         </header>
 
-        {mobileNavOpen && (
-          <>
-            <button aria-label="Fechar menu lateral" onClick={() => setMobileNavOpen(false)} className="md:hidden fixed inset-0 z-[70] bg-black/65 backdrop-blur-sm" />
-            <aside className="md:hidden fixed left-0 top-0 bottom-0 z-[71] w-[min(82vw,320px)] overflow-y-auto mg24k-bar border-r border-amber-300/25 shadow-2xl p-3 pt-5">
-              <div className="flex items-center justify-between px-2 pb-4 border-b border-white/10">
-                <div className="flex items-center gap-2">
-                  <LenkyxEdgeLogo size="sm" />
-                  <strong className="text-sm text-amber-200 tracking-widest sr-only">MORRO GOLD</strong>
-                </div>
-                <button onClick={() => setMobileNavOpen(false)} className="p-2 rounded-full hover:bg-white/10" aria-label="Fechar"><X className="w-4 h-4" /></button>
-              </div>
-              <nav className="py-3">
-                {sidebarMain.filter((item) => item.id === 'catalog' || item.id === 'reels').map((item) => {
-                  const active = activeTab === item.id && !moreSheetOpen;
-                  return <button key={item.id} onClick={() => { navigateTab(item.id); setMobileNavOpen(false); }} className={`w-full px-3 py-3 rounded-xl text-left flex items-center gap-3 text-sm font-semibold ${active ? 'bg-amber-400/15 text-amber-200 border border-amber-400/30' : 'text-slate-100 hover:bg-white/[0.08]'}`}>
-                    <span className="text-amber-300">{item.icon}</span><span>{item.id === 'reels' ? 'Shorts' : 'Início'}</span>
-                  </button>;
-                })}
-                <section className="mt-4 border-t border-white/15 pt-3">
-                  <button onClick={() => { setShortsTriggerQuery('__subscribed__'); setShortsTriggerNonce((n) => n + 1); navigateTab('reels'); setMobileNavOpen(false); }} className="w-full px-3 py-2 flex items-center justify-between text-sm font-bold text-white hover:bg-white/[0.06] rounded-lg">Inscrições <ChevronRight className="w-4 h-4" /></button>
-                  {(subscribedChannelsList.length ? subscribedChannelsList : ['MORRO GOLD Oficial']).slice(0, 8).map((name) => (
-                    <button key={name} onClick={() => { setShortsTriggerQuery(name); setShortsTriggerNonce((n) => n + 1); navigateTab('reels'); setMobileNavOpen(false); }} className="w-full px-3 py-2.5 flex items-center gap-3 text-[13px] text-slate-100 hover:bg-white/[0.06] rounded-lg">
-                      <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-300/70 to-rose-500/70 border border-white/20 flex items-center justify-center text-[10px] font-black text-black shrink-0">{name.slice(0,1).toUpperCase()}</span><span className="truncate flex-1 text-left">{name}</span><span className="text-cyan-300 text-[10px]">•</span>
-                    </button>
-                  ))}
-                </section>
-                <section className="mt-3 border-t border-white/15 pt-3">
-                  <div className="px-3 py-2 text-sm font-bold text-white">Você <ChevronRight className="inline w-4 h-4" /></div>
-                  {sidebarMain.filter((item) => !['catalog','reels'].includes(item.id)).map((item) => {
-                    const active = activeTab === item.id && !moreSheetOpen;
-                    return <button key={item.id} onClick={() => { navigateTab(item.id); setMobileNavOpen(false); }} className={`w-full px-3 py-2.5 rounded-xl text-left flex items-center gap-3 text-[13px] font-semibold ${active ? 'bg-amber-400/15 text-amber-200' : 'text-slate-100 hover:bg-white/[0.08]'}`}><span className="text-amber-300">{item.icon}</span><span>{item.label.replace(' & Criadores','').replace(' & Clipes','')}</span></button>;
-                  })}
-                  <button onClick={() => { setMobileNavOpen(false); setCharterTab('charter'); setCharterOpen(true); }} className="w-full px-3 py-2.5 rounded-xl text-left flex items-center gap-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.08]"><Scale className="w-4 h-4 text-amber-300" /> Lei da Favela & Licenças</button>
-                </section>
-              </nav>
-            </aside>
-          </>
-        )}
+        
 
         {/* CLEAN YOUTUBE-STYLE UNDERLINED TOP TAB BAR */}
         <div className="shrink-0 z-20 px-3 sm:px-5 border-b border-amber-300/15 bg-gradient-to-b from-[#17101c]/90 via-[#100d16]/88 to-[#090910]/94 backdrop-blur-2xl shadow-[0_12px_35px_rgba(0,0,0,0.36)]">
@@ -3891,6 +3584,15 @@ export function App() {
 
               <button
                 type="button"
+                onClick={() => navigateTab('arcade')}
+                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
+              >
+                <Gamepad2 className="w-5 h-5 text-white shrink-0" />
+                <span>Jogos & Arcade</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   setMoreSheetOpen(false);
                   openFuturisticFeature('wrapped');
@@ -3901,14 +3603,7 @@ export function App() {
                 <span>Paradas & Top BR</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => navigateTab('shop')}
-                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
-              >
-                <ShoppingBag className="w-5 h-5 text-amber-300 shrink-0" />
-                <span>Loja dos Cria VIP</span>
-              </button>
+              
 
               <button
                 type="button"
@@ -3922,14 +3617,7 @@ export function App() {
                 <span>Podcasts & Radar Som</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => navigateTab('sports')}
-                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
-              >
-                <Gamepad2 className="w-5 h-5 text-white shrink-0" />
-                <span>Futebol & Ao Vivo</span>
-              </button>
+              
 
               <button
                 type="button"
@@ -3991,19 +3679,7 @@ export function App() {
                 <span>MORRO GOLD Music</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMoreSheetOpen(false);
-                  setCreateMenuOpen(true);
-                }}
-                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
-              >
-                <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-rose-500 to-cyan-400 text-white flex items-center justify-center shrink-0">
-                  <Sparkles className="w-3.5 h-3.5" />
-                </span>
-                <span>MORRO GOLD Criar Vídeo</span>
-              </button>
+              
 
               <button
                 type="button"
@@ -4044,6 +3720,18 @@ export function App() {
                 >
                   <Scale className="w-3.5 h-3.5 text-amber-300" /> Termos
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreSheetOpen(false);
+                    setCharterTab('charter');
+                    setCharterOpen(true);
+                  }}
+                  className="px-4 py-2 rounded-full lux-btn-obsidian text-xs font-bold flex items-center gap-1.5"
+                >
+                  <Scale className="w-3.5 h-3.5 text-emerald-300" /> Direitos & Licenças
+                </button>
                 {!isAndroidApk() && (
                   <button
                     type="button"
@@ -4061,41 +3749,6 @@ export function App() {
         {/* ACTIVE VIEW CONTAINER */}
         <main id="lenkyx-main-scroll" className={`mg-lightable flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full ${moreSheetOpen ? 'hidden' : ''}`}>
           <div className="w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-3">
-            {!isAppInstalledOnDevice && !quickDownloadDismissed && (
-              <div className="mb-3 rounded-2xl bg-gradient-to-r from-amber-500/20 via-black/80 to-emerald-500/20 border border-amber-400/45 p-3 flex flex-wrap items-center justify-between gap-2.5 shadow-lg">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-9 h-9 rounded-xl bg-amber-400/20 border border-amber-400/50 flex items-center justify-center text-lg shrink-0">
-                    📲
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-xs font-black text-amber-200 truncate">
-                      Você ainda não instalou o app no aparelho, cria!
-                    </div>
-                    <div className="text-[11px] text-slate-300 truncate">
-                      Baixe rápido em 1 clique pra ouvir com a tela bloqueada sem travar.
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => void handleOneClickPcDownload()}
-                    className="px-4 py-2 rounded-full lux-btn-gold text-xs font-black flex items-center gap-1.5 shadow-md"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Baixar App Rápido
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuickDownloadDismissed(true)}
-                    className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition"
-                    title="Ocultar aviso"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-
             {appUpdateInfo && (
               <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
                 <div className="min-w-0">
