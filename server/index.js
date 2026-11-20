@@ -342,8 +342,8 @@ function getEffectiveSettings(db) {
   if (!s.affiliateAmazonTag && process.env.AFFILIATE_AMAZON_TAG) {
     s.affiliateAmazonTag = String(process.env.AFFILIATE_AMAZON_TAG).trim();
   }
-  if (!s.whatsappStoreNumber && process.env.WHATSAPP_STORE_NUMBER) {
-    s.whatsappStoreNumber = String(process.env.WHATSAPP_STORE_NUMBER).trim();
+  if (!s.whatsappStoreNumber) {
+    s.whatsappStoreNumber = String(process.env.WHATSAPP_STORE_NUMBER || '5567996785099').trim();
   }
   return s;
 }

@@ -21,7 +21,8 @@ const SEED_DATA = {
     "totalGoal": 1000,
     "apkDownloadUrl": "/download/apk",
     "affiliateMlTool": "61298625",
-    "affiliateMlWord": "hera20240419111826"
+    "affiliateMlWord": "hera20240419111826",
+    "whatsappStoreNumber": "5567996785099"
   },
   "tracks": [
     {

@@ -172,6 +172,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   totalGoal: 1000,
   affiliateMlTool: '61298625',
   affiliateMlWord: 'hera20240419111826',
+  whatsappStoreNumber: '5567996785099',
 };
 
 const ACCENT_CYCLE = [
