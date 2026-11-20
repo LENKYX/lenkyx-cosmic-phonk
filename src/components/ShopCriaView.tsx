@@ -1099,7 +1099,7 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
               </div>
               <div className="flex flex-wrap gap-2">
                 <a
-                  href="https://www.mercadolivre.com.br/l/afiliados"
+                  href="https://www.mercadolivre.com.br/l/afiliados-home"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-1.5 rounded-xl bg-yellow-400 text-black font-black flex items-center gap-1 text-[11px]"
@@ -1233,7 +1233,7 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <a
-                    href="https://www.mercadolivre.com.br/l/afiliados"
+                    href="https://www.mercadolivre.com.br/l/afiliados-home"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-3 py-1.5 rounded-xl bg-yellow-400 text-black font-black flex items-center gap-1"

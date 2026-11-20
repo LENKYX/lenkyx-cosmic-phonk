@@ -170,6 +170,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   sunoProfileUrl: 'https://suno.com/@lenkyx',
   dailyGoal: 10,
   totalGoal: 1000,
+  affiliateMlTool: '61298625',
+  affiliateMlWord: 'hera20240419111826',
 };
 
 const ACCENT_CYCLE = [

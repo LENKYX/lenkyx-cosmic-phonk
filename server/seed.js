@@ -19,7 +19,9 @@ const SEED_DATA = {
     "sunoProfileUrl": "https://suno.com/@lenkyx",
     "dailyGoal": 10,
     "totalGoal": 1000,
-    "apkDownloadUrl": "/download/apk"
+    "apkDownloadUrl": "/download/apk",
+    "affiliateMlTool": "61298625",
+    "affiliateMlWord": "hera20240419111826"
   },
   "tracks": [
     {

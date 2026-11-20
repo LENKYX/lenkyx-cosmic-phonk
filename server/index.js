@@ -330,11 +330,11 @@ app.get('/api/fans/lookup', async (req, res) => {
 
 function getEffectiveSettings(db) {
   const s = { ...(db?.settings || {}) };
-  if (!s.affiliateMlTool && process.env.AFFILIATE_ML_TOOL) {
-    s.affiliateMlTool = String(process.env.AFFILIATE_ML_TOOL).trim();
+  if (!s.affiliateMlTool) {
+    s.affiliateMlTool = String(process.env.AFFILIATE_ML_TOOL || '61298625').trim();
   }
-  if (!s.affiliateMlWord && process.env.AFFILIATE_ML_WORD) {
-    s.affiliateMlWord = String(process.env.AFFILIATE_ML_WORD).trim();
+  if (!s.affiliateMlWord) {
+    s.affiliateMlWord = String(process.env.AFFILIATE_ML_WORD || 'hera20240419111826').trim();
   }
   if (!s.affiliateShopeeId && process.env.AFFILIATE_SHOPEE_ID) {
     s.affiliateShopeeId = String(process.env.AFFILIATE_SHOPEE_ID).trim();
