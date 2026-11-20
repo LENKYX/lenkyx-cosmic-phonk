@@ -89,6 +89,7 @@ import { WorldLanguageModal } from './components/WorldLanguageModal';
 import { AudioEffectId, MediaPlayerMenuModal } from './components/MediaPlayerMenuModal';
 import { AudioVisualizerModal } from './components/AudioVisualizerModal';
 import { CommunityChatModal, TargetCommentsModal } from './components/CommunityChatModal';
+import { fetchChannelSubscriptions, getClientSubscriberId } from './utils/communityApi';
 import { recordRankingHit } from './utils/rankingsApi';
 import { claimMediaFocus, registerMediaStopper, stopAllMedia } from './utils/mediaCoordinator';
 import { rankTracksBySmartTaste, recordSmartInteraction } from './utils/smartEngine';
@@ -738,8 +739,19 @@ export function App() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [lyricsTrack, setLyricsTrack] = useState<Track | null>(null);
+  const [subscribedChannelsList, setSubscribedChannelsList] = useState<string[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [activeYtChip, setActiveYtChip] = useState<string>('tudo');
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    void fetchChannelSubscriptions(getClientSubscriberId()).then((res) => {
+      if (Array.isArray(res?.subscribed)) {
+        setSubscribedChannelsList(res.subscribed);
+      }
+    });
+  }, []);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -2932,8 +2944,8 @@ export function App() {
           </div>
         </div>
 
-        {/* Clean YouTube-Style Two-Section Navigation */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2.5 space-y-2.5">
+        {/* Clean YouTube-Style Multi-Section Navigation (Início, Inscrições, Você) */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2.5 space-y-3">
           <nav className="space-y-0.5">
             {sidebarMain.map((tab) => {
               const active = activeTab === tab.id && !moreSheetOpen;
@@ -2941,7 +2953,7 @@ export function App() {
                 <button
                   key={tab.id}
                   onClick={() => navigateTab(tab.id)}
-                  className={`w-full px-3 py-2.5 rounded-xl text-[13px] font-semibold flex items-center gap-3.5 transition-all ${
+                  className={`w-full px-3 py-2.5 rounded-xl text-[13px] font-semibold flex items-center gap-3.5 transition-all focus-visible:ring-2 focus-visible:ring-amber-400 ${
                     active
                       ? 'bg-white/[0.09] text-amber-200 border border-amber-400/35 shadow-[inset_3px_0_0_#f5c84c]'
                       : 'text-slate-200/90 hover:text-white hover:bg-white/[0.05] border border-transparent'
@@ -2954,15 +2966,75 @@ export function App() {
             })}
           </nav>
 
-          {/* Subtle Divider + Ecossistema LENKYX (exact YouTube-style colorful suite) */}
+          {/* Inscrições Section (Identical to YouTube Sidebar!) */}
+          <div className="pt-2.5 border-t border-white/10 space-y-1">
+            <button
+              type="button"
+              onClick={() => {
+                setShortsTriggerQuery('__subscribed__');
+                setShortsTriggerNonce((n) => n + 1);
+                navigateTab('reels');
+              }}
+              className="w-full px-3 py-1.5 rounded-xl hover:bg-white/[0.06] flex items-center justify-between text-xs font-black text-white tracking-wide transition focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <span>Inscrições</span>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </button>
+            {(subscribedChannelsList.length > 0
+              ? subscribedChannelsList.slice(0, 7)
+              : ['MORRO GOLD Oficial', 'MC Ryan SP', 'Podpah', 'Grupo Menos É Mais', 'CazéTV']
+            ).map((ch, idx) => {
+              const label = ch.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+              const colors = [
+                'from-amber-400 to-rose-500',
+                'from-cyan-400 to-blue-600',
+                'from-emerald-400 to-teal-600',
+                'from-pink-500 to-purple-600',
+                'from-yellow-400 to-orange-500',
+              ];
+              return (
+                <button
+                  key={ch}
+                  type="button"
+                  onClick={() => {
+                    setShortsTriggerQuery(label);
+                    setShortsTriggerNonce((n) => n + 1);
+                    navigateTab('reels');
+                  }}
+                  className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[12.5px] font-semibold text-slate-200 flex items-center justify-between gap-2 transition focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className={`w-6 h-6 rounded-full bg-gradient-to-br ${colors[idx % colors.length]} text-[10px] font-black text-white flex items-center justify-center shrink-0`}
+                    >
+                      {label.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="truncate">{label}</span>
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0" title="Novidades" />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Você / Ecossistema MORRO GOLD Section */}
           <div className="pt-2.5 border-t border-white/10 space-y-0.5">
+            <button
+              type="button"
+              onClick={() => navigateTab('playlists')}
+              className="w-full px-3 py-1.5 rounded-xl hover:bg-white/[0.06] flex items-center justify-between text-xs font-black text-white tracking-wide transition focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <span>Você</span>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </button>
+
             <button
               type="button"
               onClick={() => {
                 setPixInitialTab('donate');
                 setPixOpen(true);
               }}
-              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-white flex items-center gap-3.5 transition"
+              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-white flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 text-black flex items-center justify-center shrink-0">
                 <Crown className="w-3.5 h-3.5" />
@@ -2973,7 +3045,7 @@ export function App() {
             <button
               type="button"
               onClick={() => navigateTab('studio')}
-              className={`w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition ${
+              className={`w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 activeTab === 'studio' ? 'bg-white/[0.09] text-amber-200' : 'text-white'
               }`}
             >
@@ -2986,20 +3058,20 @@ export function App() {
             <button
               type="button"
               onClick={() => navigateTab('playlists')}
-              className={`w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition ${
+              className={`w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 activeTab === 'playlists' ? 'bg-white/[0.09] text-amber-200' : 'text-white'
               }`}
             >
               <span className="w-6 h-6 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white flex items-center justify-center shrink-0">
                 <Music className="w-3.5 h-3.5" />
               </span>
-              <span className="truncate">MORRO GOLD Music</span>
+              <span className="truncate">Minhas Playlists</span>
             </button>
 
             <button
               type="button"
               onClick={() => setCreateMenuOpen(true)}
-              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-white flex items-center gap-3.5 transition"
+              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-white flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-rose-500 to-cyan-400 text-white flex items-center justify-center shrink-0">
                 <Sparkles className="w-3.5 h-3.5" />
@@ -3010,7 +3082,7 @@ export function App() {
             <button
               type="button"
               onClick={() => openFuturisticFeature('wrapped')}
-              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition"
+              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <TrendingUp className="w-5 h-5 text-amber-300 shrink-0" />
               <span className="truncate">Paradas & Top BR</span>
@@ -3019,7 +3091,7 @@ export function App() {
             <button
               type="button"
               onClick={() => openFuturisticFeature('shazam')}
-              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition"
+              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <Mic className="w-5 h-5 text-cyan-300 shrink-0" />
               <span className="truncate">Radar Som</span>
@@ -3028,7 +3100,7 @@ export function App() {
             <button
               type="button"
               onClick={() => openFuturisticFeature('jam')}
-              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition"
+              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <Headphones className="w-5 h-5 text-emerald-300 shrink-0" />
               <span className="truncate">Ouvir Junto</span>
@@ -3037,7 +3109,7 @@ export function App() {
             <button
               type="button"
               onClick={() => openFuturisticFeature('partners')}
-              className="w-full px-3 py-2.5 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition"
+              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-slate-200 flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <Handshake className="w-5 h-5 text-pink-300 shrink-0" />
               <span className="truncate">Patrocínio</span>
@@ -3234,16 +3306,99 @@ export function App() {
               <span className="hidden sm:inline">Chat Ao Vivo</span>
             </button>
 
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen((v) => !v)}
+                className="relative w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-amber-300 transition focus-visible:ring-2 focus-visible:ring-amber-400"
+                title="Notificações & Novidades"
+              >
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#06070d]" />
+              </button>
+
+              {notificationsOpen && (
+                <>
+                  <div
+                    onClick={() => setNotificationsOpen(false)}
+                    className="fixed inset-0 z-40"
+                  />
+                  <div className="absolute right-0 top-11 z-50 w-72 sm:w-80 rounded-2xl bg-[#161622]/98 backdrop-blur-2xl border border-white/15 shadow-2xl p-2.5 space-y-1.5 text-xs">
+                    <div className="px-2 py-1 flex items-center justify-between border-b border-white/10 pb-2">
+                      <span className="font-black text-white">Notificações</span>
+                      <span className="text-[10px] font-bold text-amber-300">MORRO GOLD</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationsOpen(false);
+                        triggerWorldSearchDirect('funk 2026 favela');
+                      }}
+                      className="w-full p-2 rounded-xl hover:bg-white/10 text-left flex items-start gap-2.5 transition"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0">🔥</span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-white truncate">Top Funk, Rap & Pagode 2026</div>
+                        <div className="text-[11px] text-slate-300 line-clamp-1">MC Ryan SP, Menos É Mais, Matuê & mais!</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationsOpen(false);
+                        openLiveChat('global', '🔥 Geral do Morro · Chat Ao Vivo');
+                      }}
+                      className="w-full p-2 rounded-xl hover:bg-white/10 text-left flex items-start gap-2.5 transition"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-300 flex items-center justify-center shrink-0">💬</span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-white truncate">Chat Ao Vivo Estilo Instagram</div>
+                        <div className="text-[11px] text-slate-300 line-clamp-1">7 salas abertas em tempo real agora!</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationsOpen(false);
+                        setShortsTriggerQuery('__subscribed__');
+                        setShortsTriggerNonce((n) => n + 1);
+                        navigateTab('reels');
+                      }}
+                      className="w-full p-2 rounded-xl hover:bg-white/10 text-left flex items-start gap-2.5 transition"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center shrink-0">🔔</span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-white truncate">Suas Inscrições ({subscribedChannelsList.length})</div>
+                        <div className="text-[11px] text-slate-300 line-clamp-1">Ver novos Reels dos seus canais</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationsOpen(false);
+                        setPixInitialTab('ranking');
+                        setPixOpen(true);
+                      }}
+                      className="w-full p-2 rounded-xl hover:bg-white/10 text-left flex items-start gap-2.5 transition"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">👑</span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-white truncate">Ranking VIP & Apoio PIX</div>
+                        <div className="text-[11px] text-slate-300 line-clamp-1">Confira os top apoiadores do MORRO GOLD</div>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
             <button
               type="button"
-              onClick={() => {
-                setPixInitialTab('ranking');
-                setPixOpen(true);
-              }}
-              className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-amber-300 transition"
-              title="VIP & Ranking"
+              onClick={handleVoiceSearch}
+              className="md:hidden w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-cyan-300 transition"
+              title="Busca por Voz"
             >
-              <Bell className="w-5 h-5" />
+              <Mic className="w-4 h-4" />
             </button>
 
             <button
@@ -3446,6 +3601,57 @@ export function App() {
               Mais
             </button>
           </div>
+
+          {/* YOUTUBE-STYLE HORIZONTAL CATEGORY FILTER CHIPS (Mobile, PC & Smart TV) */}
+          {!moreSheetOpen && (
+            <div className="max-w-[1380px] mx-auto flex items-center gap-2 py-2 overflow-x-auto no-scrollbar border-t border-white/[0.05]">
+              {(
+                [
+                  { id: 'tudo', label: 'Tudo', run: () => navigateTab('catalog') },
+                  { id: 'shorts', label: 'Shorts', run: () => navigateTab('reels') },
+                  { id: 'musica', label: 'Música', run: () => navigateTab('explore') },
+                  {
+                    id: 'funk',
+                    label: 'Funk & Baile',
+                    run: () => triggerWorldSearchDirect('funk 2026 favela baile'),
+                  },
+                  {
+                    id: 'rap',
+                    label: 'Rap & Trap',
+                    run: () => triggerWorldSearchDirect('rap trap brasil 2026'),
+                  },
+                  {
+                    id: 'pagode',
+                    label: 'Pagode',
+                    run: () => triggerWorldSearchDirect('pagode 2026 menos e mais'),
+                  },
+                  { id: 'aovivo', label: 'Ao vivo', run: () => navigateTab('sports') },
+                  { id: 'filmes', label: 'Filmes & Animes', run: () => navigateTab('movies') },
+                  { id: 'jogos', label: 'Jogos', run: () => navigateTab('arcade') },
+                  { id: 'loja', label: 'Loja dos Cria', run: () => navigateTab('shop') },
+                ] as { id: string; label: string; run: () => void }[]
+              ).map((chip) => {
+                const selected = activeYtChip === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveYtChip(chip.id);
+                      chip.run();
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                      selected
+                        ? 'bg-white text-black shadow'
+                        : 'bg-white/[0.09] hover:bg-white/[0.18] text-slate-100'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* YOUTUBE-STYLE "MAIS" CLEAN TWO-SECTION MENU */}
@@ -3777,6 +3983,7 @@ export function App() {
                       actionNonce={reelsActionNonce}
                       initialShortsQuery={shortsTriggerQuery}
                       initialShortsNonce={shortsTriggerNonce}
+                      onSubscriptionsChanged={setSubscribedChannelsList}
                       onPlayTrack={(t) => void handlePlayTrack(t, 'v1', [t])}
                       onPauseCatalogPlayer={pauseCatalogPlayer}
                       onOpenUserAuth={() => setChatModalOpen(true)}
@@ -4014,31 +4221,42 @@ export function App() {
         />
       )}
 
-      {/* CLEAN YOUTUBE-STYLE 5-SLOT MOBILE BOTTOM DOCK */}
+      {/* CLEAN YOUTUBE-STYLE 5-SLOT MOBILE BOTTOM DOCK (Início, Shorts, Criar, Inscrições, Você) */}
       {!watchingMovie && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#06070d]/96 backdrop-blur-2xl border-t border-white/10 grid grid-cols-5 px-2">
+        <nav
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 min-h-[56px] bg-[#06070d]/96 backdrop-blur-2xl border-t border-white/10 grid grid-cols-5 px-1.5"
+        >
           <button
             type="button"
-            onClick={() => navigateTab('catalog')}
-            className={`flex flex-col items-center justify-center gap-0.5 transition ${
+            onClick={() => {
+              setActiveYtChip('tudo');
+              navigateTab('catalog');
+            }}
+            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 transition ${
               !moreSheetOpen && activeTab === 'catalog' ? 'text-white' : 'text-slate-400 hover:text-white'
             }`}
             title="Início"
           >
             <Home className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Início</span>
+            <span className="text-[10px] font-semibold">Início</span>
           </button>
 
           <button
             type="button"
-            onClick={() => navigateTab('reels')}
-            className={`flex flex-col items-center justify-center gap-0.5 transition ${
-              !moreSheetOpen && activeTab === 'reels' ? 'text-white' : 'text-slate-400 hover:text-white'
+            onClick={() => {
+              setActiveYtChip('shorts');
+              navigateTab('reels');
+            }}
+            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 transition ${
+              !moreSheetOpen && activeTab === 'reels' && shortsTriggerQuery !== '__subscribed__'
+                ? 'text-white'
+                : 'text-slate-400 hover:text-white'
             }`}
-            title="Reels & Shorts"
+            title="Shorts & Reels"
           >
             <Film className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Reels</span>
+            <span className="text-[10px] font-semibold">Shorts</span>
           </button>
 
           <button
@@ -4047,37 +4265,43 @@ export function App() {
             className="flex items-center justify-center transition"
             title="Criar"
           >
-            <span className="w-9 h-9 rounded-full border border-white/60 hover:border-amber-300 bg-white/[0.06] flex items-center justify-center text-white active:scale-90 transition">
+            <span className="w-10 h-10 rounded-full border border-white/60 hover:border-amber-300 bg-white/[0.08] flex items-center justify-center text-white active:scale-90 transition">
               <Plus className="w-5 h-5" />
             </span>
           </button>
 
           <button
             type="button"
-            onClick={() => navigateTab('shop')}
-            className={`flex flex-col items-center justify-center gap-0.5 transition ${
-              !moreSheetOpen && activeTab === 'shop' ? 'text-amber-300' : 'text-slate-400 hover:text-white'
+            onClick={() => {
+              setShortsTriggerQuery('__subscribed__');
+              setShortsTriggerNonce((n) => n + 1);
+              navigateTab('reels');
+            }}
+            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 transition ${
+              !moreSheetOpen && activeTab === 'reels' && shortsTriggerQuery === '__subscribed__'
+                ? 'text-amber-300'
+                : 'text-slate-400 hover:text-white'
             }`}
-            title="Loja VIP"
+            title="Inscrições"
           >
-            <ShoppingBag className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Loja</span>
+            <Bell className="w-5 h-5" />
+            <span className="text-[10px] font-semibold">Inscrições</span>
           </button>
 
           <button
             type="button"
             onClick={() => setMoreSheetOpen((v) => !v)}
-            className={`flex flex-col items-center justify-center gap-0.5 transition ${
+            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 transition ${
               moreSheetOpen ? 'text-amber-300' : 'text-slate-400 hover:text-white'
             }`}
-            title="Mais & Você"
+            title="Você & Mais"
           >
             <span className={`w-6 h-6 rounded-full overflow-hidden border flex items-center justify-center ${
               moreSheetOpen ? 'border-amber-400' : 'border-white/30'
             }`}>
               <img src="/covers/icon-192.png" alt="MORRO GOLD" className="w-full h-full object-cover" />
             </span>
-            <span className="text-[10px] font-medium">Você</span>
+            <span className="text-[10px] font-semibold">Você</span>
           </button>
         </nav>
       )}
@@ -4925,23 +5149,6 @@ export function App() {
             }
           >
             <div id="lenkyx-yt-audio-host" className="w-full h-full" />
-
-            {clipTheaterOpen && !clipMinimized && currentTrack?.youtubeVideoId && !isPlaying && (
-              <div
-                onClick={() => void handleTogglePlay()}
-                className="absolute inset-0 z-10 cursor-pointer flex items-center justify-center bg-black/70 backdrop-blur-sm transition"
-              >
-                <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-3xl bg-[#0b0618]/90 border border-white/15 shadow-2xl">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow-[0_0_30px_rgba(236,72,153,0.55)]">
-                    <Play className="w-7 h-7 fill-black ml-0.5" />
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs font-black text-white max-w-[260px] truncate">{currentTrack.title}</div>
-                    <div className="text-[10px] text-cyan-300 font-bold">Toque para continuar</div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {clipTheaterOpen && !clipMinimized && currentTrack?.youtubeVideoId && (

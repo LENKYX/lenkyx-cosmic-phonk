@@ -96,6 +96,7 @@ interface Props {
   actionNonce?: number;
   initialShortsQuery?: string;
   initialShortsNonce?: number;
+  onSubscriptionsChanged?: (channels: string[]) => void;
   onPlayTrack: (track: Track) => void;
   onPauseCatalogPlayer: () => void;
   onOpenUserAuth: () => void;
@@ -168,6 +169,7 @@ interface YTPlayerHandle {
   mute?: () => void;
   unMute?: () => void;
   setPlaybackRate?: (rate: number) => void;
+  setPlaybackQuality?: (suggestedQuality: string) => void;
   getCurrentTime?: () => number;
   getDuration?: () => number;
   destroy?: () => void;
@@ -248,10 +250,10 @@ const YouTubeShortPlayer: React.FC<{
 
       if (!window.YT?.Player) {
         const iframe = document.createElement('iframe');
-        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0&enablejsapi=1`;
+        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&cc_load_policy=0&vq=hd1080&enablejsapi=1`;
         iframe.allow = 'autoplay; encrypted-media; fullscreen';
         iframe.allowFullscreen = true;
-        iframe.className = 'w-full h-full border-0';
+        iframe.className = 'w-full h-full border-0 bg-black';
         mount.replaceWith(iframe);
         return;
       }
@@ -267,6 +269,8 @@ const YouTubeShortPlayer: React.FC<{
           disablekb: 1,
           fs: 0,
           iv_load_policy: 3,
+          cc_load_policy: 0,
+          vq: 'hd1080',
         },
         events: {
           onReady: (ev) => {
@@ -275,6 +279,7 @@ const YouTubeShortPlayer: React.FC<{
               if (mutedRef.current) ev.target.mute?.();
               else ev.target.unMute?.();
               if (rateRef.current !== 1) ev.target.setPlaybackRate?.(rateRef.current);
+              ev.target.setPlaybackQuality?.('hd1080');
               ev.target.playVideo?.();
             } catch {
               // ignore
@@ -395,13 +400,11 @@ const YouTubeShortPlayer: React.FC<{
         type="button"
         onClick={handleStageTap}
         aria-label={paused ? 'Continuar Reel' : 'Pausar Reel'}
-        className={`absolute inset-x-0 top-0 bottom-28 z-10 flex items-center justify-center transition ${
-          paused ? 'bg-black/45 backdrop-blur-sm' : 'bg-transparent'
-        }`}
+        className="absolute inset-0 z-10 flex items-center justify-center bg-transparent transition"
       >
         {paused && (
-          <span className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow-[0_0_30px_rgba(236,72,153,0.65)]">
-            <Play className="w-7 h-7 fill-black ml-0.5" />
+          <span className="w-16 h-16 rounded-full bg-black/75 border border-white/25 text-white flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.75)]">
+            <Play className="w-7 h-7 fill-white ml-0.5" />
           </span>
         )}
         {heartBurst && (
@@ -507,7 +510,6 @@ const NativeShortVideoPlayer: React.FC<{
       <video
         ref={videoRef}
         src={src}
-        poster={poster}
         autoPlay
         playsInline
         muted={muted}
@@ -518,19 +520,17 @@ const NativeShortVideoPlayer: React.FC<{
           if (!durTime && e.currentTarget.duration) setDurTime(e.currentTarget.duration);
         }}
         onEnded={onEnded}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-contain bg-black"
       />
       <button
         type="button"
         onClick={handleTap}
         aria-label={paused ? 'Continuar Reel' : 'Pausar Reel'}
-        className={`absolute inset-x-0 top-0 bottom-28 z-10 flex items-center justify-center transition ${
-          paused ? 'bg-black/45 backdrop-blur-sm' : 'bg-transparent'
-        }`}
+        className="absolute inset-0 z-10 flex items-center justify-center bg-transparent transition"
       >
         {paused && (
-          <span className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow-[0_0_30px_rgba(236,72,153,0.65)]">
-            <Play className="w-7 h-7 fill-black ml-0.5" />
+          <span className="w-16 h-16 rounded-full bg-black/75 border border-white/25 text-white flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.75)]">
+            <Play className="w-7 h-7 fill-white ml-0.5" />
           </span>
         )}
         {heartBurst && (
@@ -624,6 +624,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   actionNonce = 0,
   initialShortsQuery = '',
   initialShortsNonce = 0,
+  onSubscriptionsChanged,
   onPlayTrack,
   onPauseCatalogPlayer,
   onOpenUserAuth,
@@ -643,7 +644,9 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   useEffect(() => {
     void fetchChannelSubscriptions(subscriberId).then((res) => {
       setChannelCounts(res.counts || {});
-      setSubscribedChannels(new Set(res.subscribed || []));
+      const list = res.subscribed || [];
+      setSubscribedChannels(new Set(list));
+      onSubscriptionsChanged?.(list);
     });
   }, [subscriberId]);
 
@@ -660,6 +663,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
         const next = new Set(prev);
         if (res.subscribed) next.add(res.channelId);
         else next.delete(res.channelId);
+        onSubscriptionsChanged?.(Array.from(next));
         return next;
       });
       onToast(
@@ -904,6 +908,12 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   useEffect(() => {
     if (!initialShortsNonce || !initialShortsQuery.trim()) return;
     setSubTab('shorts');
+    if (initialShortsQuery === '__subscribed__') {
+      setShortsFilterSubscribed(true);
+      setExclusiveShortsOpen(false);
+      return;
+    }
+    setShortsFilterSubscribed(false);
     setShortCategory('creators');
     setShortSearch(initialShortsQuery);
     void loadShorts('creators', initialShortsQuery, true, true);
@@ -1587,9 +1597,10 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
   const renderShortsStage = (isExclusiveModal: boolean) => {
     if (isExclusiveModal && activeShort) {
+      const isSub = subscribedChannels.has(normalizeChannelKey(activeShort.creator_name));
       return (
         <div
-          className="relative flex flex-col h-full w-full select-none overscroll-contain overflow-hidden"
+          className="relative flex flex-col h-full w-full bg-[#06060b] select-none overscroll-contain overflow-hidden"
           onTouchStart={(e) => {
             touchStartYRef.current = e.touches[0]?.clientY ?? null;
           }}
@@ -1613,18 +1624,123 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
             }
           }}
         >
-          {/* CENTERED 1-BY-1 YOUTUBE SHORTS VERTICAL STAGE (Identical Clean Layout) */}
-          <div className="flex-1 min-h-0 flex items-center justify-center sm:px-3 sm:py-2 relative">
+          {/* DEDICATED TOP BAR ABOVE THE VIDEO (Zero overlap with video image on Mobile, PC & TV) */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 z-30 flex items-center justify-between gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-[#0b0b14] border-b border-white/10"
+          >
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => setExclusiveShortsOpen(false)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-90 focus-visible:ring-2 focus-visible:ring-amber-400"
+                title="Voltar para Grade"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              {onMinimizeReel && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onMinimizeReel(activeShort);
+                    setExclusiveShortsOpen(false);
+                  }}
+                  className="px-3 h-9 rounded-full bg-amber-400/15 hover:bg-amber-400 hover:text-black border border-amber-400/40 flex items-center gap-1.5 text-amber-200 text-xs font-black transition active:scale-90 focus-visible:ring-2 focus-visible:ring-amber-400"
+                  title="Minimizar e continuar assistindo pela plataforma"
+                >
+                  <Minimize2 className="w-3.5 h-3.5" />
+                  <span>Minimizar</span>
+                </button>
+              )}
+              <span className="hidden md:inline text-xs font-bold text-slate-400 truncate ml-1">
+                Reel {activeIndex + 1} de {visibleShorts.length}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setReelsExpanded((v) => !v)}
+                className="hidden sm:flex px-3 h-9 rounded-full bg-white/10 hover:bg-white/20 items-center gap-1.5 text-white text-xs font-bold transition active:scale-90 focus-visible:ring-2 focus-visible:ring-amber-400"
+                title={reelsExpanded ? 'Tamanho Padrão' : 'Aumentar Tela'}
+              >
+                {reelsExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                <span className="hidden lg:inline">{reelsExpanded ? 'Padrão' : 'Tela Máxima'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShortsSearchBarOpen((v) => !v)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-90 focus-visible:ring-2 focus-visible:ring-amber-400"
+                title="Buscar Shorts"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShortsMoreOpen(true)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-90 focus-visible:ring-2 focus-visible:ring-amber-400"
+                title="Mais opções"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setExclusiveShortsOpen(false)}
+                className="px-3 h-9 rounded-full bg-rose-600/90 hover:bg-rose-500 flex items-center gap-1 text-white text-xs font-black transition active:scale-90 focus-visible:ring-2 focus-visible:ring-amber-400"
+                title="Fechar Reels"
+              >
+                <X className="w-4 h-4" />
+                <span className="hidden sm:inline">Fechar</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Search Bar when tapping 🔍 */}
+          {shortsSearchBarOpen && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setShortsSearchBarOpen(false);
+                void loadShorts(shortCategory, shortSearch, true);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 mx-auto w-full max-w-xl px-3 pt-2 z-40"
+            >
+              <div className="flex items-center gap-2 rounded-full bg-[#161622] border border-white/20 px-4 py-2 shadow-xl">
+                <Search className="w-4 h-4 text-white/70 shrink-0" />
+                <input
+                  type="text"
+                  autoFocus
+                  value={shortSearch}
+                  onChange={(e) => setShortSearch(e.target.value)}
+                  placeholder="Buscar Shorts, humor, bailes ou canal..."
+                  className="flex-1 bg-transparent text-xs text-white focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShortsSearchBarOpen(false)}
+                  className="p-1 text-white/70 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* MAIN LARGE VIDEO STAGE + OUTSIDE RIGHT ACTION RAIL (PC / TV) */}
+          <div className="flex-1 min-h-0 flex items-center justify-center gap-4 px-0 sm:px-4 lg:px-8 py-0 sm:py-3 relative overflow-hidden">
+            {/* BIG CLIP-GRADE VIDEO CONTAINER (Pure Black, Zero Overlaid Text or Frozen Background!) */}
             <div
-              className={`relative h-full w-full rounded-none sm:rounded-[26px] overflow-hidden bg-black shadow-[0_24px_80px_rgba(0,0,0,0.95)] transition-all duration-300 ${
-                reelsExpanded ? 'sm:max-w-[780px]' : 'sm:max-w-[430px] sm:max-h-[860px]'
+              className={`relative h-full w-full rounded-none sm:rounded-2xl overflow-hidden bg-black border-0 sm:border sm:border-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.95)] transition-all duration-300 ${
+                reelsExpanded
+                  ? 'sm:max-w-[1320px]'
+                  : 'sm:max-w-[820px] md:max-w-[940px] lg:max-w-[1060px] xl:max-w-[1200px]'
               }`}
             >
               {activeShort.video_url ? (
                 <NativeShortVideoPlayer
                   key={activeShort.id}
                   src={activeShort.video_url}
-                  poster={activeShort.poster_url}
                   muted={shortsMuted}
                   loop={loopCurrentShort}
                   playbackRate={shortsRate}
@@ -1643,256 +1759,24 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   onUnavailable={() => handleShortUnavailable(activeShort.id)}
                 />
               ) : (
-                <div className="relative w-full h-full">
-                  <img
-                    src={activeShort.poster_url || '/covers/album-official.jpg'}
-                    alt={activeShort.title}
-                    className="w-full h-full object-cover opacity-90"
-                  />
+                <div className="relative w-full h-full bg-black flex items-center justify-center">
                   <button
                     onClick={() => {
                       const match = tracks[activeIndex % Math.max(1, tracks.length)];
                       if (match) onPlayTrack(match);
                     }}
-                    className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-white/95 text-black flex items-center justify-center shadow-2xl hover:scale-105 transition"
+                    className="w-16 h-16 rounded-full bg-white/95 text-black flex items-center justify-center shadow-2xl hover:scale-105 transition"
                   >
                     <Play className="w-7 h-7 fill-black ml-0.5" />
                   </button>
                 </div>
               )}
 
-              {/* CLEAN TOP BAR OVERLAY: Back, Minimize (keeps playing!), Expand, 3-Dots & Close */}
-              <div
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-3 pt-3 pb-6 bg-gradient-to-b from-black/75 via-black/30 to-transparent pointer-events-none"
-              >
-                <div className="pointer-events-auto flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setExclusiveShortsOpen(false)}
-                    className="w-9 h-9 rounded-full bg-black/55 hover:bg-white/20 flex items-center justify-center text-white drop-shadow transition active:scale-90"
-                    title="Voltar para Grade"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                  </button>
-                  {onMinimizeReel && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onMinimizeReel(activeShort);
-                        setExclusiveShortsOpen(false);
-                      }}
-                      className="px-2.5 h-9 rounded-full bg-black/55 hover:bg-amber-400 hover:text-black border border-white/20 flex items-center gap-1 text-white text-[11px] font-black drop-shadow transition active:scale-90"
-                      title="Minimizar e continuar assistindo pela plataforma"
-                    >
-                      <Minimize2 className="w-3.5 h-3.5" />
-                      <span className="hidden xs:inline">Minimizar</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="pointer-events-auto flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setReelsExpanded((v) => !v)}
-                    className="w-9 h-9 rounded-full bg-black/55 hover:bg-white/20 flex items-center justify-center text-white drop-shadow transition active:scale-90"
-                    title={reelsExpanded ? 'Reduzir Tela' : 'Aumentar Tela'}
-                  >
-                    {reelsExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShortsSearchBarOpen((v) => !v)}
-                    className="w-9 h-9 rounded-full bg-black/55 hover:bg-white/20 flex items-center justify-center text-white drop-shadow transition active:scale-90"
-                    title="Buscar Shorts"
-                  >
-                    <Search className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShortsMoreOpen(true)}
-                    className="w-9 h-9 rounded-full bg-black/55 hover:bg-white/20 flex items-center justify-center text-white drop-shadow transition active:scale-90"
-                    title="Mais opções"
-                  >
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExclusiveShortsOpen(false)}
-                    className="w-9 h-9 rounded-full bg-rose-600/85 hover:bg-rose-500 flex items-center justify-center text-white drop-shadow transition active:scale-90"
-                    title="Fechar Reels"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Quick Floating Search Overlay when tapping 🔍 */}
-              {shortsSearchBarOpen && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setShortsSearchBarOpen(false);
-                    void loadShorts(shortCategory, shortSearch, true);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="absolute top-14 inset-x-3 z-40 flex items-center gap-2 rounded-full bg-[#0f0f0f]/95 border border-white/20 px-3.5 py-2 shadow-2xl"
-                >
-                  <Search className="w-4 h-4 text-white/70 shrink-0" />
-                  <input
-                    type="text"
-                    autoFocus
-                    value={shortSearch}
-                    onChange={(e) => setShortSearch(e.target.value)}
-                    placeholder="Buscar Shorts..."
-                    className="flex-1 bg-transparent text-xs text-white focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShortsSearchBarOpen(false)}
-                    className="p-1 text-white/70 hover:text-white"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </form>
-              )}
-
-              {/* CLEAN YOUTUBE SHORTS BOTTOM-LEFT CREATOR ROW + WHITE PILL SUBSCRIBE + 1-LINE TITLE */}
-              <div
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                className="absolute inset-x-0 bottom-1.5 z-30 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3.5 pb-3 pt-10 pr-16"
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void openCreatorProfile(activeShort);
-                    }}
-                    className="flex items-center gap-2 text-xs font-bold text-white transition active:scale-95 min-w-0"
-                    title="Ver canal"
-                  >
-                    <span
-                      className={`w-8 h-8 rounded-full bg-gradient-to-br ${
-                        activeShort.creator_color || 'from-cyan-400 to-pink-500'
-                      } text-xs font-black text-white flex items-center justify-center shrink-0 shadow`}
-                    >
-                      {(activeShort.creator_name || 'C').slice(0, 1).toUpperCase()}
-                    </span>
-                    <span className="truncate max-w-[130px] drop-shadow">@{activeShort.creator_name}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void handleToggleSubscribe(activeShort.creator_name);
-                    }}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition shrink-0 ${
-                      subscribedChannels.has(normalizeChannelKey(activeShort.creator_name))
-                        ? 'bg-white/20 text-white'
-                        : 'bg-white text-black hover:bg-white/90'
-                    }`}
-                  >
-                    {subscribedChannels.has(normalizeChannelKey(activeShort.creator_name))
-                      ? 'Inscrito'
-                      : 'Inscrever-se'}
-                  </button>
-                </div>
-                <div className="text-[13px] font-medium text-white line-clamp-2 leading-snug drop-shadow">
-                  {activeShort.title}
-                </div>
-              </div>
-
-              {/* CLEAN YOUTUBE SHORTS RIGHT ACTION RAIL (Borderless Icons + Count/Label Below + Square Sound Thumb) */}
-              <div
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="absolute right-2.5 bottom-3.5 z-30 flex flex-col items-center gap-4"
-              >
-                <button
-                  type="button"
-                  onClick={() => void handleLikeShort(activeShort)}
-                  className="flex flex-col items-center gap-1 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)] transition active:scale-90"
-                  title="Curtir"
-                >
-                  <Heart
-                    className={`w-7 h-7 ${
-                      likedShortIds.has(activeShort.id) || activeShort.liked_by_me
-                        ? 'fill-red-500 text-red-500'
-                        : 'text-white'
-                    }`}
-                  />
-                  <span className="text-[11px] font-semibold">{fmtCompactCount(activeShort.likes)}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCommentTarget({
-                      id: `short:${activeShort.id}`,
-                      title: activeShort.title,
-                      youtubeId: activeShort.youtube_id,
-                    })
-                  }
-                  className="flex flex-col items-center gap-1 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)] transition active:scale-90"
-                  title="Comentários"
-                >
-                  <MessageCircle className="w-7 h-7" />
-                  <span className="text-[11px] font-semibold">Coment.</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={downloadingShortId === activeShort.id}
-                  onClick={() => void handleDownloadShort(activeShort)}
-                  className="flex flex-col items-center gap-1 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)] transition active:scale-90"
-                  title="Salvar"
-                >
-                  {downloadingShortId === activeShort.id ? (
-                    <Loader2 className="w-7 h-7 animate-spin" />
-                  ) : (
-                    <Bookmark className="w-7 h-7" />
-                  )}
-                  <span className="text-[11px] font-semibold">Salvar</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => void handleShareShort(activeShort)}
-                  className="flex flex-col items-center gap-1 text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)] transition active:scale-90"
-                  title="Compartilhar"
-                >
-                  <Share2 className="w-7 h-7" />
-                  <span className="text-[11px] font-semibold">Compart.</span>
-                </button>
-
-                {/* Square Creator / Audio Thumbnail (YouTube Shorts bottom-right) */}
-                <button
-                  type="button"
-                  onClick={() => void openCreatorProfile(activeShort)}
-                  className="w-9 h-9 rounded-lg border-2 border-white/80 overflow-hidden shadow-lg active:scale-95 transition"
-                  title="Som & Canal"
-                >
-                  <img
-                    src={activeShort.poster_url || '/covers/album-official.jpg'}
-                    alt={activeShort.creator_name}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              </div>
-
-              {/* Clean YouTube Bottom Sheet for ⋮ Options (Speed, Loop, Mute, Expand, Auto, Subscribed) */}
+              {/* Clean YouTube Bottom Sheet for ⋮ Options */}
               {shortsMoreOpen && (
                 <div
                   onClick={() => setShortsMoreOpen(false)}
-                  className="absolute inset-0 z-50 bg-black/60 flex items-end justify-center"
+                  className="absolute inset-0 z-50 bg-black/70 flex items-end justify-center"
                 >
                   <div
                     onClick={(e) => e.stopPropagation()}
@@ -2053,6 +1937,225 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* OUTSIDE RIGHT ACTION RAIL FOR PC & SMART TV (Zero overlap with video pixels!) */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="hidden sm:flex flex-col items-center gap-3.5 shrink-0"
+            >
+              <button
+                type="button"
+                onClick={() => void handleLikeShort(activeShort)}
+                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1"
+                title="Curtir"
+              >
+                <span className="w-12 h-12 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition active:scale-90">
+                  <Heart
+                    className={`w-6 h-6 ${
+                      likedShortIds.has(activeShort.id) || activeShort.liked_by_me
+                        ? 'fill-red-500 text-red-500'
+                        : 'text-white'
+                    }`}
+                  />
+                </span>
+                <span className="text-[11px] font-semibold text-slate-200">{fmtCompactCount(activeShort.likes)}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setCommentTarget({
+                    id: `short:${activeShort.id}`,
+                    title: activeShort.title,
+                    youtubeId: activeShort.youtube_id,
+                  })
+                }
+                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1"
+                title="Comentários"
+              >
+                <span className="w-12 h-12 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition active:scale-90">
+                  <MessageCircle className="w-6 h-6" />
+                </span>
+                <span className="text-[11px] font-semibold text-slate-200">Coment.</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={downloadingShortId === activeShort.id}
+                onClick={() => void handleDownloadShort(activeShort)}
+                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1"
+                title="Salvar"
+              >
+                <span className="w-12 h-12 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition active:scale-90">
+                  {downloadingShortId === activeShort.id ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <Bookmark className="w-6 h-6" />
+                  )}
+                </span>
+                <span className="text-[11px] font-semibold text-slate-200">Salvar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleShareShort(activeShort)}
+                className="flex flex-col items-center gap-1 text-white group focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl p-1"
+                title="Compartilhar"
+              >
+                <span className="w-12 h-12 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center transition active:scale-90">
+                  <Share2 className="w-6 h-6" />
+                </span>
+                <span className="text-[11px] font-semibold text-slate-200">Compart.</span>
+              </button>
+
+              <div className="pt-1 border-t border-white/10 flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => scrollToShort(activeIndex - 1)}
+                  disabled={activeIndex <= 0}
+                  className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 flex items-center justify-center text-white transition active:scale-90 focus-visible:ring-2 focus-visible:ring-amber-400"
+                  title="Anterior (↑)"
+                >
+                  <ChevronUp className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollToShort(activeIndex + 1)}
+                  disabled={activeIndex >= visibleShorts.length - 1}
+                  className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 flex items-center justify-center text-white transition active:scale-90 focus-visible:ring-2 focus-visible:ring-amber-400"
+                  title="Próximo (↓)"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void openCreatorProfile(activeShort)}
+                className="w-10 h-10 rounded-xl border-2 border-white/75 overflow-hidden shadow-lg active:scale-95 transition focus-visible:ring-2 focus-visible:ring-amber-400"
+                title="Abrir Canal"
+              >
+                <img
+                  src={activeShort.poster_url || '/covers/album-official.jpg'}
+                  alt={activeShort.creator_name}
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* DEDICATED CREATOR & MOBILE ACTION BAR BELOW THE VIDEO (Zero overlap with video image!) */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 z-30 bg-[#0b0b14] border-t border-white/10 px-3 sm:px-6 py-2.5 space-y-2"
+          >
+            <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => void openCreatorProfile(activeShort)}
+                  className="flex items-center gap-2 text-xs sm:text-sm font-bold text-white min-w-0 hover:text-amber-300 transition"
+                >
+                  <span
+                    className={`w-8 h-8 rounded-full bg-gradient-to-br ${
+                      activeShort.creator_color || 'from-cyan-400 to-pink-500'
+                    } text-xs font-black text-white flex items-center justify-center shrink-0`}
+                  >
+                    {(activeShort.creator_name || 'C').slice(0, 1).toUpperCase()}
+                  </span>
+                  <span className="truncate max-w-[140px] sm:max-w-[200px]">@{activeShort.creator_name}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleToggleSubscribe(activeShort.creator_name)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-black transition shrink-0 focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                    isSub
+                      ? 'bg-white/15 text-white hover:bg-white/25'
+                      : 'bg-white text-black hover:bg-white/90'
+                  }`}
+                >
+                  {isSub ? 'Inscrito' : 'Inscrever-se'}
+                </button>
+                <span className="hidden md:inline text-xs sm:text-sm text-slate-200 font-medium truncate">
+                  · {activeShort.title}
+                </span>
+              </div>
+
+              <div className="md:hidden w-full text-xs font-medium text-slate-200 line-clamp-1">
+                {activeShort.title}
+              </div>
+            </div>
+
+            {/* Mobile-only clean bottom action strip (no floating clutter over video!) */}
+            <div className="sm:hidden flex items-center justify-between gap-1.5 pt-0.5">
+              <button
+                type="button"
+                onClick={() => void handleLikeShort(activeShort)}
+                className="flex-1 py-1.5 rounded-xl bg-white/[0.08] flex items-center justify-center gap-1 text-white text-[11px] font-bold active:scale-95"
+              >
+                <Heart
+                  className={`w-4 h-4 ${
+                    likedShortIds.has(activeShort.id) || activeShort.liked_by_me
+                      ? 'fill-red-500 text-red-500'
+                      : 'text-white'
+                  }`}
+                />
+                <span>{fmtCompactCount(activeShort.likes)}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setCommentTarget({
+                    id: `short:${activeShort.id}`,
+                    title: activeShort.title,
+                    youtubeId: activeShort.youtube_id,
+                  })
+                }
+                className="flex-1 py-1.5 rounded-xl bg-white/[0.08] flex items-center justify-center gap-1 text-white text-[11px] font-bold active:scale-95"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Coment.</span>
+              </button>
+              <button
+                type="button"
+                disabled={downloadingShortId === activeShort.id}
+                onClick={() => void handleDownloadShort(activeShort)}
+                className="flex-1 py-1.5 rounded-xl bg-white/[0.08] flex items-center justify-center gap-1 text-white text-[11px] font-bold active:scale-95"
+              >
+                {downloadingShortId === activeShort.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Bookmark className="w-4 h-4" />
+                )}
+                <span>Salvar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleShareShort(activeShort)}
+                className="flex-1 py-1.5 rounded-xl bg-white/[0.08] flex items-center justify-center gap-1 text-white text-[11px] font-bold active:scale-95"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Enviar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToShort(activeIndex - 1)}
+                disabled={activeIndex <= 0}
+                className="w-9 h-8 rounded-xl bg-white/[0.08] disabled:opacity-30 flex items-center justify-center text-white"
+                title="Anterior"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToShort(activeIndex + 1)}
+                disabled={activeIndex >= visibleShorts.length - 1}
+                className="w-9 h-8 rounded-xl bg-white/[0.08] disabled:opacity-30 flex items-center justify-center text-white"
+                title="Próximo"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>

@@ -648,3 +648,26 @@ input[type='range'].dj-crossfader::-webkit-slider-thumb {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(236, 72, 153, 0.75);
 }
+
+/* Mobile touch & safe-area polish */
+@media (max-width: 640px) {
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Smart TV & Large Screen 10-foot UI + Remote D-Pad Focus Ring */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #f5c84c;
+  outline-offset: 2px;
+}
+
+@media (min-width: 1536px) {
+  html {
+    font-size: 17px;
+  }
+}
