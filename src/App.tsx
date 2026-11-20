@@ -157,12 +157,12 @@ import {
 } from './utils/offlineCache';
 
 const DEFAULT_SETTINGS: AppSettings = {
-  artistName: 'LENKYX',
+  artistName: 'MORRO GOLD',
   brandSubtitle: 'UNIVERSO LIVRE',
   tagline: 'Som Pesado · Clipes HD · Cinema & Séries · Futebol & UFC Ao Vivo — Sem Anúncios',
   pixKey: '41651191808',
   pixKeyConfigured: true,
-  pixName: 'LENKYX COSMIC PHONK',
+  pixName: 'MORRO GOLD VIP',
   pixCity: 'CAMPO GRANDE',
   pixMessage: '100% gratuito e sem anúncios! Sua doação exclusiva via PIX (PicPay) ajuda na manutenção diária do app.',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
@@ -314,7 +314,7 @@ export function App() {
         await deferredInstallPrompt.prompt();
         const choice = await deferredInstallPrompt.userChoice;
         if (choice?.outcome === 'accepted') {
-          showToast('💻 LENKYX instalado no seu PC com 1 clique!');
+          showToast('💻 MORRO GOLD instalado no seu PC com 1 clique!');
           setDeferredInstallPrompt(null);
           setInstallModalOpen(false);
           return;
@@ -325,11 +325,11 @@ export function App() {
     }
     const a = document.createElement('a');
     a.href = '/download/pc';
-    a.download = 'LENKYX-App-PC.zip';
+    a.download = 'MORRO-GOLD-App-PC.zip';
     document.body.appendChild(a);
     a.click();
     a.remove();
-    showToast('💻 Download do App LENKYX para PC iniciado em 1 clique!');
+    showToast('💻 Download do App MORRO GOLD para PC iniciado em 1 clique!');
   }, [deferredInstallPrompt]);
 
   // Clean Edge-3D Opening Splash + Cool Startup Chime on Launch
@@ -1120,7 +1120,7 @@ export function App() {
             isPlayingRef.current = true;
             syncBackgroundMediaSession({
               title: next.title,
-              artist: next.artist || 'LENKYX',
+              artist: next.artist || 'MORRO GOLD',
               album: next.album || 'Favela VIP',
               artworkUrl: next.coverUrl,
               isPlaying: true,
@@ -1355,7 +1355,7 @@ export function App() {
                       isPlayingRef.current = true;
                       syncBackgroundMediaSession({
                         title: next.title,
-                        artist: next.artist || 'LENKYX',
+                        artist: next.artist || 'MORRO GOLD',
                         album: next.album || 'Favela VIP',
                         artworkUrl: next.coverUrl,
                         isPlaying: true,
@@ -2245,7 +2245,7 @@ export function App() {
     syncBackgroundMediaSession(
       {
         title: displayTitle,
-        artist: currentTrack.artist || 'LENKYX',
+        artist: currentTrack.artist || 'MORRO GOLD',
         album: currentTrack.album || 'Cosmic Phonk',
         artworkUrl: currentTrack.coverUrl,
         duration,
@@ -2270,7 +2270,7 @@ export function App() {
     updateGamingPipMetadata(
       {
         title: displayTitle,
-        artist: currentTrack.artist || 'LENKYX',
+        artist: currentTrack.artist || 'MORRO GOLD',
         coverUrl: currentTrack.coverUrl,
         isPlaying,
       },
@@ -2658,7 +2658,7 @@ export function App() {
 
             <div className="space-y-1.5">
               <div className="font-logo text-4xl sm:text-5xl font-black tracking-[0.22em] lux-gold-text drop-shadow-[0_0_28px_rgba(245,200,76,0.55)]">
-                LENKYX
+                MORRO GOLD
               </div>
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-black/80 border border-amber-400/50 text-[11px] font-black text-amber-200 shadow-lg">
                 <span>👑</span>
@@ -2715,7 +2715,7 @@ export function App() {
             <LenkyxEdgeLogo size="sm" className="shrink-0" />
             <div className="min-w-0">
               <span className="font-logo text-sm font-black tracking-[0.16em] lux-gold-text block leading-none">
-                LENKYX
+                MORRO GOLD
               </span>
               <span className="text-[9px] font-bold text-amber-200/80 tracking-wider">VIP BLACK · FAVELA TECH 🇧🇷</span>
             </div>
@@ -2757,7 +2757,7 @@ export function App() {
               <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 text-black flex items-center justify-center shrink-0">
                 <Crown className="w-3.5 h-3.5" />
               </span>
-              <span className="truncate">LENKYX VIP & PIX</span>
+              <span className="truncate">MORRO GOLD VIP & PIX</span>
             </button>
 
             <button
@@ -2770,7 +2770,7 @@ export function App() {
               <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 text-white flex items-center justify-center shrink-0">
                 <Wand2 className="w-3.5 h-3.5" />
               </span>
-              <span className="truncate">LENKYX Studio</span>
+              <span className="truncate">MORRO GOLD Studio</span>
             </button>
 
             <button
@@ -2783,7 +2783,7 @@ export function App() {
               <span className="w-6 h-6 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white flex items-center justify-center shrink-0">
                 <Music className="w-3.5 h-3.5" />
               </span>
-              <span className="truncate">LENKYX Music</span>
+              <span className="truncate">MORRO GOLD Music</span>
             </button>
 
             <button
@@ -2794,7 +2794,7 @@ export function App() {
               <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-rose-500 to-cyan-400 text-white flex items-center justify-center shrink-0">
                 <Sparkles className="w-3.5 h-3.5" />
               </span>
-              <span className="truncate">LENKYX Criar</span>
+              <span className="truncate">MORRO GOLD Criar</span>
             </button>
 
             <button
@@ -2896,7 +2896,7 @@ export function App() {
               className="flex md:hidden items-center gap-2 shrink-0 cursor-pointer select-none"
             >
               <LenkyxEdgeLogo size="xs" />
-              <span className="font-logo text-sm font-black tracking-[0.14em] lux-gold-text">LENKYX</span>
+              <span className="font-logo text-sm font-black tracking-[0.14em] lux-gold-text">MORRO GOLD</span>
             </div>
           </div>
 
@@ -2940,7 +2940,7 @@ export function App() {
               </button>
               <button
                 type="button"
-                onClick={() => openWebSearch(globalSearch || 'LENKYX', true)}
+                onClick={() => openWebSearch(globalSearch || 'MORRO GOLD', true)}
                 className={`p-1 rounded-full shrink-0 transition ${
                   searchViewPrivate ? 'text-purple-300' : 'text-slate-400 hover:text-white'
                 }`}
@@ -3107,7 +3107,7 @@ export function App() {
                     className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
                   >
                     <RefreshCw className={`w-4 h-4 text-emerald-300 ${updatingApp ? 'animate-spin' : ''}`} />
-                    <span>Atualizar LENKYX</span>
+                    <span>Atualizar MORRO GOLD</span>
                   </button>
                   <button
                     type="button"
@@ -3186,7 +3186,7 @@ export function App() {
                     className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
                   >
                     <Share2 className="w-4 h-4 text-cyan-300" />
-                    <span>Compartilhar LENKYX</span>
+                    <span>Compartilhar MORRO GOLD</span>
                   </button>
                 </div>
               </>
@@ -3326,7 +3326,7 @@ export function App() {
                 <span className="w-6 h-6 rounded-md bg-gradient-to-br from-amber-400 to-yellow-600 text-black flex items-center justify-center shrink-0">
                   <Crown className="w-3.5 h-3.5" />
                 </span>
-                <span>LENKYX VIP & PIX</span>
+                <span>MORRO GOLD VIP & PIX</span>
               </button>
 
               <button
@@ -3337,7 +3337,7 @@ export function App() {
                 <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 text-white flex items-center justify-center shrink-0">
                   <Wand2 className="w-3.5 h-3.5" />
                 </span>
-                <span>LENKYX Studio</span>
+                <span>MORRO GOLD Studio</span>
               </button>
 
               <button
@@ -3348,7 +3348,7 @@ export function App() {
                 <span className="w-6 h-6 rounded-full bg-gradient-to-br from-red-500 to-rose-600 text-white flex items-center justify-center shrink-0">
                   <Music className="w-3.5 h-3.5" />
                 </span>
-                <span>LENKYX Music</span>
+                <span>MORRO GOLD Music</span>
               </button>
 
               <button
@@ -3362,7 +3362,7 @@ export function App() {
                 <span className="w-6 h-6 rounded-lg bg-gradient-to-br from-rose-500 to-cyan-400 text-white flex items-center justify-center shrink-0">
                   <Sparkles className="w-3.5 h-3.5" />
                 </span>
-                <span>LENKYX Criar Vídeo</span>
+                <span>MORRO GOLD Criar Vídeo</span>
               </button>
 
               <button
@@ -3820,7 +3820,7 @@ export function App() {
             <span className={`w-6 h-6 rounded-full overflow-hidden border flex items-center justify-center ${
               moreSheetOpen ? 'border-amber-400' : 'border-white/30'
             }`}>
-              <img src="/covers/icon-192.png" alt="LENKYX" className="w-full h-full object-cover" />
+              <img src="/covers/icon-192.png" alt="MORRO GOLD" className="w-full h-full object-cover" />
             </span>
             <span className="text-[10px] font-medium">Você</span>
           </button>
@@ -3943,8 +3943,8 @@ export function App() {
             }
             const pipMode = await openGamingFloatingPlayer(
               {
-                title: currentTrack?.title || 'LENKYX Cosmic Phonk',
-                artist: currentTrack?.artist || 'LENKYX',
+                title: currentTrack?.title || 'MORRO GOLD Baile VIP',
+                artist: currentTrack?.artist || 'MORRO GOLD',
                 coverUrl: currentTrack?.coverUrl || '/covers/icon-512.png',
                 isPlaying,
               },
@@ -4035,8 +4035,8 @@ export function App() {
           }
           const res = await openGamingFloatingPlayer(
             {
-              title: trackToUse?.title || 'LENKYX Cosmic Phonk',
-              artist: trackToUse?.artist || 'LENKYX',
+              title: trackToUse?.title || 'MORRO GOLD Baile VIP',
+              artist: trackToUse?.artist || 'MORRO GOLD',
               coverUrl: trackToUse?.coverUrl || '/covers/icon-512.png',
               isPlaying: true,
             },
@@ -4091,7 +4091,7 @@ export function App() {
                       <CheckCircle2 className="w-3 h-3" /> OFICIAL · 100% SEGURO & VERIFICADO
                     </div>
                     <h3 className="font-display text-base sm:text-lg font-black text-white leading-tight">
-                      App & Versão Web LENKYX
+                      App & Versão Web MORRO GOLD
                     </h3>
                     <p className="text-[11px] text-cyan-200/85 font-semibold">
                       Disponível para Android, iPhone (iOS), PC & Smart TV
@@ -4163,7 +4163,7 @@ export function App() {
               {/* Official Verified Security Guarantee */}
               <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/35 p-3.5 space-y-2 text-xs text-slate-100">
                 <div className="font-black text-emerald-300 flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-emerald-300" /> Selo de Segurança Oficial LENKYX
+                  <Shield className="w-4 h-4 text-emerald-300" /> Selo de Segurança Oficial MORRO GOLD
                 </div>
                 <div className="grid grid-cols-2 gap-1.5 text-[11px] text-purple-100/95">
                   <span className="flex items-center gap-1">
@@ -4185,7 +4185,7 @@ export function App() {
               <div className="rounded-2xl bg-white/[0.05] border border-white/10 p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-300 flex items-center gap-1">
-                    <Globe2 className="w-3.5 h-3.5" /> Endereço do Site Oficial LENKYX
+                    <Globe2 className="w-3.5 h-3.5" /> Endereço do Site Oficial MORRO GOLD
                   </span>
                   <a
                     href={officialSiteUrl}
@@ -4266,8 +4266,8 @@ export function App() {
 
                   <a
                     href="/download/pc"
-                    download="LENKYX-App-PC.zip"
-                    onClick={() => showToast('Download oficial do App LENKYX para PC iniciado! 💻🚀')}
+                    download="MORRO-GOLD-App-PC.zip"
+                    onClick={() => showToast('Download oficial do App MORRO GOLD para PC iniciado! 💻🚀')}
                     className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-purple-600 to-pink-500 hover:brightness-110 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(34,211,238,0.38)] transition"
                   >
                     <Download className="w-4 h-4" /> Baixar Aplicativo para PC (Windows / Mac .ZIP)
@@ -4278,11 +4278,11 @@ export function App() {
                     <p>
                       • <strong>Pelo Arquivo .ZIP (Windows/Mac):</strong> Extraia e clique em{' '}
                       <strong className="text-emerald-300">Criar-Atalho-Area-de-Trabalho.bat</strong> para ter o ícone 3D
-                      do LENKYX no seu computador (abre em janela própria sem navegador).
+                      do MORRO GOLD no seu computador (abre em janela própria sem navegador).
                     </p>
                     <p>
                       • <strong>Pelo Chrome ou Edge:</strong> Clique no ícone{' '}
-                      <strong className="text-cyan-300">⊕ Instalar LENKYX</strong> no canto direito da barra de endereço.
+                      <strong className="text-cyan-300">⊕ Instalar MORRO GOLD</strong> no canto direito da barra de endereço.
                     </p>
                   </div>
                 </div>
@@ -4313,7 +4313,7 @@ export function App() {
                     type="button"
                     onClick={() => {
                       setInstallModalOpen(false);
-                      showToast('App LENKYX liberado direto no seu celular sem restrições! 🎧');
+                      showToast('App MORRO GOLD liberado direto no seu celular sem restrições! 🎧');
                     }}
                     className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-pink-500/25 to-cyan-500/25 hover:brightness-110 border border-cyan-400/40 text-white font-black text-xs flex items-center justify-center gap-2"
                   >
@@ -4409,7 +4409,7 @@ export function App() {
                 </button>
                 <div className="min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-widest text-cyan-300 truncate flex items-center gap-1">
-                    <Film className="w-3 h-3" /> Clipe Oficial · LENKYX
+                    <Film className="w-3 h-3" /> Clipe Oficial · MORRO GOLD
                   </div>
                   <div className="text-xs sm:text-sm font-black text-white truncate">{currentTrack.title}</div>
                 </div>
@@ -4666,7 +4666,7 @@ export function App() {
                   <Plus className="w-5 h-5 stroke-[2.8]" />
                 </span>
                 <div>
-                  <h3 className="font-display text-sm font-black text-white">Criar & Transmitir no LENKYX</h3>
+                  <h3 className="font-display text-sm font-black text-white">Criar & Transmitir no MORRO GOLD</h3>
                   <p className="text-[11px] text-cyan-200/80">100% liberado — Reels, Lives, Chats & Músicas IA</p>
                 </div>
               </div>
@@ -4748,7 +4748,7 @@ export function App() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-black text-white">🤖 Criar Música / Studio IA</div>
-                  <div className="text-[11px] text-purple-200/80">Gere beats, capas e áudios profissionais no LENKYX</div>
+                  <div className="text-[11px] text-purple-200/80">Gere beats, capas e áudios profissionais no MORRO GOLD</div>
                 </div>
               </button>
             </div>

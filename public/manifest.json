@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "LENKYX — Som, Clipes, Cinema & Arena",
-  "short_name": "LENKYX",
-  "description": "Site oficial e aplicativo LENKYX: ouça músicas com grave turbinado, clipes HD, filmes, séries por temporada e Futebol & UFC ao vivo sem anúncios e sem cadastro.",
+  "name": "MORRO GOLD — Música, Bailes & Loja VIP",
+  "short_name": "MORRO GOLD",
+  "description": "Aplicativo oficial MORRO GOLD: músicas com grave e efeitos 3D, bailes de favela atualizados, Loja dos Cria (Mansão Maromba), clipes HD e cinema sem anúncios.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

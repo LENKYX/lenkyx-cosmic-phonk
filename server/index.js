@@ -2176,15 +2176,15 @@ app.get(['/download/pc', '/download/pc/windows', '/download/pc/mac', '/pc'], (re
       '$edge = @($env:ProgramFiles + \'\\Microsoft\\Edge\\Application\\msedge.exe\', ${env:ProgramFiles(x86)} + \'\\Microsoft\\Edge\\Application\\msedge.exe\') | Where-Object { Test-Path $_ } | Select-Object -First 1; ' +
       '$chrome = @($env:ProgramFiles + \'\\Google\\Chrome\\Application\\chrome.exe\', ${env:ProgramFiles(x86)} + \'\\Google\\Chrome\\Application\\chrome.exe\') | Where-Object { Test-Path $_ } | Select-Object -First 1; ' +
       '$ws = New-Object -ComObject WScript.Shell; ' +
-      '$sc = $ws.CreateShortcut((Join-Path $desktop \'LENKYX.lnk\')); ' +
+      '$sc = $ws.CreateShortcut((Join-Path $desktop \'MORRO GOLD.lnk\')); ' +
       'if ($edge) { $sc.TargetPath = $edge; $sc.Arguments = \'--app=' + siteUrl + '\'; } ' +
       'elseif ($chrome) { $sc.TargetPath = $chrome; $sc.Arguments = \'--app=' + siteUrl + '\'; } ' +
       'else { $sc.TargetPath = \'' + siteUrl + '\'; } ' +
       'if (Test-Path $icoPath) { $sc.IconLocation = $icoPath; } ' +
-      '$sc.Description = \'LENKYX - Som, Clipes, Cinema e Arena Ao Vivo\'; ' +
+      '$sc.Description = \'MORRO GOLD - Som, Bailes, Loja VIP e Clipes\'; ' +
       '$sc.Save();"',
     'echo.',
-    'echo [OK] Atalho 3D do LENKYX criado na sua Area de Trabalho!',
+    'echo [OK] Atalho 3D do MORRO GOLD criado na sua Area de Trabalho!',
     'timeout /t 3 >nul',
   ].join('\r\n');
 
@@ -2210,65 +2210,64 @@ app.get(['/download/pc', '/download/pc/windows', '/download/pc/mac', '/pc'], (re
 
   const readme = [
     '====================================================',
-    '   LENKYX — APLICATIVO OFICIAL PARA PC (v3.3 3D)',
+    '   MORRO GOLD — APLICATIVO OFICIAL PARA PC (VIP 3D)',
     '====================================================',
     `Site Oficial: ${siteUrl}`,
     '',
     'COMO USAR NO WINDOWS:',
     '1. Extraia esta pasta em qualquer lugar (ou Area de Trabalho).',
     '2. Clique duas vezes em "Criar-Atalho-Area-de-Trabalho.bat"',
-    '   para colocar o icone 3D do LENKYX na sua Area de Trabalho.',
-    '3. Ou clique duas vezes em "Abrir-LENKYX-App.bat" para abrir',
+    '   para colocar o icone 3D do MORRO GOLD na sua Area de Trabalho.',
+    '3. Ou clique duas vezes em "Abrir-MORRO-GOLD-App.bat" para abrir',
     '   o aplicativo em janela propria (sem abas, sem anuncios).',
     '',
     'COMO USAR NO MAC / LINUX:',
-    ' - Execute "Abrir-LENKYX-Mac-Linux.command".',
+    ' - Execute "Abrir-MORRO-GOLD-Mac-Linux.command".',
     '',
     'DICA EXTRA (1 CLIQUE NO NAVEGADOR):',
     ' - No Chrome ou Edge, abra o Site Oficial e clique no icone',
-    '   "Instalar LENKYX" no canto direito da barra de endereco!',
+    '   "Instalar MORRO GOLD" no canto direito da barra de endereco!',
     '====================================================',
   ].join('\r\n');
 
   const launcherHtml = [
     '<!DOCTYPE html>',
     '<html lang="pt-BR">',
-    '<head><meta charset="UTF-8"><title>LENKYX 3D</title>',
+    '<head><meta charset="UTF-8"><title>MORRO GOLD 3D</title>',
     '<style>',
-    'body{margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#070b18;color:#fff;font-family:system-ui,sans-serif;overflow:hidden}',
-    '.wrap{position:relative;width:140px;height:140px;border-radius:36px;display:flex;align-items:center;justify-content:center;isolation:isolate}',
-    '.aurora{position:absolute;inset:-5px;border-radius:40px;background:conic-gradient(#00f5ff,#0284c7,#7c3aed,#ec4899,#f59e0b,#10b981,#00f5ff);filter:blur(8px);z-index:-1;animation:spin 3.5s linear infinite}',
-    '.badge{position:relative;overflow:hidden;width:100%;height:100%;border-radius:36px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 35px rgba(34,211,238,.45)}',
-    '.badge img{width:82%;height:82%;object-fit:contain;animation:hue 6s ease-in-out infinite}',
-    '.sheen{position:absolute;inset:-40%;background:linear-gradient(115deg,transparent 35%,rgba(0,245,255,.35) 45%,rgba(255,255,255,.75) 50%,rgba(236,72,153,.3) 55%,transparent 65%);animation:sweep 2.8s ease-in-out infinite}',
+    'body{margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#04050a;color:#fff;font-family:system-ui,sans-serif;overflow:hidden}',
+    '.wrap{position:relative;width:168px;height:168px;border-radius:38px;display:flex;align-items:center;justify-content:center;isolation:isolate}',
+    '.aurora{position:absolute;inset:-6px;border-radius:42px;background:conic-gradient(#f5c84c,#fef08a,#d97706,#22d3ee,#fbbf24,#f5c84c);filter:blur(10px);z-index:-1;animation:spin 4s linear infinite}',
+    '.badge{position:relative;overflow:hidden;width:100%;height:100%;border-radius:38px;background:#05060b;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 40px rgba(245,200,76,.45)}',
+    '.badge img{width:100%;height:100%;object-fit:cover}',
+    '.sheen{position:absolute;inset:-40%;background:linear-gradient(115deg,transparent 35%,rgba(245,200,76,.35) 45%,rgba(255,255,255,.78) 50%,rgba(34,211,238,.25) 55%,transparent 65%);animation:sweep 2.9s ease-in-out infinite}',
     '@keyframes spin{to{transform:rotate(360deg)}}',
-    '@keyframes hue{0%,100%{filter:hue-rotate(0deg)}50%{filter:hue-rotate(24deg)}}',
     '@keyframes sweep{0%{transform:translateX(-110%) skewX(-18deg)}60%,100%{transform:translateX(125%) skewX(-18deg)}}',
-    'h1{margin:20px 0 6px;letter-spacing:.22em;font-size:26px}p{margin:0;color:#67e8f9;font-size:13px}',
+    'h1{margin:20px 0 6px;letter-spacing:.22em;font-size:28px;color:#f5c84c}p{margin:0;color:#fde68a;font-size:13px}',
     '</style></head><body>',
-    `<div class="wrap"><div class="aurora"></div><div class="badge"><img src="${siteUrl}/covers/icon-edge-3d.png" alt="LENKYX"/><div class="sheen"></div></div></div>`,
-    '<h1>LENKYX</h1><p>Abrindo Aplicativo Oficial Brasil...</p>',
+    `<div class="wrap"><div class="aurora"></div><div class="badge"><img src="${siteUrl}/covers/morro-gold-logo.png" alt="MORRO GOLD"/><div class="sheen"></div></div></div>`,
+    '<h1>MORRO GOLD</h1><p>Abrindo Aplicativo Oficial VIP...</p>',
     `<script>setTimeout(function(){window.location.href=${JSON.stringify(siteUrl)};},950);</script>`,
     '</body></html>',
   ].join('');
 
   const entries = [
-    { name: 'LENKYX-App-PC/Abrir-LENKYX-App.bat', content: winBat },
-    { name: 'LENKYX-App-PC/Criar-Atalho-Area-de-Trabalho.bat', content: winShortcutBat },
-    { name: 'LENKYX-App-PC/LENKYX-Launcher-3D.html', content: launcherHtml },
-    { name: 'LENKYX-App-PC/LENKYX-Site-Oficial.url', content: urlFile },
-    { name: 'LENKYX-App-PC/Abrir-LENKYX-Mac-Linux.command', content: macCmd, mode: (0o100755 << 16) >>> 0 },
-    { name: 'LENKYX-App-PC/LEIA-ME.txt', content: readme },
+    { name: 'MORRO-GOLD-App-PC/Abrir-MORRO-GOLD-App.bat', content: winBat },
+    { name: 'MORRO-GOLD-App-PC/Criar-Atalho-Area-de-Trabalho.bat', content: winShortcutBat },
+    { name: 'MORRO-GOLD-App-PC/MORRO-GOLD-Launcher-3D.html', content: launcherHtml },
+    { name: 'MORRO-GOLD-App-PC/MORRO-GOLD-Site-Oficial.url', content: urlFile },
+    { name: 'MORRO-GOLD-App-PC/Abrir-MORRO-GOLD-Mac-Linux.command', content: macCmd, mode: (0o100755 << 16) >>> 0 },
+    { name: 'MORRO-GOLD-App-PC/LEIA-ME.txt', content: readme },
   ];
 
   const icoPath = path.join(PUBLIC_DIR, 'covers', 'lenkyx-app.ico');
   if (fs.existsSync(icoPath)) {
-    entries.push({ name: 'LENKYX-App-PC/lenkyx-app.ico', content: fs.readFileSync(icoPath) });
+    entries.push({ name: 'MORRO-GOLD-App-PC/morro-gold-app.ico', content: fs.readFileSync(icoPath) });
   }
 
   const zipBuf = buildSimpleZip(entries);
   res.setHeader('Content-Type', 'application/zip');
-  res.setHeader('Content-Disposition', 'attachment; filename="LENKYX-App-PC.zip"');
+  res.setHeader('Content-Disposition', 'attachment; filename="MORRO-GOLD-App-PC.zip"');
   res.setHeader('Content-Length', String(zipBuf.length));
   res.setHeader('Cache-Control', 'no-store');
   return res.send(zipBuf);

@@ -106,10 +106,10 @@ export const ShareModal: React.FC<Props> = ({
     }
   };
 
-  // Invite message focused on growing LENKYX in Brazil
+  // Invite message focused on growing MORRO GOLD in Brazil
   const appTitle = track
-    ? `Ouça "${track.title}" grátis no LENKYX Brasil!`
-    : 'Conheça o LENKYX Brasil — Músicas, Clipes HD, Shorts e Cinema grátis sem anúncios!';
+    ? `Ouça "${track.title}" grátis no MORRO GOLD 💎!`
+    : 'Conheça o MORRO GOLD 💎 — Músicas, Bailes ao Vivo, Loja dos Cria & Clipes HD grátis!';
   const shareMessage = `${appTitle} 🇧🇷🎄\n${mainClickableLink}`;
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mainClickableLink)}&text=${encodeURIComponent(appTitle)}`;
@@ -199,7 +199,7 @@ export const ShareModal: React.FC<Props> = ({
                   🇧🇷 CRESCIMENTO BRASIL · 100% GRATUITO
                 </div>
                 <h2 className="font-display text-sm sm:text-base font-black text-white">
-                  {track ? `DIVULGAR: ${track.title}` : 'TRAZER AMIGOS PRO LENKYX BRASIL'}
+                  {track ? `DIVULGAR: ${track.title}` : 'TRAZER AMIGOS PRO MORRO GOLD 💎'}
                 </h2>
                 <p className="text-[11px] text-amber-200/90">
                   Compartilhe no WhatsApp, Status e Grupos — baixa em 1 clique no Celular e PC!

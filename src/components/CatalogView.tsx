@@ -122,7 +122,7 @@ export const CatalogView: React.FC<Props> = ({
   const handleToggleMainChannelSubscribe = async () => {
     const res = await toggleChannelSubscribe({
       channelId: 'lenkyx-oficial',
-      channelName: 'LENKYX Oficial',
+      channelName: 'MORRO GOLD Oficial',
       subscriberId,
     });
     if (res) {
@@ -130,7 +130,7 @@ export const CatalogView: React.FC<Props> = ({
       setChannelSubsCount(res.count);
       onToast(
         res.subscribed
-          ? `🔔 Inscrito no canal LENKYX Oficial! (${res.count} inscritos)`
+          ? `🔔 Fechado com o MORRO GOLD Oficial! (${res.count} inscritos)`
           : 'Inscrição removida'
       );
     }

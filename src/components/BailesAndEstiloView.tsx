@@ -182,7 +182,7 @@ export const BailesAndEstiloView: React.FC<Props> = ({ onToast }) => {
   };
 
   const shareBaileZap = (b: BaileEvent) => {
-    const txt = `🔥 BORA PRO BAILE, CRIA!\n\n🎉 ${b.title}\n📍 Endereço: ${b.address} (${b.city})\n🕒 Quando: ${b.schedule}\n🔊 ${b.lineup}\n🎟️ ${b.entry}\n\n📲 Visto no App LENKYX!`;
+    const txt = `🔥 BORA PRO BAILE, CRIA!\n\n🎉 ${b.title}\n📍 Endereço: ${b.address} (${b.city})\n🕒 Quando: ${b.schedule}\n🔊 ${b.lineup}\n🎟️ ${b.entry}\n\n📲 Visto no App MORRO GOLD 💎!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank', 'noopener,noreferrer');
   };
 
