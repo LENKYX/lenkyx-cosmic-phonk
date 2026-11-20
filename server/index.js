@@ -114,6 +114,13 @@ import {
   postWorldProgress,
   postSectorChat,
 } from './arcadeAI.js';
+import {
+  registerSale,
+  listSales,
+  updateCommissionConfig,
+  updateSaleStatus,
+  deleteSale,
+} from './commissionStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -4119,6 +4126,61 @@ app.post('/api/shop/track-click', (_req, res) => {
   };
   writeDb(db);
   res.json({ ok: true, clicks: nextClicks });
+});
+
+// ============ MINHAS COMISSÕES NAS VENDAS (PRIVADO — SÓ O DONO) ============
+// Rate limit simples por IP para evitar spam de registros de venda.
+const shopSaleAttempts = new Map();
+function shopSaleRateLimit(ip) {
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000;
+  const maxPerWindow = 25;
+  const entry = shopSaleAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    shopSaleAttempts.set(ip, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  entry.count += 1;
+  return entry.count <= maxPerWindow;
+}
+
+// O público registra a venda e recebe só o total. Taxa, comissão, dados do
+// comprador e chave PIX ficam em arquivo privado e exigem o token de Criador.
+app.post('/api/shop/sales', (req, res) => {
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  if (!shopSaleRateLimit(ip)) {
+    return res.status(429).json({ ok: false, error: 'Muitas vendas registradas. Tente de novo em instantes.' });
+  }
+  const payload = registerSale({
+    items: Array.isArray(req.body?.items) ? req.body.items : [],
+    buyerName: req.body?.buyerName,
+    buyerContact: req.body?.buyerContact,
+    channel: req.body?.channel,
+    source: req.body?.source,
+  });
+  if (!payload.ok) return res.status(400).json(payload);
+  res.json(payload);
+});
+
+app.get('/api/shop/commissions', auth.requireCreator, (_req, res) => {
+  res.json(listSales());
+});
+
+app.put('/api/shop/commissions/config', auth.requireCreator, (req, res) => {
+  const config = updateCommissionConfig(req.body || {});
+  res.json({ ok: true, config });
+});
+
+app.post('/api/shop/commissions/:id/status', auth.requireCreator, (req, res) => {
+  const order = updateSaleStatus(req.params.id, req.body?.status);
+  if (!order) return res.status(404).json({ ok: false, error: 'Venda não encontrada' });
+  res.json({ ok: true, order });
+});
+
+app.delete('/api/shop/commissions/:id', auth.requireCreator, (req, res) => {
+  const removed = deleteSale(req.params.id);
+  if (!removed) return res.status(404).json({ ok: false, error: 'Venda não encontrada' });
+  res.json({ ok: true });
 });
 
 // ==================== AUTOMATIC FAVELA BAILES & ROLÊS LIVE ENGINE ====================

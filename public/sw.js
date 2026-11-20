@@ -1,8 +1,9 @@
-const CACHE_NAME = 'morro-gold-v80';
+const CACHE_NAME = 'morro-gold-v82';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/audio/morro-gold-beat-vip.wav',
   '/covers/morro-gold-emblema-grosso.png',
   '/covers/morro-gold-emblema.png',
   '/covers/morro-gold-logo.png',

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { AppMode, AppSettings } from '../types';
 import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
+import { registerSale } from '../utils/commissionApi';
 
 export type ShopCat =
   | 'all'
@@ -789,6 +790,10 @@ export const ShopCriaView: React.FC<Props> = ({
   const [onlyDiscounts, setOnlyDiscounts] = useState(false);
   const [cart, setCart] = useState<{ item: CriaProduct; qty: number }[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  // Identificação opcional da compra — usada só no registro privado da venda
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerContact, setBuyerContact] = useState('');
+  const [submittingSale, setSubmittingSale] = useState(false);
 
   // Live published products fetched from Brazilian marketplaces
   const [liveItems, setLiveItems] = useState<LivePublishedItem[]>([]);
@@ -965,8 +970,45 @@ export const ShopCriaView: React.FC<Props> = ({
     );
   };
 
-  const buildOrderWhatsappUrl = () => {
-    const lines = cart.map((c) => `• ${c.qty}x ${c.item.name} (${c.item.priceLabel})`);
+  /**
+   * Finaliza a compra: registra a venda no servidor (a comissão é calculada
+   * no servidor e NUNCA é devolvida para o cliente) e abre o WhatsApp da loja.
+   */
+  const finalizePurchase = async () => {
+    if (!cart.length) return;
+    const waUrl = buildOrderWhatsappUrl();
+    setSubmittingSale(true);
+    try {
+      const res = await registerSale({
+        items: cart.map((c) => ({
+          id: c.item.id,
+          name: c.item.name,
+          brand: c.item.brand,
+          qty: c.qty,
+          unitBrl: c.item.priceBrl,
+        })),
+        buyerName: buyerName.trim(),
+        buyerContact: buyerContact.trim(),
+        channel: 'loja-dos-cria',
+        source: 'catalogo',
+      });
+      if (res.ok) {
+        onToast('✅ Compra registrada! Já mandamos sua lista no Zap dos Cria.');
+        setCart([]);
+        setBuyerName('');
+        setBuyerContact('');
+        setCartOpen(false);
+        window.open(waUrl, '_blank', 'noopener');
+      } else {
+        onToast('⚠️ Não consegui registrar a venda. Tenta mandar a lista no Zap mesmo.');
+        window.open(waUrl, '_blank', 'noopener');
+      }
+    } finally {
+      setSubmittingSale(false);
+    }
+  };
+
+  const buildOrderWhatsappUrl = () => {    const lines = cart.map((c) => `• ${c.qty}x ${c.item.name} (${c.item.priceLabel})`);
     const msg =
       `Salve! Montei minha lista de compras na Loja dos Cria do MORRO GOLD 🔥:\n\n` +
       `${lines.join('\n')}\n\nTotal estimado: R$ ${totalPrice.toLocaleString('pt-BR')}`;
@@ -1488,9 +1530,14 @@ export const ShopCriaView: React.FC<Props> = ({
                       <span className="px-2.5 py-1 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 text-black text-[9px] font-black shrink-0 shadow-md">
                         🔥 -{promo.discountPct}% OFF
                       </span>
-                    ) : (
+                    ) : mode === 'creator' ? (
+                      /* Comissão é informação sensível: só o dono (modo criador) enxerga */
                       <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-emerald-400/40 text-[9px] font-black text-emerald-300 shrink-0">
                         {item.commissionEst}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-amber-400/35 text-[9px] font-black text-amber-200/90 shrink-0">
+                        🤝 PARCERIA OFICIAL
                       </span>
                     )}
                   </div>
@@ -1864,6 +1911,39 @@ export const ShopCriaView: React.FC<Props> = ({
                       R$ {totalPrice.toLocaleString('pt-BR')}
                     </span>
                   </div>
+
+                  {/* Identificação opcional da compra (fica privada com o dono da loja) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={buyerName}
+                      onChange={(e) => setBuyerName(e.target.value)}
+                      placeholder="Seu nome (opcional)"
+                      className="rounded-xl bg-black/50 border border-white/15 px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400/60"
+                    />
+                    <input
+                      type="text"
+                      value={buyerContact}
+                      onChange={(e) => setBuyerContact(e.target.value)}
+                      placeholder="Zap/Instagram (opcional)"
+                      className="rounded-xl bg-black/50 border border-white/15 px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400/60"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void finalizePurchase()}
+                    disabled={submittingSale}
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-400 to-emerald-400 hover:brightness-110 text-black text-xs font-black flex items-center justify-center gap-2 shadow-lg disabled:opacity-60"
+                  >
+                    {submittingSale ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ShoppingBag className="w-4 h-4" />
+                    )}
+                    Finalizar Compra (R$ {totalPrice.toLocaleString('pt-BR')})
+                  </button>
+
                   <a
                     href={buildOrderWhatsappUrl()}
                     target="_blank"

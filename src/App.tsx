@@ -59,6 +59,7 @@ import {
   Headphones,
   MessageSquare,
   Menu,
+  Lock,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
@@ -111,7 +112,7 @@ import { WorldExploreView } from './components/WorldExploreView';
 import { PlaylistsView } from './components/PlaylistsView';
 import { CosmicSpaceBackdrop } from './components/CosmicSpaceBackdrop';
 import { LenkyxEdgeLogo } from './components/LenkyxEdgeLogo';
-import { playLenkyxStartupSound } from './utils/startupSound';
+import { playLenkyxStartupSound, stopLenkyxStartupSound, isStartupBeatPlaying } from './utils/startupSound';
 import {
   FuturisticFeaturesModal,
   FuturisticTab,
@@ -143,6 +144,7 @@ import { LegalTermsModal } from './components/LegalTermsModal';
 import { MobileIosSearchModal } from './components/MobileIosSearchModal';
 import { PlayerQueueStrip } from './components/PlayerQueueStrip';
 import { PixModal } from './components/PixModal';
+import { CommissionPanel } from './components/CommissionPanel';
 import { ShareModal } from './components/ShareModal';
 import { UploadTrackModal } from './components/UploadTrackModal';
 import { CreatorModal } from './components/CreatorModal';
@@ -383,24 +385,34 @@ export function App() {
   }, []);
 
   const dismissEntrySplash = useCallback((withSound = true) => {
-    if (withSound) {
+    // Se o autoplay foi bloqueado, o toque do usuario solta o beat pesado
+    if (withSound && !isStartupBeatPlaying()) {
       void playLenkyxStartupSound(true);
     }
     setEntrySplashExiting(true);
     window.setTimeout(() => setShowEntrySplash(false), 320);
   }, []);
 
+  // Sai da intro -> o beat da abertura sai com fade (a musica do app assume)
   useEffect(() => {
-    // Attempt immediate startup chime (succeeds if browser autoplay policy allows; otherwise plays on click/tap)
+    if (!showEntrySplash) {
+      stopLenkyxStartupSound(700);
+    }
+  }, [showEntrySplash]);
+
+  useEffect(() => {
+    // Beat de abertura "Pancadao VIP" (novo, pesado). Se o navegador bloquear o autoplay,
+    // o primeiro toque do usuario dispara o beat.
     void playLenkyxStartupSound(false);
     const unlockOnce = () => {
       void playLenkyxStartupSound(false);
     };
     window.addEventListener('pointerdown', unlockOnce, { once: true });
+    // Intro com ritmo proprio: 8,5s (o beat da tempo) com saida automatica
     const autoClose = window.setTimeout(() => {
       setEntrySplashExiting(true);
       window.setTimeout(() => setShowEntrySplash(false), 320);
-    }, 2400);
+    }, 8500);
     return () => {
       window.removeEventListener('pointerdown', unlockOnce);
       window.clearTimeout(autoClose);
@@ -663,6 +675,8 @@ export function App() {
   // Modals & notifications
   const [pixOpen, setPixOpen] = useState(false);
   const [pixInitialTab, setPixInitialTab] = useState<'donate' | 'ranking' | 'config'>('donate');
+  // Painel PRIVADO de comissões do dono (somente Modo Criador)
+  const [commissionPanelOpen, setCommissionPanelOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);
@@ -2863,7 +2877,7 @@ export function App() {
       {showEntrySplash && (
         <div
           onClick={() => dismissEntrySplash(true)}
-          className={`fixed inset-0 z-[120] flex flex-col items-center justify-center bg-[#120d22] overflow-hidden cursor-pointer transition-opacity duration-300 ${
+          className={`fixed inset-0 z-[120] flex flex-col items-center justify-center bg-[#120d22] overflow-y-auto overflow-x-hidden cursor-pointer transition-opacity duration-300 ${
             entrySplashExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
         >
@@ -2883,38 +2897,49 @@ export function App() {
             }}
           />
 
-          <div className="relative z-10 edge-entrance-logo flex flex-col items-center gap-4 px-5 text-center max-w-lg w-full">
-            {/* Logo Grande VIP */}
-            <LenkyxEdgeLogo size="hero" />
+          <div className="relative z-10 edge-entrance-logo flex flex-col items-center gap-2.5 sm:gap-3 px-4 py-4 sm:py-5 text-center w-full max-w-[min(94vw,520px)]">
+            {/* Logo Grande VIP (emblema com aura) - tamanho responsivo para caber em qualquer tela */}
+            <LenkyxEdgeLogo size="hero" className="shrink-0" />
 
-            <div className="space-y-1.5">
-              <div className="font-logo text-4xl sm:text-5xl font-black tracking-[0.22em] lux-gold-text drop-shadow-[0_0_28px_rgba(245,200,76,0.55)]">
+            <div className="space-y-1 sm:space-y-1.5">
+              <h1 className="font-logo text-[clamp(1.45rem,6vw,2.5rem)] font-black tracking-[0.16em] sm:tracking-[0.2em] lux-gold-text leading-none drop-shadow-[0_0_22px_rgba(245,200,76,0.5)]">
                 MORRO GOLD
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-black/80 border border-amber-400/50 text-[11px] font-black text-amber-200 shadow-lg">
+              </h1>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/80 border border-amber-400/50 text-[10px] sm:text-[11px] font-black text-amber-200 shadow-lg">
                 <span>👑</span>
-                <span>SALVE, CRIA! FAVELA OSTENTAÇÃO · TÁ LIGADO 🇧🇷</span>
+                <span className="truncate">SALVE, CRIA! FAVELA OSTENTAÇÃO · TÁ LIGADO 🇧🇷</span>
               </div>
-              <p className="text-xs text-slate-200/90 max-w-sm mx-auto">
+              <p className="text-[11px] sm:text-xs leading-snug text-slate-200/90 max-w-sm mx-auto">
                 Beat de favela pesadão, motos, naves, baile de verão e loja dos parças num só app.
               </p>
             </div>
 
+            {/* Equalizador do beat de abertura (Pancadao VIP) */}
+            <div className="flex items-end gap-[3px] h-5 sm:h-6 mt-0.5" aria-hidden="true">
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => (
+                <span
+                  key={i}
+                  className="mg-eq-bar"
+                  style={{ animationDelay: `${(i % 6) * 0.07}s`, animationDuration: `${0.4348 + (i % 4) * 0.03}s` }}
+                />
+              ))}
+            </div>
+
             {/* 3 Visual Preview Strips: Morro, Motos & Carros, Baile Verão */}
-            <div className="grid grid-cols-3 gap-2 w-full max-w-sm">
-              <div className="relative aspect-[16/11] rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 w-full max-w-[min(84vw,330px)]">
+              <div className="relative aspect-[16/10] rounded-lg sm:rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
                 <img src="/covers/favela-night-skyline.jpg" alt="Vista do Morro" className="w-full h-full object-cover" />
                 <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-black text-amber-200">
                   🏙️ Morro VIP
                 </span>
               </div>
-              <div className="relative aspect-[16/11] rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
+              <div className="relative aspect-[16/10] rounded-lg sm:rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
                 <img src="/covers/ostentacao-motos-carros.jpg" alt="Motos e Naves" className="w-full h-full object-cover" />
                 <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-black text-amber-200">
                   🏍️ Motos & Naves
                 </span>
               </div>
-              <div className="relative aspect-[16/11] rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
+              <div className="relative aspect-[16/10] rounded-lg sm:rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
                 <img src="/covers/baile-verao-vip.jpg" alt="Baile de Verão" className="w-full h-full object-cover" />
                 <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-black text-amber-200">
                   🥂 Baile VIP
@@ -2928,10 +2953,13 @@ export function App() {
                 e.stopPropagation();
                 dismissEntrySplash(true);
               }}
-              className="mt-1 px-7 py-3 rounded-full lux-btn-gold text-sm font-black shadow-[0_0_32px_rgba(245,200,76,0.5)] hover:brightness-110 transition active:scale-95 flex items-center gap-2"
+              className="mt-0.5 px-5 sm:px-7 py-2.5 sm:py-3 rounded-full lux-btn-gold text-[12px] sm:text-sm font-black shadow-[0_0_32px_rgba(245,200,76,0.5)] hover:brightness-110 transition active:scale-95 flex items-center gap-2"
             >
               <span>🔊 Soltar o Beat & Entrar no Baile</span>
             </button>
+            <span className="text-[9px] font-bold tracking-widest text-white/45 uppercase">
+              Toque em qualquer lugar · intro completa de 8,5s
+            </span>
           </div>
         </div>
       )}
@@ -2940,17 +2968,10 @@ export function App() {
         <aside className="hidden md:flex flex-col w-56 lg:w-60 shrink-0 fixed inset-y-2 left-2 z-30 rounded-3xl glass-panel overflow-hidden">
         <div
           onClick={handleBrandTap}
-          className="h-16 px-3.5 flex items-center justify-between border-b border-amber-400/20 bg-gradient-to-r from-amber-500/[0.06] via-transparent to-cyan-500/[0.06] cursor-pointer hover:bg-white/[0.03] select-none"
+          className="h-16 px-3.5 flex items-center justify-center border-b border-amber-400/20 bg-gradient-to-r from-amber-500/[0.06] via-transparent to-cyan-500/[0.06] cursor-pointer hover:bg-white/[0.03] select-none"
         >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <LenkyxEdgeLogo size="sm" className="shrink-0" />
-            <div className="min-w-0">
-              <span className="font-logo text-sm font-black tracking-[0.16em] lux-gold-text block leading-none">
-                MORRO GOLD
-              </span>
-              <span className="text-[9px] font-bold text-amber-200/80 tracking-wider">VIP BLACK · FAVELA TECH 🇧🇷</span>
-            </div>
-          </div>
+          {/* Somente o emblema da logo (sem wordmark duplicado) */}
+          <LenkyxEdgeLogo size="md" className="shrink-0" />
         </div>
 
         {/* Clean YouTube-Style Multi-Section Navigation (Início, Inscrições, Você) */}
@@ -3219,10 +3240,10 @@ export function App() {
 
             <div
               onClick={handleBrandTap}
-              className="flex md:hidden items-center gap-2 shrink-0 cursor-pointer select-none"
+              className="flex md:hidden items-center justify-center shrink-0 cursor-pointer select-none"
+              title="MORRO GOLD"
             >
-              <LenkyxEdgeLogo size="xs" />
-              <span className="font-logo text-sm font-black tracking-[0.14em] lux-gold-text">MORRO GOLD</span>
+              <LenkyxEdgeLogo size="sm" />
             </div>
           </div>
 
@@ -3564,6 +3585,20 @@ export function App() {
                     <Handshake className="w-4 h-4 text-pink-300" />
                     <span>Convidar Canais & Patrocínio</span>
                   </button>
+                  {mode === 'creator' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTopOverflowOpen(false);
+                        setCommissionPanelOpen(true);
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5 bg-amber-400/10 border border-amber-400/30"
+                    >
+                      <TrendingUp className="w-4 h-4 text-emerald-300" />
+                      <span>Minhas Comissões (Privado)</span>
+                      <Lock className="w-3 h-3 ml-auto text-amber-300" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
@@ -3610,7 +3645,10 @@ export function App() {
             <button aria-label="Fechar menu lateral" onClick={() => setMobileNavOpen(false)} className="md:hidden fixed inset-0 z-[70] bg-black/65 backdrop-blur-sm" />
             <aside className="md:hidden fixed left-0 top-0 bottom-0 z-[71] w-[min(82vw,320px)] overflow-y-auto bg-[#100b16]/98 border-r border-amber-300/25 shadow-2xl p-3 pt-5">
               <div className="flex items-center justify-between px-2 pb-4 border-b border-white/10">
-                <div className="flex items-center gap-2"><LenkyxEdgeLogo size="xs" /><strong className="text-sm text-amber-200 tracking-widest">MORRO GOLD</strong></div>
+                <div className="flex items-center gap-2">
+                  <LenkyxEdgeLogo size="sm" />
+                  <strong className="text-sm text-amber-200 tracking-widest sr-only">MORRO GOLD</strong>
+                </div>
                 <button onClick={() => setMobileNavOpen(false)} className="p-2 rounded-full hover:bg-white/10" aria-label="Fechar"><X className="w-4 h-4" /></button>
               </div>
               <nav className="py-3">
@@ -4425,6 +4463,11 @@ export function App() {
         liveStats={liveStats}
         onLiveStatsUpdated={(st) => setLiveStats(st)}
         onSaveSettings={handleSaveSettings}
+        onToast={showToast}
+      />
+      <CommissionPanel
+        open={commissionPanelOpen && mode === 'creator'}
+        onClose={() => setCommissionPanelOpen(false)}
         onToast={showToast}
       />
       <ShareModal

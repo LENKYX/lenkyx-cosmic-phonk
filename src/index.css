@@ -225,6 +225,30 @@
   animation: edgeLogoPop 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* Equalizador do beat de abertura (Pancadao VIP - 138 BPM) */
+.mg-eq-bar {
+  display: inline-block;
+  width: 4px;
+  height: 30%;
+  min-height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 60%, #b45309 100%);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.65);
+  transform-origin: bottom center;
+  animation: mgEqBounce 0.4348s ease-in-out infinite alternate;
+}
+
+@keyframes mgEqBounce {
+  0% {
+    height: 22%;
+    opacity: 0.65;
+  }
+  100% {
+    height: 100%;
+    opacity: 1;
+  }
+}
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
