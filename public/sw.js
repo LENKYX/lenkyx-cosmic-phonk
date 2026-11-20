@@ -1,4 +1,4 @@
-const CACHE_NAME = 'morro-gold-v78';
+const CACHE_NAME = 'morro-gold-v80';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

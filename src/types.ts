@@ -104,6 +104,7 @@ export type TabId =
   | 'search'
   | 'explore'
   | 'reels'
+  | 'channels'
   | 'shop'
   | 'movies'
   | 'sports'

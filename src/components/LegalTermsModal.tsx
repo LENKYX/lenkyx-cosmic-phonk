@@ -24,10 +24,10 @@ export const LegalTermsModal: React.FC<Props> = ({ open, onClose, creatorEmail }
             <Scale className="w-5 h-5 text-cyan-300" />
             <div>
               <h2 className="text-sm sm:text-base font-black text-white">
-                Termos de Uso, Direitos Autorais & Privacidade (LENKYX)
+                Termos de Uso, Direitos Autorais & Lei da Favela (MORRO GOLD)
               </h2>
               <p className="text-[11px] text-cyan-300/85">
-                Transparência Legal · Plataforma Sem Anúncios e Sem Cadastro
+                Plataforma Voltada Para a Favela · Código Original & Conformidade Legal
               </p>
             </div>
           </div>
@@ -43,35 +43,36 @@ export const LegalTermsModal: React.FC<Props> = ({ open, onClose, creatorEmail }
         <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs text-slate-100/90 leading-relaxed">
           <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/35 p-4 space-y-1.5">
             <div className="font-black text-emerald-300 flex items-center gap-1.5 text-sm">
-              <Music2 className="w-4 h-4" /> 1. Obras Autorais & Identidade LENKYX
+              <Music2 className="w-4 h-4" /> 1. Plataforma Voltada Para a Favela · Não-Plágio (Lei 9.610/98, Art. 8º)
             </div>
             <p>
-              As faixas musicais autorais publicadas no catálogo <strong>LENKYX</strong>, artes visuais exclusivas,
-              experiência de interface e código-fonte deste aplicativo pertencem ao seu criador titular e são
-              oferecidos gratuitamente para audição pessoal e compartilhamento com amigos.
+              O <strong>MORRO GOLD</strong> é um aplicativo cultural independente{' '}
+              <strong>voltado para a favela, os bailes, criadores e artistas da comunidade</strong>. Nos termos do{' '}
+              <strong>Art. 8º da Lei nº 9.610/1998</strong>, layouts, menus, sistemas de canais, playlists e feeds
+              funcionais são livres e <strong>não configuram plágio</strong>. A marca <strong>MORRO GOLD</strong>,
+              emblema 24K, identidade Favela Ostentação e código-fonte são 100% originais.
             </p>
           </div>
 
           <div className="rounded-2xl bg-cyan-500/10 border border-cyan-400/35 p-4 space-y-1.5">
             <div className="font-black text-cyan-300 flex items-center gap-1.5 text-sm">
-              <Globe2 className="w-4 h-4" /> 2. Músicas, Clipes, Cinema, Séries & Arena Esportiva
+              <Globe2 className="w-4 h-4" /> 2. Licenças do YouTube, Canais Próprios & Players Oficiais
             </div>
             <p>
-              Os conteúdos de busca global — incluindo clipes musicais, filmes, séries organizadas por temporadas,
-              animes e transmissões esportivas de Futebol e UFC/MMA — são indexados em tempo real a partir de fontes
-              públicas abertas e reproduzidos diretamente por players oficiais incorporados dentro do LENKYX, sem
-              hospedagem ou comercialização de arquivos protegidos de terceiros em nossos servidores.
+              Os Canais criados pelos usuários dentro do <strong>MORRO GOLD</strong> seguem a{' '}
+              <strong>Lei Soberana MORRO GOLD</strong> (o criador mantém 100% da autoria). Conteúdos externos do
+              YouTube rodam exclusivamente pelo <strong>Player Oficial IFrame API do YouTube</strong>, sem cópia ou
+              download indevido de arquivos (respeitando os Termos de Serviço e Políticas de Desenvolvedores do YouTube).
             </p>
           </div>
 
           <div className="rounded-2xl bg-purple-500/10 border border-purple-400/35 p-4 space-y-1.5">
             <div className="font-black text-purple-200 flex items-center gap-1.5 text-sm">
-              <Lock className="w-4 h-4 text-purple-300" /> 3. Acesso Sem Cadastro & Privacidade Local
+              <Lock className="w-4 h-4 text-purple-300" /> 3. Acesso Livre & Privacidade Local
             </div>
             <p>
-              O LENKYX funciona <strong>100% sem cadastro e sem login</strong>. Não exigimos e-mail, senha ou dados
-              pessoais dos visitantes. Suas playlists personalizadas e downloads offline ficam armazenados apenas no
-              próprio aparelho ou navegador, e apenas uma contagem anônima de acessos simultâneos é exibida em tempo real.
+              O MORRO GOLD prioriza acesso rápido e privacidade: playlists personalizadas e faixas offline ficam salvas
+              no próprio aparelho, com canais e comentários protegidos contra plágio.
             </p>
           </div>
 
@@ -96,7 +97,7 @@ export const LegalTermsModal: React.FC<Props> = ({ open, onClose, creatorEmail }
               específico:
               <br />
               <span className="inline-flex items-center gap-1 mt-1 text-cyan-300 font-bold">
-                <Mail className="w-3.5 h-3.5" /> {creatorEmail || 'Contato oficial via Portal LENKYX'}
+                <Mail className="w-3.5 h-3.5" /> {creatorEmail || 'Contato oficial via Portal MORRO GOLD'}
               </span>
             </p>
           </div>

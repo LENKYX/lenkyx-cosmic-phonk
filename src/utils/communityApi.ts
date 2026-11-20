@@ -435,6 +435,10 @@ export async function updateLiveRoom(payload: {
   });
 }
 
+export function getCommunityAnonId(): string {
+  return getClientSubscriberId();
+}
+
 export function getClientSubscriberId(userId?: string): string {
   if (userId) return `u-${userId}`;
   try {
@@ -480,4 +484,134 @@ export async function toggleChannelSubscribe(payload: {
       body: JSON.stringify(payload),
     }
   );
+}
+
+export interface CreatorChannelVideo {
+  id: string;
+  title: string;
+  description: string;
+  kind: 'video' | 'short' | 'music';
+  mediaUrl: string;
+  youtubeId: string;
+  posterUrl: string;
+  originalDeclaration: boolean;
+  copyrightNotice: string;
+  views: number;
+  likes: number;
+  createdAt: string;
+}
+
+export interface CreatorChannelPost {
+  id: string;
+  text: string;
+  imageUrl: string;
+  likes: number;
+  createdAt: string;
+}
+
+export interface CreatorChannel {
+  id: string;
+  handle: string;
+  name: string;
+  bio: string;
+  category: string;
+  location: string;
+  avatarUrl: string;
+  bannerUrl: string;
+  ownerId: string;
+  licenseType: 'morro_gold_favela' | 'cc_by' | 'all_rights' | string;
+  verifiedOriginal: boolean;
+  subscribersBase: number;
+  subscribersCount?: number;
+  subscribed?: boolean;
+  isOwner?: boolean;
+  channelKey?: string;
+  createdAt: string;
+  videos: CreatorChannelVideo[];
+  communityPosts: CreatorChannelPost[];
+}
+
+export async function fetchCreatorChannels(userId: string): Promise<CreatorChannel[]> {
+  const res = await req<{ channels?: CreatorChannel[] }>(
+    `/api/community/creator-channels?userId=${encodeURIComponent(userId)}`
+  );
+  return res?.channels || [];
+}
+
+export async function saveCreatorChannel(payload: {
+  id?: string;
+  ownerId: string;
+  name: string;
+  handle?: string;
+  bio?: string;
+  category?: string;
+  location?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  licenseType?: string;
+}): Promise<CreatorChannel | null> {
+  const res = await req<{ channel?: CreatorChannel }>('/api/community/creator-channels', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return res?.channel || null;
+}
+
+export async function publishCreatorChannelVideo(
+  channelId: string,
+  payload: {
+    title: string;
+    description?: string;
+    kind: 'video' | 'short' | 'music';
+    mediaUrl?: string;
+    youtubeId?: string;
+    posterUrl?: string;
+    originalDeclaration: boolean;
+  }
+): Promise<CreatorChannelVideo | null> {
+  const res = await req<{ video?: CreatorChannelVideo }>(
+    `/api/community/creator-channels/${encodeURIComponent(channelId)}/videos`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+  return res?.video || null;
+}
+
+export async function deleteCreatorChannelVideo(channelId: string, videoId: string): Promise<boolean> {
+  const res = await req<{ ok?: boolean }>(
+    `/api/community/creator-channels/${encodeURIComponent(channelId)}/videos/${encodeURIComponent(videoId)}`,
+    { method: 'DELETE' }
+  );
+  return Boolean(res?.ok);
+}
+
+export async function publishCreatorChannelPost(
+  channelId: string,
+  payload: { text: string; imageUrl?: string }
+): Promise<CreatorChannelPost | null> {
+  const res = await req<{ post?: CreatorChannelPost }>(
+    `/api/community/creator-channels/${encodeURIComponent(channelId)}/posts`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
+  return res?.post || null;
+}
+
+export async function submitCopyrightReport(payload: {
+  targetId?: string;
+  targetTitle?: string;
+  reporterName: string;
+  reporterEmail: string;
+  reason: string;
+  details: string;
+}): Promise<boolean> {
+  const res = await req<{ ok?: boolean }>('/api/community/copyright-report', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return Boolean(res?.ok);
 }

@@ -12,6 +12,7 @@ import {
   Edit3,
   Check,
   Flame,
+  MoreVertical,
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import {
@@ -83,6 +84,7 @@ export const CommunityChatModal: React.FC<ChatModalProps> = ({
   const [guestName, setGuestName] = useState(() => getGuestNickname() || 'Cria do Morro');
   const [editingNick, setEditingNick] = useState(false);
   const [replyingToAuthor, setReplyingToAuthor] = useState<string | null>(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -213,7 +215,7 @@ export const CommunityChatModal: React.FC<ChatModalProps> = ({
         className="relative w-full max-w-xl h-[88vh] sm:h-[86vh] max-h-[720px] rounded-t-3xl sm:rounded-3xl bg-gradient-to-b from-[#130824] via-[#090414] to-[#05020a] border border-amber-400/40 flex flex-col overflow-hidden shadow-[0_0_80px_rgba(245,158,11,0.28)]"
       >
         {/* INSTAGRAM LIVE HEADER */}
-        <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-[#240a33]/90 via-[#160a24]/90 to-[#081b28]/90 space-y-2.5">
+        <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-[#240a33]/90 via-[#160a24]/90 to-[#081b28]/90 space-y-2.5 relative">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="relative w-9 h-9 rounded-full p-[2px] bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-500 shrink-0">
@@ -230,7 +232,7 @@ export const CommunityChatModal: React.FC<ChatModalProps> = ({
                     <Users className="w-3 h-3" /> {onlineCount} na sala
                   </span>
                   <span className="text-xs sm:text-sm font-black text-white truncate">
-                    {roomTitle || currentRoomMeta.label}
+                    {activeRoom === roomId && roomTitle ? roomTitle : `${currentRoomMeta.label} · Chat Ao Vivo`}
                   </span>
                 </div>
                 <p className="text-[10px] text-amber-200/80 truncate mt-0.5">
@@ -238,22 +240,38 @@ export const CommunityChatModal: React.FC<ChatModalProps> = ({
                 </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white shrink-0"
-              title="Fechar Chat Ao Vivo"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setMoreMenuOpen((v) => !v)}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                title="Mais salas e opções"
+                aria-label="Mais salas e opções"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white shrink-0"
+                title="Fechar Chat Ao Vivo"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          {/* LIVE ROOM SWITCHER PILLS */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
-            {LIVE_CHAT_ROOMS.map((room) => (
+          {/* CLEAN WRAPPED ROOM PILLS + ⋮ MORE ROOMS MENU (No clipped pills!) */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {LIVE_CHAT_ROOMS.filter(
+              (r, idx) => idx < 3 || r.id === activeRoom
+            ).map((room) => (
               <button
                 key={room.id}
                 type="button"
-                onClick={() => setActiveRoom(room.id)}
+                onClick={() => {
+                  setActiveRoom(room.id);
+                  setMoreMenuOpen(false);
+                }}
                 className={`px-3 py-1 rounded-full text-[11px] font-black whitespace-nowrap transition ${
                   activeRoom === room.id
                     ? 'bg-gradient-to-r from-amber-400 via-rose-500 to-pink-500 text-black shadow'
@@ -263,7 +281,59 @@ export const CommunityChatModal: React.FC<ChatModalProps> = ({
                 {room.label}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setMoreMenuOpen((v) => !v)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-black flex items-center gap-1 border transition ${
+                moreMenuOpen
+                  ? 'bg-amber-400 text-black border-amber-300'
+                  : 'bg-white/[0.08] hover:bg-white/15 text-amber-200 border-amber-400/30'
+              }`}
+              title="Ver todas as salas e opções"
+            >
+              <MoreVertical className="w-3 h-3" /> Mais salas
+            </button>
           </div>
+
+          {moreMenuOpen && (
+            <div className="absolute right-3 top-14 z-40 w-64 rounded-2xl bg-[#120826]/98 backdrop-blur-xl border border-amber-400/40 shadow-2xl p-2 space-y-1">
+              <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-300">
+                Todas as Salas Ao Vivo
+              </div>
+              <div className="max-h-56 overflow-y-auto space-y-1">
+                {LIVE_CHAT_ROOMS.map((room) => (
+                  <button
+                    key={room.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveRoom(room.id);
+                      setMoreMenuOpen(false);
+                    }}
+                    className={`w-full px-2.5 py-2 rounded-xl text-left text-xs flex items-center justify-between gap-2 transition ${
+                      activeRoom === room.id
+                        ? 'bg-amber-400/20 text-amber-200 font-black border border-amber-400/40'
+                        : 'hover:bg-white/10 text-slate-200 font-semibold'
+                    }`}
+                  >
+                    <span className="truncate">{room.label}</span>
+                    {activeRoom === room.id && <Check className="w-3.5 h-3.5 text-amber-300 shrink-0" />}
+                  </button>
+                ))}
+              </div>
+              {!user && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreMenuOpen(false);
+                    setEditingNick(true);
+                  }}
+                  className="w-full px-2.5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/15 text-left text-xs font-bold text-cyan-200 flex items-center gap-2 border-t border-white/10 mt-1"
+                >
+                  <Edit3 className="w-3.5 h-3.5" /> Trocar meu vulgo ({displayAuthor})
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* CHAT FEED + FLOATING INSTAGRAM HEARTS */}

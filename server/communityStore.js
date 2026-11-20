@@ -658,3 +658,279 @@ export function getTvHandoffSession(code, markClaimed = false) {
   }
   return s;
 }
+
+// === USER & CREATOR CHANNELS ("IGUAL DO YOUTUBE" + LEI SOBERANA DA FAVELA MORRO GOLD) ===
+const DEFAULT_CREATOR_CHANNELS = [
+  {
+    id: 'canal-morro-gold-oficial',
+    handle: '@morrogoldoficial',
+    name: 'MORRO GOLD Oficial',
+    bio: 'Canal oficial da favela ostentação! Lançamentos de Funk, Rap, Pagode, Bailes VIP, barbearias e cultura da quebrada.',
+    category: 'Funk & Bailes',
+    location: 'Morro Gold · Brasil',
+    avatarUrl: '/covers/morro-gold-emblema-grosso.png',
+    bannerUrl: '/covers/album-official.jpg',
+    ownerId: 'system-morro-gold',
+    licenseType: 'morro_gold_favela',
+    verifiedOriginal: true,
+    subscribersBase: 128000,
+    createdAt: '2026-01-10T12:00:00.000Z',
+    videos: [
+      {
+        id: 'cv-mg-01',
+        title: 'MORRO GOLD — Boas-vindas à Plataforma da Favela (Original)',
+        description: 'Plataforma cultural 100% voltada para os crias, MCs, DJs e empreendedores da comunidade.',
+        kind: 'video',
+        mediaUrl: '/audio/track-01.mp3',
+        youtubeId: '',
+        posterUrl: '/covers/album-official.jpg',
+        originalDeclaration: true,
+        copyrightNotice: 'Obra Cultural Original · Lei Soberana MORRO GOLD (Lei 9.610/98)',
+        views: 42100,
+        likes: 3890,
+        createdAt: '2026-06-01T14:00:00.000Z',
+      },
+    ],
+    communityPosts: [
+      {
+        id: 'cp-mg-01',
+        text: '🔥 Agora cada cria e criador pode abrir o próprio Canal aqui no MORRO GOLD com selo de Cultura da Favela e direitos preservados!',
+        imageUrl: '/covers/morro-gold-emblema-grosso.png',
+        likes: 1940,
+        createdAt: '2026-10-15T18:00:00.000Z',
+      },
+    ],
+  },
+  {
+    id: 'canal-baile-fluxo-tv',
+    handle: '@baileefluxotv',
+    name: 'Baile & Fluxo TV',
+    bio: 'Cobertura dos melhores bailes, paredões, cortes na régua e rolês da comunidade.',
+    category: 'Bailes',
+    location: 'Zona Sul · SP / RJ',
+    avatarUrl: '/covers/track-05.jpg',
+    bannerUrl: '/covers/track-12.jpg',
+    ownerId: 'system-baile-tv',
+    licenseType: 'morro_gold_favela',
+    verifiedOriginal: true,
+    subscribersBase: 64200,
+    createdAt: '2026-03-14T15:00:00.000Z',
+    videos: [],
+    communityPosts: [
+      {
+        id: 'cp-bf-01',
+        text: '📍 Agenda dos bailes do fim de semana atualizada na aba Explorar! Quem vai colar?',
+        imageUrl: '',
+        likes: 612,
+        createdAt: '2026-11-01T20:00:00.000Z',
+      },
+    ],
+  },
+  {
+    id: 'canal-cria-beats-studio',
+    handle: '@criabeatsstudio',
+    name: 'Cria Beats Studio',
+    bio: 'Beats pesados de Funk Mandelão, Trap de Cria e Pagode acústico direto da quebrada.',
+    category: 'Rap & Trap',
+    location: 'Comunidade · BR',
+    avatarUrl: '/covers/track-16.jpg',
+    bannerUrl: '/covers/track-05.jpg',
+    ownerId: 'system-cria-beats',
+    licenseType: 'morro_gold_favela',
+    verifiedOriginal: true,
+    subscribersBase: 41900,
+    createdAt: '2026-04-20T16:00:00.000Z',
+    videos: [],
+    communityPosts: [],
+  },
+];
+
+function ensureCreatorChannels(local) {
+  if (!Array.isArray(local.creatorChannels) || local.creatorChannels.length === 0) {
+    local.creatorChannels = DEFAULT_CREATOR_CHANNELS.map((c) => ({ ...c }));
+  }
+  if (!Array.isArray(local.copyrightReports)) {
+    local.copyrightReports = [];
+  }
+  return local;
+}
+
+export function getCreatorChannels(userId = '') {
+  const local = ensureCreatorChannels(readLocal());
+  const subMap = local.channels || {};
+  const uid = String(userId || '').trim();
+  const list = local.creatorChannels.map((ch) => {
+    const key = normalizeChannelKey(ch.id, ch.name);
+    const entry = subMap[key];
+    const dynSubs = Array.isArray(entry?.subscribers) ? entry.subscribers : [];
+    const totalSubs = Number(ch.subscribersBase || 0) + Number(entry?.baseCount || 0) + dynSubs.length;
+    return {
+      ...ch,
+      channelKey: key,
+      subscribersCount: totalSubs,
+      subscribed: Boolean(uid && dynSubs.includes(uid)),
+      isOwner: Boolean(uid && ch.ownerId === uid),
+    };
+  });
+  return list;
+}
+
+export function upsertCreatorChannel(payload = {}) {
+  const local = ensureCreatorChannels(readLocal());
+  const ownerId = String(payload.ownerId || '').trim() || `cria-${crypto.randomUUID().slice(0, 8)}`;
+  const rawName = String(payload.name || '').trim().slice(0, 60);
+  if (!rawName) throw new Error('Nome do canal é obrigatório.');
+  const rawHandle = String(payload.handle || rawName)
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, '')
+    .replace(/[^a-z0-9_.-]+/g, '')
+    .slice(0, 32);
+  const handle = `@${rawHandle || 'canalcria'}`;
+  const id = payload.id
+    ? String(payload.id).trim().slice(0, 80)
+    : `canal-${rawHandle || crypto.randomUUID().slice(0, 6)}-${crypto.randomUUID().slice(0, 4)}`;
+
+  const existingIdx = local.creatorChannels.findIndex((c) => c.id === id);
+  const now = new Date().toISOString();
+
+  if (existingIdx >= 0) {
+    const prev = local.creatorChannels[existingIdx];
+    const updated = {
+      ...prev,
+      name: rawName,
+      handle,
+      bio: String(payload.bio ?? prev.bio ?? '').trim().slice(0, 400),
+      category: String(payload.category || prev.category || 'Funk & Bailes').slice(0, 40),
+      location: String(payload.location ?? prev.location ?? 'Favela · Brasil').trim().slice(0, 60),
+      avatarUrl: String(payload.avatarUrl || prev.avatarUrl || '/covers/morro-gold-emblema-grosso.png').slice(0, 200000),
+      bannerUrl: String(payload.bannerUrl || prev.bannerUrl || '/covers/album-official.jpg').slice(0, 200000),
+      licenseType: String(payload.licenseType || prev.licenseType || 'morro_gold_favela').slice(0, 40),
+      updatedAt: now,
+    };
+    local.creatorChannels[existingIdx] = updated;
+    writeLocal(local);
+    return { ...updated, isOwner: updated.ownerId === ownerId };
+  }
+
+  const created = {
+    id,
+    handle,
+    name: rawName,
+    bio: String(payload.bio || 'Canal original criado na comunidade MORRO GOLD · Cultura da Favela!').trim().slice(0, 400),
+    category: String(payload.category || 'Funk & Bailes').slice(0, 40),
+    location: String(payload.location || 'Favela · Brasil').trim().slice(0, 60),
+    avatarUrl: String(payload.avatarUrl || '/covers/morro-gold-emblema-grosso.png').slice(0, 200000),
+    bannerUrl: String(payload.bannerUrl || '/covers/album-official.jpg').slice(0, 200000),
+    ownerId,
+    licenseType: String(payload.licenseType || 'morro_gold_favela').slice(0, 40),
+    verifiedOriginal: true,
+    subscribersBase: 1,
+    createdAt: now,
+    videos: [],
+    communityPosts: [],
+  };
+  local.creatorChannels.unshift(created);
+  writeLocal(local);
+  return { ...created, isOwner: true, subscribersCount: 1, subscribed: false };
+}
+
+export function addCreatorChannelVideo(channelId, payload = {}) {
+  const local = ensureCreatorChannels(readLocal());
+  const ch = local.creatorChannels.find((c) => c.id === channelId);
+  if (!ch) throw new Error('Canal não encontrado.');
+  if (!payload.originalDeclaration) {
+    throw new Error('Confirme a Declaração Anti-Plágio & Originalidade antes de publicar.');
+  }
+  const title = String(payload.title || '').trim().slice(0, 120);
+  if (!title) throw new Error('Título do vídeo/faixa é obrigatório.');
+
+  const kind = ['video', 'short', 'music'].includes(payload.kind) ? payload.kind : 'video';
+  const item = {
+    id: `cv-${crypto.randomUUID().slice(0, 8)}`,
+    title,
+    description: String(payload.description || '').trim().slice(0, 500),
+    kind,
+    mediaUrl: String(payload.mediaUrl || '').slice(0, 6000000),
+    youtubeId: String(payload.youtubeId || '').trim().slice(0, 24),
+    posterUrl: String(payload.posterUrl || ch.avatarUrl || '/covers/album-official.jpg').slice(0, 200000),
+    originalDeclaration: true,
+    copyrightNotice: 'Obra Original · Protegida pela Lei Soberana MORRO GOLD (Cultura da Favela) & Lei 9.610/98',
+    views: 1,
+    likes: 1,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (!Array.isArray(ch.videos)) ch.videos = [];
+  ch.videos.unshift(item);
+
+  // Also cross-post Shorts into community shorts feed if requested
+  if (kind === 'short' && (item.mediaUrl || item.youtubeId)) {
+    const shortItem = {
+      id: `short-${crypto.randomUUID().slice(0, 8)}`,
+      title: item.title,
+      creator_name: ch.name,
+      creator_color: 'from-amber-400 to-rose-500',
+      description: `${item.description || 'Original do Canal'} (${ch.handle})`,
+      media_type: item.youtubeId ? 'youtube' : 'video',
+      video_url: item.youtubeId ? '' : item.mediaUrl,
+      youtube_id: item.youtubeId,
+      poster_url: item.posterUrl,
+      audio_title: `${ch.name} · Canal MORRO GOLD`,
+      likes: 1,
+      created_at: item.createdAt,
+    };
+    local.shorts = [shortItem, ...(local.shorts || [])].slice(0, 100);
+  }
+
+  writeLocal(local);
+  return item;
+}
+
+export function deleteCreatorChannelVideo(channelId, videoId) {
+  const local = ensureCreatorChannels(readLocal());
+  const ch = local.creatorChannels.find((c) => c.id === channelId);
+  if (!ch) throw new Error('Canal não encontrado.');
+  ch.videos = (ch.videos || []).filter((v) => v.id !== videoId);
+  writeLocal(local);
+  return { ok: true };
+}
+
+export function addCreatorChannelPost(channelId, payload = {}) {
+  const local = ensureCreatorChannels(readLocal());
+  const ch = local.creatorChannels.find((c) => c.id === channelId);
+  if (!ch) throw new Error('Canal não encontrado.');
+  const text = String(payload.text || '').trim().slice(0, 600);
+  if (!text) throw new Error('Escreva algo para publicar na Comunidade.');
+  const post = {
+    id: `cp-${crypto.randomUUID().slice(0, 8)}`,
+    text,
+    imageUrl: String(payload.imageUrl || '').slice(0, 200000),
+    likes: 1,
+    createdAt: new Date().toISOString(),
+  };
+  if (!Array.isArray(ch.communityPosts)) ch.communityPosts = [];
+  ch.communityPosts.unshift(post);
+  writeLocal(local);
+  return post;
+}
+
+export function submitCopyrightReport(payload = {}) {
+  const local = ensureCreatorChannels(readLocal());
+  const report = {
+    id: `cr-${crypto.randomUUID().slice(0, 8)}`,
+    targetId: String(payload.targetId || '').slice(0, 120),
+    targetTitle: String(payload.targetTitle || '').slice(0, 160),
+    reporterName: String(payload.reporterName || 'Anônimo').slice(0, 80),
+    reporterEmail: String(payload.reporterEmail || '').slice(0, 120),
+    reason: String(payload.reason || 'Direitos Autorais / Atribuição').slice(0, 120),
+    details: String(payload.details || '').slice(0, 800),
+    status: 'registrado_marco_civil_art19',
+    createdAt: new Date().toISOString(),
+  };
+  local.copyrightReports.unshift(report);
+  local.copyrightReports = local.copyrightReports.slice(0, 200);
+  writeLocal(local);
+  return report;
+}
+

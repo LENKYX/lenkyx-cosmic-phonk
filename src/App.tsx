@@ -58,6 +58,7 @@ import {
   TrendingUp,
   Headphones,
   MessageSquare,
+  Menu,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
@@ -133,6 +134,10 @@ const CosmicSearchView = React.lazy(() =>
 const OfflineTravelView = React.lazy(() =>
   import('./components/OfflineTravelView').then((m) => ({ default: m.OfflineTravelView }))
 );
+const CreatorChannelsView = React.lazy(() =>
+  import('./components/CreatorChannelsView').then((m) => ({ default: m.CreatorChannelsView }))
+);
+import { LegalCharterModal } from './components/LegalCharterModal';
 import { BassBoostLevel, MiniPlayer } from './components/MiniPlayer';
 import { LegalTermsModal } from './components/LegalTermsModal';
 import { MobileIosSearchModal } from './components/MobileIosSearchModal';
@@ -517,6 +522,7 @@ export function App() {
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [topOverflowOpen, setTopOverflowOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [reelsAction, setReelsAction] = useState<'shorts' | 'create_reel' | 'go_live'>('shorts');
   const [reelsActionNonce, setReelsActionNonce] = useState(0);
   const [chatModalOpen, setChatModalOpen] = useState(false);
@@ -731,6 +737,9 @@ export function App() {
   }, []);
 
   const [legalOpen, setLegalOpen] = useState(false);
+  const [charterOpen, setCharterOpen] = useState(false);
+  const [charterTab, setCharterTab] = useState<'charter' | 'youtube' | 'report'>('charter');
+  const [charterTarget, setCharterTarget] = useState('');
   const [appUpdateInfo, setAppUpdateInfo] = useState<{
     latestVersionName: string;
     apkUrl: string;
@@ -2145,6 +2154,8 @@ export function App() {
   const openClipWithIntro = useCallback(
     (track: Track, queue?: Track[]) => {
       setClipPrerollActive(false);
+      setMediaPlayerMenuOpen(false);
+      setClipMinimized(false);
       setClipTheaterOpen(true);
       void handlePlayTrack(track, 'v1', queue);
     },
@@ -2413,9 +2424,6 @@ export function App() {
                 }
               });
             }
-          }
-          if (currentTrackRef.current) {
-            setMediaPlayerMenuOpen(true);
           }
         }
       } else if (document.visibilityState === 'visible') {
@@ -2813,6 +2821,7 @@ export function App() {
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'catalog', label: 'Início', icon: <Home className="w-5 h-5" /> },
     { id: 'reels', label: 'Reels & Memes', icon: <Film className="w-5 h-5" /> },
+    { id: 'channels', label: 'Canais & Criadores', icon: <Tv className="w-5 h-5" /> },
     { id: 'explore', label: 'Música & Clipes', icon: <Compass className="w-5 h-5" /> },
     { id: 'shop', label: 'Loja dos Cria VIP', icon: <ShoppingBag className="w-5 h-5" /> },
     { id: 'movies', label: 'Filmes & Séries', icon: <Clapperboard className="w-5 h-5" /> },
@@ -3044,6 +3053,32 @@ export function App() {
 
             <button
               type="button"
+              onClick={() => navigateTab('channels')}
+              className={`w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                activeTab === 'channels' ? 'bg-white/[0.09] text-amber-200' : 'text-white'
+              }`}
+            >
+              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 text-black flex items-center justify-center shrink-0">
+                <Tv className="w-3.5 h-3.5" />
+              </span>
+              <span className="truncate">Seu Canal (YouTube da Favela)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCharterTab('charter');
+                setCharterTarget('');
+                setCharterOpen(true);
+              }}
+              className="w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold text-amber-200 flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <Scale className="w-5 h-5 text-amber-300 shrink-0" />
+              <span className="truncate">Lei da Favela & Licenças</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => navigateTab('studio')}
               className={`w-full px-3 py-2 rounded-xl hover:bg-white/[0.06] text-[13px] font-semibold flex items-center gap-3.5 transition focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 activeTab === 'studio' ? 'bg-white/[0.09] text-amber-200' : 'text-white'
@@ -3163,6 +3198,15 @@ export function App() {
         {/* TOP HEADER (Luxury Obsidian Glass Bar) */}
         <header className="shrink-0 z-30 bg-[#06070d]/90 backdrop-blur-2xl border-b border-amber-400/15 h-14 px-3 sm:px-5 flex items-center justify-between gap-3 shadow-[0_6px_28px_rgba(0,0,0,0.45)]">
           <div className="flex items-center gap-2 shrink-0 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              className="md:hidden w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-white shrink-0"
+              aria-label={mobileNavOpen ? 'Fechar menu lateral' : 'Abrir menu lateral'}
+              title="Menu de navegação"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             {activeTab !== 'catalog' && (
               <button
                 onClick={goBackTab}
@@ -3561,13 +3605,51 @@ export function App() {
           </div>
         </header>
 
+        {mobileNavOpen && (
+          <>
+            <button aria-label="Fechar menu lateral" onClick={() => setMobileNavOpen(false)} className="md:hidden fixed inset-0 z-[70] bg-black/65 backdrop-blur-sm" />
+            <aside className="md:hidden fixed left-0 top-0 bottom-0 z-[71] w-[min(82vw,320px)] overflow-y-auto bg-[#100b16]/98 border-r border-amber-300/25 shadow-2xl p-3 pt-5">
+              <div className="flex items-center justify-between px-2 pb-4 border-b border-white/10">
+                <div className="flex items-center gap-2"><LenkyxEdgeLogo size="xs" /><strong className="text-sm text-amber-200 tracking-widest">MORRO GOLD</strong></div>
+                <button onClick={() => setMobileNavOpen(false)} className="p-2 rounded-full hover:bg-white/10" aria-label="Fechar"><X className="w-4 h-4" /></button>
+              </div>
+              <nav className="py-3">
+                {sidebarMain.filter((item) => item.id === 'catalog' || item.id === 'reels').map((item) => {
+                  const active = activeTab === item.id && !moreSheetOpen;
+                  return <button key={item.id} onClick={() => { navigateTab(item.id); setMobileNavOpen(false); }} className={`w-full px-3 py-3 rounded-xl text-left flex items-center gap-3 text-sm font-semibold ${active ? 'bg-amber-400/15 text-amber-200 border border-amber-400/30' : 'text-slate-100 hover:bg-white/[0.08]'}`}>
+                    <span className="text-amber-300">{item.icon}</span><span>{item.id === 'reels' ? 'Shorts' : 'Início'}</span>
+                  </button>;
+                })}
+                <section className="mt-4 border-t border-white/15 pt-3">
+                  <button onClick={() => { setShortsTriggerQuery('__subscribed__'); setShortsTriggerNonce((n) => n + 1); navigateTab('reels'); setMobileNavOpen(false); }} className="w-full px-3 py-2 flex items-center justify-between text-sm font-bold text-white hover:bg-white/[0.06] rounded-lg">Inscrições <ChevronRight className="w-4 h-4" /></button>
+                  {(subscribedChannelsList.length ? subscribedChannelsList : ['MORRO GOLD Oficial']).slice(0, 8).map((name) => (
+                    <button key={name} onClick={() => { setShortsTriggerQuery(name); setShortsTriggerNonce((n) => n + 1); navigateTab('reels'); setMobileNavOpen(false); }} className="w-full px-3 py-2.5 flex items-center gap-3 text-[13px] text-slate-100 hover:bg-white/[0.06] rounded-lg">
+                      <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-300/70 to-rose-500/70 border border-white/20 flex items-center justify-center text-[10px] font-black text-black shrink-0">{name.slice(0,1).toUpperCase()}</span><span className="truncate flex-1 text-left">{name}</span><span className="text-cyan-300 text-[10px]">•</span>
+                    </button>
+                  ))}
+                </section>
+                <section className="mt-3 border-t border-white/15 pt-3">
+                  <div className="px-3 py-2 text-sm font-bold text-white">Você <ChevronRight className="inline w-4 h-4" /></div>
+                  {sidebarMain.filter((item) => !['catalog','reels'].includes(item.id)).map((item) => {
+                    const active = activeTab === item.id && !moreSheetOpen;
+                    return <button key={item.id} onClick={() => { navigateTab(item.id); setMobileNavOpen(false); }} className={`w-full px-3 py-2.5 rounded-xl text-left flex items-center gap-3 text-[13px] font-semibold ${active ? 'bg-amber-400/15 text-amber-200' : 'text-slate-100 hover:bg-white/[0.08]'}`}><span className="text-amber-300">{item.icon}</span><span>{item.label.replace(' & Criadores','').replace(' & Clipes','')}</span></button>;
+                  })}
+                  <button onClick={() => { setMobileNavOpen(false); setCharterTab('charter'); setCharterOpen(true); }} className="w-full px-3 py-2.5 rounded-xl text-left flex items-center gap-3 text-[13px] font-semibold text-slate-100 hover:bg-white/[0.08]"><Scale className="w-4 h-4 text-amber-300" /> Lei da Favela & Licenças</button>
+                </section>
+              </nav>
+            </aside>
+          </>
+        )}
+
         {/* CLEAN YOUTUBE-STYLE UNDERLINED TOP TAB BAR */}
-        <div className="shrink-0 z-20 px-3 sm:px-5 border-b border-white/[0.08] bg-[#06070d]/90 backdrop-blur-xl">
-          <div className="max-w-[1380px] mx-auto flex items-center gap-5 sm:gap-7 overflow-x-auto no-scrollbar">
+        <div className="shrink-0 z-20 px-3 sm:px-5 border-b border-amber-300/15 bg-gradient-to-b from-[#17101c]/90 via-[#100d16]/88 to-[#090910]/94 backdrop-blur-2xl shadow-[0_12px_35px_rgba(0,0,0,0.36)]">
+          <div className="max-w-[1380px] mx-auto flex items-center gap-5 sm:gap-7 overflow-x-auto no-scrollbar border-b border-white/[0.08]">
+
             {(
               [
                 { id: 'catalog', label: 'Início' },
                 { id: 'reels', label: 'Reels' },
+                { id: 'channels', label: 'Canais' },
                 { id: 'explore', label: 'Música' },
                 { id: 'sports', label: 'Ao vivo' },
                 { id: 'shop', label: 'Loja VIP' },
@@ -3592,23 +3674,26 @@ export function App() {
             <button
               type="button"
               onClick={() => setMoreSheetOpen((v) => !v)}
-              className={`py-2.5 text-[13px] font-semibold whitespace-nowrap border-b-2 transition shrink-0 ${
+              className={`py-2.5 text-[13px] font-semibold whitespace-nowrap border-b-2 transition shrink-0 flex items-center gap-1 ${
                 moreSheetOpen
                   ? 'border-amber-400 text-white'
                   : 'border-transparent text-slate-300/85 hover:text-white'
               }`}
+              title="Mais seções"
             >
-              Mais
+              <MoreVertical className="w-4 h-4 text-amber-300" /> Mais
             </button>
           </div>
 
           {/* YOUTUBE-STYLE HORIZONTAL CATEGORY FILTER CHIPS (Mobile, PC & Smart TV) */}
           {!moreSheetOpen && (
-            <div className="max-w-[1380px] mx-auto flex items-center gap-2 py-2 overflow-x-auto no-scrollbar border-t border-white/[0.05]">
+            <div className="max-w-[1380px] mx-auto flex items-center gap-2 py-2 border-t border-white/[0.06]">
+              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto no-scrollbar">
               {(
                 [
                   { id: 'tudo', label: 'Tudo', run: () => navigateTab('catalog') },
                   { id: 'shorts', label: 'Shorts', run: () => navigateTab('reels') },
+                  { id: 'canais', label: 'Canais', run: () => navigateTab('channels') },
                   { id: 'musica', label: 'Música', run: () => navigateTab('explore') },
                   {
                     id: 'funk',
@@ -3650,6 +3735,16 @@ export function App() {
                   </button>
                 );
               })}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMoreSheetOpen((v) => !v)}
+                className="p-1.5 rounded-lg bg-white/[0.08] hover:bg-amber-400/20 border border-amber-300/20 text-amber-200 shrink-0"
+                title="Mais categorias e seções"
+                aria-label="Mais categorias e seções"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
             </div>
           )}
         </div>
@@ -4132,6 +4227,20 @@ export function App() {
                     />
                   )}
 
+                  {activeTab === 'channels' && (
+                    <CreatorChannelsView
+                      onOpenLiveChat={(roomId, roomTitle) => openLiveChat(roomId, roomTitle)}
+                      onCommentTarget={(targetId, title, ytId) => openCommentTarget(targetId, title, ytId)}
+                      onOpenLegalModal={(t = 'charter', title = '') => {
+                        setCharterTab(t);
+                        setCharterTarget(title);
+                        setCharterOpen(true);
+                      }}
+                      onPauseMusic={pauseCatalogPlayer}
+                      onToast={showToast}
+                    />
+                  )}
+
                   {activeTab === 'studio' && (
                     <StudioCreateView
                       tracks={tracks}
@@ -4151,8 +4260,8 @@ export function App() {
         </main>
       </div>
 
-      {/* PERSISTENT MUSIC PLAYER BAR: Always stays visible after clicking any track in ANY tab! */}
-      {!watchingMovie && currentTrack && musicMenuOpen && (
+      {/* PERSISTENT MUSIC PLAYER BAR: Shown when not watching full-focus Video Clip or Movie (never 2 overlapping menus!) */}
+      {!watchingMovie && currentTrack && musicMenuOpen && !(clipTheaterOpen && !clipMinimized) && (
         <MiniPlayer
           track={currentTrack}
           activeVersion={activeVersion}
@@ -4331,6 +4440,13 @@ export function App() {
         onToast={showToast}
       />
       <LegalTermsModal open={legalOpen} onClose={() => setLegalOpen(false)} />
+      <LegalCharterModal
+        open={charterOpen}
+        onClose={() => setCharterOpen(false)}
+        onToast={showToast}
+        initialTab={charterTab}
+        initialTargetTitle={charterTarget}
+      />
       <MobileIosSearchModal
         open={mobileIosSearchOpen}
         query={globalSearch}
@@ -5020,8 +5136,20 @@ export function App() {
             <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e] shrink-0 relative">
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <button
-                  onClick={() => setClipTheaterOpen(false)}
+                  onClick={() => {
+                    if (document.fullscreenElement) {
+                      void document.exitFullscreen().catch(() => {});
+                      setClipFitMode('standard');
+                      return;
+                    }
+                    if (clipFitMode === 'fullscreen') {
+                      setClipFitMode('standard');
+                      return;
+                    }
+                    setClipMinimized(true);
+                  }}
                   className="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1 shrink-0"
+                  title="Voltar sem perder o vídeo"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Voltar</span>
@@ -5053,6 +5181,10 @@ export function App() {
                   type="button"
                   onClick={() => {
                     setClipMoreOpen(false);
+                    if (document.fullscreenElement) {
+                      void document.exitFullscreen().catch(() => {});
+                    }
+                    setClipFitMode('standard');
                     setClipMinimized(true);
                     showToast('🎬 Clipe minimizado! Continua tocando enquanto você navega.');
                   }}
@@ -5063,14 +5195,20 @@ export function App() {
                   <span>Minimizar</span>
                 </button>
                 <button
-                  onClick={() =>
-                    setClipFitMode((m) => (m === 'fullscreen' ? 'standard' : 'fullscreen'))
-                  }
+                  onClick={() => {
+                    if (clipFitMode === 'fullscreen' || document.fullscreenElement) {
+                      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+                      setClipFitMode('standard');
+                    } else {
+                      setClipFitMode('fullscreen');
+                      void clipStageRef.current?.requestFullscreen?.().catch(() => {});
+                    }
+                  }}
                   className="px-2.5 py-1.5 rounded-xl bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-[11px] font-black flex items-center gap-1"
                   title="Aumentar / Reduzir"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
-                  <span>{clipFitMode === 'fullscreen' ? 'Reduzir' : 'Aumentar'}</span>
+                  <span>{clipFitMode === 'fullscreen' || isNativeFullscreen ? 'Reduzir' : 'Aumentar'}</span>
                 </button>
                 <button
                   type="button"
@@ -5082,6 +5220,10 @@ export function App() {
                 </button>
                 <button
                   onClick={() => {
+                    if (document.fullscreenElement) {
+                      void document.exitFullscreen().catch(() => {});
+                    }
+                    setClipFitMode('standard');
                     setClipMinimized(false);
                     setClipTheaterOpen(false);
                   }}
@@ -5094,6 +5236,19 @@ export function App() {
 
               {clipMoreOpen && (
                 <div className="absolute right-3 top-12 z-40 w-56 rounded-2xl bg-[#110a24]/98 backdrop-blur-xl border border-amber-400/35 shadow-2xl p-2.5 space-y-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClipMoreOpen(false);
+                      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+                      setClipFitMode('standard');
+                      setClipMinimized(true);
+                      setMediaPlayerMenuOpen(true);
+                    }}
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/35 border border-amber-400/40 text-amber-200 font-black flex items-center justify-center gap-1"
+                  >
+                    <Disc3 className="w-3.5 h-3.5" /> Efeitos, Som Alto & Fila
+                  </button>
                   <select
                     value={clipQuality}
                     onChange={(e) => {
@@ -5319,6 +5474,23 @@ export function App() {
             </div>
 
             <div className="grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateMenuOpen(false);
+                  navigateTab('channels');
+                }}
+                className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/25 to-yellow-500/20 hover:from-amber-500/40 hover:to-yellow-500/35 border border-amber-400/45 flex items-center gap-3 text-left transition"
+              >
+                <span className="w-10 h-10 rounded-xl bg-amber-400 text-black flex items-center justify-center shrink-0">
+                  <Tv className="w-5 h-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-black text-white">📺 Criar / Abrir Meu Canal (Igual YouTube)</div>
+                  <div className="text-[11px] text-amber-200/85">Canal próprio com banner, @arroba, vídeos e Lei da Favela</div>
+                </div>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {

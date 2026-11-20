@@ -83,6 +83,12 @@ import {
   likeCommunityShort,
   getUserLikedShortIds,
   applyShortLikeOverlay,
+  getCreatorChannels,
+  upsertCreatorChannel,
+  addCreatorChannelVideo,
+  deleteCreatorChannelVideo,
+  addCreatorChannelPost,
+  submitCopyrightReport,
   getActiveLives,
   startOrUpdateLive,
   getChannelSubscriptions,
@@ -2644,6 +2650,60 @@ app.post('/api/community/subscribe', (req, res) => {
       subscriberId: req.body?.subscriberId,
     });
     res.json(out);
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+// === USER & CREATOR CHANNELS ("IGUAL DO YOUTUBE" + LEI DA FAVELA MORRO GOLD) ===
+app.get('/api/community/creator-channels', (req, res) => {
+  try {
+    const userId = String(req.query.userId || '').trim();
+    res.json({ channels: getCreatorChannels(userId) });
+  } catch (err) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/creator-channels', (req, res) => {
+  try {
+    const channel = upsertCreatorChannel(req.body || {});
+    res.json({ channel });
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/creator-channels/:id/videos', (req, res) => {
+  try {
+    const video = addCreatorChannelVideo(req.params.id, req.body || {});
+    res.json({ video });
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.delete('/api/community/creator-channels/:id/videos/:videoId', (req, res) => {
+  try {
+    res.json(deleteCreatorChannelVideo(req.params.id, req.params.videoId));
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/creator-channels/:id/posts', (req, res) => {
+  try {
+    const post = addCreatorChannelPost(req.params.id, req.body || {});
+    res.json({ post });
+  } catch (err) {
+    res.status(400).json({ error: String(err?.message || err) });
+  }
+});
+
+app.post('/api/community/copyright-report', (req, res) => {
+  try {
+    const report = submitCopyrightReport(req.body || {});
+    res.json({ ok: true, report });
   } catch (err) {
     res.status(400).json({ error: String(err?.message || err) });
   }
