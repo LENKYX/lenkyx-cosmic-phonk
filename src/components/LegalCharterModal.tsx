@@ -52,12 +52,16 @@ export const LegalCharterModal: React.FC<Props> = ({
     } catch {
       saved = {};
     }
-    const autoName = String(saved.name || acc?.name || '').trim();
+    const autoName = String(saved.name || acc?.name || '').trim() || 'MORRO GOLD';
     const autoEmail = String(saved.email || acc?.email || '').trim();
     setReporterName(autoName);
     setReporterEmail(autoEmail);
-    setTargetTitle(initialTargetTitle || '');
-    setAutofilled(Boolean(autoName || autoEmail));
+    setTargetTitle(initialTargetTitle || 'Canal MORRO GOLD · Músicas, Baile & Favela (identidade oficial)');
+    setDetails((prev) =>
+      prev ||
+      'Titularidade MORRO GOLD (Lei 9.610/98): declaro que a marca MORRO GOLD, o emblema 24k, a identidade visual Favela Ostentação, os canais, faixas, clipes, capas e demais obras citadas são de minha autoria exclusiva ou utilizados com licença. Solicito (1) manutenção obrigatória de crédito em qualquer reutilização, (2) remoção imediata de plágio, cópia ou reupload não autorizado identificado (Marco Civil da Internet, Art. 19) e (3) atribuição/receita devida quando aplicável. Registro esta notificação como prova de boa-fé e prioridade autoral.'
+    );
+    setAutofilled(true);
     setSentOk(false);
   }, [open, initialTargetTitle]);
 

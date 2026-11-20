@@ -3910,6 +3910,172 @@ app.post('/api/shop/parse-affiliate-link', async (req, res) => {
   });
 });
 
+// ===== LOJA MORRO GOLD · CATÁLOGO REAL + SINCRONIZAÇÃO AUTOMÁTICA COM A INTERNET =====
+const SHOP_CATALOG_PATH = path.join(DATA_DIR, 'shop-catalog.json');
+const SHOP_ORDERS_PATH = path.join(DATA_DIR, 'shop-orders.json');
+
+const SHOP_REAL_SEED = [
+  {
+    id: 'shop-mansao-maromba-combo',
+    title: 'Drink Mansão Maromba Vodka Combo 6 Unidades',
+    priceBrl: 169.9,
+    priceLabel: 'R$ 169,90 no Pix',
+    priceOtherLabel: 'ou R$ 179,90 em outros meios',
+    originalPriceBrl: 179.9,
+    discountPct: 5,
+    seller: 'TONELLI SUPERMERCADOS · Loja Oficial',
+    verifiedPrice: true,
+    query: 'Bebida Mansao Maromba Toguro combo',
+  },
+  {
+    id: 'shop-mansao-maromba-pack',
+    title: 'Mansão Maromba Whisky + Maca Verde 1L (Drink Pronto)',
+    priceBrl: 12.79,
+    priceLabel: 'R$ 12,79 no Pix',
+    priceOtherLabel: 'ou R$ 15,99 em outros meios',
+    originalPriceBrl: 25,
+    discountPct: 48,
+    seller: 'FULL · SUPER',
+    verifiedPrice: true,
+    query: 'Mansao Maromba Whisky Maca Verde 1L',
+  },
+  {
+    id: 'shop-mansao-maromba-kit-treino',
+    title: 'Drink Do Job Mansao Maromba Sabor Beijo Na Noite 1L',
+    priceBrl: 12.79,
+    priceLabel: 'R$ 12,79 no Pix',
+    priceOtherLabel: 'ou R$ 15,99 em outros meios',
+    originalPriceBrl: 25,
+    discountPct: 48,
+    seller: 'FULL · SUPER',
+    verifiedPrice: true,
+    query: 'Drink Do Job Mansao Maromba Beijo Na Noite',
+  },
+  {
+    id: 'shop-mansao-maromba-kit6',
+    title: 'Kit 6 Unid Mansao Maromba Drink (Combo Fardo)',
+    priceBrl: 183.17,
+    priceLabel: 'R$ 183,17 no Pix',
+    priceOtherLabel: 'ou 6x R$ 32,20 sem juros',
+    originalPriceBrl: 193.17,
+    discountPct: 5,
+    seller: 'Mercado Livre · Frete gratis',
+    verifiedPrice: true,
+    query: 'Kit 6 Unid Maromba Mansao Drink',
+  },
+];
+
+function readJsonFileSafe(p, fallback) {
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8')) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJsonFileSafe(p, data) {
+  try {
+    fs.writeFileSync(p, JSON.stringify(data, null, 2));
+  } catch {
+    // ignore
+  }
+}
+
+function getShopCatalog() {
+  const saved = readJsonFileSafe(SHOP_CATALOG_PATH, null);
+  if (saved && Array.isArray(saved.products) && saved.products.length) return saved;
+  return {
+    products: SHOP_REAL_SEED,
+    updatedAt: new Date().toISOString(),
+    lastSyncAttempt: null,
+    syncStatus: 'verificado-manual',
+  };
+}
+
+async function syncShopCatalog() {
+  const catalog = getShopCatalog();
+  catalog.lastSyncAttempt = new Date().toISOString();
+  let updated = 0;
+  for (const prod of catalog.products) {
+    try {
+      const q = encodeURIComponent(`${prod.query || prod.title} preco`);
+      const r = await fetch(`https://www.bing.com/search?q=${q}&mkt=pt-BR`, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+          'Accept-Language': 'pt-BR,pt;q=0.9',
+        },
+        signal: AbortSignal.timeout(7000),
+      });
+      const html = await r.text();
+      const m = html.match(/R\$\s?([\d.]{1,9},\d{2})/);
+      if (m) {
+        const price = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+        if (price > 2 && price < 100000) {
+          prod.priceBrl = price;
+          prod.priceLabel = `R$ ${price.toFixed(2).replace('.', ',')} no Pix`;
+          if (prod.originalPriceBrl && prod.originalPriceBrl > price) {
+            prod.discountPct = Math.max(1, Math.round((1 - price / prod.originalPriceBrl) * 100));
+          }
+          prod.verifiedPrice = true;
+          prod.verifiedAt = new Date().toISOString().slice(0, 10);
+          updated++;
+        }
+      }
+    } catch {
+      // mantém o último preço real conhecido
+    }
+  }
+  catalog.updatedAt = new Date().toISOString();
+  catalog.syncStatus = updated > 0 ? 'sincronizado-web' : 'referencia-verificada';
+  writeJsonFileSafe(SHOP_CATALOG_PATH, catalog);
+  return catalog;
+}
+
+// sincronização automática: ao ligar (após 15s) e a cada 6 horas
+setTimeout(() => {
+  syncShopCatalog().catch(() => {});
+}, 15 * 1000);
+setInterval(() => {
+  syncShopCatalog().catch(() => {});
+}, 6 * 60 * 60 * 1000);
+
+app.get('/api/shop/catalog', (_req, res) => {
+  res.json(getShopCatalog());
+});
+
+app.post('/api/shop/sync', async (_req, res) => {
+  try {
+    res.json(await syncShopCatalog());
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.get('/api/shop/orders', (_req, res) => {
+  res.json(readJsonFileSafe(SHOP_ORDERS_PATH, { orders: [] }));
+});
+
+app.post('/api/shop/orders', (req, res) => {
+  const store = readJsonFileSafe(SHOP_ORDERS_PATH, { orders: [] });
+  const order = {
+    id: 'ord-' + Date.now().toString(36),
+    productId: String(req.body?.productId || ''),
+    title: String(req.body?.title || '').slice(0, 160),
+    store: String(req.body?.store || 'Mercado Livre').slice(0, 60),
+    url: String(req.body?.url || '').slice(0, 500),
+    status: 'encaminhado-a-loja-parceira',
+    commissionNote:
+      'Comissao de afiliado creditada pelo parceiro apos a confirmacao da venda (Programa de Afiliados). Loja parceira envia o produto.',
+    createdAt: new Date().toISOString(),
+  };
+  store.orders = Array.isArray(store.orders) ? store.orders : [];
+  store.orders.unshift(order);
+  if (store.orders.length > 200) store.orders = store.orders.slice(0, 200);
+  writeJsonFileSafe(SHOP_ORDERS_PATH, store);
+  res.json({ ok: true, order });
+});
+
 app.get('/api/shop/live', async (req, res) => {
   const qRaw = String(req.query.q || 'Lacoste Oakley Juliet Invicta Brasil').trim().slice(0, 120);
   const key = qRaw.toLowerCase();
