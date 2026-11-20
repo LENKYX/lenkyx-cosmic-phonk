@@ -10,6 +10,33 @@ const CLOUD_API_BASE = 'https://lenkyx-cosmic-phonk.onrender.com';
 
 export const FALLBACK_CURATED_PLAYLISTS: WorldCuratedPlaylist[] = [
   {
+    id: 'pl-favela-funk-2026',
+    title: 'Funk da Favela 2026 (Vivos na Correria)',
+    subtitle: 'MC Iguinho CT, MC Leozinho ZS, MC Ryan SP, MC Hariel, MC IG, MC Jacaré, MC Poze do Rodo',
+    emoji: '👑',
+    era: 'Baile & Comunidade 2026',
+    searchQuery: 'MC Iguinho CT Cuida do Pet MC Leozinho ZS MC Ryan SP MC Hariel MC IG MC Jacare funk oficial',
+    gradient: 'from-amber-500/40 via-rose-600/25 to-yellow-500/25',
+  },
+  {
+    id: 'pl-favela-rap-2026',
+    title: 'Rap & Trap da Quebrada (Na Correria)',
+    subtitle: "Racionais MC's, Filipe Ret, Orochi, BK', Djonga, MC Cabelinho, Veigh, L7NNON, TZ da Coronel",
+    emoji: '🎤',
+    era: 'Voz do Morro 2026',
+    searchQuery: 'Racionais MCs Filipe Ret Orochi BK Djonga MC Cabelinho Veigh L7NNON rap nacional oficial',
+    gradient: 'from-purple-600/40 via-amber-500/25 to-emerald-500/25',
+  },
+  {
+    id: 'pl-favela-pagode-2026',
+    title: 'Pagode da Comunidade & Churrasco',
+    subtitle: 'Grupo Menos É Mais, Ferrugem, Turma do Pagode, Péricles, Sorriso Maroto, Belo, Kamisa 10',
+    emoji: '🥁',
+    era: 'Roda de Samba 2026',
+    searchQuery: 'Grupo Menos e Mais Ferrugem Turma do Pagode Pericles Sorriso Maroto Kamisa 10 pagode ao vivo',
+    gradient: 'from-emerald-500/35 via-amber-500/25 to-orange-500/25',
+  },
+  {
     id: 'pl-clips-oficiais',
     title: 'Melhores Clipes Oficiais & DVDs Completos',
     subtitle: 'Henrique & Juliano, Marília Mendonça, Gusttavo Lima, Queen, Michael Jackson, Alok',

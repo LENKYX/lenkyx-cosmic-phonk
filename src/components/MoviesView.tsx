@@ -26,6 +26,8 @@ import {
   ChevronRight,
   Download,
   MoreVertical,
+  MessageCircle,
+  Radio,
 } from 'lucide-react';
 import { ToguroPromoBanner } from './ToguroPromoBanner';
 import { triggerDirectFileDownload } from '../utils/offlineCache';
@@ -56,6 +58,8 @@ interface Props {
   onEmergencyStop?: () => void;
   onMinimizeMovie?: (movie: MovieItem) => void;
   onOpenToguroShop?: () => void;
+  onCommentTarget?: (id: string, title: string, youtubeId?: string) => void;
+  onOpenLiveChat?: (roomId: string, roomTitle: string) => void;
   initialMovie?: MovieItem | null;
   onConsumeInitialMovie?: () => void;
 }
@@ -196,6 +200,8 @@ export const MoviesView: React.FC<Props> = ({
   onEmergencyStop,
   onMinimizeMovie,
   onOpenToguroShop,
+  onCommentTarget,
+  onOpenLiveChat,
   initialMovie = null,
   onConsumeInitialMovie,
 }) => {
@@ -620,9 +626,31 @@ export const MoviesView: React.FC<Props> = ({
           </span>
         </div>
       </div>
-      <div className="p-2.5 sm:p-3 space-y-0.5">
-        <div className="text-xs font-extrabold text-white line-clamp-2 group-hover:text-rose-300 group-focus:text-rose-300 transition">
-          {m.title}
+      <div className="p-2.5 sm:p-3 space-y-1">
+        <div className="flex items-start justify-between gap-1.5">
+          <div className="text-xs font-extrabold text-white line-clamp-2 group-hover:text-rose-300 group-focus:text-rose-300 transition flex-1">
+            {m.title}
+          </div>
+          {onCommentTarget && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCommentTarget(`movie:${m.id}`, `🎬 ${m.title}`, m.youtubeVideoId);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.stopPropagation();
+                  onCommentTarget(`movie:${m.id}`, `🎬 ${m.title}`, m.youtubeVideoId);
+                }
+              }}
+              className="p-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-200 shrink-0"
+              title="Comentários"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+            </span>
+          )}
         </div>
         <div className="text-[10px] text-purple-300/75 truncate">{m.subtitle}</div>
       </div>
@@ -669,6 +697,28 @@ export const MoviesView: React.FC<Props> = ({
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap shrink-0 relative">
+              {onCommentTarget && (
+                <button
+                  type="button"
+                  onClick={() => onCommentTarget(`movie:${activeMovie.id}`, `🎬 ${activeMovie.title}`, activeMovie.youtubeVideoId)}
+                  className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-[11px] font-black flex items-center gap-1 transition"
+                  title="Comentários sobre este título"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Comentar</span>
+                </button>
+              )}
+              {onOpenLiveChat && (
+                <button
+                  type="button"
+                  onClick={() => onOpenLiveChat('filmes', '🍿 Chat do Cinema Ao Vivo')}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white text-[11px] font-black flex items-center gap-1 transition"
+                  title="Chat do Cinema ao vivo"
+                >
+                  <Radio className="w-3.5 h-3.5 animate-pulse" />
+                  <span className="hidden sm:inline">Chat Ao Vivo</span>
+                </button>
+              )}
               {onMinimizeMovie && (
                 <button
                   type="button"
@@ -953,7 +1003,17 @@ export const MoviesView: React.FC<Props> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {onOpenLiveChat && (
+            <button
+              type="button"
+              onClick={() => onOpenLiveChat('filmes', '🍿 Chat do Cinema Ao Vivo')}
+              className="px-3 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-pink-500 hover:brightness-110 text-white text-[11px] font-black flex items-center gap-1.5 shadow transition"
+            >
+              <Radio className="w-3.5 h-3.5 animate-pulse" />
+              <span>Chat do Cinema Ao Vivo</span>
+            </button>
+          )}
           <button
             onClick={() => setGlobalTvGrid((v) => !v)}
             className={`px-3 py-2 rounded-xl border text-[11px] font-black flex items-center gap-1.5 transition ${
@@ -1037,6 +1097,15 @@ export const MoviesView: React.FC<Props> = ({
                 >
                   <Play className="w-4 h-4 fill-black" /> Assistir Agora
                 </button>
+                {onCommentTarget && (
+                  <button
+                    type="button"
+                    onClick={() => onCommentTarget(`movie:${featuredMovie.id}`, `🎬 ${featuredMovie.title}`, featuredMovie.youtubeVideoId)}
+                    className="px-4 py-2.5 rounded-full bg-black/60 hover:bg-black/80 border border-white/25 text-white font-black text-xs flex items-center gap-1.5 transition"
+                  >
+                    <MessageCircle className="w-4 h-4 text-cyan-300" /> Comentários
+                  </button>
+                )}
               </div>
             </div>
 

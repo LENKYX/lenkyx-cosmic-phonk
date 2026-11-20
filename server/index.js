@@ -2353,12 +2353,91 @@ app.get('/api/app-update', async (_req, res) => {
   return res.json(fallback);
 });
 
-// === COMMUNITY SOCIAL ENGINE (Chat, Comments, Likes, Horizontal Shorts, Go Live) ===
+// === COMMUNITY SOCIAL ENGINE (Chat, Comments, Likes, Horizontal Shorts, Go Live, Real-time SSE) ===
+const chatRoomStreams = new Map(); // room -> Set<{ res, id }>
+const commentTargetStreams = new Map(); // targetId -> Set<res>
+
+function getRoomOnlineCount(room) {
+  const set = chatRoomStreams.get(room);
+  return Math.max(1, set ? set.size : 1);
+}
+
+function broadcastRoomEvent(room, eventName, payload) {
+  const cleanRoom = String(room || 'global').slice(0, 64);
+  const set = chatRoomStreams.get(cleanRoom);
+  if (!set || set.size === 0) return;
+  const frame = `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`;
+  for (const client of set) {
+    try {
+      client.res.write(frame);
+    } catch {
+      set.delete(client);
+    }
+  }
+}
+
+function broadcastCommentEvent(targetId, eventName, payload) {
+  const cleanTarget = String(targetId || '').trim().slice(0, 100);
+  const set = commentTargetStreams.get(cleanTarget);
+  if (!set || set.size === 0) return;
+  const frame = `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`;
+  for (const res of set) {
+    try {
+      res.write(frame);
+    } catch {
+      set.delete(res);
+    }
+  }
+}
+
+app.get('/api/community/chat/stream', async (req, res) => {
+  const room = String(req.query.room || 'global').slice(0, 64);
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  let set = chatRoomStreams.get(room);
+  if (!set) {
+    set = new Set();
+    chatRoomStreams.set(room, set);
+  }
+  const client = { res, id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` };
+  set.add(client);
+
+  try {
+    const messages = await getChatMessages(room, 70);
+    res.write(
+      `event: init\ndata: ${JSON.stringify({ room, onlineCount: getRoomOnlineCount(room), messages })}\n\n`
+    );
+  } catch {
+    res.write(`event: init\ndata: ${JSON.stringify({ room, onlineCount: getRoomOnlineCount(room), messages: [] })}\n\n`);
+  }
+
+  broadcastRoomEvent(room, 'presence', { room, onlineCount: getRoomOnlineCount(room) });
+
+  const ping = setInterval(() => {
+    try {
+      res.write(': ping\n\n');
+    } catch {
+      clearInterval(ping);
+    }
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(ping);
+    set.delete(client);
+    if (set.size === 0) chatRoomStreams.delete(room);
+    broadcastRoomEvent(room, 'presence', { room, onlineCount: getRoomOnlineCount(room) });
+  });
+});
+
 app.get('/api/community/chat', async (req, res) => {
   try {
     const room = String(req.query.room || 'global');
     const messages = await getChatMessages(room, 70);
-    res.json({ room, messages });
+    res.json({ room, onlineCount: getRoomOnlineCount(room), messages });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });
   }
@@ -2372,10 +2451,58 @@ app.post('/api/community/chat', async (req, res) => {
       authorColor: req.body?.authorColor,
       message: req.body?.message,
     });
+    broadcastRoomEvent(msg.room_id, 'message', msg);
     res.status(201).json(msg);
   } catch (err) {
     res.status(400).json({ error: String(err?.message || err) });
   }
+});
+
+app.post('/api/community/chat/react', (req, res) => {
+  const room = String(req.body?.roomId || 'global').slice(0, 64);
+  const emoji = String(req.body?.emoji || '❤️').slice(0, 12);
+  const authorName = String(req.body?.authorName || 'Cria').slice(0, 40);
+  const payload = {
+    id: `rx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    room_id: room,
+    emoji,
+    authorName,
+    ts: Date.now(),
+  };
+  broadcastRoomEvent(room, 'reaction', payload);
+  res.json(payload);
+});
+
+app.get('/api/community/comments/stream', (req, res) => {
+  const targetId = String(req.query.targetId || '').trim().slice(0, 100);
+  if (!targetId) return res.status(400).end();
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  let set = commentTargetStreams.get(targetId);
+  if (!set) {
+    set = new Set();
+    commentTargetStreams.set(targetId, set);
+  }
+  set.add(res);
+  res.write(`event: ready\ndata: ${JSON.stringify({ targetId })}\n\n`);
+
+  const ping = setInterval(() => {
+    try {
+      res.write(': ping\n\n');
+    } catch {
+      clearInterval(ping);
+    }
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(ping);
+    set.delete(res);
+    if (set.size === 0) commentTargetStreams.delete(targetId);
+  });
 });
 
 app.get('/api/community/comments', async (req, res) => {
@@ -2420,6 +2547,7 @@ app.post('/api/community/comments', async (req, res) => {
       authorColor: req.body?.authorColor,
       text: req.body?.text,
     });
+    broadcastCommentEvent(item.target_id, 'comment', item);
     res.status(201).json(item);
   } catch (err) {
     res.status(400).json({ error: String(err?.message || err) });
@@ -2433,6 +2561,9 @@ app.post('/api/community/comments/:id/like', async (req, res) => {
       req.body?.userId || '',
       Number(req.body?.baseLikes || 0)
     );
+    if (req.body?.targetId && upd) {
+      broadcastCommentEvent(String(req.body.targetId), 'comment_like', upd);
+    }
     res.json(upd || { id: req.params.id });
   } catch (err) {
     res.status(500).json({ error: String(err?.message || err) });

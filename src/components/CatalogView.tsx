@@ -66,7 +66,9 @@ interface Props {
   lyricsTrack: Track | null;
   onSetLyricsTrack: (track: Track | null) => void;
   onCommentTrack?: (track: Track) => void;
+  onCommentTarget?: (id: string, title: string, youtubeId?: string) => void;
   onOpenGlobalChat?: () => void;
+  onOpenLiveChat?: (roomId: string, roomTitle: string) => void;
   onSearchWorld?: (query: string) => void;
   onOpenShop?: () => void;
   onOpenToguroShop?: () => void;
@@ -107,7 +109,9 @@ export const CatalogView: React.FC<Props> = ({
   lyricsTrack,
   onSetLyricsTrack,
   onCommentTrack,
+  onCommentTarget,
   onOpenGlobalChat,
+  onOpenLiveChat,
   onSearchWorld,
   onOpenShop,
   onOpenToguroShop,
@@ -237,6 +241,20 @@ export const CatalogView: React.FC<Props> = ({
             )}
             <span>{offlineCount >= tracks.length && tracks.length > 0 ? 'Tudo Salvo' : 'Baixar Offline'}</span>
           </button>
+          {(onOpenLiveChat || onOpenGlobalChat) && (
+            <button
+              type="button"
+              onClick={() =>
+                onOpenLiveChat
+                  ? onOpenLiveChat('global', '🔥 Geral do Morro · Chat Ao Vivo')
+                  : onOpenGlobalChat?.()
+              }
+              className="px-3.5 py-2 rounded-full bg-gradient-to-r from-rose-600 via-pink-500 to-amber-500 text-white font-black text-xs flex items-center gap-1.5 shadow-[0_6px_20px_rgba(244,63,94,0.35)] hover:brightness-110"
+            >
+              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+              <span>Chat Ao Vivo</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void handleToggleMainChannelSubscribe()}
@@ -1084,7 +1102,11 @@ export const CatalogView: React.FC<Props> = ({
       )}
 
       {/* AGENDA AUTOMÁTICA DE BAILES + CORTES DE CABELO & SALÕES VIP */}
-      <BailesAndEstiloView onToast={onToast} />
+      <BailesAndEstiloView
+        onToast={onToast}
+        onCommentTarget={onCommentTarget}
+        onOpenLiveChat={onOpenLiveChat}
+      />
     </div>
   );
 };

@@ -64,6 +64,8 @@ interface Props {
   onWatchClip?: () => void;
   onOpenMediaMenu?: () => void;
   onOpenVisualizer?: () => void;
+  onCommentTrack?: (track: Track) => void;
+  onOpenLiveChat?: () => void;
   onCloseMenu?: () => void;
 }
 
@@ -106,6 +108,8 @@ export const MiniPlayer: React.FC<Props> = ({
   onWatchClip,
   onOpenMediaMenu,
   onOpenVisualizer,
+  onCommentTrack,
+  onOpenLiveChat,
   onCloseMenu,
 }) => {
   const [expanded, setExpanded] = useState(false);
@@ -417,6 +421,28 @@ export const MiniPlayer: React.FC<Props> = ({
                 <MessageCircle className="w-4 h-4" />
                 <span>Enviar</span>
               </button>
+
+              {onCommentTrack && (
+                <button
+                  type="button"
+                  onClick={() => onCommentTrack(track)}
+                  className="py-2.5 px-2 rounded-2xl bg-amber-400/20 hover:bg-amber-400/35 border border-amber-400/45 text-[11px] font-black text-amber-100 flex flex-col items-center justify-center gap-1 transition"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Comentar</span>
+                </button>
+              )}
+
+              {onOpenLiveChat && (
+                <button
+                  type="button"
+                  onClick={onOpenLiveChat}
+                  className="py-2.5 px-2 rounded-2xl bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/50 text-[11px] font-black text-rose-100 flex flex-col items-center justify-center gap-1 transition"
+                >
+                  <Heart className="w-4 h-4 fill-rose-400 text-rose-400" />
+                  <span>Chat Live</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -538,6 +564,16 @@ export const MiniPlayer: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-1.5 justify-end shrink-0">
+            {onCommentTrack && (
+              <button
+                type="button"
+                onClick={() => onCommentTrack(track)}
+                className="p-1.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/30 border border-amber-400/35 text-amber-200 transition"
+                title="Comentários nesta música"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               type="button"
               onClick={onOpenVisualizer}

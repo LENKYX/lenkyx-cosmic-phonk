@@ -11,6 +11,8 @@ import {
   Share2,
   Flame,
   Navigation,
+  MessageCircle,
+  Radio,
 } from 'lucide-react';
 
 interface BaileEvent {
@@ -92,9 +94,15 @@ const TOP_BARBERSHOPS = [
 
 interface Props {
   onToast: (msg: string) => void;
+  onCommentTarget?: (id: string, title: string) => void;
+  onOpenLiveChat?: (roomId: string, roomTitle: string) => void;
 }
 
-export const BailesAndEstiloView: React.FC<Props> = ({ onToast }) => {
+export const BailesAndEstiloView: React.FC<Props> = ({
+  onToast,
+  onCommentTarget,
+  onOpenLiveChat,
+}) => {
   const [city, setCity] = useState('all');
   const [customCity, setCustomCity] = useState('');
   const [bailes, setBailes] = useState<BaileEvent[]>([]);
@@ -205,6 +213,16 @@ export const BailesAndEstiloView: React.FC<Props> = ({ onToast }) => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {onOpenLiveChat && (
+              <button
+                type="button"
+                onClick={() => onOpenLiveChat('bailes', '💃 Bailes & Rolês · Chat Ao Vivo')}
+                className="px-3.5 py-2 rounded-full bg-gradient-to-r from-rose-600 to-pink-500 text-white text-xs font-black flex items-center gap-1.5 shadow"
+              >
+                <Radio className="w-3.5 h-3.5 animate-pulse" />
+                <span>Chat dos Bailes Ao Vivo</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => void loadBailes(customCity.trim() || city)}
@@ -290,15 +308,25 @@ export const BailesAndEstiloView: React.FC<Props> = ({ onToast }) => {
                 <div className="text-[10px] font-bold text-emerald-300">🎟️ {b.entry}</div>
               </div>
 
-              <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+              <div className="flex items-center gap-1.5 pt-1 border-t border-white/10">
                 <a
                   href={`https://www.google.com/maps/search/${encodeURIComponent(b.address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 py-2 px-3 rounded-full lux-btn-gold text-[11px] font-black flex items-center justify-center gap-1"
                 >
-                  <Navigation className="w-3 h-3" /> Abrir no Mapa
+                  <Navigation className="w-3 h-3" /> Mapa
                 </a>
+                {onCommentTarget && (
+                  <button
+                    type="button"
+                    onClick={() => onCommentTarget(`baile:${b.id}`, `💃 ${b.title}`)}
+                    className="py-2 px-3 rounded-full lux-btn-obsidian text-[11px] font-bold text-cyan-200 flex items-center gap-1"
+                    title="Comentar neste baile"
+                  >
+                    <MessageCircle className="w-3 h-3" /> Comentar
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => shareBaileZap(b)}
@@ -365,7 +393,7 @@ export const BailesAndEstiloView: React.FC<Props> = ({ onToast }) => {
 
             {/* Top Updated Cuts */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {HAIRCUT_TRENDS.map((cut) => (
+              {HAIRCUT_TRENDS.map((cut, cIdx) => (
                 <div
                   key={cut.title}
                   className="p-2.5 rounded-2xl bg-black/55 border border-amber-400/20 space-y-1"
@@ -374,7 +402,19 @@ export const BailesAndEstiloView: React.FC<Props> = ({ onToast }) => {
                     <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-200 border border-amber-400/35">
                       {cut.tag}
                     </span>
-                    <span className="text-[10px] text-cyan-300 font-bold">{cut.who}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-cyan-300 font-bold">{cut.who}</span>
+                      {onCommentTarget && (
+                        <button
+                          type="button"
+                          onClick={() => onCommentTarget(`corte:${cIdx}`, `💈 ${cut.title}`)}
+                          className="p-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-200"
+                          title="Comentar neste corte"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="text-xs font-black text-white">{cut.title}</div>
                   <p className="text-[11px] text-slate-300 leading-snug">{cut.desc}</p>
@@ -388,22 +428,43 @@ export const BailesAndEstiloView: React.FC<Props> = ({ onToast }) => {
                 <Sparkles className="w-3 h-3" /> Indicação dos Melhores Salões & Barbearias do Brasil:
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {TOP_BARBERSHOPS.map((shop) => (
-                  <a
+                {TOP_BARBERSHOPS.map((shop, sIdx) => (
+                  <div
                     key={shop.name}
-                    href={`https://www.google.com/maps/search/${encodeURIComponent(shop.query)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="p-2.5 rounded-xl bg-[#0a0d16] hover:bg-amber-500/10 border border-white/10 hover:border-amber-400/50 transition flex items-center justify-between gap-2"
                   >
-                    <div className="min-w-0">
+                    <a
+                      href={`https://www.google.com/maps/search/${encodeURIComponent(shop.query)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="min-w-0 flex-1"
+                    >
                       <div className="text-xs font-black text-amber-200 truncate">{shop.name}</div>
                       <div className="text-[10px] text-slate-300 truncate">
                         {shop.specialty} · {shop.city}
                       </div>
+                    </a>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {onCommentTarget && (
+                        <button
+                          type="button"
+                          onClick={() => onCommentTarget(`salao:${sIdx}`, `💈 ${shop.name}`)}
+                          className="p-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-200"
+                          title="Avaliar / Comentar salão"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <a
+                        href={`https://www.google.com/maps/search/${encodeURIComponent(shop.query)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-lg bg-white/5 text-amber-300"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
                     </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                  </a>
+                  </div>
                 ))}
               </div>
             </div>

@@ -16,6 +16,7 @@ import {
   Loader2,
   BadgeCheck,
   Settings,
+  Radio,
 } from 'lucide-react';
 import { AppMode, AppSettings } from '../types';
 import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
@@ -761,6 +762,8 @@ interface Props {
   initialCategory?: ShopCat;
   categoryNonce?: number;
   onSaveSettings: (partial: Partial<AppSettings>) => Promise<void>;
+  onCommentTarget?: (id: string, title: string) => void;
+  onOpenLiveChat?: (roomId: string, roomTitle: string) => void;
   onToast: (msg: string) => void;
 }
 
@@ -770,6 +773,8 @@ export const ShopCriaView: React.FC<Props> = ({
   initialCategory,
   categoryNonce,
   onSaveSettings,
+  onCommentTarget,
+  onOpenLiveChat,
   onToast,
 }) => {
   const [cat, setCat] = useState<ShopCat>(initialCategory || 'all');
@@ -1164,6 +1169,15 @@ export const ShopCriaView: React.FC<Props> = ({
             >
               💨 Narguiles & Essências
             </button>
+            {onOpenLiveChat && (
+              <button
+                type="button"
+                onClick={() => onOpenLiveChat('loja', '🛍️ Loja dos Cria · Chat Ao Vivo')}
+                className="px-4 py-2.5 rounded-full bg-gradient-to-r from-rose-600 to-pink-500 text-white text-xs font-black flex items-center gap-1.5 shadow"
+              >
+                <Radio className="w-3.5 h-3.5 animate-pulse" /> Chat da Loja Ao Vivo
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -1526,6 +1540,15 @@ export const ShopCriaView: React.FC<Props> = ({
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
+                {onCommentTarget && (
+                  <button
+                    type="button"
+                    onClick={() => onCommentTarget(`shop:${item.id}`, `🛍️ ${item.name} (${item.brand})`)}
+                    className="w-full py-1.5 px-3 rounded-full bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-400/30 text-cyan-200 text-[11px] font-bold flex items-center justify-center gap-1.5 transition"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" /> Comentários & Avaliações
+                  </button>
+                )}
                 {item.category !== 'motos' && item.category !== 'carros' && (
                   <div className="grid grid-cols-3 gap-1.5 text-[10px]">
                     <a

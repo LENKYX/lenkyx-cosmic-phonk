@@ -73,6 +73,8 @@ import {
   likeCommunityShortItem,
   publishCommunityShort,
   sendChatMessage,
+  sendChatReaction,
+  subscribeChatStream,
   updateLiveRoom,
 } from '../utils/communityApi';
 import { TargetCommentsModal } from './CommunityChatModal';
@@ -755,6 +757,8 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   const [liveRoomId, setLiveRoomId] = useState('');
   const [liveChatMsgs, setLiveChatMsgs] = useState<ChatMessageItem[]>([]);
   const [liveChatInput, setLiveChatInput] = useState('');
+  const [liveOnlineCount, setLiveOnlineCount] = useState(1);
+  const [liveFloatingHearts, setLiveFloatingHearts] = useState<{ id: string; emoji: string; left: number }[]>([]);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [mirrorCamera, setMirrorCamera] = useState(true); // true = moving head right goes RIGHT on screen!
   const [liveEffect, setLiveEffect] = useState<LiveEffectId>('cosmic_aurora');
@@ -954,20 +958,50 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [subTab, activeIndex, shorts.length, exclusiveShortsOpen]);
 
-  // Poll active lives & live chat when on Live tab
+  // Real-time SSE live chat & active lives sync when on Live tab
   useEffect(() => {
     if (subTab !== 'live') return;
-    const activeRoom = isHostingLive ? liveRoomId : watchingLive?.id || '';
-    const tick = () => {
+    const activeRoom = isHostingLive
+      ? liveRoomId
+      : watchingLive?.id || (watchingYtLive ? `yt-live-${watchingYtLive.id}` : 'live-geral');
+    const tickLives = () => {
       void fetchActiveLives().then(setLives);
-      if (activeRoom) {
-        void fetchChatMessages(activeRoom).then(setLiveChatMsgs);
-      }
     };
-    tick();
-    const timer = window.setInterval(tick, 3500);
-    return () => window.clearInterval(timer);
-  }, [subTab, isHostingLive, liveRoomId, watchingLive?.id]);
+    tickLives();
+    const timer = window.setInterval(tickLives, 8000);
+
+    const spawnHeart = (emoji: string) => {
+      const fid = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      setLiveFloatingHearts((prev) => [...prev.slice(-14), { id: fid, emoji, left: 10 + Math.random() * 34 }]);
+      window.setTimeout(() => {
+        setLiveFloatingHearts((prev) => prev.filter((x) => x.id !== fid));
+      }, 2100);
+    };
+
+    const unsub = subscribeChatStream(activeRoom, {
+      onInit: (data) => {
+        setLiveChatMsgs(data.messages || []);
+        setLiveOnlineCount(Math.max(1, data.onlineCount || 1));
+      },
+      onMessage: (msg) => {
+        setLiveChatMsgs((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+      },
+      onReaction: (rx) => {
+        spawnHeart(rx.emoji);
+      },
+      onPresence: (p) => {
+        setLiveOnlineCount(Math.max(1, p.onlineCount || 1));
+      },
+    });
+    void fetchChatMessages(activeRoom).then((msgs) => {
+      if (msgs.length > 0) setLiveChatMsgs(msgs);
+    });
+
+    return () => {
+      window.clearInterval(timer);
+      unsub();
+    };
+  }, [subTab, isHostingLive, liveRoomId, watchingLive?.id, watchingYtLive?.id]);
 
   // Cleanup camera & audio analyser on unmount
   useEffect(() => {
@@ -1515,18 +1549,32 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
   const handleSendLiveChat = async (e: React.FormEvent) => {
     e.preventDefault();
-    const rid = isHostingLive ? liveRoomId : watchingLive?.id;
+    const rid = isHostingLive
+      ? liveRoomId
+      : watchingLive?.id || (watchingYtLive ? `yt-live-${watchingYtLive.id}` : 'live-geral');
     if (!rid || !liveChatInput.trim()) return;
     const created = await sendChatMessage({
       roomId: rid,
-      authorName: user?.name || 'Fã Cósmico',
-      authorColor: user?.avatarColor || 'from-cyan-400 to-pink-500',
+      authorName: user?.name || 'Cria MORRO GOLD',
+      authorColor: user?.avatarColor || 'from-amber-400 to-pink-500',
       message: liveChatInput.trim(),
     });
     if (created) {
-      setLiveChatMsgs((prev) => [...prev, created]);
+      setLiveChatMsgs((prev) => (prev.some((m) => m.id === created.id) ? prev : [...prev, created]));
       setLiveChatInput('');
     }
+  };
+
+  const handleLiveReaction = async (emoji: string) => {
+    const rid = isHostingLive
+      ? liveRoomId
+      : watchingLive?.id || (watchingYtLive ? `yt-live-${watchingYtLive.id}` : 'live-geral');
+    const fid = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    setLiveFloatingHearts((prev) => [...prev.slice(-14), { id: fid, emoji, left: 10 + Math.random() * 34 }]);
+    window.setTimeout(() => {
+      setLiveFloatingHearts((prev) => prev.filter((x) => x.id !== fid));
+    }, 2100);
+    await sendChatReaction({ roomId: rid, emoji, authorName: user?.name || 'Cria' });
   };
 
   const [shortsFilterSubscribed, setShortsFilterSubscribed] = useState(false);
@@ -2894,55 +2942,76 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Right: Live Chat Panel */}
-          <div className="lg:col-span-5 rounded-3xl cosmic-card-3d p-4 flex flex-col h-[500px]">
-            <div className="pb-2.5 border-b border-white/10 flex items-center justify-between">
+          {/* Right: Instagram-Live Style Real-Time Chat Panel */}
+          <div className="lg:col-span-5 rounded-3xl cosmic-card-3d p-4 flex flex-col h-[500px] relative overflow-hidden">
+            <div className="pb-2.5 border-b border-white/10 flex items-center justify-between gap-2">
               <div className="text-xs font-black text-white flex items-center gap-1.5">
-                <MessageCircle className="w-4 h-4 text-cyan-300" />
-                Chat da Live em Tempo Real
+                <span className="px-1.5 py-0.5 rounded bg-rose-600 text-[9px] font-black text-white">AO VIVO</span>
+                <span>Chat em Tempo Real</span>
+                <span className="text-[10px] text-emerald-300 font-bold">· {liveOnlineCount} online</span>
               </div>
               {(watchingLive || isHostingLive) && (
                 <button
                   onClick={() => void spawnCreature('astro')}
                   className="px-2.5 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-[10px] font-black text-cyan-200 flex items-center gap-1"
                 >
-                  🛸 Mandar Companheiro IA
+                  🛸 Companheiro IA
                 </button>
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto overscroll-contain py-3 space-y-2">
-              {!(isHostingLive || watchingLive) ? (
+            <div className="relative flex-1 overflow-y-auto overscroll-contain py-3 space-y-2">
+              {liveChatMsgs.length === 0 ? (
                 <div className="py-12 text-center text-xs text-purple-300/75">
-                  Entre ao vivo em HD ou escolha uma transmissão para conversar aqui!
-                </div>
-              ) : liveChatMsgs.length === 0 ? (
-                <div className="py-12 text-center text-xs text-purple-300/75">
-                  Live iniciada! Mande a primeira mensagem ou solte uma criaturinha IA. 💬
+                  Chat ao vivo aberto! Mande a primeira mensagem ou solte um ❤️/🔥 em tempo real. 💬
                 </div>
               ) : (
                 liveChatMsgs.map((m) => (
                   <div key={m.id} className="rounded-xl bg-white/[0.06] px-3 py-2 text-xs">
-                    <span className="font-black text-cyan-300 mr-1.5">{m.author_name}:</span>
+                    <span className="font-black text-amber-300 mr-1.5">{m.author_name}:</span>
                     <span className="text-white/95">{m.message}</span>
                   </div>
                 ))
               )}
+
+              <div className="pointer-events-none absolute bottom-2 right-2 w-14 h-44 overflow-visible">
+                {liveFloatingHearts.map((fh) => (
+                  <span
+                    key={fh.id}
+                    style={{ left: `${fh.left}px` }}
+                    className="absolute bottom-0 text-xl insta-float-heart"
+                  >
+                    {fh.emoji}
+                  </span>
+                ))}
+              </div>
             </div>
 
-            <form onSubmit={handleSendLiveChat} className="pt-2 border-t border-white/10 flex items-center gap-2">
+            <div className="flex items-center gap-1.5 py-1.5 border-t border-white/10">
+              {['❤️', '🔥', '👑', '👏', '🚀'].map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => void handleLiveReaction(emoji)}
+                  className="px-2 py-1 rounded-full bg-white/[0.07] hover:bg-rose-500/25 text-xs transition active:scale-125"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleSendLiveChat} className="pt-1.5 flex items-center gap-2">
               <input
                 type="text"
                 value={liveChatInput}
                 onChange={(e) => setLiveChatInput(e.target.value)}
-                disabled={!(isHostingLive || watchingLive)}
-                placeholder="Comente na live..."
-                className="flex-1 px-3 py-2 rounded-full bg-white/[0.07] border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400 disabled:opacity-40"
+                placeholder="Comente ao vivo (estilo Instagram Live)..."
+                className="flex-1 px-3 py-2 rounded-full bg-white/[0.07] border border-white/15 text-xs text-white focus:outline-none focus:border-amber-400"
               />
               <button
                 type="submit"
-                disabled={!(isHostingLive || watchingLive) || !liveChatInput.trim()}
-                className="px-3.5 py-2 rounded-full bg-gradient-to-r from-rose-500 to-cyan-400 text-white text-xs font-black disabled:opacity-40"
+                disabled={!liveChatInput.trim()}
+                className="px-3.5 py-2 rounded-full bg-gradient-to-r from-amber-400 via-rose-500 to-pink-500 text-black text-xs font-black disabled:opacity-40"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>

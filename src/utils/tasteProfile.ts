@@ -83,10 +83,10 @@ export function getSmartDiscoveryQueries(): { label: string; query: string }[] {
 
   if (picks.length === 0) {
     return [
-      { label: 'Top Brasil Agora', query: 'Henrique e Juliano Gusttavo Lima Ana Castela sucessos' },
-      { label: 'Funk & Trap BR', query: 'MC Ryan SP Matue Veigh MC Hariel hits' },
-      { label: 'Pagode & Churrasco', query: 'Grupo Menos e Mais Ferrugem Dilsinho ao vivo' },
-      { label: 'Hits Mundiais', query: 'The Weeknd Bruno Mars Dua Lipa Billie Eilish top hits' },
+      { label: '👑 Funk da Favela 2026', query: 'MC Iguinho CT MC Leozinho ZS MC Ryan SP MC Hariel MC IG' },
+      { label: '🎤 Rap da Quebrada', query: 'Racionais MCs Filipe Ret Orochi BK Djonga MC Cabelinho' },
+      { label: '🥁 Pagode Comunidade', query: 'Grupo Menos e Mais Ferrugem Turma do Pagode Pericles ao vivo' },
+      { label: 'Top Sertanejo BR', query: 'Henrique e Juliano Gusttavo Lima Ana Castela sucessos' },
     ];
   }
 

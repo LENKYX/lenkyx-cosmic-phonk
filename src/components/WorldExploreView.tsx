@@ -18,6 +18,8 @@ import {
   Bell,
   BellRing,
   Download,
+  MessageCircle,
+  Radio,
 } from 'lucide-react';
 import { triggerDirectFileDownload } from '../utils/offlineCache';
 import {
@@ -63,10 +65,15 @@ interface Props {
   onWatchClip?: (track: Track, queue: Track[]) => void;
   onAddToPlaylist: (playlistId: string, track: Track) => void;
   onOpenToguroShop?: () => void;
+  onCommentTarget?: (id: string, title: string, youtubeId?: string) => void;
+  onOpenLiveChat?: (roomId: string, roomTitle: string) => void;
 }
 
 const GENRE_CHIPS = [
   { label: '🔥 Em Alta', q: '', space: false },
+  { label: '👑 Funk da Favela', q: 'MC Iguinho CT Cuida do Pet MC Leozinho ZS MC Ryan SP MC Hariel MC IG MC Jacare funk oficial', space: false },
+  { label: '🎤 Rap Quebrada', q: 'Racionais MCs Filipe Ret Orochi BK Djonga MC Cabelinho Veigh L7NNON rap nacional oficial', space: false },
+  { label: '🥁 Pagode Comunidade', q: 'Grupo Menos e Mais Ferrugem Turma do Pagode Pericles Sorriso Maroto Kamisa 10 pagode ao vivo', space: false },
   { label: '🚀 Lançamentos', q: `lancamentos musicas novas brasil global ${new Date().getFullYear()}`, space: false },
   { label: '🌎 Internacionais', q: 'The Weeknd Taylor Swift Bruno Mars Dua Lipa Billie Eilish official', space: false },
   { label: '🎬 Clipes HD', q: 'Henrique e Juliano The Weeknd Queen Michael Jackson clipe oficial', space: false },
@@ -77,10 +84,12 @@ const GENRE_CHIPS = [
 
 const ARTIST_REGION_FILTERS = [
   { id: 'all', label: 'Todos' },
+  { id: 'favela', label: '👑 Cria / Favela' },
+  { id: 'pagode', label: '🥁 Pagode' },
+  { id: 'urban', label: '🎤 Funk / Rap / Trap' },
   { id: 'br', label: '🇧🇷 Brasil' },
-  { id: 'global', label: '🌍 Globais' },
   { id: 'sertanejo', label: '🤠 Sertanejo' },
-  { id: 'urban', label: '🎤 Rap/Trap/Phonk' },
+  { id: 'global', label: '🌍 Globais' },
 ];
 
 function fmtDur(sec?: number): string {
@@ -162,6 +171,8 @@ export const WorldExploreView: React.FC<Props> = ({
   onWatchClip,
   onAddToPlaylist,
   onOpenToguroShop,
+  onCommentTarget,
+  onOpenLiveChat,
 }) => {
   const [results, setResults] = useState<Track[]>([]);
   const [newReleases, setNewReleases] = useState<Track[]>([]);
@@ -324,7 +335,9 @@ export const WorldExploreView: React.FC<Props> = ({
     if (artistRegion === 'all') return famousArtists;
     return famousArtists.filter((a) => {
       const low = `${a.genre} ${a.era}`.toLowerCase();
-      if (artistRegion === 'br') return low.includes('brasil') || low.includes('sertanejo') || low.includes('nacional');
+      if (artistRegion === 'favela') return low.includes('favela') || low.includes('quebrada') || low.includes('comunidade') || low.includes('correria');
+      if (artistRegion === 'pagode') return low.includes('pagode') || low.includes('samba');
+      if (artistRegion === 'br') return low.includes('brasil') || low.includes('sertanejo') || low.includes('nacional') || low.includes('favela') || low.includes('pagode') || low.includes('rio');
       if (artistRegion === 'global') return low.includes('global') || low.includes('lenda') || low.includes('anos');
       if (artistRegion === 'sertanejo') return low.includes('sertanejo') || low.includes('agronejo');
       if (artistRegion === 'urban') return low.includes('phonk') || low.includes('rap') || low.includes('trap') || low.includes('funk') || low.includes('hip-hop');
@@ -364,15 +377,26 @@ export const WorldExploreView: React.FC<Props> = ({
             </p>
           </div>
         </div>
-        {clipTracks[0] && onWatchClip && (
-          <button
-            type="button"
-            onClick={() => onWatchClip(clipTracks[0], clipTracks)}
-            className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:brightness-110 text-black text-xs font-black flex items-center gap-1.5 shadow-[0_0_20px_rgba(34,211,238,0.4)] transition shrink-0"
-          >
-            <Film className="w-3.5 h-3.5" /> Assistir Clipes HD ({clipTracks.length})
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {onOpenLiveChat && (
+            <button
+              type="button"
+              onClick={() => onOpenLiveChat('baile-funk', '👑 Baile & Funk · Chat Ao Vivo')}
+              className="px-3.5 py-2 rounded-full bg-gradient-to-r from-rose-600 to-pink-500 hover:brightness-110 text-white text-xs font-black flex items-center gap-1.5 shadow transition"
+            >
+              <Radio className="w-3.5 h-3.5 animate-pulse" /> Chat Ao Vivo
+            </button>
+          )}
+          {clipTracks[0] && onWatchClip && (
+            <button
+              type="button"
+              onClick={() => onWatchClip(clipTracks[0], clipTracks)}
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:brightness-110 text-black text-xs font-black flex items-center gap-1.5 shadow-[0_0_20px_rgba(34,211,238,0.4)] transition shrink-0"
+            >
+              <Film className="w-3.5 h-3.5" /> Assistir Clipes HD ({clipTracks.length})
+            </button>
+          )}
+        </div>
       </section>
 
       {onOpenToguroShop && (
@@ -516,6 +540,17 @@ export const WorldExploreView: React.FC<Props> = ({
                     </span>
                   )}
                 </button>
+                {onCommentTarget && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onCommentTarget(`artist:${normalizeChannelKey(artistProfile.name)}`, `Artista · ${artistProfile.name}`)
+                    }
+                    className="px-4 py-2.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-xs font-black text-cyan-200 flex items-center gap-1.5 transition"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" /> Comentários
+                  </button>
+                )}
                 <button
                   onClick={() => void runSearch('', '🔥 Em Alta')}
                   className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white flex items-center gap-1 transition"
@@ -890,22 +925,37 @@ export const WorldExploreView: React.FC<Props> = ({
         collapsible
       >
         {curatedPlaylists.map((pl) => (
-          <button
+          <div
             key={pl.id}
-            onClick={() =>
-              void runSearch(pl.searchQuery, `${pl.emoji} ${pl.title}`, Boolean(pl.includeArchiveSpace), Boolean(artistProfile))
-            }
-            className={`w-60 sm:w-64 shrink-0 text-left rounded-2xl p-3.5 bg-gradient-to-br ${pl.gradient} cosmic-card-3d flex items-start gap-3 snap-start hover:scale-[1.02] transition`}
+            className={`w-60 sm:w-64 shrink-0 rounded-2xl p-3.5 bg-gradient-to-br ${pl.gradient} cosmic-card-3d flex items-start gap-3 snap-start hover:scale-[1.02] transition`}
           >
-            <div className="w-11 h-11 rounded-xl bg-black/45 border border-white/15 flex items-center justify-center text-xl shrink-0">
-              {pl.emoji}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-200">{pl.era}</div>
-              <div className="text-xs font-black text-white truncate">{pl.title}</div>
-              <div className="text-[10px] text-purple-100/80 line-clamp-2 mt-0.5">{pl.subtitle}</div>
-            </div>
-          </button>
+            <button
+              type="button"
+              onClick={() =>
+                void runSearch(pl.searchQuery, `${pl.emoji} ${pl.title}`, Boolean(pl.includeArchiveSpace), Boolean(artistProfile))
+              }
+              className="flex items-start gap-3 text-left min-w-0 flex-1"
+            >
+              <div className="w-11 h-11 rounded-xl bg-black/45 border border-white/15 flex items-center justify-center text-xl shrink-0">
+                {pl.emoji}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[9px] font-extrabold uppercase tracking-wider text-cyan-200">{pl.era}</div>
+                <div className="text-xs font-black text-white truncate">{pl.title}</div>
+                <div className="text-[10px] text-purple-100/80 line-clamp-2 mt-0.5">{pl.subtitle}</div>
+              </div>
+            </button>
+            {onCommentTarget && (
+              <button
+                type="button"
+                onClick={() => onCommentTarget(`playlist:${pl.id}`, `${pl.emoji} ${pl.title}`)}
+                className="p-1.5 rounded-lg bg-black/40 hover:bg-cyan-500/30 text-cyan-200 shrink-0"
+                title="Comentar nesta playlist"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         ))}
       </CosmicScrollRow>
 
@@ -1060,6 +1110,19 @@ export const WorldExploreView: React.FC<Props> = ({
                     >
                       <Film className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Clipe</span>
+                    </button>
+                  )}
+
+                  {onCommentTarget && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onCommentTarget(`track:${t.id}`, `${t.title} — ${t.artist}`, t.youtubeVideoId)
+                      }
+                      className="p-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-200"
+                      title="Comentar nesta música"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
                     </button>
                   )}
 

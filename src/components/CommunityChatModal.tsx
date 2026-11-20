@@ -1,6 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MessageSquare, Send, Heart, X, Sparkles, UserCircle2, CornerDownRight, Loader2 } from 'lucide-react';
+import {
+  Send,
+  Heart,
+  X,
+  Sparkles,
+  CornerDownRight,
+  Loader2,
+  Radio,
+  Users,
+  Edit3,
+  Check,
+  Flame,
+} from 'lucide-react';
 import { UserProfile } from '../types';
 import {
   ChatMessageItem,
@@ -8,10 +20,32 @@ import {
   fetchChatMessages,
   fetchCommentsFull,
   getClientSubscriberId,
+  getGuestNickname,
   likeCommentItem,
   postCommentItem,
   sendChatMessage,
+  sendChatReaction,
+  setGuestNickname,
+  subscribeChatStream,
+  subscribeCommentStream,
 } from '../utils/communityApi';
+
+export const LIVE_CHAT_ROOMS = [
+  { id: 'global', label: '🔥 Geral do Morro', desc: 'Resenha ao vivo da comunidade' },
+  { id: 'baile-funk', label: '👑 Baile & Funk', desc: 'Fluxos, MCs & pancadões 2026' },
+  { id: 'rap-quebrada', label: '🎤 Rap & Trap', desc: 'Voz da favela e lançamentos' },
+  { id: 'pagode', label: '🥁 Pagode & Churrasco', desc: 'Roda de samba da quebrada' },
+  { id: 'loja', label: '🛍️ Loja dos Cria', desc: 'Kits, perfumes, narguile & Toguro' },
+  { id: 'filmes', label: '🍿 Cinema & TV', desc: 'Comentando filmes e séries ao vivo' },
+  { id: 'bailes', label: '💃 Bailes & Rolês', desc: 'Agenda, cortes e barbearias' },
+];
+
+interface FloatingHeart {
+  id: string;
+  emoji: string;
+  offsetPx: number;
+  authorName?: string;
+}
 
 interface ChatModalProps {
   open: boolean;
@@ -31,34 +65,89 @@ function fmtTime(iso: string): string {
   }
 }
 
+const INSTA_REACTIONS = ['❤️', '🔥', '👑', '👏', '💎', '🚀'];
+
 export const CommunityChatModal: React.FC<ChatModalProps> = ({
   open,
   onClose,
   user,
-  onOpenAuth,
   roomId = 'global',
-  roomTitle = 'Chat Espacial da Comunidade LENKYX',
+  roomTitle,
 }) => {
+  const [activeRoom, setActiveRoom] = useState(roomId || 'global');
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
+  const [onlineCount, setOnlineCount] = useState(1);
+  const [floatingHearts, setFloatingHearts] = useState<FloatingHeart[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [guestName, setGuestName] = useState(() => getGuestNickname() || 'Cria do Morro');
+  const [editingNick, setEditingNick] = useState(false);
+  const [replyingToAuthor, setReplyingToAuthor] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (open && roomId) {
+      setActiveRoom(roomId);
+    }
+  }, [open, roomId]);
+
+  const spawnFloatingEmoji = (emoji: string, authorName?: string) => {
+    const fid = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const offsetPx = Math.floor(Math.random() * 44) - 22;
+    setFloatingHearts((prev) => [...prev.slice(-18), { id: fid, emoji, offsetPx, authorName }]);
+    window.setTimeout(() => {
+      setFloatingHearts((prev) => prev.filter((x) => x.id !== fid));
+    }, 2200);
+  };
 
   useEffect(() => {
     if (!open) return;
     let alive = true;
-    const load = () => {
-      void fetchChatMessages(roomId).then((list) => {
-        if (alive) setMessages(list);
+
+    const unsub = subscribeChatStream(activeRoom, {
+      onInit: (data) => {
+        if (!alive) return;
+        setMessages(data.messages || []);
+        setOnlineCount(Math.max(1, data.onlineCount || 1));
+      },
+      onMessage: (msg) => {
+        if (!alive) return;
+        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+      },
+      onReaction: (rx) => {
+        if (!alive) return;
+        spawnFloatingEmoji(rx.emoji, rx.authorName);
+      },
+      onPresence: (p) => {
+        if (!alive) return;
+        setOnlineCount(Math.max(1, p.onlineCount || 1));
+      },
+    });
+
+    // Initial HTTP load + slow fallback sync (in case SSE proxy buffers)
+    const loadFallback = () => {
+      void fetchChatMessages(activeRoom).then((list) => {
+        if (!alive) return;
+        setMessages((prev) => {
+          if (list.length === 0) return prev;
+          const seen = new Set(prev.map((x) => x.id));
+          const merged = [...prev];
+          for (const item of list) {
+            if (!seen.has(item.id)) merged.push(item);
+          }
+          return merged.length > 0 ? merged : list;
+        });
       });
     };
-    load();
-    const timer = window.setInterval(load, 4000);
+    loadFallback();
+    const fallbackTimer = window.setInterval(loadFallback, 8000);
+
     return () => {
       alive = false;
-      window.clearInterval(timer);
+      unsub();
+      window.clearInterval(fallbackTimer);
     };
-  }, [open, roomId]);
+  }, [open, activeRoom]);
 
   useEffect(() => {
     if (open) {
@@ -66,110 +155,250 @@ export const CommunityChatModal: React.FC<ChatModalProps> = ({
     }
   }, [messages.length, open]);
 
+  const currentRoomMeta = useMemo(
+    () => LIVE_CHAT_ROOMS.find((r) => r.id === activeRoom) || LIVE_CHAT_ROOMS[0],
+    [activeRoom]
+  );
+
   if (!open) return null;
+
+  const displayAuthor = (user?.name || guestName || 'Cria do Morro').trim().slice(0, 32);
+
+  const handleSaveNick = () => {
+    const clean = guestName.trim() || 'Cria do Morro';
+    setGuestName(clean);
+    setGuestNickname(clean);
+    setEditingNick(false);
+  };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    const clean = text.trim();
-    if (!clean || sending) return;
+    const raw = text.trim();
+    if (!raw || sending) return;
+    const finalMsg = replyingToAuthor && !raw.startsWith('@') ? `@${replyingToAuthor} ${raw}` : raw;
     setSending(true);
     try {
       const created = await sendChatMessage({
-        roomId,
-        authorName: user?.name || 'Visitante Cósmico',
-        authorColor: user?.avatarColor || 'from-pink-500 to-cyan-400',
-        message: clean,
+        roomId: activeRoom,
+        authorName: displayAuthor,
+        authorColor: user?.avatarColor || 'from-amber-400 via-pink-500 to-cyan-400',
+        message: finalMsg,
       });
       if (created) {
-        setMessages((prev) => [...prev, created]);
+        setMessages((prev) => (prev.some((m) => m.id === created.id) ? prev : [...prev, created]));
         setText('');
+        setReplyingToAuthor(null);
       }
     } finally {
       setSending(false);
     }
   };
 
+  const handleTapReaction = async (emoji: string) => {
+    spawnFloatingEmoji(emoji, displayAuthor);
+    await sendChatReaction({
+      roomId: activeRoom,
+      emoji,
+      authorName: displayAuthor,
+    });
+  };
+
   return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[9996] bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5"
+      className="fixed inset-0 z-[9996] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center sm:p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg h-[82vh] max-h-[640px] rounded-3xl bg-[#090318]/96 border border-cyan-400/40 flex flex-col overflow-hidden shadow-[0_0_70px_rgba(34,211,238,0.3)]"
+        className="relative w-full max-w-xl h-[88vh] sm:h-[86vh] max-h-[720px] rounded-t-3xl sm:rounded-3xl bg-gradient-to-b from-[#130824] via-[#090414] to-[#05020a] border border-amber-400/40 flex flex-col overflow-hidden shadow-[0_0_80px_rgba(245,158,11,0.28)]"
       >
-        <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-2 bg-gradient-to-r from-[#190a36] to-[#081a2c]">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-cyan-400 flex items-center justify-center shrink-0">
-              <MessageSquare className="w-4 h-4 text-white" />
-            </span>
-            <div className="min-w-0">
-              <div className="text-xs sm:text-sm font-black text-white truncate">{roomTitle}</div>
-              <div className="text-[10px] text-cyan-300 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Chat ao vivo · Converse com outros fãs
+        {/* INSTAGRAM LIVE HEADER */}
+        <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-[#240a33]/90 via-[#160a24]/90 to-[#081b28]/90 space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative w-9 h-9 rounded-full p-[2px] bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-500 shrink-0">
+                <div className="w-full h-full rounded-full bg-[#0d051a] flex items-center justify-center">
+                  <Radio className="w-4 h-4 text-rose-400 animate-pulse" />
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-rose-600 to-pink-600 text-[9px] font-black uppercase tracking-wider text-white shadow">
+                    AO VIVO
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-black/50 border border-white/15 text-[10px] font-bold text-emerald-300 flex items-center gap-1">
+                    <Users className="w-3 h-3" /> {onlineCount} na sala
+                  </span>
+                  <span className="text-xs sm:text-sm font-black text-white truncate">
+                    {roomTitle || currentRoomMeta.label}
+                  </span>
+                </div>
+                <p className="text-[10px] text-amber-200/80 truncate mt-0.5">
+                  {currentRoomMeta.desc} · Tempo real instantâneo
+                </p>
               </div>
             </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white shrink-0"
+              title="Fechar Chat Ao Vivo"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white">
-            <X className="w-4 h-4" />
-          </button>
+
+          {/* LIVE ROOM SWITCHER PILLS */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
+            {LIVE_CHAT_ROOMS.map((room) => (
+              <button
+                key={room.id}
+                type="button"
+                onClick={() => setActiveRoom(room.id)}
+                className={`px-3 py-1 rounded-full text-[11px] font-black whitespace-nowrap transition ${
+                  activeRoom === room.id
+                    ? 'bg-gradient-to-r from-amber-400 via-rose-500 to-pink-500 text-black shadow'
+                    : 'bg-white/[0.08] hover:bg-white/15 text-purple-100 border border-white/10'
+                }`}
+              >
+                {room.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
+        {/* CHAT FEED + FLOATING INSTAGRAM HEARTS */}
+        <div className="relative flex-1 overflow-y-auto p-3.5 space-y-2">
           {messages.length === 0 ? (
-            <div className="py-12 text-center text-xs text-purple-300/75 space-y-2">
-              <Sparkles className="w-6 h-6 mx-auto text-cyan-300" />
-              <p>Nenhuma mensagem ainda. Seja o primeiro a falar com a galera!</p>
+            <div className="py-12 text-center text-xs text-purple-200/75 space-y-2">
+              <Sparkles className="w-6 h-6 mx-auto text-amber-300" />
+              <p>Sala aberta! Mande o primeiro salve ou solte um 🔥 ao vivo.</p>
             </div>
           ) : (
             messages.map((m) => (
-              <div key={m.id} className="flex items-start gap-2.5">
+              <div
+                key={m.id}
+                onClick={() => setReplyingToAuthor(m.author_name)}
+                className="group flex items-start gap-2.5 cursor-pointer rounded-2xl px-2 py-1.5 hover:bg-white/[0.05] transition"
+                title="Toque para responder @"
+              >
                 <span
-                  className={`w-7 h-7 rounded-full bg-gradient-to-br ${m.author_color} text-[11px] font-black text-white flex items-center justify-center shrink-0 mt-0.5`}
+                  className={`w-7 h-7 rounded-full bg-gradient-to-br ${m.author_color} text-[11px] font-black text-white flex items-center justify-center shrink-0 mt-0.5 ring-1 ring-white/20`}
                 >
                   {m.author_name.slice(0, 1).toUpperCase()}
                 </span>
-                <div className="flex-1 min-w-0 rounded-2xl bg-white/[0.06] border border-white/10 px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-black text-cyan-300 truncate">{m.author_name}</span>
-                    <span className="text-[9px] text-purple-300/60 shrink-0">{fmtTime(m.created_at)}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black text-amber-300 truncate">{m.author_name}</span>
+                    <span className="text-[9px] text-purple-200/50 shrink-0">{fmtTime(m.created_at)}</span>
+                    <span className="opacity-0 group-hover:opacity-100 text-[9px] font-bold text-cyan-300 transition">
+                      ↩ Responder
+                    </span>
                   </div>
-                  <p className="text-xs text-white/95 break-words mt-0.5">{m.message}</p>
+                  <p className="text-xs sm:text-[13px] text-white/95 break-words leading-snug">{m.message}</p>
                 </div>
               </div>
             ))
           )}
           <div ref={endRef} />
+
+          {/* FLOATING INSTAGRAM LIVE HEARTS LAYER */}
+          <div className="pointer-events-none fixed sm:absolute bottom-28 right-5 w-16 h-56 overflow-visible z-30">
+            {floatingHearts.map((fh) => (
+              <div
+                key={fh.id}
+                style={{ left: `${24 + fh.offsetPx}px` }}
+                className="absolute bottom-0 insta-float-heart flex flex-col items-center"
+              >
+                <span className="text-2xl drop-shadow-[0_4px_10px_rgba(0,0,0,0.85)]">{fh.emoji}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <form onSubmit={handleSend} className="p-3 border-t border-white/10 bg-[#070212] space-y-2">
-          {!user && (
-            <button
-              type="button"
-              onClick={onOpenAuth}
-              className="text-[10px] text-cyan-300 hover:underline flex items-center gap-1"
-            >
-              <UserCircle2 className="w-3 h-3" /> Entre com seu nome para aparecer identificado no chat
-            </button>
-          )}
-          <div className="flex items-center gap-2">
+        {/* INSTAGRAM LIVE BOTTOM REACTION BAR + COMPOSER */}
+        <div className="p-3 border-t border-white/10 bg-[#070212]/95 space-y-2">
+          {/* Nickname bar & @reply badge */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[10px]">
+            {!user && (
+              <div className="flex items-center gap-1.5">
+                {editingNick ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSaveNick()}
+                      maxLength={28}
+                      className="px-2 py-0.5 rounded-full bg-white/10 border border-amber-400/50 text-[11px] text-white focus:outline-none w-32"
+                      placeholder="Seu vulgo/nome"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveNick}
+                      className="p-1 rounded-full bg-emerald-500 text-black font-black"
+                    >
+                      <Check className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditingNick(true)}
+                    className="px-2.5 py-0.5 rounded-full bg-white/[0.07] hover:bg-white/15 border border-white/10 text-amber-200 font-bold flex items-center gap-1"
+                  >
+                    <Edit3 className="w-2.5 h-2.5" /> Falando como: <strong>{displayAuthor}</strong>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {replyingToAuthor && (
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-bold">
+                <span>Respondendo @{replyingToAuthor}</span>
+                <button type="button" onClick={() => setReplyingToAuthor(null)}>
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Live Reactions Bar (Instagram Live style) */}
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="text-[10px] font-black text-rose-300 flex items-center gap-1 shrink-0">
+              <Flame className="w-3 h-3" /> Ao vivo:
+            </span>
+            <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+              {INSTA_REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => void handleTapReaction(emoji)}
+                  className="px-2.5 py-1 rounded-full bg-white/[0.08] hover:bg-rose-500/25 border border-white/10 text-sm transition active:scale-125 shrink-0"
+                  title={`Enviar reação ${emoji} ao vivo`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <form onSubmit={handleSend} className="flex items-center gap-2">
             <input
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Escreva uma mensagem no chat..."
-              className="flex-1 px-3.5 py-2 rounded-full bg-white/[0.08] border border-white/15 text-xs text-white placeholder-purple-300/60 focus:outline-none focus:border-cyan-400"
+              placeholder={`Comentar ao vivo em ${currentRoomMeta.label}...`}
+              className="flex-1 px-3.5 py-2.5 rounded-full bg-white/[0.09] border border-white/15 text-xs text-white placeholder-purple-200/60 focus:outline-none focus:border-amber-400"
             />
             <button
               type="submit"
               disabled={sending || !text.trim()}
-              className="px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 to-pink-500 text-black text-xs font-black flex items-center gap-1 disabled:opacity-40"
+              className="px-4 py-2.5 rounded-full bg-gradient-to-r from-amber-400 via-rose-500 to-pink-500 text-black text-xs font-black flex items-center gap-1 disabled:opacity-40 shrink-0"
             >
               <Send className="w-3.5 h-3.5" /> Enviar
             </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>,
     document.body
@@ -204,7 +433,7 @@ function fmtLikesCompact(n: number): string {
   return String(n);
 }
 
-const QUICK_REACTIONS = ['🔥', '❤️', '😂', '👏', '🤯', '🚀'];
+const QUICK_REACTIONS = ['🔥', '❤️', '😂', '👏', '👑', '🚀'];
 
 export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
   open,
@@ -223,6 +452,8 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
   const [replyingTo, setReplyingTo] = useState<CommentItem | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const [likedLocalIds, setLikedLocalIds] = useState<Set<string>>(new Set());
+  const [guestName, setGuestName] = useState(() => getGuestNickname() || 'Cria MORRO GOLD');
+  const [editingNick, setEditingNick] = useState(false);
   const viewerId = getClientSubscriberId(user?.id);
 
   useEffect(() => {
@@ -246,12 +477,61 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
       .finally(() => {
         if (alive) setLoading(false);
       });
+
+    // Live SSE comment updates in real time!
+    const unsub = subscribeCommentStream(targetId, {
+      onComment: (incoming) => {
+        if (!alive) return;
+        if (incoming.parent_id) {
+          setComments((prev) =>
+            prev.map((c) => {
+              if (c.id !== incoming.parent_id) return c;
+              const existing = c.replies || [];
+              if (existing.some((r) => r.id === incoming.id)) return c;
+              return { ...c, replies: [...existing, incoming] };
+            })
+          );
+        } else {
+          setComments((prev) => {
+            if (prev.some((c) => c.id === incoming.id)) return prev;
+            setTotalCount((n) => n + 1);
+            return [incoming, ...prev];
+          });
+        }
+      },
+      onLike: (upd) => {
+        if (!alive) return;
+        setComments((prev) =>
+          prev.map((c) => {
+            if (c.id === upd.id) return { ...c, likes: upd.likes };
+            if (c.replies?.length) {
+              return {
+                ...c,
+                replies: c.replies.map((r) => (r.id === upd.id ? { ...r, likes: upd.likes } : r)),
+              };
+            }
+            return c;
+          })
+        );
+      },
+    });
+
     return () => {
       alive = false;
+      unsub();
     };
   }, [open, targetId, sort, youtubeId, viewerId]);
 
   if (!open) return null;
+
+  const displayAuthor = (user?.name || guestName || 'Cria MORRO GOLD').trim().slice(0, 32);
+
+  const handleSaveNick = () => {
+    const clean = guestName.trim() || 'Cria MORRO GOLD';
+    setGuestName(clean);
+    setGuestNickname(clean);
+    setEditingNick(false);
+  };
 
   const submitCommentText = async (rawText: string) => {
     const clean = rawText.trim();
@@ -261,24 +541,28 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
       const created = await postCommentItem({
         targetId,
         parentId: replyingTo?.id || '',
-        authorName: user?.name || 'Fã LENKYX',
-        authorColor: user?.avatarColor || 'from-purple-500 to-pink-500',
+        authorName: displayAuthor,
+        authorColor: user?.avatarColor || 'from-amber-400 via-pink-500 to-cyan-400',
         text: clean,
       });
       if (created) {
         if (replyingTo) {
           setComments((prev) =>
-            prev.map((c) =>
-              c.id === replyingTo.id
-                ? { ...c, replies: [...(c.replies || []), created] }
-                : c
-            )
+            prev.map((c) => {
+              if (c.id !== replyingTo.id) return c;
+              const existing = c.replies || [];
+              if (existing.some((r) => r.id === created.id)) return c;
+              return { ...c, replies: [...existing, created] };
+            })
           );
           setExpandedReplies((prev) => new Set(prev).add(replyingTo.id));
           setReplyingTo(null);
         } else {
-          setComments((prev) => [created, ...prev]);
-          setTotalCount((n) => n + 1);
+          setComments((prev) => {
+            if (prev.some((c) => c.id === created.id)) return prev;
+            setTotalCount((n) => n + 1);
+            return [created, ...prev];
+          });
         }
         setText('');
       }
@@ -324,7 +608,7 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
       })
     );
 
-    const res = await likeCommentItem(c.id, viewerId, c.likes);
+    const res = await likeCommentItem(c.id, viewerId, c.likes, targetId);
     if (res) {
       setLikedLocalIds((prev) => {
         const next = new Set(prev);
@@ -365,22 +649,21 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg h-[78vh] sm:h-[82vh] max-h-[680px] rounded-t-3xl sm:rounded-3xl bg-[#0e0722]/98 border border-white/20 flex flex-col overflow-hidden shadow-[0_-12px_60px_rgba(34,211,238,0.22)]"
+        className="w-full max-w-lg h-[80vh] sm:h-[82vh] max-h-[680px] rounded-t-3xl sm:rounded-3xl bg-[#0e0722]/98 border border-amber-400/35 flex flex-col overflow-hidden shadow-[0_-12px_60px_rgba(245,158,11,0.22)]"
       >
-        {/* Drag Handle (Mobile YouTube Shorts Style) */}
         <div className="flex justify-center pt-2 pb-0.5 sm:hidden">
           <span className="w-10 h-1 rounded-full bg-white/30" />
         </div>
 
-        {/* Header + Sort Tabs */}
         <div className="px-4 py-2.5 border-b border-white/10 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-white">Comentários</span>
-                <span className="px-2 py-0.5 rounded-full bg-white/10 text-[11px] font-black text-cyan-200">
+                <span className="text-sm font-black text-white">Comentários ao vivo</span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/35 text-[11px] font-black text-amber-200">
                   {totalCount}
                 </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               </div>
               <div className="text-[11px] text-purple-200/75 truncate">{targetTitle}</div>
             </div>
@@ -389,29 +672,56 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSort('top')}
-              className={`px-3 py-1 rounded-full text-[11px] font-black transition ${
-                sort === 'top' ? 'bg-white text-black' : 'bg-white/10 text-purple-100 hover:bg-white/20'
-              }`}
-            >
-              Principais
-            </button>
-            <button
-              type="button"
-              onClick={() => setSort('newest')}
-              className={`px-3 py-1 rounded-full text-[11px] font-black transition ${
-                sort === 'newest' ? 'bg-white text-black' : 'bg-white/10 text-purple-100 hover:bg-white/20'
-              }`}
-            >
-              Mais recentes
-            </button>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSort('top')}
+                className={`px-3 py-1 rounded-full text-[11px] font-black transition ${
+                  sort === 'top' ? 'bg-white text-black' : 'bg-white/10 text-purple-100 hover:bg-white/20'
+                }`}
+              >
+                Principais
+              </button>
+              <button
+                type="button"
+                onClick={() => setSort('newest')}
+                className={`px-3 py-1 rounded-full text-[11px] font-black transition ${
+                  sort === 'newest' ? 'bg-white text-black' : 'bg-white/10 text-purple-100 hover:bg-white/20'
+                }`}
+              >
+                Mais recentes
+              </button>
+            </div>
+
+            {!user && (
+              editingNick ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveNick()}
+                    maxLength={28}
+                    className="px-2 py-0.5 rounded-full bg-white/10 border border-amber-400/50 text-[10px] text-white focus:outline-none w-28"
+                  />
+                  <button type="button" onClick={handleSaveNick} className="p-1 rounded-full bg-emerald-500 text-black">
+                    <Check className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditingNick(true)}
+                  className="px-2.5 py-0.5 rounded-full bg-white/10 text-[10px] font-bold text-amber-200 flex items-center gap-1"
+                >
+                  <Edit3 className="w-2.5 h-2.5" /> {displayAuthor}
+                </button>
+              )
+            )}
           </div>
         </div>
 
-        {/* Comments List */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-3.5 space-y-3">
           {loading ? (
             <div className="py-12 flex flex-col items-center justify-center gap-2 text-xs text-cyan-300 font-bold">
@@ -420,7 +730,7 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
             </div>
           ) : comments.length === 0 ? (
             <div className="py-12 text-center text-xs text-purple-200/80">
-              Seja o primeiro a comentar neste vídeo! 💬
+              Seja o primeiro a mandar um comentário aqui! 💬
             </div>
           ) : (
             comments.map((c) => {
@@ -448,9 +758,7 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span
                           className={`text-[11px] font-black ${
-                            c.is_creator
-                              ? 'px-2 py-0.5 rounded-full bg-white text-black'
-                              : 'text-cyan-200'
+                            c.is_creator ? 'px-2 py-0.5 rounded-full bg-white text-black' : 'text-amber-200'
                           }`}
                         >
                           {c.author_name}
@@ -472,9 +780,7 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
                             isLiked ? 'text-pink-400' : 'text-purple-200/75 hover:text-white'
                           }`}
                         >
-                          <Heart
-                            className={`w-3.5 h-3.5 ${isLiked ? 'fill-pink-500 text-pink-500' : ''}`}
-                          />
+                          <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-pink-500 text-pink-500' : ''}`} />
                           <span>{fmtLikesCompact(c.likes)}</span>
                         </button>
 
@@ -515,7 +821,7 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
                                     </span>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-[11px] font-black text-cyan-200">
+                                        <span className="text-[11px] font-black text-amber-200">
                                           {r.author_name}
                                         </span>
                                         <span className="text-[9px] text-purple-200/60">
@@ -551,7 +857,6 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
           )}
         </div>
 
-        {/* Quick Emoji Strip + Composer */}
         <div className="border-t border-white/10 bg-[#080316] p-3 space-y-2">
           {replyingTo && (
             <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-[11px] text-cyan-200">
@@ -580,26 +885,22 @@ export const TargetCommentsModal: React.FC<TargetCommentsModalProps> = ({
           </div>
 
           <form onSubmit={handlePost} className="flex items-center gap-2">
-            <span
-              className={`w-8 h-8 rounded-full bg-gradient-to-br ${
-                user?.avatarColor || 'from-pink-500 to-cyan-400'
-              } text-xs font-black text-white flex items-center justify-center shrink-0`}
-            >
-              {(user?.name || 'F').slice(0, 1).toUpperCase()}
+            <span className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 via-pink-500 to-cyan-400 text-xs font-black text-black flex items-center justify-center shrink-0">
+              {displayAuthor.slice(0, 1).toUpperCase()}
             </span>
             <input
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder={
-                replyingTo ? `Responder @${replyingTo.author_name}...` : 'Adicione um comentário...'
+                replyingTo ? `Responder @${replyingTo.author_name}...` : 'Escreva seu comentário...'
               }
-              className="flex-1 px-3.5 py-2 rounded-full bg-white/[0.1] border border-white/20 text-xs text-white placeholder-purple-200/60 focus:outline-none focus:border-cyan-400"
+              className="flex-1 px-3.5 py-2 rounded-full bg-white/[0.1] border border-white/20 text-xs text-white placeholder-purple-200/60 focus:outline-none focus:border-amber-400"
             />
             <button
               type="submit"
               disabled={sending || !text.trim()}
-              className="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black text-xs font-black disabled:opacity-40 shrink-0"
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-amber-400 to-pink-500 text-black text-xs font-black disabled:opacity-40 shrink-0"
             >
               {sending ? '...' : <Send className="w-3.5 h-3.5" />}
             </button>

@@ -16,6 +16,7 @@ import {
   Delete,
   Space,
   Keyboard,
+  MessageCircle,
 } from 'lucide-react';
 import { Track, MovieItem } from '../types';
 import { getWorldTrending, searchWorldMusic } from '../utils/worldMusic';
@@ -44,6 +45,7 @@ interface Props {
   onWatchClip?: (track: Track, queue?: Track[]) => void;
   onOpenMovie: (movie: MovieItem) => void;
   onNavigateTab: (tab: 'explore' | 'movies') => void;
+  onCommentTarget?: (id: string, title: string, youtubeId?: string) => void;
   onToast: (msg: string) => void;
 }
 
@@ -59,13 +61,14 @@ const KEYBOARD_ROWS = [
 ];
 
 const QUICK_MEDIA_FILTERS: { label: string; query: string; cat?: SearchCategory }[] = [
+  { label: '👑 Funk da Favela', query: 'MC Ryan SP MC Hariel MC IG MC Leozinho ZS MC Iguinho CT', cat: 'music' },
+  { label: '🎤 Rap da Quebrada', query: 'Racionais MCs Filipe Ret Orochi BK Djonga Veigh', cat: 'music' },
+  { label: '🥁 Pagode Comunidade', query: 'Grupo Menos e Mais Ferrugem Turma do Pagode Pericles', cat: 'music' },
   { label: '⚡ Phonk & Drift', query: 'phonk drift', cat: 'music' },
   { label: '🤠 Sertanejo', query: 'Henrique e Juliano sertanejo', cat: 'music' },
   { label: '🍿 Filmes Dublados', query: 'filme completo dublado hd', cat: 'movies' },
   { label: '📺 Séries HD', query: 'serie completa dublada', cat: 'movies' },
-  { label: '⛩️ Animes', query: 'anime dublado filme', cat: 'movies' },
   { label: '🌎 Pop Global', query: 'The Weeknd Dua Lipa official', cat: 'clips' },
-  { label: '🛸 Espaço & Synth', query: 'cosmic synthwave space', cat: 'music' },
 ];
 
 export const CosmicSearchView: React.FC<Props> = ({
@@ -76,6 +79,7 @@ export const CosmicSearchView: React.FC<Props> = ({
   onWatchClip,
   onOpenMovie,
   onNavigateTab,
+  onCommentTarget,
   onToast,
 }) => {
   const [query, setQuery] = useState(initialQuery);
@@ -653,26 +657,41 @@ export const CosmicSearchView: React.FC<Props> = ({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {displayedMusic.slice(0, activeCat === 'music' ? 14 : 6).map((t) => (
-                  <button
+                  <div
                     key={t.id}
-                    onClick={() => onPlayTrack(t, displayedMusic)}
                     className="p-2.5 rounded-2xl cosmic-card-3d flex items-center gap-3 text-left hover:bg-white/[0.08] transition group"
                   >
-                    <img
-                      src={t.coverUrl || '/covers/morro-gold-emblema-grosso.png'}
-                      alt={t.title}
-                      className="w-12 h-12 rounded-xl object-cover shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-black text-white truncate group-hover:text-cyan-300">
-                        {t.title}
+                    <button
+                      type="button"
+                      onClick={() => onPlayTrack(t, displayedMusic)}
+                      className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                    >
+                      <img
+                        src={t.coverUrl || '/covers/morro-gold-emblema-grosso.png'}
+                        alt={t.title}
+                        className="w-12 h-12 rounded-xl object-cover shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-black text-white truncate group-hover:text-cyan-300">
+                          {t.title}
+                        </div>
+                        <div className="text-[11px] text-slate-300/80 truncate">{t.artist}</div>
                       </div>
-                      <div className="text-[11px] text-slate-300/80 truncate">{t.artist}</div>
-                    </div>
-                    <span className="w-8 h-8 rounded-full bg-cyan-400/20 group-hover:bg-cyan-400 text-cyan-200 group-hover:text-black flex items-center justify-center shrink-0 transition">
-                      <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                    </span>
-                  </button>
+                      <span className="w-8 h-8 rounded-full bg-cyan-400/20 group-hover:bg-cyan-400 text-cyan-200 group-hover:text-black flex items-center justify-center shrink-0 transition">
+                        <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                      </span>
+                    </button>
+                    {onCommentTarget && (
+                      <button
+                        type="button"
+                        onClick={() => onCommentTarget(`track:${t.id}`, `${t.title} — ${t.artist}`, t.youtubeVideoId)}
+                        className="p-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/35 text-cyan-200 shrink-0"
+                        title="Comentar nesta música"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>

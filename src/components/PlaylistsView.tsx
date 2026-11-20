@@ -12,6 +12,7 @@ import {
   Heart,
   Sparkles,
   User,
+  MessageCircle,
 } from 'lucide-react';
 import { Track, UserPlaylist, UserProfile } from '../types';
 
@@ -37,6 +38,7 @@ interface Props {
   }) => Promise<void>;
   onDeleteUserTrack: (id: string) => void;
   onOpenUserAuth?: () => void;
+  onCommentTarget?: (id: string, title: string, youtubeId?: string) => void;
 }
 
 const EMOJIS = ['🚀', '🔥', '🎧', '💜', '🌌', '⚡', '🚗', '🌙'];
@@ -56,6 +58,7 @@ export const PlaylistsView: React.FC<Props> = ({
   onUploadUserTrack,
   onDeleteUserTrack,
   onOpenUserAuth,
+  onCommentTarget,
 }) => {
   const [selectedId, setSelectedId] = useState<string>(playlists[0]?.id || 'USER_UPLOADS');
   const [creating, setCreating] = useState(false);
@@ -257,14 +260,30 @@ export const PlaylistsView: React.FC<Props> = ({
                   : selectedPlaylist?.description || `${resolvedTracks.length} músicas`}
               </p>
             </div>
-            {resolvedTracks[0] && (
-              <button
-                onClick={() => onPlayTrack(resolvedTracks[0], resolvedTracks)}
-                className="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow shrink-0"
-              >
-                <Play className="w-3.5 h-3.5 fill-white" /> Tocar
-              </button>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {onCommentTarget && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onCommentTarget(
+                      `playlist:${selectedId}`,
+                      selectedPlaylist ? `${selectedPlaylist.emoji} ${selectedPlaylist.name}` : '🎵 Playlist MORRO GOLD'
+                    )
+                  }
+                  className="px-3 py-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-200 text-xs font-extrabold flex items-center gap-1.5"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> Comentar
+                </button>
+              )}
+              {resolvedTracks[0] && (
+                <button
+                  onClick={() => onPlayTrack(resolvedTracks[0], resolvedTracks)}
+                  className="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow shrink-0"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white" /> Tocar
+                </button>
+              )}
+            </div>
           </div>
 
           {resolvedTracks.length === 0 ? (
@@ -310,6 +329,16 @@ export const PlaylistsView: React.FC<Props> = ({
                         {t.artist} · {t.album}
                       </div>
                     </div>
+                    {onCommentTarget && (
+                      <button
+                        type="button"
+                        onClick={() => onCommentTarget(`track:${t.id}`, `${t.title} — ${t.artist}`, t.youtubeVideoId)}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-cyan-500/25 text-cyan-300"
+                        title="Comentar nesta música"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
+                    )}
                     {onSendToVideo && (
                       <button
                         onClick={() => onSendToVideo(t)}

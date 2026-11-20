@@ -11,6 +11,30 @@ export interface ChatMessageItem {
   created_at: string;
 }
 
+export interface ChatReactionItem {
+  id: string;
+  room_id: string;
+  emoji: string;
+  authorName: string;
+  ts: number;
+}
+
+export function getGuestNickname(): string {
+  try {
+    return localStorage.getItem('morro_gold_nickname_v1') || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setGuestNickname(name: string): void {
+  try {
+    localStorage.setItem('morro_gold_nickname_v1', name.trim().slice(0, 32));
+  } catch {
+    // ignore
+  }
+}
+
 export interface CommentItem {
   id: string;
   target_id: string;
@@ -112,6 +136,112 @@ export async function sendChatMessage(payload: {
   });
 }
 
+export async function sendChatReaction(payload: {
+  roomId?: string;
+  emoji: string;
+  authorName?: string;
+}): Promise<ChatReactionItem | null> {
+  return req<ChatReactionItem>('/api/community/chat/react', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function subscribeChatStream(
+  roomId: string,
+  handlers: {
+    onInit?: (data: { room: string; onlineCount: number; messages: ChatMessageItem[] }) => void;
+    onMessage?: (msg: ChatMessageItem) => void;
+    onReaction?: (rx: ChatReactionItem) => void;
+    onPresence?: (data: { room: string; onlineCount: number }) => void;
+  }
+): () => void {
+  const url = `/api/community/chat/stream?room=${encodeURIComponent(roomId || 'global')}`;
+  let es: EventSource | null = null;
+  try {
+    if (typeof EventSource !== 'undefined') {
+      es = new EventSource(url);
+      es.addEventListener('init', (ev) => {
+        try {
+          handlers.onInit?.(JSON.parse((ev as MessageEvent).data));
+        } catch {
+          // ignore
+        }
+      });
+      es.addEventListener('message', (ev) => {
+        try {
+          handlers.onMessage?.(JSON.parse((ev as MessageEvent).data));
+        } catch {
+          // ignore
+        }
+      });
+      es.addEventListener('reaction', (ev) => {
+        try {
+          handlers.onReaction?.(JSON.parse((ev as MessageEvent).data));
+        } catch {
+          // ignore
+        }
+      });
+      es.addEventListener('presence', (ev) => {
+        try {
+          handlers.onPresence?.(JSON.parse((ev as MessageEvent).data));
+        } catch {
+          // ignore
+        }
+      });
+    }
+  } catch {
+    es = null;
+  }
+  return () => {
+    try {
+      es?.close();
+    } catch {
+      // ignore
+    }
+  };
+}
+
+export function subscribeCommentStream(
+  targetId: string,
+  handlers: {
+    onComment?: (c: CommentItem) => void;
+    onLike?: (upd: { id: string; likes: number; liked?: boolean }) => void;
+  }
+): () => void {
+  if (!targetId) return () => {};
+  const url = `/api/community/comments/stream?targetId=${encodeURIComponent(targetId)}`;
+  let es: EventSource | null = null;
+  try {
+    if (typeof EventSource !== 'undefined') {
+      es = new EventSource(url);
+      es.addEventListener('comment', (ev) => {
+        try {
+          handlers.onComment?.(JSON.parse((ev as MessageEvent).data));
+        } catch {
+          // ignore
+        }
+      });
+      es.addEventListener('comment_like', (ev) => {
+        try {
+          handlers.onLike?.(JSON.parse((ev as MessageEvent).data));
+        } catch {
+          // ignore
+        }
+      });
+    }
+  } catch {
+    es = null;
+  }
+  return () => {
+    try {
+      es?.close();
+    } catch {
+      // ignore
+    }
+  };
+}
+
 export async function fetchCommentsFull(
   targetId: string,
   userId = '',
@@ -151,13 +281,14 @@ export async function postCommentItem(payload: {
 export async function likeCommentItem(
   commentId: string,
   userId = '',
-  baseLikes = 0
+  baseLikes = 0,
+  targetId = ''
 ): Promise<{ id: string; likes: number; liked: boolean } | null> {
   return req<{ id: string; likes: number; liked: boolean }>(
     `/api/community/comments/${encodeURIComponent(commentId)}/like`,
     {
       method: 'POST',
-      body: JSON.stringify({ userId, baseLikes }),
+      body: JSON.stringify({ userId, baseLikes, targetId }),
     }
   );
 }

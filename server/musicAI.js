@@ -41,8 +41,40 @@ export const FAMOUS_ARTISTS_DIRECTORY = [
   { name: 'Zé Neto & Cristiano', genre: 'Sertanejo', era: 'Brasil Top', wiki: 'Zé_Neto_&_Cristiano', lang: 'pt', query: 'Ze Neto e Cristiano oficial' },
   { name: 'Simone Mendes', genre: 'Sertanejo', era: 'Brasil Top', wiki: 'Simone_Mendes', lang: 'pt', query: 'Simone Mendes oficial' },
   { name: 'Matuê', genre: 'Trap Nacional', era: 'Brasil Top', wiki: 'Matuê', lang: 'pt', query: 'Matue oficial audio' },
-  { name: 'MC Ryan SP', genre: 'Funk Brasil', era: 'Brasil Top', wiki: 'MC_Ryan_SP', lang: 'pt', query: 'MC Ryan SP oficial' },
-  { name: 'MC Hariel', genre: 'Funk Consciente', era: 'Brasil Top', wiki: 'MC_Hariel', lang: 'pt', query: 'MC Hariel oficial' },
+  { name: 'MC Ryan SP', genre: 'Funk Favela / Brasil', era: 'Brasil Top · Na Correria', wiki: 'MC_Ryan_SP', lang: 'pt', query: 'MC Ryan SP oficial' },
+  { name: 'MC Hariel', genre: 'Funk Consciente / Favela', era: 'Brasil Top · Na Correria', wiki: 'MC_Hariel', lang: 'pt', query: 'MC Hariel oficial' },
+  { name: 'MC IG', genre: 'Funk Favela / Brasil', era: 'Brasil Top · Na Correria', wiki: 'MC_IG', lang: 'pt', query: 'MC IG oficial' },
+  { name: 'MC Poze do Rodo', genre: 'Funk / Trap Favela', era: 'Rio · Na Correria', wiki: 'MC_Poze_do_Rodo', lang: 'pt', query: 'MC Poze do Rodo oficial' },
+  { name: 'MC Leozinho ZS', genre: 'Funk Favela / Brasil', era: '2026 Top · Na Correria', wiki: 'Funk_carioca', lang: 'pt', query: 'MC Leozinho ZS oficial' },
+  { name: 'MC Jacaré', genre: 'Funk Favela / Brasil', era: '2026 Top · Na Correria', wiki: 'Funk_carioca', lang: 'pt', query: 'MC Jacare funk oficial' },
+  { name: 'MC Iguinho CT', genre: 'Funk Favela / Brasil', era: '2026 #1 · Na Correria', wiki: 'Funk_carioca', lang: 'pt', query: 'MC Iguinho CT Cuida do Pet' },
+  { name: 'MC Lele JP', genre: 'Funk Favela / Brasil', era: '2026 Top · Na Correria', wiki: 'Funk_carioca', lang: 'pt', query: 'MC Lele JP oficial' },
+  { name: 'MC Negão Original', genre: 'Funk Favela / Brasil', era: '2026 Top · Na Correria', wiki: 'Funk_carioca', lang: 'pt', query: 'MC Negao Original oficial' },
+  { name: 'MC Kevin O Chris', genre: 'Funk Carioca / Favela', era: 'Rio · Na Correria', wiki: 'MC_Kevin_O_Chris', lang: 'pt', query: 'MC Kevin O Chris oficial' },
+  { name: 'MC Livinho', genre: 'Funk Melody / Favela', era: 'Brasil · Na Correria', wiki: 'MC_Livinho', lang: 'pt', query: 'MC Livinho oficial' },
+  { name: 'Filipe Ret', genre: 'Rap / Trap Favela', era: 'Rio · Na Correria', wiki: 'Filipe_Ret', lang: 'pt', query: 'Filipe Ret oficial' },
+  { name: 'Orochi', genre: 'Rap / Trap Favela', era: 'Rio · Na Correria', wiki: 'Orochi_(rapper)', lang: 'pt', query: 'Orochi rapper oficial' },
+  { name: "BK'", genre: 'Rap Nacional / Favela', era: 'Rio · Na Correria', wiki: "BK'_(rapper)", lang: 'pt', query: 'BK rapper oficial' },
+  { name: 'Djonga', genre: 'Rap Nacional / Favela', era: 'BH · Na Correria', wiki: 'Djonga', lang: 'pt', query: 'Djonga rapper oficial' },
+  { name: 'MC Cabelinho', genre: 'Rap / Funk Favela', era: 'Rio · Na Correria', wiki: 'MC_Cabelinho', lang: 'pt', query: 'MC Cabelinho oficial' },
+  { name: 'Veigh', genre: 'Trap Nacional / Favela', era: 'SP · Na Correria', wiki: 'Veigh', lang: 'pt', query: 'Veigh oficial' },
+  { name: 'L7NNON', genre: 'Rap Nacional / Favela', era: 'Rio · Na Correria', wiki: 'L7nnon', lang: 'pt', query: 'L7NNON oficial' },
+  { name: 'Oruam', genre: 'Trap / Rap Favela', era: 'Rio · Na Correria', wiki: 'Oruam', lang: 'pt', query: 'Oruam oficial' },
+  { name: 'TZ da Coronel', genre: 'Trap / Rap Favela', era: 'Rio · Na Correria', wiki: 'TZ_da_Coronel', lang: 'pt', query: 'TZ da Coronel oficial' },
+  { name: 'Chefin', genre: 'Trap / Rap Favela', era: 'Rio · Na Correria', wiki: 'Chefin', lang: 'pt', query: 'Chefin oficial' },
+  { name: 'KayBlack', genre: 'Trap / Rap Favela', era: 'SP · Na Correria', wiki: 'KayBlack', lang: 'pt', query: 'KayBlack oficial' },
+  { name: 'Hungria Hip Hop', genre: 'Rap Nacional / Quebrada', era: 'Brasil · Na Correria', wiki: 'Hungria_Hip_Hop', lang: 'pt', query: 'Hungria Hip Hop oficial' },
+  { name: 'Grupo Menos É Mais', genre: 'Pagode / Comunidade', era: 'Brasil #1 · Na Correria', wiki: 'Menos_é_Mais', lang: 'pt', query: 'Grupo Menos e Mais ao vivo' },
+  { name: 'Ferrugem', genre: 'Pagode / Comunidade', era: 'Brasil Top · Na Correria', wiki: 'Ferrugem_(cantor)', lang: 'pt', query: 'Ferrugem pagode ao vivo' },
+  { name: 'Turma do Pagode', genre: 'Pagode / Comunidade', era: 'Brasil Top · Na Correria', wiki: 'Turma_do_Pagode', lang: 'pt', query: 'Turma do Pagode ao vivo' },
+  { name: 'Sorriso Maroto', genre: 'Pagode / Comunidade', era: 'Brasil Top · Na Correria', wiki: 'Sorriso_Maroto', lang: 'pt', query: 'Sorriso Maroto ao vivo' },
+  { name: 'Péricles', genre: 'Pagode / Samba Comunidade', era: 'Brasil · Na Correria', wiki: 'Péricles_(cantor)', lang: 'pt', query: 'Pericles pagode ao vivo' },
+  { name: 'Thiaguinho', genre: 'Pagode / Comunidade', era: 'Brasil · Na Correria', wiki: 'Thiaguinho_(cantor)', lang: 'pt', query: 'Thiaguinho pagode ao vivo' },
+  { name: 'Belo', genre: 'Pagode / Comunidade', era: 'Brasil · Na Correria', wiki: 'Belo_(cantor)', lang: 'pt', query: 'Belo pagode sucessos' },
+  { name: 'Pixote', genre: 'Pagode / Comunidade', era: 'Brasil · Na Correria', wiki: 'Pixote_(banda)', lang: 'pt', query: 'Grupo Pixote ao vivo' },
+  { name: 'Kamisa 10', genre: 'Pagode / Comunidade', era: '2026 Top · Na Correria', wiki: 'Pagode', lang: 'pt', query: 'Kamisa 10 pagode ao vivo' },
+  { name: 'Xande de Pilares', genre: 'Samba / Pagode Comunidade', era: 'Brasil · Na Correria', wiki: 'Xande_de_Pilares', lang: 'pt', query: 'Xande de Pilares ao vivo' },
+  { name: 'Ludmilla', genre: 'Funk / Pagode Numanice', era: 'Rio · Na Correria', wiki: 'Ludmilla', lang: 'pt', query: 'Ludmilla Numanice funk oficial' },
   { name: 'Shakira', genre: 'Pop Latino', era: 'Global Top', wiki: 'Shakira', lang: 'en', query: 'Shakira official music' },
   { name: 'Karol G', genre: 'Reggaeton / Pop', era: 'Global Top', wiki: 'Karol_G', lang: 'en', query: 'Karol G official audio' },
   { name: 'Kendrick Lamar', genre: 'Hip-Hop / Rap', era: 'Global Top', wiki: 'Kendrick_Lamar', lang: 'en', query: 'Kendrick Lamar official audio' },
@@ -51,6 +83,33 @@ export const FAMOUS_ARTISTS_DIRECTORY = [
 ];
 
 export const CURATED_PLAYLISTS = [
+  {
+    id: 'pl-favela-funk-2026',
+    title: 'Funk da Favela 2026 (Vivos na Correria)',
+    subtitle: 'MC Iguinho CT, MC Leozinho ZS, MC Ryan SP, MC Hariel, MC IG, MC Jacaré, MC Poze do Rodo',
+    emoji: '👑',
+    era: 'Baile & Comunidade 2026',
+    searchQuery: 'MC Iguinho CT Cuida do Pet MC Leozinho ZS MC Ryan SP MC Hariel MC IG MC Jacare funk oficial',
+    gradient: 'from-amber-500/40 via-rose-600/25 to-yellow-500/25',
+  },
+  {
+    id: 'pl-favela-rap-2026',
+    title: 'Rap & Trap da Quebrada (Na Correria)',
+    subtitle: "Racionais MC's, Filipe Ret, Orochi, BK', Djonga, MC Cabelinho, Veigh, L7NNON, TZ da Coronel",
+    emoji: '🎤',
+    era: 'Voz do Morro 2026',
+    searchQuery: 'Racionais MCs Filipe Ret Orochi BK Djonga MC Cabelinho Veigh L7NNON rap nacional oficial',
+    gradient: 'from-purple-600/40 via-amber-500/25 to-emerald-500/25',
+  },
+  {
+    id: 'pl-favela-pagode-2026',
+    title: 'Pagode da Comunidade & Churrasco',
+    subtitle: 'Grupo Menos É Mais, Ferrugem, Turma do Pagode, Péricles, Sorriso Maroto, Belo, Kamisa 10',
+    emoji: '🥁',
+    era: 'Roda de Samba 2026',
+    searchQuery: 'Grupo Menos e Mais Ferrugem Turma do Pagode Pericles Sorriso Maroto Kamisa 10 pagode ao vivo',
+    gradient: 'from-emerald-500/35 via-amber-500/25 to-orange-500/25',
+  },
   {
     id: 'pl-clips-oficiais',
     title: 'Melhores Clipes Oficiais & DVDs Completos',
@@ -192,6 +251,14 @@ const SPELL_ALIASES = new Map([
   ['ze neto', 'Zé Neto & Cristiano'],
   ['legiao', 'Legião Urbana'],
   ['racionais', "Racionais MC's"],
+  ['fank', 'funk favela'],
+  ['funk favela', 'MC Ryan SP MC Hariel MC IG MC Leozinho ZS MC Jacare'],
+  ['pagode favela', 'Grupo Menos e Mais Ferrugem Turma do Pagode Pericles'],
+  ['menos e mais', 'Grupo Menos É Mais'],
+  ['poze', 'MC Poze do Rodo'],
+  ['hariel', 'MC Hariel'],
+  ['ryan sp', 'MC Ryan SP'],
+  ['cabelinho', 'MC Cabelinho'],
   ['red hot', 'Red Hot Chili Peppers'],
   ['foo figthers', 'Foo Fighters'],
   ['evanescense', 'Evanescence'],
@@ -281,6 +348,10 @@ function interpretQueryWithAI(rawQuery) {
     expanded = `${corrected} clipe oficial official music video`;
   } else if (/(anos 60|anos 70|anos 80|anos 90|flashback|antigas)/.test(low)) {
     expanded = `${corrected} maiores sucessos classicos musica completa`;
+  } else if (/(favela|comunidade|quebrada|baile|fank)/.test(low) && !matchedArtist) {
+    expanded = `${corrected} MC Ryan SP MC Hariel MC IG Grupo Menos e Mais Filipe Ret Racionais MCs oficial`;
+  } else if (/(pagode|samba|churrasco)/.test(low) && !matchedArtist) {
+    expanded = `${corrected} Grupo Menos e Mais Ferrugem Turma do Pagode Pericles Sorriso Maroto ao vivo`;
   } else if (/(sertanejo|sofrencia|modao)/.test(low) && !matchedArtist) {
     expanded = `${corrected} Henrique e Juliano Marilia Mendonca Gusttavo Lima musica`;
   } else if (matchedArtist) {
@@ -561,7 +632,9 @@ export async function runSmartWorldSearch(rawQuery, options = {}) {
 
   const ai = interpretQueryWithAI(q);
   const effectiveQuery = ai.corrected || q;
-  const queryForYt = effectiveQuery ? ai.expanded : 'Henrique e Juliano Marilia Mendonca The Weeknd Queen Alok official audio';
+  const queryForYt = effectiveQuery
+    ? ai.expanded
+    : 'MC Ryan SP MC Hariel MC IG Grupo Menos e Mais Ferrugem Filipe Ret Orochi Racionais MCs official audio';
   const isArtistQuery = Boolean(ai.matchedArtist) || effectiveQuery.length >= 3;
 
   const promises = [

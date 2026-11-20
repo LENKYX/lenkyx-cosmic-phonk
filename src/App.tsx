@@ -519,7 +519,19 @@ export function App() {
   const [reelsAction, setReelsAction] = useState<'shorts' | 'create_reel' | 'go_live'>('shorts');
   const [reelsActionNonce, setReelsActionNonce] = useState(0);
   const [chatModalOpen, setChatModalOpen] = useState(false);
-  const [commentTarget, setCommentTarget] = useState<{ id: string; title: string } | null>(null);
+  const [chatRoom, setChatRoom] = useState<{ id: string; title?: string }>({ id: 'global' });
+  const [commentTarget, setCommentTarget] = useState<{
+    id: string;
+    title: string;
+    youtubeId?: string;
+  } | null>(null);
+  const openLiveChat = useCallback((roomId = 'global', roomTitle?: string) => {
+    setChatRoom({ id: roomId, title: roomTitle });
+    setChatModalOpen(true);
+  }, []);
+  const openCommentTarget = useCallback((id: string, title: string, youtubeId?: string) => {
+    setCommentTarget({ id, title, youtubeId });
+  }, []);
   const [clipLeftOverlayOpen, setClipLeftOverlayOpen] = useState(false);
   const clipLeftTimerRef = useRef<number | null>(null);
   const revealClipLeftOverlay = useCallback(() => {
@@ -3213,11 +3225,13 @@ export function App() {
 
             <button
               type="button"
-              onClick={() => setChatModalOpen(true)}
-              className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-white transition"
-              title="Chat da Quebrada"
+              onClick={() => openLiveChat('global', '🔥 Geral do Morro · Chat Ao Vivo')}
+              className="relative px-2.5 sm:px-3 py-1.5 rounded-full bg-gradient-to-r from-rose-600/90 via-pink-500/90 to-amber-500/90 hover:brightness-110 text-white text-[11px] font-black flex items-center gap-1.5 shadow-[0_0_16px_rgba(244,63,94,0.45)] transition"
+              title="Chat Ao Vivo em Tempo Real (Estilo Instagram Live)"
             >
-              <MessageSquare className="w-5 h-5" />
+              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Chat Ao Vivo</span>
             </button>
 
             <button
@@ -3732,9 +3746,11 @@ export function App() {
                     lyricsTrack={null}
                     onSetLyricsTrack={setLyricsTrack}
                     onCommentTrack={(t) =>
-                      setCommentTarget({ id: `track:${t.id}`, title: `${t.title} — ${t.artist}` })
+                      openCommentTarget(`track:${t.id}`, `${t.title} — ${t.artist}`, t.youtubeVideoId)
                     }
-                    onOpenGlobalChat={() => setChatModalOpen(true)}
+                    onCommentTarget={openCommentTarget}
+                    onOpenGlobalChat={() => openLiveChat('global', '🔥 Geral do Morro · Chat Ao Vivo')}
+                    onOpenLiveChat={openLiveChat}
                     onSearchWorld={triggerWorldSearchDirect}
                     onOpenShop={() => navigateTab('shop')}
                     onOpenToguroShop={openToguroShop}
@@ -3791,6 +3807,8 @@ export function App() {
                     initialCategory={shopInitialCategory}
                     categoryNonce={shopCategoryNonce}
                     onSaveSettings={handleSaveSettings}
+                    onCommentTarget={openCommentTarget}
+                    onOpenLiveChat={openLiveChat}
                     onToast={showToast}
                   />
                 )}
@@ -3806,6 +3824,8 @@ export function App() {
                     onWatchClip={openClipWithIntro}
                     onAddToPlaylist={addTrackToPlaylist}
                     onOpenToguroShop={openToguroShop}
+                    onCommentTarget={openCommentTarget}
+                    onOpenLiveChat={openLiveChat}
                   />
                 )}
 
@@ -3823,6 +3843,7 @@ export function App() {
                     onRemoveFromPlaylist={handleRemoveFromPlaylist}
                     onUploadUserTrack={handleUploadUserTrack}
                     onDeleteUserTrack={handleDeleteUserTrack}
+                    onCommentTarget={openCommentTarget}
                   />
                 )}
 
@@ -3852,6 +3873,8 @@ export function App() {
                         showToast('🍿 Filme minimizado! Continua tocando enquanto você navega.');
                       }}
                       onOpenToguroShop={openToguroShop}
+                      onCommentTarget={openCommentTarget}
+                      onOpenLiveChat={openLiveChat}
                       initialMovie={pendingMovie}
                       onConsumeInitialMovie={() => setPendingMovie(null)}
                     />
@@ -3885,6 +3908,7 @@ export function App() {
                         navigateTab('movies');
                       }}
                       onNavigateTab={(tab) => navigateTab(tab)}
+                      onCommentTarget={openCommentTarget}
                       onToast={showToast}
                     />
                   )}
@@ -3982,6 +4006,10 @@ export function App() {
           }}
           onOpenMediaMenu={() => setMediaPlayerMenuOpen(true)}
           onOpenVisualizer={() => setVisualizerOpen(true)}
+          onCommentTrack={(t) =>
+            openCommentTarget(`track:${t.id}`, `${t.title} — ${t.artist}`, t.youtubeVideoId)
+          }
+          onOpenLiveChat={() => openLiveChat('global', '🔥 Geral do Morro · Chat Ao Vivo')}
           onCloseMenu={() => setMusicMenuOpen(false)}
         />
       )}
@@ -4784,6 +4812,21 @@ export function App() {
               <div className="flex items-center gap-1.5 flex-wrap shrink-0">
                 <button
                   type="button"
+                  onClick={() =>
+                    openCommentTarget(
+                      `track:${currentTrack.id}`,
+                      `🎬 ${currentTrack.title} — ${currentTrack.artist}`,
+                      currentTrack.youtubeVideoId
+                    )
+                  }
+                  className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-xs font-black flex items-center gap-1"
+                  title="Comentários"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Comentar</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     setClipMoreOpen(false);
                     setClipMinimized(true);
@@ -5149,6 +5192,8 @@ export function App() {
         open={chatModalOpen}
         onClose={() => setChatModalOpen(false)}
         user={null}
+        roomId={chatRoom.id}
+        roomTitle={chatRoom.title}
         onOpenAuth={() => {
           setChatModalOpen(false);
           showToast('💬 Chat liberado para todos! Digite sua mensagem abaixo.');
@@ -5160,6 +5205,7 @@ export function App() {
         onClose={() => setCommentTarget(null)}
         targetId={commentTarget?.id || ''}
         targetTitle={commentTarget?.title || ''}
+        youtubeId={commentTarget?.youtubeId || ''}
         user={null}
       />
 
