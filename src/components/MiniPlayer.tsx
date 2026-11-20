@@ -184,7 +184,7 @@ export const MiniPlayer: React.FC<Props> = ({
                   setExpanded(false);
                   setMinimizedPill(true);
                 }}
-                className="px-3 py-2 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1.5 transition"
+                className="mg24k-btn"
                 title="Minimizar para janela flutuante"
               >
                 <Minimize2 className="w-4 h-4" />
@@ -208,7 +208,7 @@ export const MiniPlayer: React.FC<Props> = ({
                       setExpanded(false);
                       onOpenMediaMenu();
                     }}
-                    className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-cyan-200 flex items-center justify-center transition"
+                    className="mg24k-btn !w-9 !h-9 !min-w-[36px] !p-0 rounded-full"
                     title="Efeitos, Som Alto & 2º Plano"
                   >
                     <Disc3 className="w-4 h-4" />
@@ -221,7 +221,7 @@ export const MiniPlayer: React.FC<Props> = ({
                     if (onEmergencyStop) onEmergencyStop();
                     else if (onCloseMenu) onCloseMenu();
                   }}
-                  className="px-3 py-2 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1 transition"
+                  className="mg24k-btn mg24k-btn-gold"
                   title="Voltar (o som continua tocando)"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -339,7 +339,7 @@ export const MiniPlayer: React.FC<Props> = ({
             </div>
 
             {/* Clean 4-Button Utility Bar (Every Button Works!) */}
-            <div className="grid grid-cols-4 gap-2 pb-1">
+            <div className="grid grid-cols-4 gap-2 pb-1 mg24k-taskbar rounded-2xl px-2 py-2">
               {onCycleBassBoost && (
                 <button
                   type="button"

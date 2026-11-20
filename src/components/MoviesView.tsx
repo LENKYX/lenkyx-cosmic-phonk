@@ -690,7 +690,7 @@ export const MoviesView: React.FC<Props> = ({
         >
           {/* Compact Mobile-Friendly Header (some ao tocar no vídeo e volta com um toque) */}
           <div
-            className={`px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#070414] shrink-0 transition-all duration-300 ${
+            className={`px-2 sm:px-4 py-2 border-b border-amber-400/20 flex flex-wrap items-center justify-center sm:justify-between gap-1.5 sm:gap-2 mg24k-bar shrink-0 transition-all duration-300 ${
               cinemaChrome.visible ? 'opacity-100' : 'opacity-0 pointer-events-none -translate-y-1'
             }`}
           >
@@ -709,7 +709,7 @@ export const MoviesView: React.FC<Props> = ({
                   }
                   setActiveMovie(null);
                 }}
-                className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-black flex items-center gap-1 shrink-0 transition"
+                className="mg24k-btn shrink-0"
                 title={expandedView ? 'Voltar ao tamanho normal sem sair do vídeo' : 'Voltar'}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -731,7 +731,7 @@ export const MoviesView: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => onCommentTarget(`movie:${activeMovie.id}`, `🎬 ${activeMovie.title}`, activeMovie.youtubeVideoId)}
-                  className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-[11px] font-black flex items-center gap-1 transition"
+                  className="mg24k-btn"
                   title="Comentários sobre este título"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
@@ -742,7 +742,7 @@ export const MoviesView: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => onOpenLiveChat('filmes', '🍿 Chat do Cinema Ao Vivo')}
-                  className="px-2.5 py-1.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white text-[11px] font-black flex items-center gap-1 transition"
+                  className="mg24k-btn mg24k-btn-danger"
                   title="Chat do Cinema ao vivo"
                 >
                   <Radio className="w-3.5 h-3.5 animate-pulse" />
@@ -756,7 +756,7 @@ export const MoviesView: React.FC<Props> = ({
                     onMinimizeMovie(activeMovie);
                     setActiveMovie(null);
                   }}
-                  className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black text-[11px] font-black flex items-center gap-1 shadow transition"
+                  className="mg24k-btn mg24k-btn-gold"
                   title="Minimizar e continuar assistindo enquanto navega"
                 >
                   <Minimize2 className="w-3.5 h-3.5" />
@@ -768,7 +768,7 @@ export const MoviesView: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => onVolume(1)}
-                  className="px-2.5 py-1.5 rounded-xl bg-amber-400/15 hover:bg-amber-400/30 border border-amber-300/35 text-amber-100 text-[11px] font-black flex items-center gap-1"
+                  className="mg24k-btn"
                   title="Aumentar o volume ao máximo"
                 >
                   <Volume2 className="w-3.5 h-3.5" />
@@ -777,7 +777,7 @@ export const MoviesView: React.FC<Props> = ({
               )}
               <button
                 onClick={() => void toggleExpandPlayer()}
-                className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-[11px] font-black flex items-center gap-1"
+                className="mg24k-btn"
                 title={expandedView ? 'Reduzir' : 'Tela inteira'}
               >
                 {expandedView ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -787,14 +787,14 @@ export const MoviesView: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => setMovieMoreOpen((v) => !v)}
-                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white"
+                className="mg24k-btn !w-9 !h-9 !min-w-[36px] !p-0"
                 title="Mais opções"
               >
                 <MoreVertical className="w-4 h-4" />
               </button>
 
               {movieMoreOpen && (
-                <div className="absolute right-0 top-11 z-40 w-60 rounded-2xl bg-[#110a24]/98 backdrop-blur-xl border border-amber-400/35 shadow-2xl p-2.5 space-y-2 text-xs">
+                <div className="mg-on-video absolute right-0 top-11 z-40 w-60 rounded-2xl bg-[#110a24]/98 backdrop-blur-xl border border-amber-400/35 shadow-2xl p-2.5 space-y-2 text-xs">
                   <div className="flex items-center justify-between gap-2 px-1">
                     <span className="text-[11px] font-bold text-cyan-200 flex items-center gap-1">
                       <Sparkles className="w-3 h-3" /> Qualidade
@@ -950,7 +950,7 @@ export const MoviesView: React.FC<Props> = ({
           {/* Series Seasons & Episodes Selector OR Mobile & TV Next-in-Queue Strip */}
           {!expandedView && (activeMovie.mediaType === 'series' || activeMovie.mediaType === 'anime') && (
             loadingEpisodes ? (
-              <div className="p-3 border-t border-white/10 bg-[#080412] flex items-center justify-center gap-2 text-xs text-cyan-200 font-bold shrink-0">
+              <div className="p-3 border-t border-amber-400/20 mg24k-taskbar flex items-center justify-center gap-2 text-xs text-cyan-200 font-bold shrink-0">
                 <Loader2 className="w-4 h-4 animate-spin" /> Carregando episódios da Temporada {selectedSeasonNum}...
               </div>
             ) : (

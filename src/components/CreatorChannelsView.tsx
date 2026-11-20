@@ -26,6 +26,7 @@ import {
   Edit3,
   Send,
   Sparkles,
+  Crop,
 } from 'lucide-react';
 import {
   CreatorChannel,
@@ -38,6 +39,8 @@ import {
   saveCreatorChannel,
   toggleChannelSubscribe,
 } from '../utils/communityApi';
+import { useVideoAspect, useFittedSize, useAutoHideChrome } from '../utils/videoChrome';
+import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 
 interface Props {
   onOpenLiveChat: (roomId: string, roomTitle: string) => void;
@@ -113,6 +116,16 @@ export const CreatorChannelsView: React.FC<Props> = ({
   const [playingItem, setPlayingItem] = useState<{ channel: CreatorChannel; video: CreatorChannelVideo } | null>(null);
   const [playerFullscreen, setPlayerFullscreen] = useState(false);
   const playerWrapRef = React.useRef<HTMLDivElement | null>(null);
+  // Player de canal: proporção automática + menu que some ao tocar
+  const channelAspect = useVideoAspect('auto');
+  const channelStageRef = React.useRef<HTMLDivElement | null>(null);
+  const channelFitted = useFittedSize(channelStageRef, channelAspect.ratio);
+  const channelChrome = useAutoHideChrome({ enabled: Boolean(playingItem), delayMs: 3800 });
+
+  useEffect(() => {
+    if (playingItem) channelChrome.hide();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playingItem?.video?.id]);
 
   const loadChannels = async () => {
     setLoading(true);
@@ -1028,7 +1041,11 @@ export const CreatorChannelsView: React.FC<Props> = ({
                   : 'h-[100dvh] sm:h-auto sm:max-h-[92dvh] sm:max-w-5xl sm:rounded-3xl sm:border sm:border-amber-400/35'
               }`}
             >
-              <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#0d071b] shrink-0">
+              <div
+                className={`px-2 sm:px-4 py-2 border-b border-amber-400/20 flex flex-wrap items-center justify-center sm:justify-between gap-1.5 sm:gap-2 mg24k-bar shrink-0 transition-all duration-300 ${
+                  channelChrome.visible ? 'opacity-100' : 'opacity-0 pointer-events-none -translate-y-1'
+                }`}
+              >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <button
                     type="button"
@@ -1044,7 +1061,7 @@ export const CreatorChannelsView: React.FC<Props> = ({
                       }
                       closePlayerSafe();
                     }}
-                    className="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1 shrink-0"
+                    className="mg24k-btn shrink-0"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Voltar</span>
@@ -1055,6 +1072,7 @@ export const CreatorChannelsView: React.FC<Props> = ({
                       {playingItem.channel.name} ({playingItem.channel.handle}) · Lei MORRO GOLD
                     </div>
                   </div>
+                  <LenkyxEdgeLogo size="xs" className="shrink-0 hidden sm:inline-flex" />
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
@@ -1066,10 +1084,21 @@ export const CreatorChannelsView: React.FC<Props> = ({
                         playingItem.video.youtubeId
                       )
                     }
-                    className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-100 text-xs font-black flex items-center gap-1"
+                    className="mg24k-btn"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Comentar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      channelAspect.cycle();
+                    }}
+                    className="mg24k-btn"
+                    title={`Proporção do vídeo (${channelAspect.label})`}
+                  >
+                    <Crop className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{channelAspect.label}</span>
                   </button>
                   <button
                     type="button"
@@ -1082,46 +1111,63 @@ export const CreatorChannelsView: React.FC<Props> = ({
                         void playerWrapRef.current?.requestFullscreen?.().catch(() => {});
                       }
                     }}
-                    className="px-2.5 py-1.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/35 border border-amber-400/40 text-amber-200 text-xs font-black flex items-center gap-1"
+                    className="mg24k-btn mg24k-btn-gold"
                   >
                     {playerFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                     <span>{playerFullscreen ? 'Reduzir' : 'Aumentar'}</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={closePlayerSafe}
-                    className="px-2.5 py-1.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1"
-                  >
-                    <X className="w-3.5 h-3.5" /> Fechar
-                  </button>
                 </div>
               </div>
 
-              <div className="relative w-full bg-black flex-1 min-h-[240px] sm:aspect-video flex items-center justify-center overflow-hidden">
-                {playingItem.video.youtubeId ? (
-                  <iframe
-                    src={`https://www.youtube.com/embed/${playingItem.video.youtubeId}?autoplay=1&rel=0&playsinline=1&fs=0`}
-                    title={playingItem.video.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    className="w-full h-full border-0"
-                  />
-                ) : playingItem.video.kind === 'music' || playingItem.video.mediaUrl.startsWith('data:audio') || playingItem.video.mediaUrl.endsWith('.mp3') ? (
-                  <div className="p-6 text-center space-y-4 w-full max-w-md">
-                    <img
-                      src={playingItem.video.posterUrl || playingItem.channel.avatarUrl}
-                      alt={playingItem.video.title}
-                      className="w-40 h-40 rounded-3xl object-cover mx-auto border-2 border-amber-400 shadow-2xl"
+              <div
+                ref={channelStageRef}
+                onClick={() => channelChrome.toggle()}
+                className="relative w-full bg-black flex-1 min-h-[240px] sm:aspect-video flex items-center justify-center overflow-hidden cursor-pointer"
+              >
+                <div
+                  className="relative flex items-center justify-center bg-black"
+                  style={{
+                    width: channelFitted.width ? channelFitted.width : '100%',
+                    height: channelFitted.height ? channelFitted.height : '100%',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                  }}
+                >
+                  {playingItem.video.youtubeId ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${playingItem.video.youtubeId}?autoplay=1&rel=0&playsinline=1&fs=0`}
+                      title={playingItem.video.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      className="w-full h-full border-0"
                     />
-                    <audio src={playingItem.video.mediaUrl} controls autoPlay className="w-full" />
+                  ) : playingItem.video.kind === 'music' || playingItem.video.mediaUrl.startsWith('data:audio') || playingItem.video.mediaUrl.endsWith('.mp3') ? (
+                    <div className="p-6 text-center space-y-4 w-full max-w-md">
+                      <img
+                        src={playingItem.video.posterUrl || playingItem.channel.avatarUrl}
+                        alt={playingItem.video.title}
+                        className="w-40 h-40 rounded-3xl object-cover mx-auto border-2 border-amber-400 shadow-2xl"
+                      />
+                      <audio src={playingItem.video.mediaUrl} controls autoPlay className="w-full" />
+                    </div>
+                  ) : (
+                    <video
+                      src={playingItem.video.mediaUrl}
+                      controls
+                      autoPlay
+                      playsInline
+                      onLoadedMetadata={(e) => {
+                        const el = e.currentTarget;
+                        channelAspect.detect(el.videoWidth, el.videoHeight);
+                      }}
+                      className="w-full h-full object-contain bg-black"
+                    />
+                  )}
+                </div>
+
+                {!channelChrome.visible && (
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 border border-white/15 text-[10px] font-black text-white/85 pointer-events-none animate-pulse">
+                    👆 Toque na tela para mostrar os controles
                   </div>
-                ) : (
-                  <video
-                    src={playingItem.video.mediaUrl}
-                    controls
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-contain bg-black"
-                  />
                 )}
               </div>
             </div>

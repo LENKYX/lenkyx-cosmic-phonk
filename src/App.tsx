@@ -20,6 +20,8 @@ import {
   Volume2,
   VolumeX,
   Maximize2,
+  Sun,
+  Moon,
   ArrowLeft,
   Scale,
   Shield,
@@ -359,6 +361,35 @@ export function App() {
   // Clean Edge-3D Opening Splash + Cool Startup Chime on Launch
   const [showEntrySplash, setShowEntrySplash] = useState(true);
   const [entrySplashExiting, setEntrySplashExiting] = useState(false);
+
+  // MORRO GOLD 24K — Modo Claro / Modo Escuro (persistido) com botão na barra de menus
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
+    try {
+      return localStorage.getItem('morro_gold_theme_v1') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = themeMode;
+    try {
+      localStorage.setItem('morro_gold_theme_v1', themeMode);
+    } catch {
+      // ignore
+    }
+  }, [themeMode]);
+
+  useEffect(() => {
+    // Introdução sem barra de rolagem na lateral
+    if (showEntrySplash) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [showEntrySplash]);
 
   // v62: Futuristic Robot HUD Features (Shazam, Jam, Wrapped, YouTubers & Sponsors) + Autoplay + Crossfade
   const [futuristicModalOpen, setFuturisticModalOpen] = useState(false);
@@ -2906,25 +2937,61 @@ export function App() {
       {showEntrySplash && (
         <div
           onClick={() => dismissEntrySplash(true)}
-          className={`fixed inset-0 z-[120] flex flex-col items-center justify-center bg-[#120d22] overflow-y-auto overflow-x-hidden cursor-pointer transition-opacity duration-300 ${
+          className={`fixed inset-0 z-[120] flex flex-col items-center justify-center bg-[#241a33] overflow-hidden cursor-pointer transition-opacity duration-300 ${
             entrySplashExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
         >
-          {/* Bright VIP Party + Illuminated Favela Backdrop (Option 2) */}
+          {/* Bright VIP Party + Illuminated Favela Backdrop (fundo claro e luminoso 24k) */}
           <img
             src="/covers/baile-verao-vip.jpg"
             alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-65 brightness-125 contrast-105 saturate-125 scale-105"
+            className="absolute inset-0 w-full h-full object-cover opacity-85 brightness-135 contrast-105 saturate-130 scale-105"
           />
           <div
             className="absolute inset-0"
             style={{
               background: [
-                'radial-gradient(circle at 50% 36%, rgba(255, 245, 190, 0.44) 0%, rgba(56, 189, 248, 0.24) 38%, rgba(14, 12, 28, 0.45) 88%)',
-                'linear-gradient(180deg, rgba(56, 189, 248, 0.20) 0%, rgba(250, 204, 21, 0.16) 46%, rgba(10, 8, 18, 0.82) 100%)',
+                'radial-gradient(circle at 50% 30%, rgba(255, 250, 214, 0.58) 0%, rgba(255, 224, 140, 0.30) 36%, rgba(140, 180, 255, 0.16) 66%, rgba(255, 240, 190, 0.14) 100%)',
+                'linear-gradient(180deg, rgba(255, 240, 190, 0.38) 0%, rgba(170, 205, 255, 0.22) 45%, rgba(255, 226, 150, 0.34) 100%)',
               ].join(', '),
             }}
           />
+          {/* Raios de luz dourados 24k */}
+          <div
+            className="absolute inset-0 opacity-70 pointer-events-none"
+            style={{
+              mixBlendMode: 'screen',
+              background:
+                'conic-gradient(from 0deg at 50% 30%, rgba(255,235,170,0.24) 0deg, transparent 14deg, transparent 44deg, rgba(255,235,170,0.18) 58deg, transparent 72deg, transparent 104deg, rgba(255,235,170,0.20) 118deg, transparent 132deg, transparent 164deg, rgba(255,235,170,0.16) 178deg, transparent 192deg, transparent 224deg, rgba(255,235,170,0.20) 238deg, transparent 252deg, transparent 284deg, rgba(255,235,170,0.16) 298deg, transparent 312deg, transparent 344deg, rgba(255,235,170,0.24) 360deg)',
+            }}
+          />
+          {/* Partículas douradas flutuantes */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {[
+              { l: '12%', t: '18%', d: '0s', sz: 8 },
+              { l: '22%', t: '64%', d: '0.8s', sz: 6 },
+              { l: '35%', t: '26%', d: '1.6s', sz: 5 },
+              { l: '58%', t: '14%', d: '0.4s', sz: 7 },
+              { l: '70%', t: '58%', d: '1.2s', sz: 6 },
+              { l: '82%', t: '30%', d: '2s', sz: 8 },
+              { l: '90%', t: '72%', d: '1s', sz: 5 },
+              { l: '46%', t: '80%', d: '1.8s', sz: 6 },
+            ].map((pt, i) => (
+              <span
+                key={i}
+                className="absolute rounded-full animate-pulse"
+                style={{
+                  left: pt.l,
+                  top: pt.t,
+                  width: pt.sz,
+                  height: pt.sz,
+                  animationDelay: pt.d,
+                  background: 'radial-gradient(circle, rgba(255,240,180,0.95), rgba(255,210,110,0.25))',
+                  boxShadow: '0 0 14px rgba(255,225,150,0.9)',
+                }}
+              />
+            ))}
+          </div>
 
           <div className="relative z-10 edge-entrance-logo flex flex-col items-center gap-2.5 sm:gap-3 px-4 py-4 sm:py-5 text-center w-full max-w-[min(94vw,520px)]">
             {/* Logo Grande VIP (emblema com aura) - tamanho responsivo para caber em qualquer tela */}
@@ -3198,7 +3265,7 @@ export function App() {
       {/* === MAIN CONTENT SHELL === */}
       <div className="relative z-10 flex-1 min-w-0 h-full overflow-hidden flex flex-col md:pl-60 lg:pl-64">
         {/* TOP HEADER (Luxury Obsidian Glass Bar) */}
-        <header className="shrink-0 z-30 bg-[#06070d]/90 backdrop-blur-2xl border-b border-amber-400/15 h-14 px-3 sm:px-5 flex items-center justify-between gap-3 shadow-[0_6px_28px_rgba(0,0,0,0.45)]">
+        <header className="shrink-0 z-30 mg24k-bar border-b border-amber-400/15 h-14 px-3 sm:px-5 flex items-center justify-between gap-3 shadow-[0_6px_28px_rgba(0,0,0,0.45)]">
           <div className="flex items-center gap-2 shrink-0 min-w-0">
             <button
               type="button"
@@ -3279,7 +3346,7 @@ export function App() {
             </form>
 
             {omniboxOpen && (
-              <div className="absolute left-0 right-0 top-full mt-2 z-[60] rounded-2xl bg-[#16161c]/98 backdrop-blur-2xl border border-white/15 shadow-[0_24px_60px_rgba(0,0,0,0.9)] overflow-hidden">
+              <div className="mg-on-video absolute left-0 right-0 top-full mt-2 z-[60] rounded-2xl bg-[#16161c]/98 backdrop-blur-2xl border border-white/15 shadow-[0_24px_60px_rgba(0,0,0,0.9)] overflow-hidden">
                 {globalSearch.trim() && (
                   <div className="p-2 border-b border-white/[0.08] flex flex-wrap gap-1.5 bg-white/[0.03]">
                     <button
@@ -3369,7 +3436,7 @@ export function App() {
                     onClick={() => setNotificationsOpen(false)}
                     className="fixed inset-0 z-40"
                   />
-                  <div className="absolute right-0 top-11 z-50 w-72 sm:w-80 rounded-2xl bg-[#161622]/98 backdrop-blur-2xl border border-white/15 shadow-2xl p-2.5 space-y-1.5 text-xs">
+                  <div className="mg-on-video absolute right-0 top-11 z-50 w-72 sm:w-80 rounded-2xl bg-[#161622]/98 backdrop-blur-2xl border border-white/15 shadow-2xl p-2.5 space-y-1.5 text-xs">
                     <div className="px-2 py-1 flex items-center justify-between border-b border-white/10 pb-2">
                       <span className="font-black text-white">Notificações</span>
                       <span className="text-[10px] font-bold text-amber-300">MORRO GOLD</span>
@@ -3458,6 +3525,16 @@ export function App() {
 
             <button
               type="button"
+              onClick={() => setThemeMode((m) => (m === 'dark' ? 'light' : 'dark'))}
+              className="mg24k-btn !w-9 !h-9 !min-w-[36px] !p-0 rounded-full"
+              title={themeMode === 'dark' ? 'Ativar Modo Claro' : 'Ativar Modo Escuro'}
+              aria-label={themeMode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+            >
+              {themeMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            <button
+              type="button"
               onClick={() => setTopOverflowOpen((v) => !v)}
               className="w-9 h-9 rounded-full hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition"
               title="Mais opções"
@@ -3482,7 +3559,7 @@ export function App() {
                   onClick={() => setTopOverflowOpen(false)}
                   className="fixed inset-0 z-40"
                 />
-                <div className="absolute right-0 top-11 z-50 w-64 rounded-2xl bg-[#1c1c22]/98 backdrop-blur-2xl border border-white/15 shadow-2xl p-1.5 text-xs font-semibold text-white">
+                <div className="mg-on-video absolute right-0 top-11 z-50 w-64 rounded-2xl bg-[#1c1c22]/98 backdrop-blur-2xl border border-white/15 shadow-2xl p-1.5 text-xs font-semibold text-white">
                   <button
                     type="button"
                     onClick={() => {
@@ -3624,7 +3701,7 @@ export function App() {
         {mobileNavOpen && (
           <>
             <button aria-label="Fechar menu lateral" onClick={() => setMobileNavOpen(false)} className="md:hidden fixed inset-0 z-[70] bg-black/65 backdrop-blur-sm" />
-            <aside className="md:hidden fixed left-0 top-0 bottom-0 z-[71] w-[min(82vw,320px)] overflow-y-auto bg-[#100b16]/98 border-r border-amber-300/25 shadow-2xl p-3 pt-5">
+            <aside className="md:hidden fixed left-0 top-0 bottom-0 z-[71] w-[min(82vw,320px)] overflow-y-auto mg24k-bar border-r border-amber-300/25 shadow-2xl p-3 pt-5">
               <div className="flex items-center justify-between px-2 pb-4 border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <LenkyxEdgeLogo size="sm" />
@@ -3950,7 +4027,7 @@ export function App() {
         )}
 
         {/* ACTIVE VIEW CONTAINER */}
-        <main id="lenkyx-main-scroll" className={`flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full ${moreSheetOpen ? 'hidden' : ''}`}>
+        <main id="lenkyx-main-scroll" className={`mg-lightable flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full ${moreSheetOpen ? 'hidden' : ''}`}>
           <div className="w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-3">
             {!isAppInstalledOnDevice && !quickDownloadDismissed && (
               <div className="mb-3 rounded-2xl bg-gradient-to-r from-amber-500/20 via-black/80 to-emerald-500/20 border border-amber-400/45 p-3 flex flex-wrap items-center justify-between gap-2.5 shadow-lg">
@@ -4353,7 +4430,7 @@ export function App() {
       {!watchingMovie && (
         <nav
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-          className="md:hidden fixed bottom-0 left-0 right-0 z-40 min-h-[56px] bg-[#06070d]/96 backdrop-blur-2xl border-t border-white/10 grid grid-cols-5 px-1.5"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-40 min-h-[56px] mg24k-taskbar grid grid-cols-5 px-1.5"
         >
           <button
             type="button"
@@ -4393,7 +4470,7 @@ export function App() {
             className="flex items-center justify-center transition"
             title="Criar"
           >
-            <span className="w-10 h-10 rounded-full border border-white/60 hover:border-amber-300 bg-white/[0.08] flex items-center justify-center text-white active:scale-90 transition">
+            <span className="w-10 h-10 rounded-full border border-amber-200/70 bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 flex items-center justify-center text-black shadow-[0_4px_14px_rgba(245,200,76,0.45)] active:scale-90 transition">
               <Plus className="w-5 h-5" />
             </span>
           </button>
@@ -5162,7 +5239,7 @@ export function App() {
 
           {clipTheaterOpen && currentTrack?.youtubeVideoId && !clipMinimized && (
             <div
-              className={`px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e] shrink-0 relative z-20 transition-all duration-300 ${
+              className={`px-3 sm:px-4 py-2.5 border-b border-amber-400/20 flex flex-wrap items-center justify-between gap-2 mg24k-bar shrink-0 relative z-20 transition-all duration-300 ${
                 clipChrome.visible ? 'opacity-100' : 'opacity-0 pointer-events-none -translate-y-1'
               }`}
             >
@@ -5181,7 +5258,7 @@ export function App() {
                     setClipMinimized(true);
                     showToast('🎬 Clipe minimizado! Continua tocando enquanto você navega.');
                   }}
-                  className="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1 shrink-0"
+                  className="mg24k-btn shrink-0"
                   title="Voltar sem perder o vídeo"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -5196,33 +5273,185 @@ export function App() {
                 <LenkyxEdgeLogo size="xs" className="shrink-0 hidden sm:inline-flex" />
               </div>
               <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                <button
-                  type="button"
-                  onClick={() =>
-                    openCommentTarget(
-                      `track:${currentTrack.id}`,
-                      `🎬 ${currentTrack.title} — ${currentTrack.artist}`,
-                      currentTrack.youtubeVideoId
-                    )
-                  }
-                  className="px-2.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-100 text-xs font-black flex items-center gap-1"
-                  title="Comentários"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Comentar</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setClipMoreOpen((v) => !v)}
-                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white"
-                  title="Mais opções"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
+                <span className="mg24k-chip hidden sm:inline-flex">Clipe Oficial · Sem Anúncios</span>
               </div>
 
+            </div>
+          )}
+
+          <div
+            ref={clipStageBoxRef}
+            onClick={() => {
+              if (clipTheaterOpen && !clipMinimized) clipChrome.toggle();
+            }}
+            className={
+              clipTheaterOpen
+                ? clipMinimized
+                  ? 'aspect-video w-full bg-black relative overflow-hidden'
+                  : 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center relative overflow-hidden cursor-pointer'
+                : 'w-full h-full bg-black relative'
+            }
+          >
+            {/* Quadro com a proporção correta (sem tarjas pretas) */}
+            <div
+              className="relative flex items-center justify-center bg-black"
+              style={{
+                width: clipMinimized ? '100%' : clipFitted.width ? clipFitted.width : '100%',
+                height: clipMinimized ? '100%' : clipFitted.height ? clipFitted.height : '100%',
+                maxWidth: '100%',
+                maxHeight: '100%',
+              }}
+            >
+              <div id="lenkyx-yt-audio-host" className="w-full h-full" />
+            </div>
+
+            {/* Dica: toque para mostrar/esconder os controles */}
+            {clipTheaterOpen && !clipMinimized && !clipChrome.visible && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 border border-white/15 text-[10px] font-black text-white/85 pointer-events-none animate-pulse">
+                👆 Toque na tela para mostrar os controles
+              </div>
+            )}
+          </div>
+
+          {clipTheaterOpen && !clipMinimized && currentTrack?.youtubeVideoId && (
+            <div
+              className={`px-2 sm:px-4 py-2.5 border-t border-amber-400/20 flex flex-col gap-2 mg24k-taskbar shrink-0 transition-all duration-300 ${
+                clipChrome.visible ? 'opacity-100' : 'opacity-0 pointer-events-none translate-y-1'
+              }`}
+            >
+              <div className="flex items-center gap-2 text-[10px] font-mono text-purple-200/85">
+                <span className="w-9 text-right">
+                  {`${Math.floor(currentTime / 60)}:${String(Math.floor(currentTime % 60)).padStart(2, '0')}`}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || currentTrack.durationSec || 180}
+                  step={1}
+                  value={Math.min(currentTime, duration || currentTrack.durationSec || 180)}
+                  onChange={(e) => handleSeek(Number(e.target.value))}
+                  className="flex-1 h-1.5 accent-pink-500 cursor-pointer"
+                />
+                <span className="w-9">
+                  {`${Math.floor((duration || currentTrack.durationSec || 180) / 60)}:${String(
+                    Math.floor((duration || currentTrack.durationSec || 180) % 60)
+                  ).padStart(2, '0')}`}
+                </span>
+              </div>
+
+              <div className="relative flex flex-wrap items-center justify-center sm:justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
+                  <div className="text-[10px] text-cyan-300/80">Reprodução contínua sem anúncios</div>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+                    <div className="mg24k-chip hidden sm:flex items-center gap-1.5">
+                      <button onClick={handleToggleMute} className="text-cyan-300" title={muted ? 'Ativar som' : 'Silenciar'}>
+                        {muted || volume === 0 ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
+                      </button>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.02}
+                        value={muted ? 0 : volume}
+                        onChange={(e) => handleVolume(Number(e.target.value))}
+                        className="w-16 accent-cyan-400 cursor-pointer"
+                        title="Volume"
+                      />
+                    </div>
+                    <button
+                      onClick={() => handlePrevNext(-1)}
+                      className="mg24k-btn"
+                      title="Faixa anterior"
+                    >
+                      <SkipBack className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => void handleTogglePlay()}
+                      className="mg24k-btn mg24k-btn-gold !w-9 !h-9 !min-w-[36px] !p-0 rounded-full"
+                      title={isPlaying ? 'Pausar' : 'Tocar'}
+                    >
+                      {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black ml-0.5" />}
+                    </button>
+                    <button
+                      onClick={() => handlePrevNext(1)}
+                      className="mg24k-btn"
+                      title="Próxima faixa"
+                    >
+                      <SkipForward className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        clipAspect.cycle();
+                        showToast(`📐 Proporção do vídeo: ${clipAspect.label}`);
+                      }}
+                      className="mg24k-btn"
+                      title={`Proporção do vídeo (${clipAspect.label})`}
+                    >
+                      <Crop className="w-4 h-4 text-amber-300" />
+                      <span className="hidden sm:inline">{clipAspect.label}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openCommentTarget(
+                          `track:${currentTrack.id}`,
+                          `🎬 ${currentTrack.title} — ${currentTrack.artist}`,
+                          currentTrack.youtubeVideoId
+                        )
+                      }
+                      className="mg24k-btn"
+                      title="Comentários do clipe"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span className="hidden sm:inline">Comentar</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (document.fullscreenElement) {
+                          void document.exitFullscreen().catch(() => {});
+                        }
+                        setClipFitMode('standard');
+                        setClipMinimized(true);
+                        showToast('🎬 Clipe minimizado! Continua tocando enquanto você navega.');
+                      }}
+                      className="mg24k-btn mg24k-btn-gold"
+                      title="Minimizar e continuar assistindo"
+                    >
+                      <Minimize2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">Minimizar</span>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (!document.fullscreenElement) {
+                            await clipStageRef.current?.requestFullscreen?.();
+                          } else {
+                            await document.exitFullscreen?.();
+                          }
+                        } catch {
+                          setClipFitMode((m) => (m === 'fullscreen' ? 'standard' : 'fullscreen'));
+                        }
+                      }}
+                      className="mg24k-btn"
+                      title={isNativeFullscreen ? 'Reduzir' : 'Tela Cheia'}
+                    >
+                      {isNativeFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                      <span className="hidden sm:inline">{isNativeFullscreen ? 'Reduzir' : 'Tela Cheia'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClipMoreOpen((v) => !v)}
+                      className="mg24k-btn"
+                      title="Mais opções"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                      <span className="hidden sm:inline">Mais</span>
+                    </button>
+                  </div>
               {clipMoreOpen && (
-                <div className="absolute right-3 top-12 z-40 w-56 rounded-2xl bg-[#110a24]/98 backdrop-blur-xl border border-amber-400/35 shadow-2xl p-2.5 space-y-2 text-xs">
+                <div className="mg-on-video absolute right-2 bottom-12 z-40 w-56 rounded-2xl bg-[#110a24]/98 backdrop-blur-xl border border-amber-400/35 shadow-2xl p-2.5 space-y-2 text-xs">
                   <button
                     type="button"
                     onClick={() => {
@@ -5278,150 +5507,6 @@ export function App() {
                   </button>
                 </div>
               )}
-            </div>
-          )}
-
-          <div
-            ref={clipStageBoxRef}
-            onClick={() => {
-              if (clipTheaterOpen && !clipMinimized) clipChrome.toggle();
-            }}
-            className={
-              clipTheaterOpen
-                ? clipMinimized
-                  ? 'aspect-video w-full bg-black relative overflow-hidden'
-                  : 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center relative overflow-hidden cursor-pointer'
-                : 'w-full h-full bg-black relative'
-            }
-          >
-            {/* Quadro com a proporção correta (sem tarjas pretas) */}
-            <div
-              className="relative flex items-center justify-center bg-black"
-              style={{
-                width: clipMinimized ? '100%' : clipFitted.width ? clipFitted.width : '100%',
-                height: clipMinimized ? '100%' : clipFitted.height ? clipFitted.height : '100%',
-                maxWidth: '100%',
-                maxHeight: '100%',
-              }}
-            >
-              <div id="lenkyx-yt-audio-host" className="w-full h-full" />
-            </div>
-
-            {/* Dica: toque para mostrar/esconder os controles */}
-            {clipTheaterOpen && !clipMinimized && !clipChrome.visible && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 border border-white/15 text-[10px] font-black text-white/85 pointer-events-none animate-pulse">
-                👆 Toque na tela para mostrar os controles
-              </div>
-            )}
-          </div>
-
-          {clipTheaterOpen && !clipMinimized && currentTrack?.youtubeVideoId && (
-            <div
-              className={`px-3 sm:px-4 py-2.5 border-t border-white/10 flex flex-col gap-2 bg-[#090418] shrink-0 transition-all duration-300 ${
-                clipChrome.visible ? 'opacity-100' : 'opacity-0 pointer-events-none translate-y-1'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-[10px] font-mono text-purple-200/85">
-                <span className="w-9 text-right">
-                  {`${Math.floor(currentTime / 60)}:${String(Math.floor(currentTime % 60)).padStart(2, '0')}`}
-                </span>
-                <input
-                  type="range"
-                  min={0}
-                  max={duration || currentTrack.durationSec || 180}
-                  step={1}
-                  value={Math.min(currentTime, duration || currentTrack.durationSec || 180)}
-                  onChange={(e) => handleSeek(Number(e.target.value))}
-                  className="flex-1 h-1.5 accent-pink-500 cursor-pointer"
-                />
-                <span className="w-9">
-                  {`${Math.floor((duration || currentTrack.durationSec || 180) / 60)}:${String(
-                    Math.floor((duration || currentTrack.durationSec || 180) % 60)
-                  ).padStart(2, '0')}`}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-purple-200 truncate">{currentTrack.artist}</div>
-                  <div className="text-[10px] text-cyan-300/80">Reprodução contínua sem anúncios</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10">
-                    <button onClick={handleToggleMute} className="text-cyan-300">
-                      {muted || volume === 0 ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
-                    </button>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.02}
-                      value={muted ? 0 : volume}
-                      onChange={(e) => handleVolume(Number(e.target.value))}
-                      className="w-16 accent-cyan-400 cursor-pointer"
-                    />
-                  </div>
-                  <button
-                    onClick={() => handlePrevNext(-1)}
-                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                  >
-                    <SkipBack className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => void handleTogglePlay()}
-                    className="w-9 h-9 rounded-full bg-gradient-to-r from-pink-500 to-cyan-400 text-black flex items-center justify-center shadow"
-                  >
-                    {isPlaying ? <Pause className="w-4 h-4 fill-black" /> : <Play className="w-4 h-4 fill-black ml-0.5" />}
-                  </button>
-                  <button
-                    onClick={() => handlePrevNext(1)}
-                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                  >
-                    <SkipForward className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      clipAspect.cycle();
-                      showToast(`📐 Proporção do vídeo: ${clipAspect.label}`);
-                    }}
-                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center gap-1"
-                    title={`Proporção do vídeo (${clipAspect.label})`}
-                  >
-                    <Crop className="w-4 h-4 text-amber-300" />
-                    <span className="text-[10px] font-black">{clipAspect.label}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (document.fullscreenElement) {
-                        void document.exitFullscreen().catch(() => {});
-                      }
-                      setClipFitMode('standard');
-                      setClipMinimized(true);
-                      showToast('🎬 Clipe minimizado! Continua tocando enquanto você navega.');
-                    }}
-                    className="p-2 rounded-full bg-amber-400/85 hover:bg-amber-300 text-black"
-                    title="Minimizar e continuar assistindo"
-                  >
-                    <Minimize2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={async () => {
-                      try {
-                        if (!document.fullscreenElement) {
-                          await clipStageRef.current?.requestFullscreen?.();
-                        } else {
-                          await document.exitFullscreen?.();
-                        }
-                      } catch {
-                        setClipFitMode((m) => (m === 'fullscreen' ? 'standard' : 'fullscreen'));
-                      }
-                    }}
-                    className="p-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-200"
-                    title={isNativeFullscreen ? 'Reduzir' : 'Aumentar'}
-                  >
-                    {isNativeFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                  </button>
-                </div>
               </div>
 
               {/* Clickable Clip Suggestions Strip (Auto-Fading Arrows + Interactive Grid + Closable) */}

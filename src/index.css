@@ -695,3 +695,196 @@ select:focus-visible {
     font-size: 17px;
   }
 }
+
+/* ============================================================
+   MORRO GOLD 24K — Sistema de menus estilo computador (topo + base)
+   + Modo Claro / Modo Escuro (data-theme no <html>)
+   ============================================================ */
+:root {
+  --mg-bg: #06070d;
+  --mg-bar: rgba(10, 8, 17, 0.92);
+  --mg-bar-solid: #0b0913;
+  --mg-bar-border: rgba(245, 200, 76, 0.30);
+  --mg-btn-bg: rgba(255, 255, 255, 0.07);
+  --mg-btn-bg-hover: rgba(245, 200, 76, 0.16);
+  --mg-btn-text: #f3e6c2;
+  --mg-btn-border: rgba(245, 200, 76, 0.38);
+  --mg-text: #ffffff;
+  --mg-sub: #94a3b8;
+  --mg-card: rgba(18, 14, 32, 0.72);
+  --mg-card-border: rgba(245, 200, 76, 0.18);
+  --mg-gold-a: #f9e29c;
+  --mg-gold-b: #e0b54e;
+  --mg-gold-c: #b8892e;
+  --mg-gold-glow: rgba(245, 200, 76, 0.35);
+}
+
+html[data-theme='light'] {
+  --mg-bg: #f6eed9;
+  --mg-bar: rgba(255, 252, 242, 0.95);
+  --mg-bar-solid: #fffcf2;
+  --mg-bar-border: rgba(150, 110, 30, 0.38);
+  --mg-btn-bg: rgba(120, 90, 20, 0.09);
+  --mg-btn-bg-hover: rgba(120, 90, 20, 0.18);
+  --mg-btn-text: #6b4e12;
+  --mg-btn-border: rgba(150, 110, 30, 0.38);
+  --mg-text: #2a2008;
+  --mg-sub: #7a6636;
+  --mg-card: rgba(255, 255, 255, 0.84);
+  --mg-card-border: rgba(150, 110, 30, 0.24);
+  --mg-gold-glow: rgba(180, 140, 40, 0.28);
+}
+
+html[data-theme='light'],
+html[data-theme='light'] body {
+  background: var(--mg-bg) !important;
+}
+
+/* --- Barra estilo computador (topo e base) --- */
+.mg24k-bar {
+  background: var(--mg-bar);
+  border-color: var(--mg-bar-border);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.mg24k-taskbar {
+  background: var(--mg-bar);
+  border-top: 1px solid var(--mg-bar-border);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 var(--mg-gold-glow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* --- Botão uniforme (todos os menus, cabe em qualquer tela) --- */
+.mg24k-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: var(--mg-btn-bg);
+  border: 1px solid var(--mg-btn-border);
+  color: var(--mg-btn-text);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.mg24k-btn:hover {
+  background: var(--mg-btn-bg-hover);
+  box-shadow: 0 0 14px var(--mg-gold-glow);
+  transform: translateY(-1px);
+}
+
+.mg24k-btn:active {
+  transform: scale(0.95);
+}
+
+.mg24k-btn-gold {
+  background: linear-gradient(135deg, var(--mg-gold-a), var(--mg-gold-b) 45%, var(--mg-gold-c));
+  border-color: rgba(255, 230, 150, 0.65);
+  color: #2a1d05;
+  box-shadow: 0 4px 16px var(--mg-gold-glow);
+}
+
+.mg24k-btn-gold:hover {
+  background: linear-gradient(135deg, #fff0b8, var(--mg-gold-b) 45%, var(--mg-gold-c));
+  filter: brightness(1.05);
+}
+
+.mg24k-btn-danger {
+  background: linear-gradient(135deg, #ff7b72, #e5484d 55%, #b8242a);
+  border-color: rgba(255, 130, 120, 0.55);
+  color: #fff;
+}
+
+.mg24k-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--mg-btn-bg);
+  border: 1px solid var(--mg-btn-border);
+  color: var(--mg-btn-text);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* --- Superfícies 24k (cartões e painéis) --- */
+.mg24k-panel {
+  background: var(--mg-card);
+  border: 1px solid var(--mg-card-border);
+  border-radius: 18px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* --- Texto sobre vídeo: mantém branco nos dois temas --- */
+.mg-on-video [class*='text-white'],
+.mg-on-video [class*='text-slate'],
+.mg-on-video [class*='text-purple'],
+.mg-on-video [class*='text-zinc'],
+.mg-on-video [class*='text-gray'] {
+  color: #ffffff !important;
+}
+.mg-on-video [class*='text-black'] {
+  color: #111 !important;
+}
+
+/* --- Modo CLARO: conteúdo e cromos principais --- */
+html[data-theme='light'] .mg-lightable [class*='text-white'],
+html[data-theme='light'] header [class*='text-white'],
+html[data-theme='light'] aside [class*='text-white'],
+html[data-theme='light'] .cosmic-card-3d [class*='text-white'],
+html[data-theme='light'] .glass-panel [class*='text-white'],
+html[data-theme='light'] .mg24k-bar [class*='text-white'],
+html[data-theme='light'] .mg24k-taskbar [class*='text-white'],
+html[data-theme='light'] .mg-lightable [class*='text-slate'],
+html[data-theme='light'] header [class*='text-slate'],
+html[data-theme='light'] aside [class*='text-slate'],
+html[data-theme='light'] .cosmic-card-3d [class*='text-slate'],
+html[data-theme='light'] .glass-panel [class*='text-slate'],
+html[data-theme='light'] .mg24k-bar [class*='text-slate'],
+html[data-theme='light'] .mg24k-taskbar [class*='text-slate'],
+html[data-theme='light'] .mg-lightable [class*='text-purple'],
+html[data-theme='light'] .cosmic-card-3d [class*='text-purple'],
+html[data-theme='light'] .glass-panel [class*='text-purple'] {
+  color: var(--mg-text) !important;
+}
+
+html[data-theme='light'] .cosmic-card-3d {
+  background: var(--mg-card) !important;
+  border-color: var(--mg-card-border) !important;
+  box-shadow: 0 14px 36px rgba(120, 90, 20, 0.14) !important;
+}
+
+html[data-theme='light'] .glass-panel {
+  background: var(--mg-bar) !important;
+  border-color: var(--mg-bar-border) !important;
+}
+
+html[data-theme='light'] .glass-modern {
+  background: var(--mg-card) !important;
+  border-color: var(--mg-card-border) !important;
+}
+
+/* Vídeos e overlays de vídeo continuam escuros no modo claro */
+html[data-theme='light'] .mg-on-video [class*='text-white'],
+html[data-theme='light'] .mg-on-video [class*='text-slate'],
+html[data-theme='light'] .mg-on-video [class*='text-purple'] {
+  color: #ffffff !important;
+}
+
+html[data-theme='light'] ::placeholder {
+  color: var(--mg-sub) !important;
+  opacity: 1;
+}
