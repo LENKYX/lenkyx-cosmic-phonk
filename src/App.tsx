@@ -60,6 +60,7 @@ import {
   MessageSquare,
   Menu,
   Lock,
+  Crop,
 } from 'lucide-react';
 import {
   clearBackgroundMediaSession,
@@ -113,6 +114,7 @@ import { PlaylistsView } from './components/PlaylistsView';
 import { CosmicSpaceBackdrop } from './components/CosmicSpaceBackdrop';
 import { LenkyxEdgeLogo } from './components/LenkyxEdgeLogo';
 import { playLenkyxStartupSound, stopLenkyxStartupSound, isStartupBeatPlaying } from './utils/startupSound';
+import { useVideoAspect, useFittedSize, useAutoHideChrome } from './utils/videoChrome';
 import {
   FuturisticFeaturesModal,
   FuturisticTab,
@@ -526,6 +528,7 @@ export function App() {
     getCurrentTime?: () => number;
     getDuration?: () => number;
     getPlayerState?: () => number;
+    setSize?: (width: number, height: number) => void;
   } | null>(null);
   const ytPendingVideoRef = useRef<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
@@ -728,6 +731,31 @@ export function App() {
   const [clipQuality, setClipQuality] = useState<'medium' | 'large' | 'hd720' | 'default'>('hd720');
   const clipQualityRef = useRef<'medium' | 'large' | 'hd720' | 'default'>('hd720');
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+
+  // === CLIP THEATER: proporção automática + menus que somem ao tocar ===
+  const clipAspect = useVideoAspect('auto');
+  const clipStageBoxRef = useRef<HTMLDivElement | null>(null);
+  const clipFitted = useFittedSize(clipStageBoxRef, clipAspect.ratio);
+  const clipChrome = useAutoHideChrome({
+    enabled: clipTheaterOpen && !clipMinimized && clipFitMode !== 'compact',
+    delayMs: 3600,
+  });
+
+  // Ao abrir o clipe os menus já aparecem escondidos (like YouTube)
+  useEffect(() => {
+    if (clipTheaterOpen && !clipMinimized) clipChrome.hide();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clipTheaterOpen, clipMinimized]);
+
+  // Mantém o player do YouTube exatamente no tamanho do quadro (sem tarjas)
+  useEffect(() => {
+    if (!clipFitted.width || !clipFitted.height) return;
+    try {
+      ytPlayerRef.current?.setSize?.(clipFitted.width, clipFitted.height);
+    } catch {
+      /* ignore */
+    }
+  }, [clipFitted.width, clipFitted.height]);
 
   useEffect(() => {
     clipQualityRef.current = clipQuality;
@@ -5165,18 +5193,23 @@ export function App() {
                   onClick={() => {
                     setClipMinimized(false);
                     setClipTheaterOpen(false);
+                    showToast('🎬 Voltou pro app — o clipe continua tocando no player.');
                   }}
-                  className="p-1 rounded-md bg-rose-600/85 hover:bg-rose-500 text-white"
-                  title="Fechar"
+                  className="px-2 py-0.5 rounded-md bg-white/15 hover:bg-white/25 text-white text-[10px] font-black flex items-center gap-1"
+                  title="Voltar para o app (o vídeo continua tocando)"
                 >
-                  <X className="w-3 h-3" />
+                  <ArrowLeft className="w-3 h-3" /> Voltar
                 </button>
               </div>
             </div>
           )}
 
           {clipTheaterOpen && currentTrack?.youtubeVideoId && !clipMinimized && (
-            <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e] shrink-0 relative">
+            <div
+              className={`px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-[#1a0b38] to-[#0a1b2e] shrink-0 relative z-20 transition-all duration-300 ${
+                clipChrome.visible ? 'opacity-100' : 'opacity-0 pointer-events-none -translate-y-1'
+              }`}
+            >
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <button
                   onClick={() => {
@@ -5190,6 +5223,7 @@ export function App() {
                       return;
                     }
                     setClipMinimized(true);
+                    showToast('🎬 Clipe minimizado! Continua tocando enquanto você navega.');
                   }}
                   className="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-black flex items-center gap-1 shrink-0"
                   title="Voltar sem perder o vídeo"
@@ -5203,6 +5237,7 @@ export function App() {
                   </div>
                   <div className="text-xs sm:text-sm font-black text-white truncate">{currentTrack.title}</div>
                 </div>
+                <LenkyxEdgeLogo size="xs" className="shrink-0 hidden sm:inline-flex" />
               </div>
               <div className="flex items-center gap-1.5 flex-wrap shrink-0">
                 <button
@@ -5222,58 +5257,11 @@ export function App() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setClipMoreOpen(false);
-                    if (document.fullscreenElement) {
-                      void document.exitFullscreen().catch(() => {});
-                    }
-                    setClipFitMode('standard');
-                    setClipMinimized(true);
-                    showToast('🎬 Clipe minimizado! Continua tocando enquanto você navega.');
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black text-[11px] font-black flex items-center gap-1"
-                  title="Minimizar e continuar assistindo"
-                >
-                  <Minimize2 className="w-3.5 h-3.5" />
-                  <span>Minimizar</span>
-                </button>
-                <button
-                  onClick={() => {
-                    if (clipFitMode === 'fullscreen' || document.fullscreenElement) {
-                      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-                      setClipFitMode('standard');
-                    } else {
-                      setClipFitMode('fullscreen');
-                      void clipStageRef.current?.requestFullscreen?.().catch(() => {});
-                    }
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-cyan-500/25 hover:bg-cyan-500/40 border border-cyan-400/45 text-cyan-100 text-[11px] font-black flex items-center gap-1"
-                  title="Aumentar / Reduzir"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  <span>{clipFitMode === 'fullscreen' || isNativeFullscreen ? 'Reduzir' : 'Aumentar'}</span>
-                </button>
-                <button
-                  type="button"
                   onClick={() => setClipMoreOpen((v) => !v)}
                   className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white"
                   title="Mais opções"
                 >
                   <MoreVertical className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => {
-                    if (document.fullscreenElement) {
-                      void document.exitFullscreen().catch(() => {});
-                    }
-                    setClipFitMode('standard');
-                    setClipMinimized(false);
-                    setClipTheaterOpen(false);
-                  }}
-                  className="px-2.5 py-1.5 rounded-full bg-rose-600/85 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  <span>Fechar</span>
                 </button>
               </div>
 
@@ -5338,19 +5326,45 @@ export function App() {
           )}
 
           <div
+            ref={clipStageBoxRef}
+            onClick={() => {
+              if (clipTheaterOpen && !clipMinimized) clipChrome.toggle();
+            }}
             className={
               clipTheaterOpen
                 ? clipMinimized
                   ? 'aspect-video w-full bg-black relative overflow-hidden'
-                  : 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center relative overflow-hidden'
+                  : 'flex-1 min-h-[200px] w-full bg-black flex items-center justify-center relative overflow-hidden cursor-pointer'
                 : 'w-full h-full bg-black relative'
             }
           >
-            <div id="lenkyx-yt-audio-host" className="w-full h-full" />
+            {/* Quadro com a proporção correta (sem tarjas pretas) */}
+            <div
+              className="relative flex items-center justify-center bg-black"
+              style={{
+                width: clipMinimized ? '100%' : clipFitted.width ? clipFitted.width : '100%',
+                height: clipMinimized ? '100%' : clipFitted.height ? clipFitted.height : '100%',
+                maxWidth: '100%',
+                maxHeight: '100%',
+              }}
+            >
+              <div id="lenkyx-yt-audio-host" className="w-full h-full" />
+            </div>
+
+            {/* Dica: toque para mostrar/esconder os controles */}
+            {clipTheaterOpen && !clipMinimized && !clipChrome.visible && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 border border-white/15 text-[10px] font-black text-white/85 pointer-events-none animate-pulse">
+                👆 Toque na tela para mostrar os controles
+              </div>
+            )}
           </div>
 
           {clipTheaterOpen && !clipMinimized && currentTrack?.youtubeVideoId && (
-            <div className="px-3 sm:px-4 py-2.5 border-t border-white/10 flex flex-col gap-2 bg-[#090418] shrink-0">
+            <div
+              className={`px-3 sm:px-4 py-2.5 border-t border-white/10 flex flex-col gap-2 bg-[#090418] shrink-0 transition-all duration-300 ${
+                clipChrome.visible ? 'opacity-100' : 'opacity-0 pointer-events-none translate-y-1'
+              }`}
+            >
               <div className="flex items-center gap-2 text-[10px] font-mono text-purple-200/85">
                 <span className="w-9 text-right">
                   {`${Math.floor(currentTime / 60)}:${String(Math.floor(currentTime % 60)).padStart(2, '0')}`}
@@ -5410,6 +5424,31 @@ export function App() {
                     <SkipForward className="w-4 h-4" />
                   </button>
                   <button
+                    onClick={() => {
+                      clipAspect.cycle();
+                      showToast(`📐 Proporção do vídeo: ${clipAspect.label}`);
+                    }}
+                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center gap-1"
+                    title={`Proporção do vídeo (${clipAspect.label})`}
+                  >
+                    <Crop className="w-4 h-4 text-amber-300" />
+                    <span className="text-[10px] font-black">{clipAspect.label}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (document.fullscreenElement) {
+                        void document.exitFullscreen().catch(() => {});
+                      }
+                      setClipFitMode('standard');
+                      setClipMinimized(true);
+                      showToast('🎬 Clipe minimizado! Continua tocando enquanto você navega.');
+                    }}
+                    className="p-2 rounded-full bg-amber-400/85 hover:bg-amber-300 text-black"
+                    title="Minimizar e continuar assistindo"
+                  >
+                    <Minimize2 className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={async () => {
                       try {
                         if (!document.fullscreenElement) {
@@ -5422,6 +5461,7 @@ export function App() {
                       }
                     }}
                     className="p-2 rounded-full bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-200"
+                    title={isNativeFullscreen ? 'Reduzir' : 'Aumentar'}
                   >
                     {isNativeFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                   </button>
