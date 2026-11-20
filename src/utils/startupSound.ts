@@ -14,6 +14,8 @@ let sharedAudioCtx: AudioContext | null = null;
 let beatEl: HTMLAudioElement | null = null;
 let lastStartupPlayedAt = 0;
 let fadeTimer: number | null = null;
+let startupStopTimer: number | null = null;
+const STARTUP_MAX_MS = 5000;
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -82,6 +84,12 @@ export async function playLenkyxStartupSound(force = false): Promise<boolean> {
       await el.play();
       lastStartupPlayedAt = nowMs;
       rampVolume(el, BEAT_TARGET_VOLUME, 320);
+      if (startupStopTimer !== null) window.clearTimeout(startupStopTimer);
+      startupStopTimer = window.setTimeout(() => {
+        el.pause();
+        el.currentTime = 0;
+        startupStopTimer = null;
+      }, STARTUP_MAX_MS);
       return true;
     } catch {
       // Autoplay bloqueado pelo navegador: tenta o sintetizador (so funciona com gesto do usuario)

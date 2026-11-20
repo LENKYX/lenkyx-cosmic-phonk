@@ -410,11 +410,12 @@ export function App() {
       void playLenkyxStartupSound(false);
     };
     window.addEventListener('pointerdown', unlockOnce, { once: true });
-    // Intro com ritmo proprio: 8,5s (o beat da tempo) com saida automatica
+    // Abertura curta: emblema e efeito por 5 segundos; encerra também qualquer áudio residual.
     const autoClose = window.setTimeout(() => {
+      stopLenkyxStartupSound(0);
       setEntrySplashExiting(true);
       window.setTimeout(() => setShowEntrySplash(false), 320);
-    }, 8500);
+    }, 5000);
     return () => {
       window.removeEventListener('pointerdown', unlockOnce);
       window.clearTimeout(autoClose);
@@ -2929,19 +2930,6 @@ export function App() {
             {/* Logo Grande VIP (emblema com aura) - tamanho responsivo para caber em qualquer tela */}
             <LenkyxEdgeLogo size="hero" className="shrink-0" />
 
-            <div className="space-y-1 sm:space-y-1.5">
-              <h1 className="font-logo text-[clamp(1.45rem,6vw,2.5rem)] font-black tracking-[0.16em] sm:tracking-[0.2em] lux-gold-text leading-none drop-shadow-[0_0_22px_rgba(245,200,76,0.5)]">
-                MORRO GOLD
-              </h1>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/80 border border-amber-400/50 text-[10px] sm:text-[11px] font-black text-amber-200 shadow-lg">
-                <span>👑</span>
-                <span className="truncate">SALVE, CRIA! FAVELA OSTENTAÇÃO · TÁ LIGADO 🇧🇷</span>
-              </div>
-              <p className="text-[11px] sm:text-xs leading-snug text-slate-200/90 max-w-sm mx-auto">
-                Beat de favela pesadão, motos, naves, baile de verão e loja dos parças num só app.
-              </p>
-            </div>
-
             {/* Equalizador do beat de abertura (Pancadao VIP) */}
             <div className="flex items-end gap-[3px] h-5 sm:h-6 mt-0.5" aria-hidden="true">
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => (
@@ -2953,41 +2941,6 @@ export function App() {
               ))}
             </div>
 
-            {/* 3 Visual Preview Strips: Morro, Motos & Carros, Baile Verão */}
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 w-full max-w-[min(84vw,330px)]">
-              <div className="relative aspect-[16/10] rounded-lg sm:rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
-                <img src="/covers/favela-night-skyline.jpg" alt="Vista do Morro" className="w-full h-full object-cover" />
-                <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-black text-amber-200">
-                  🏙️ Morro VIP
-                </span>
-              </div>
-              <div className="relative aspect-[16/10] rounded-lg sm:rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
-                <img src="/covers/ostentacao-motos-carros.jpg" alt="Motos e Naves" className="w-full h-full object-cover" />
-                <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-black text-amber-200">
-                  🏍️ Motos & Naves
-                </span>
-              </div>
-              <div className="relative aspect-[16/10] rounded-lg sm:rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
-                <img src="/covers/baile-verao-vip.jpg" alt="Baile de Verão" className="w-full h-full object-cover" />
-                <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-black text-amber-200">
-                  🥂 Baile VIP
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                dismissEntrySplash(true);
-              }}
-              className="mt-0.5 px-5 sm:px-7 py-2.5 sm:py-3 rounded-full lux-btn-gold text-[12px] sm:text-sm font-black shadow-[0_0_32px_rgba(245,200,76,0.5)] hover:brightness-110 transition active:scale-95 flex items-center gap-2"
-            >
-              <span>🔊 Soltar o Beat & Entrar no Baile</span>
-            </button>
-            <span className="text-[9px] font-bold tracking-widest text-white/45 uppercase">
-              Toque em qualquer lugar · intro completa de 8,5s
-            </span>
           </div>
         </div>
       )}
