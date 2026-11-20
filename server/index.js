@@ -3695,7 +3695,55 @@ app.get('/tv/:code', (req, res) => {
 });
 
 app.get('/app', (_req, res) => {
-  res.redirect(302, '/?install=1');
+  const site = 'https://lenkyx-cosmic-phonk.onrender.com';
+  res.type('html').send(`<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Baixar MORRO GOLD — App de Cria (Grátis)</title>
+<meta name="description" content="Baixe o app MORRO GOLD em 1 clique: música, memes, bailes, cinema e Loja VIP. Compartilha com os cria!" />
+<meta property="og:title" content="MORRO GOLD — Baixe o App e compartilha com os cria" />
+<meta property="og:description" content="App de cria: música, memes, bailes e Loja VIP. Grátis no iPhone, Android e TV!" />
+<meta property="og:image" content="${site}/covers/icon-512.png?v=74" />
+<meta name="theme-color" content="#0c0718" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Roboto, system-ui, sans-serif; background: radial-gradient(circle at 50% 0%, #2a1a05 0%, #0c0718 55%); color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .card { width: 100%; max-width: 460px; text-align: center; background: rgba(20, 12, 40, .85); border: 1px solid rgba(251, 191, 36, .45); border-radius: 26px; padding: 30px 22px; box-shadow: 0 24px 80px rgba(251, 191, 36, .22); }
+  img.logo { width: 110px; height: 110px; border-radius: 24px; box-shadow: 0 12px 42px rgba(251, 191, 36, .5); }
+  h1 { font-size: 24px; margin: 14px 0 6px; background: linear-gradient(90deg, #fcd34d, #f59e0b, #fde68a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  p.sub { color: #d6cbea; font-size: 14px; line-height: 1.5; margin-bottom: 18px; }
+  a.btn, button.btn { display: block; width: 100%; padding: 15px 18px; border-radius: 999px; font-size: 15px; font-weight: 800; text-decoration: none; margin: 10px 0; cursor: pointer; border: 0; }
+  .gold { background: linear-gradient(90deg, #fbbf24, #f59e0b); color: #241a05; }
+  .ghost { background: rgba(255, 255, 255, .08); color: #fff; border: 1px solid rgba(255, 255, 255, .22); }
+  .hint { font-size: 12px; color: #a99cc4; margin-top: 12px; line-height: 1.55; }
+  .stars { letter-spacing: 3px; font-size: 18px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="/covers/icon-512.png?v=74" alt="MORRO GOLD" />
+    <h1>MORRO GOLD — App de Cria</h1>
+    <p class="sub">♥⚡ Música com grave, memes e zueira, bailes ao vivo, cinema e Loja VIP.<br/><strong>Baixe grátis e compartilha com a galera!</strong></p>
+    <div class="stars">⭐⭐⭐⭐⭐</div>
+    <a class="btn gold" href="/download/apk">⬇️ Baixar para Android (APK)</a>
+    <a class="btn gold" href="/?install=1">🍏 iPhone & Android — Instalar em 1 clique</a>
+    <a class="btn ghost" href="/">▶️ Abrir o app agora</a>
+    <button class="btn ghost" id="shareBtn" type="button">📦 Compartilhar com os cria</button>
+    <p class="hint">iPhone: toque em <strong>Instalar</strong> e siga <strong>Compartilhar → Adicionar à Tela de Início</strong>.<br/>TV: abra <strong>${site}/tv</strong> no navegador da sua Smart TV.</p>
+  </div>
+  <audio id="voz" src="/audio/compartilha-crias.mp3" preload="none"></audio>
+  <script>
+    document.getElementById('shareBtn').addEventListener('click', async function () {
+      try { var v = document.getElementById('voz'); v.currentTime = 0; await v.play(); } catch (e) {}
+      var data = { title: 'MORRO GOLD', text: 'Compartilha com os cria do MORRO GOLD! ♥⚡ Baixe o app grátis:', url: '${site}/app' };
+      if (navigator.share) { try { await navigator.share(data); return; } catch (e) {} }
+      window.open('https://wa.me/?text=' + encodeURIComponent(data.text + ' ' + data.url), '_blank');
+    });
+  </script>
+</body>
+</html>`);
 });
 
 // === v62: BRAZILIAN YOUTUBERS (MEMES & PEGADINHAS) TOP 1-5 ===

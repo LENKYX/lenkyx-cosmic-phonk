@@ -910,3 +910,48 @@ html[data-theme='light'] ::placeholder {
 .mg-vid-icon {
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
 }
+
+
+/* ================= MODO TV (Smart TV) — sem distorção, igual YouTube ================= */
+html.mg-tv {
+  font-size: 20px;
+}
+html.mg-tv body {
+  padding: 1.2%;
+  overflow-x: hidden;
+}
+/* Blur/backdrop e WebGL distorcem em navegadores de TV: remove efeitos pesados */
+html.mg-tv * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html.mg-tv canvas {
+  display: none !important;
+}
+html.mg-tv [class*="animate-"],
+html.mg-tv .animate-pulse {
+  animation: none !important;
+  transition: none !important;
+}
+/* Alvos de clique grandes para o controle remoto */
+html.mg-tv button,
+html.mg-tv a,
+html.mg-tv [role="button"] {
+  min-height: 48px;
+}
+/* Foco bem visível para navegar com o controle remoto */
+html.mg-tv button:focus,
+html.mg-tv a:focus,
+html.mg-tv [role="button"]:focus,
+html.mg-tv button:focus-visible,
+html.mg-tv a:focus-visible {
+  outline: 3px solid #fbbf24 !important;
+  outline-offset: 3px;
+  border-radius: 14px;
+}
+/* Esconde controles pequenos/flutuantes que atrapalham na TV */
+html.mg-tv .fixed.bottom-16,
+html.mg-tv [class*="z-\[88\]"],
+html.mg-tv [class*="z-\[92\]"] {
+  display: none !important;
+}

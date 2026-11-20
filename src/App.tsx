@@ -241,6 +241,22 @@ export function App() {
   const movieDrag = useFloatingDrag();
   const clipDrag = useFloatingDrag();
 
+  // ===== MODO TV (Smart TV / navegador de TV) — estável e legível como o YouTube =====
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ua = navigator.userAgent || '';
+      const uaTv = /SmartTV|TV|Tizen|WebOS|BRAVIA|AFT|CrKey|HbbTV|NetCast|Viera/i.test(ua);
+      const wantTv = params.has('tvMode') || params.has('tv') || uaTv || localStorage.getItem('morro_gold_tv_v1') === '1';
+      if (wantTv) {
+        document.documentElement.classList.add('mg-tv');
+        localStorage.setItem('morro_gold_tv_v1', '1');
+      }
+    } catch {
+      // ok
+    }
+  }, []);
+
   // Botão "voltar" do celular NÃO fecha o app: mantém a música tocando e volta ao início
   useEffect(() => {
     const pushGuard = () => {
