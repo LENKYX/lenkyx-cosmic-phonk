@@ -36,7 +36,7 @@ function saveMemory(mem: TasteMemory): void {
 export function recordSearchTaste(query: string): TasteMemory {
   const clean = query.trim();
   const mem = loadMemory();
-  if (!clean || clean.length < 2) return mem;
+  if (!clean || clean.length < 2 || clean.toLowerCase().includes('lenkyx')) return mem;
   mem.recentQueries = [clean, ...mem.recentQueries.filter((q) => q.toLowerCase() !== clean.toLowerCase())].slice(0, 12);
   saveMemory(mem);
   return mem;
@@ -51,7 +51,7 @@ export function recordPlayTaste(artist: string, genre?: string, title?: string):
   if (genre) {
     mem.favoriteGenres[genre] = (mem.favoriteGenres[genre] || 0) + 1;
   }
-  if (title) {
+  if (title && !title.toLowerCase().includes('lenkyx')) {
     mem.playedTitles = [title, ...mem.playedTitles.filter((t) => t !== title)].slice(0, 20);
   }
   saveMemory(mem);
@@ -63,6 +63,7 @@ export function getSmartDiscoveryQueries(): { label: string; query: string }[] {
   const picks: { label: string; query: string }[] = [];
 
   const topArtists = Object.entries(mem.favoriteArtists)
+    .filter(([name]) => !name.toLowerCase().includes('lenkyx'))
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([name]) => name);
@@ -71,17 +72,21 @@ export function getSmartDiscoveryQueries(): { label: string; query: string }[] {
     picks.push({ label: `Mix ${art}`, query: `${art} top hits mix` });
   });
 
-  mem.recentQueries.slice(0, 3).forEach((q) => {
-    if (!picks.some((p) => p.query.toLowerCase() === q.toLowerCase())) {
-      picks.push({ label: `Mais de "${q}"`, query: `${q} melhores musicas` });
-    }
-  });
+  mem.recentQueries
+    .filter((q) => !q.toLowerCase().includes('lenkyx'))
+    .slice(0, 3)
+    .forEach((q) => {
+      if (!picks.some((p) => p.query.toLowerCase() === q.toLowerCase())) {
+        picks.push({ label: `Mais de "${q}"`, query: `${q} melhores musicas` });
+      }
+    });
 
   if (picks.length === 0) {
     return [
-      { label: 'Descobertas Internacionais', query: 'The Weeknd Dua Lipa Bruno Mars top hits' },
-      { label: 'Brasil em Alta', query: 'Henrique e Juliano Alok Anitta sucessos' },
-      { label: 'Phonk & Espaço', query: 'Cosmic Phonk Drift Bass 2026' },
+      { label: 'Top Brasil Agora', query: 'Henrique e Juliano Gusttavo Lima Ana Castela sucessos' },
+      { label: 'Funk & Trap BR', query: 'MC Ryan SP Matue Veigh MC Hariel hits' },
+      { label: 'Pagode & Churrasco', query: 'Grupo Menos e Mais Ferrugem Dilsinho ao vivo' },
+      { label: 'Hits Mundiais', query: 'The Weeknd Bruno Mars Dua Lipa Billie Eilish top hits' },
     ];
   }
 

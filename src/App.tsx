@@ -86,7 +86,7 @@ import {
 } from './utils/gamingAudioBridge';
 import { GamingMusicModeModal } from './components/GamingMusicModeModal';
 import { WorldLanguageModal } from './components/WorldLanguageModal';
-import { MediaPlayerMenuModal } from './components/MediaPlayerMenuModal';
+import { AudioEffectId, MediaPlayerMenuModal } from './components/MediaPlayerMenuModal';
 import { AudioVisualizerModal } from './components/AudioVisualizerModal';
 import { CommunityChatModal, TargetCommentsModal } from './components/CommunityChatModal';
 import { recordRankingHit } from './utils/rankingsApi';
@@ -235,12 +235,40 @@ export function App() {
   const isAndroidDevice =
     typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
 
+  const [isAppInstalledOnDevice, setIsAppInstalledOnDevice] = useState<boolean>(() => {
+    if (isAndroidApk()) return true;
+    if (typeof window === 'undefined') return false;
+    const standalone =
+      window.matchMedia?.('(display-mode: standalone)')?.matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    let markedInstalled = false;
+    try {
+      markedInstalled = localStorage.getItem('lenkyx_app_installed_v1') === '1';
+    } catch {
+      // ignore
+    }
+    return Boolean(standalone || markedInstalled);
+  });
+  const [quickDownloadDismissed, setQuickDownloadDismissed] = useState(false);
+
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredInstallPrompt(e);
     };
+    const handleAppInstalled = () => {
+      setIsAppInstalledOnDevice(true);
+      setDeferredInstallPrompt(null);
+      setInstallModalOpen(false);
+      try {
+        localStorage.setItem('lenkyx_app_installed_v1', '1');
+      } catch {
+        // ignore
+      }
+      showToast('✅ App instalado no seu aparelho!');
+    };
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
     try {
       const params = new URLSearchParams(window.location.search);
       if (params.get('install') === '1' && !isAndroidApk()) {
@@ -249,7 +277,10 @@ export function App() {
     } catch {
       // ignore
     }
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
   const handleInstantInstall = useCallback(async () => {
@@ -258,7 +289,13 @@ export function App() {
         await deferredInstallPrompt.prompt();
         const choice = await deferredInstallPrompt.userChoice;
         if (choice?.outcome === 'accepted') {
-          showToast('LENKYX instalado no seu aparelho em segundos! 🚀');
+          setIsAppInstalledOnDevice(true);
+          try {
+            localStorage.setItem('lenkyx_app_installed_v1', '1');
+          } catch {
+            // ignore
+          }
+          showToast('App instalado no seu aparelho em segundos! 🚀');
           setDeferredInstallPrompt(null);
           setInstallModalOpen(false);
           return;
@@ -350,8 +387,23 @@ export function App() {
     };
   }, []);
 
-  // Bass Boost Web Audio nodes + Speed + Loop
+  // Bass Boost + Live Audio Effects + Loud Mode ("Som Alto") Web Audio DSP nodes
   const [bassBoostLevel, setBassBoostLevel] = useState<BassBoostLevel>(0);
+  const [audioEffect, setAudioEffect] = useState<AudioEffectId>('normal');
+  const [loudMode, setLoudMode] = useState<boolean>(false);
+  const bassBoostRef = useRef<BassBoostLevel>(0);
+  const audioEffectRef = useRef<AudioEffectId>('normal');
+  const loudModeRef = useRef<boolean>(false);
+  useEffect(() => {
+    bassBoostRef.current = bassBoostLevel;
+  }, [bassBoostLevel]);
+  useEffect(() => {
+    audioEffectRef.current = audioEffect;
+  }, [audioEffect]);
+  useEffect(() => {
+    loudModeRef.current = loudMode;
+  }, [loudMode]);
+
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const [loopTrack, setLoopTrack] = useState<boolean>(false);
   const loopTrackRef = useRef<boolean>(false);
@@ -362,8 +414,14 @@ export function App() {
   const bassAudioCtxRef = useRef<AudioContext | null>(null);
   const bassLowShelfRef = useRef<BiquadFilterNode | null>(null);
   const bassPeakRef = useRef<BiquadFilterNode | null>(null);
+  const bassPresenceRef = useRef<BiquadFilterNode | null>(null);
+  const bassHighShelfRef = useRef<BiquadFilterNode | null>(null);
+  const delayNodeRef = useRef<DelayNode | null>(null);
+  const delayFeedbackRef = useRef<GainNode | null>(null);
   const bassGainRef = useRef<GainNode | null>(null);
   const audioAnalyserRef = useRef<AnalyserNode | null>(null);
+  const nextBackupUrlRef = useRef<string>('');
+  const nextBackupTrackIdRef = useRef<string>('');
   const [visualizerOpen, setVisualizerOpen] = useState(false);
   const [updatingApp, setUpdatingApp] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ label: string; pct: number; mb: number } | null>(null);
@@ -1006,6 +1064,91 @@ export function App() {
 
     const onError = () => recoverOrAdvance('error');
 
+    const onEnded = () => {
+      clearStallTimer();
+      if (userPausedRef.current) return;
+      if (loopTrackRef.current) {
+        audio.currentTime = 0;
+        void audio.play().catch(() => {});
+        return;
+      }
+      const list = playQueueRef.current.length ? playQueueRef.current : [];
+      const cur = currentTrackRef.current;
+      if (!cur || list.length === 0) {
+        setIsPlaying(false);
+        isPlayingRef.current = false;
+        return;
+      }
+      const idx = list.findIndex((t) => t.id === cur.id);
+      const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
+      if (!next) return;
+
+      // When screen is locked / backgrounded, reuse the SAME active <audio> element seamlessly so OS never revokes lock-screen focus!
+      if (document.hidden && backgroundModeRef.current) {
+        void (async () => {
+          setMobileBackgroundKeepalive(true);
+          let nextUrl =
+            next.audioUrl ||
+            (nextBackupTrackIdRef.current === next.id ? nextBackupUrlRef.current : '');
+          if (!nextUrl) {
+            try {
+              const res = await resolvePlayableAudioUrl(next, 'v1');
+              nextUrl = res.url || '';
+            } catch {
+              // fallback below
+            }
+          }
+          if (!nextUrl) {
+            nextUrl = await prefetchVideoAudioBackup(next.title, next.artist || '');
+          }
+          if (nextUrl && audioRef.current) {
+            const proxied =
+              nextUrl.startsWith('https://') &&
+              !nextUrl.includes('suno.ai') &&
+              !nextUrl.includes('audius')
+                ? `/api/audio-proxy?url=${encodeURIComponent(nextUrl)}`
+                : nextUrl;
+            bgHandoffActiveRef.current = true;
+            directAudioRawUrlRef.current = nextUrl;
+            setCurrentTrack(next);
+            currentTrackRef.current = next;
+            audio.removeAttribute('crossorigin');
+            audio.src = proxied;
+            audio.load();
+            void audio.play().catch(() => {});
+            setIsPlaying(true);
+            isPlayingRef.current = true;
+            syncBackgroundMediaSession({
+              title: next.title,
+              artist: next.artist || 'LENKYX',
+              album: next.album || 'Favela VIP',
+              artworkUrl: next.coverUrl,
+              isPlaying: true,
+            });
+            // Pre-fetch the following track too!
+            const afterNext = list[(idx + 2) % list.length];
+            if (afterNext && !afterNext.audioUrl && afterNext.title) {
+              void prefetchVideoAudioBackup(afterNext.title, afterNext.artist || '').then((u) => {
+                if (u) {
+                  nextBackupTrackIdRef.current = afterNext.id;
+                  nextBackupUrlRef.current = u;
+                }
+              });
+            }
+            return;
+          }
+          if (handlePlayTrackRef.current) {
+            void handlePlayTrackRef.current(next, 'v1', list);
+          }
+        })();
+        return;
+      }
+
+      if (handlePlayTrackRef.current) {
+        void handlePlayTrackRef.current(next, 'v1', list);
+      }
+    };
+
     audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('loadedmetadata', onLoaded);
     audio.addEventListener('play', onPlay);
@@ -1014,6 +1157,7 @@ export function App() {
     audio.addEventListener('stalled', armStallWatchdog);
     audio.addEventListener('waiting', armStallWatchdog);
     audio.addEventListener('error', onError);
+    audio.addEventListener('ended', onEnded);
 
     return () => {
       clearStallTimer();
@@ -1026,6 +1170,7 @@ export function App() {
       audio.removeEventListener('stalled', armStallWatchdog);
       audio.removeEventListener('waiting', armStallWatchdog);
       audio.removeEventListener('error', onError);
+      audio.removeEventListener('ended', onEnded);
     };
   }, []);
 
@@ -1174,13 +1319,57 @@ export function App() {
               }
             } else if (ev.data === 0) {
               setIsPlaying(false);
+              isPlayingRef.current = false;
               const list = playQueueRef.current.length ? playQueueRef.current : tracks;
               const cur = currentTrackRef.current;
               if (cur && list.length > 0) {
                 const idx = list.findIndex((t) => t.id === cur.id);
                 const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
-                if (next && handlePlayTrackRef.current) {
-                  void handlePlayTrackRef.current(next, 'v1', list);
+                if (!next) return;
+                if (document.hidden && backgroundModeRef.current && audioRef.current) {
+                  void (async () => {
+                    setMobileBackgroundKeepalive(true);
+                    let nextUrl =
+                      next.audioUrl ||
+                      (nextBackupTrackIdRef.current === next.id ? nextBackupUrlRef.current : '');
+                    if (!nextUrl) {
+                      nextUrl = await prefetchVideoAudioBackup(next.title, next.artist || '');
+                    }
+                    if (nextUrl && audioRef.current) {
+                      const proxied =
+                        nextUrl.startsWith('https://') &&
+                        !nextUrl.includes('suno.ai') &&
+                        !nextUrl.includes('audius')
+                          ? `/api/audio-proxy?url=${encodeURIComponent(nextUrl)}`
+                          : nextUrl;
+                      bgHandoffActiveRef.current = true;
+                      directAudioRawUrlRef.current = nextUrl;
+                      setCurrentTrack(next);
+                      currentTrackRef.current = next;
+                      const el = audioRef.current;
+                      el.removeAttribute('crossorigin');
+                      el.src = proxied;
+                      el.load();
+                      void el.play().catch(() => {});
+                      setIsPlaying(true);
+                      isPlayingRef.current = true;
+                      syncBackgroundMediaSession({
+                        title: next.title,
+                        artist: next.artist || 'LENKYX',
+                        album: next.album || 'Favela VIP',
+                        artworkUrl: next.coverUrl,
+                        isPlaying: true,
+                      });
+                      return;
+                    }
+                    if (handlePlayTrackRef.current) {
+                      void handlePlayTrackRef.current(next, 'v1', list);
+                    }
+                  })();
+                  return;
+                }
+                if (handlePlayTrackRef.current) {
+                  void handlePlayTrack(next, 'v1', list);
                 }
               }
             }
@@ -1264,81 +1453,147 @@ export function App() {
     };
   }, [activeTab]);
 
-  // Apply Web Audio Bass Boost + Anti-Clipping Limiter safely across all menus
-  const applyBassBoostGain = useCallback((level: BassBoostLevel) => {
-    const audio = audioRef.current;
-    if (audio && (!currentTrackRef.current?.youtubeVideoId || Boolean(currentTrackRef.current?.audioUrl))) {
-      const curSrc = audio.currentSrc || audio.src || '';
-      const isSafeForWebAudio =
-        Boolean(curSrc) &&
-        (curSrc.startsWith('blob:') ||
-          curSrc.startsWith('data:') ||
-          curSrc.startsWith(window.location.origin) ||
-          curSrc.startsWith('/') ||
-          audio.crossOrigin === 'anonymous');
+  // Apply Web Audio DSP Chain: Bass Boost + Live Effects (3D Baile, Estúdio HD, Pancadão, Noite VIP) + Som Alto (Turbo Limiter)
+  const applyBassBoostGain = useCallback(
+    (level: BassBoostLevel, effOverride?: AudioEffectId, loudOverride?: boolean) => {
+      const activeEffect = effOverride ?? audioEffectRef.current;
+      const activeLoud = loudOverride ?? loudModeRef.current;
+      const audio = audioRef.current;
+      const dspActive = level > 0 || activeEffect !== 'normal' || activeLoud;
 
-      if (isSafeForWebAudio && !bassAudioCtxRef.current) {
-        try {
-          const AudioCtx =
-            window.AudioContext ||
-            (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-          if (AudioCtx) {
-            const ctx = new AudioCtx();
-            const source = ctx.createMediaElementSource(audio);
-            const lowShelf = ctx.createBiquadFilter();
-            lowShelf.type = 'lowshelf';
-            lowShelf.frequency.value = 95;
-            const peak = ctx.createBiquadFilter();
-            peak.type = 'peaking';
-            peak.frequency.value = 55;
-            peak.Q.value = 1.1;
-            const gain = ctx.createGain();
-            gain.gain.value = 1.0;
-            const analyser = ctx.createAnalyser();
-            analyser.fftSize = 128;
-            analyser.smoothingTimeConstant = 0.78;
-            const limiter = ctx.createDynamicsCompressor();
-            limiter.threshold.value = -3;
-            limiter.knee.value = 6;
-            limiter.ratio.value = 12;
-            limiter.attack.value = 0.003;
-            limiter.release.value = 0.12;
-            source.connect(lowShelf);
-            lowShelf.connect(peak);
-            peak.connect(gain);
-            gain.connect(analyser);
-            analyser.connect(limiter);
-            limiter.connect(ctx.destination);
-            bassAudioCtxRef.current = ctx;
-            bassLowShelfRef.current = lowShelf;
-            bassPeakRef.current = peak;
-            bassGainRef.current = gain;
-            audioAnalyserRef.current = analyser;
+      if (audio && (!currentTrackRef.current?.youtubeVideoId || Boolean(currentTrackRef.current?.audioUrl) || bgHandoffActiveRef.current)) {
+        const curSrc = audio.currentSrc || audio.src || '';
+        const isSafeForWebAudio =
+          Boolean(curSrc) &&
+          (curSrc.startsWith('blob:') ||
+            curSrc.startsWith('data:') ||
+            curSrc.startsWith(window.location.origin) ||
+            curSrc.startsWith('/') ||
+            audio.crossOrigin === 'anonymous');
+
+        if (isSafeForWebAudio && !bassAudioCtxRef.current) {
+          try {
+            const AudioCtx =
+              window.AudioContext ||
+              (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            if (AudioCtx) {
+              const ctx = new AudioCtx();
+              const source = ctx.createMediaElementSource(audio);
+              const lowShelf = ctx.createBiquadFilter();
+              lowShelf.type = 'lowshelf';
+              lowShelf.frequency.value = 95;
+              const peak = ctx.createBiquadFilter();
+              peak.type = 'peaking';
+              peak.frequency.value = 55;
+              peak.Q.value = 1.1;
+              const presence = ctx.createBiquadFilter();
+              presence.type = 'peaking';
+              presence.frequency.value = 3200;
+              presence.Q.value = 0.9;
+              const highShelf = ctx.createBiquadFilter();
+              highShelf.type = 'highshelf';
+              highShelf.frequency.value = 10000;
+
+              const delay = ctx.createDelay(1.0);
+              delay.delayTime.value = 0.13;
+              const delayFb = ctx.createGain();
+              delayFb.gain.value = 0;
+
+              const gain = ctx.createGain();
+              gain.gain.value = 1.0;
+              const analyser = ctx.createAnalyser();
+              analyser.fftSize = 128;
+              analyser.smoothingTimeConstant = 0.78;
+              const limiter = ctx.createDynamicsCompressor();
+              limiter.threshold.value = -5;
+              limiter.knee.value = 6;
+              limiter.ratio.value = 12;
+              limiter.attack.value = 0.002;
+              limiter.release.value = 0.12;
+
+              source.connect(lowShelf);
+              lowShelf.connect(peak);
+              peak.connect(presence);
+              presence.connect(highShelf);
+              highShelf.connect(gain);
+              // Parallel spatial echo loop for 3D Baile effect
+              highShelf.connect(delay);
+              delay.connect(delayFb);
+              delayFb.connect(gain);
+
+              gain.connect(analyser);
+              analyser.connect(limiter);
+              limiter.connect(ctx.destination);
+
+              bassAudioCtxRef.current = ctx;
+              bassLowShelfRef.current = lowShelf;
+              bassPeakRef.current = peak;
+              bassPresenceRef.current = presence;
+              bassHighShelfRef.current = highShelf;
+              delayNodeRef.current = delay;
+              delayFeedbackRef.current = delayFb;
+              bassGainRef.current = gain;
+              audioAnalyserRef.current = analyser;
+            }
+          } catch {
+            // Fallback if already attached
           }
-        } catch {
-          // Fallback if already attached
         }
-      }
-      if (bassAudioCtxRef.current?.state === 'suspended') {
-        void bassAudioCtxRef.current.resume().catch(() => {});
-      }
-      const shelfGains = [0, 4.5, 9, 14];
-      const peakGains = [0, 3, 6.5, 10];
-      const punchGains = [1.0, 1.08, 1.18, 1.28];
-      if (bassLowShelfRef.current) bassLowShelfRef.current.gain.value = shelfGains[level] || 0;
-      if (bassPeakRef.current) bassPeakRef.current.gain.value = peakGains[level] || 0;
-      if (bassGainRef.current) bassGainRef.current.gain.value = punchGains[level] || 1.0;
-    }
+        if (bassAudioCtxRef.current?.state === 'suspended') {
+          void bassAudioCtxRef.current.resume().catch(() => {});
+        }
+        const shelfGains = [0, 4.5, 9, 14];
+        const peakGains = [0, 3, 6.5, 10];
+        let lowGain = shelfGains[level] || 0;
+        let subGain = peakGains[level] || 0;
+        let presGain = 0;
+        let hiGain = 0;
+        let echoMix = 0;
+        let punch = [1.0, 1.08, 1.18, 1.28][level] || 1.0;
 
-    // For embed-stream tracks, keep volume punch synced cleanly
-    if (currentTrackRef.current?.youtubeVideoId && !currentTrackRef.current?.audioUrl && ytPlayerRef.current?.setVolume) {
-      const targetVol = muted ? 0 : Math.min(100, Math.round((level > 0 ? Math.max(volume, 0.92) : volume) * 100));
-      ytPlayerRef.current.setVolume(targetVol);
-    }
-  }, [volume, muted]);
+        if (activeEffect === 'baile3d') {
+          lowGain += 4;
+          presGain = 3.5;
+          hiGain = 4.5;
+          echoMix = 0.22;
+        } else if (activeEffect === 'studio') {
+          presGain = 5.5;
+          hiGain = 4;
+        } else if (activeEffect === 'grave_pancadao') {
+          lowGain += 6;
+          subGain += 5;
+          hiGain = 2;
+        } else if (activeEffect === 'noite_chill') {
+          lowGain += 2;
+          presGain = -2;
+          hiGain = -3.5;
+        }
+        if (activeLoud) {
+          punch *= 1.85;
+        }
+
+        if (bassLowShelfRef.current) bassLowShelfRef.current.gain.value = Math.min(18, lowGain);
+        if (bassPeakRef.current) bassPeakRef.current.gain.value = Math.min(15, subGain);
+        if (bassPresenceRef.current) bassPresenceRef.current.gain.value = presGain;
+        if (bassHighShelfRef.current) bassHighShelfRef.current.gain.value = hiGain;
+        if (delayFeedbackRef.current) delayFeedbackRef.current.gain.value = echoMix;
+        if (bassGainRef.current) bassGainRef.current.gain.value = Math.min(2.6, punch);
+      }
+
+      // For embed-stream tracks, keep volume punch synced cleanly
+      if (currentTrackRef.current?.youtubeVideoId && !currentTrackRef.current?.audioUrl && ytPlayerRef.current?.setVolume) {
+        const targetVol = muted
+          ? 0
+          : Math.min(100, Math.round((dspActive ? Math.max(volume, activeLoud ? 1 : 0.94) : volume) * 100));
+        ytPlayerRef.current.setVolume(targetVol);
+      }
+    },
+    [volume, muted]
+  );
 
   const handleSetBassBoostLevel = useCallback(
     (level: BassBoostLevel) => {
+      bassBoostRef.current = level;
       setBassBoostLevel(level);
       applyBassBoostGain(level);
       const labels = ['Graves Normal', 'Graves Suave (+4dB)', 'Graves Pesado (+9dB)', 'Subwoofer Máximo (+14dB)'];
@@ -1347,9 +1602,45 @@ export function App() {
     [applyBassBoostGain, showToast]
   );
 
+  const handleSetAudioEffect = useCallback(
+    (eff: AudioEffectId) => {
+      audioEffectRef.current = eff;
+      setAudioEffect(eff);
+      applyBassBoostGain(bassBoostRef.current, eff, loudModeRef.current);
+      const labels: Record<AudioEffectId, string> = {
+        normal: 'Efeito Normal (Puro)',
+        baile3d: '🎧 Efeito 3D Baile Espacial ativado!',
+        studio: '🎙️ Efeito Estúdio HD ativado!',
+        grave_pancadao: '⚡ Efeito Pancadão Favela ativado!',
+        noite_chill: '🌙 Efeito Noite VIP ativado!',
+      };
+      showToast(labels[eff]);
+    },
+    [applyBassBoostGain, showToast]
+  );
+
+  const handleToggleLoudMode = useCallback(() => {
+    setLoudMode((prev) => {
+      const next = !prev;
+      loudModeRef.current = next;
+      if (next && volume < 0.9) {
+        setVolume(1);
+        if (audioRef.current) audioRef.current.volume = 1;
+      }
+      applyBassBoostGain(bassBoostRef.current, audioEffectRef.current, next);
+      showToast(
+        next
+          ? '🔥 SOM ALTO ATIVADO (+100% com limitador limpo)!'
+          : 'Som Alto desativado (volume padrão)'
+      );
+      return next;
+    });
+  }, [applyBassBoostGain, showToast, volume]);
+
   const handleCycleBassBoost = useCallback(() => {
     setBassBoostLevel((prev) => {
       const next = ((prev + 1) % 4) as BassBoostLevel;
+      bassBoostRef.current = next;
       applyBassBoostGain(next);
       const labels = ['Graves Normal', 'Graves Suave (+4dB)', 'Graves Pesado (+9dB)', 'Subwoofer Máximo (+14dB)'];
       showToast(`🔊 ${labels[next]}`);
@@ -1458,6 +1749,50 @@ export function App() {
       }
 
       if (track.youtubeVideoId && !track.audioUrl) {
+        // Pre-fetch next track backup audio so lock-screen auto-advance never drops!
+        const qList = customQueue && customQueue.length > 0 ? customQueue : playQueueRef.current;
+        if (qList.length > 1) {
+          const curIdx = qList.findIndex((t) => t.id === track.id);
+          const nextItem = qList[(curIdx >= 0 ? curIdx + 1 : 0) % qList.length];
+          if (nextItem && !nextItem.audioUrl && nextItem.title) {
+            void prefetchVideoAudioBackup(nextItem.title, nextItem.artist || '').then((u) => {
+              if (u) {
+                nextBackupTrackIdRef.current = nextItem.id;
+                nextBackupUrlRef.current = u;
+              }
+            });
+          }
+        }
+
+        // If phone is already locked/hidden, skip iframe and stream audio directly on <audio>
+        if (document.hidden && backgroundModeRef.current) {
+          setMobileBackgroundKeepalive(true);
+          const directBackup =
+            (nextBackupTrackIdRef.current === track.id ? nextBackupUrlRef.current : '') ||
+            (await prefetchVideoAudioBackup(track.title, track.artist || ''));
+          if (directBackup && playSeqRef.current === mySeq) {
+            bgHandoffActiveRef.current = true;
+            directAudioRawUrlRef.current = directBackup;
+            const proxied =
+              directBackup.startsWith('https://') &&
+              !directBackup.includes('suno.ai') &&
+              !directBackup.includes('audius')
+                ? `/api/audio-proxy?url=${encodeURIComponent(directBackup)}`
+                : directBackup;
+            audio.removeAttribute('crossorigin');
+            audio.src = proxied;
+            audio.volume = muted ? 0 : volume;
+            audio.muted = muted;
+            audio.playbackRate = playbackSpeed;
+            audio.loop = loopTrackRef.current;
+            audio.load();
+            void audio.play().catch(() => {});
+            setIsPlaying(true);
+            isPlayingRef.current = true;
+            return;
+          }
+        }
+
         audio.pause();
         audio.removeAttribute('src');
         directAudioRawUrlRef.current = '';
@@ -1513,10 +1848,10 @@ export function App() {
       setIsPlayingFromOffline(resolved.fromOffline);
       directAudioRawUrlRef.current = resolved.url;
 
-      // Play directly from CDN/offline cache for instant Range streaming; only route via proxy when Bass Boost needs CORS or on error fallback
+      // Play directly from CDN/offline cache for instant Range streaming; only route via proxy when DSP Effects/Bass/Loud Mode needs CORS
       const needsCorsProxy =
         !resolved.fromOffline &&
-        bassBoostLevel > 0 &&
+        (bassBoostLevel > 0 || audioEffectRef.current !== 'normal' || loudModeRef.current) &&
         resolved.url.startsWith('https://') &&
         !resolved.url.includes('suno.ai') &&
         !resolved.url.includes('audius');
@@ -1705,35 +2040,7 @@ export function App() {
     showToast(`📱 ${okCount} músicas salvas offline no aparelho!`);
   }, [tracks, offlineTrackIds, showToast]);
 
-  // Auto-advance to next track (when screen is off/locked, prefer full-length audioUrl so playback NEVER cuts!)
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const onEnded = () => {
-      const list = playQueueRef.current.length ? playQueueRef.current : tracks;
-      if (!currentTrack || !list.length) return;
-      const idx = list.findIndex((t) => t.id === currentTrack.id);
-      if (document.hidden && backgroundModeRef.current) {
-        // When screen is locked/off, pick the next track that has a real full audioUrl (or fall back to LENKYX full catalog)
-        const ordered = [...list.slice(idx + 1), ...list.slice(0, idx + 1)];
-        const fullNext =
-          ordered.find((t) => Boolean(t.audioUrl) && t.id !== currentTrack.id) ||
-          tracks.find((t) => Boolean(t.audioUrl) && t.id !== currentTrack.id) ||
-          list[(idx + 1) % list.length];
-        if (fullNext) void handlePlayTrack(fullNext, 'v1', list);
-        return;
-      }
-      // Autoplay Infinito: quando chega ao fim, continua automaticamente sem silêncio
-      let next = list[(idx + 1) % list.length];
-      if (autoplayInfinite && idx >= list.length - 1 && tracks.length > 1) {
-        const alt = tracks.find((t) => t.id !== currentTrack.id);
-        if (alt) next = alt;
-      }
-      if (next) void handlePlayTrack(next, 'v1', list);
-    };
-    audio.addEventListener('ended', onEnded);
-    return () => audio.removeEventListener('ended', onEnded);
-  }, [currentTrack, tracks, handlePlayTrack, autoplayInfinite]);
+  // (Lock-screen & normal auto-advance handled cleanly by the unified <audio> 'ended' & YT state 0 listeners)
 
   // PC Keyboard Shortcuts (Espaço = Play/Pause, Setas = ±10s, M = Mudo, Shift+N/P = Próxima/Anterior)
   useEffect(() => {
@@ -1831,8 +2138,67 @@ export function App() {
           if (audioRef.current?.src && audioRef.current.paused) {
             void audioRef.current.play().catch(() => {});
           }
-          if (currentTrackRef.current?.youtubeVideoId && !currentTrackRef.current.audioUrl) {
-            ytPlayerRef.current?.playVideo?.();
+          // Proactively hand off active YouTube playback onto persistent <audio> immediately on screen lock!
+          const cur = currentTrackRef.current;
+          if (cur?.youtubeVideoId && !cur.audioUrl && !bgHandoffActiveRef.current && audioRef.current) {
+            const curPos = ytPlayerRef.current?.getCurrentTime?.() || 0;
+            const backup = bgBackupUrlRef.current;
+            if (backup) {
+              bgHandoffActiveRef.current = true;
+              directAudioRawUrlRef.current = backup;
+              try {
+                ytPlayerRef.current?.pauseVideo?.();
+              } catch {
+                // ignore
+              }
+              const el = audioRef.current;
+              const proxied =
+                backup.startsWith('https://') &&
+                !backup.includes('suno.ai') &&
+                !backup.includes('audius')
+                  ? `/api/audio-proxy?url=${encodeURIComponent(backup)}`
+                  : backup;
+              el.removeAttribute('crossorigin');
+              el.src = proxied;
+              el.volume = muted ? 0 : volume;
+              el.muted = muted;
+              el.playbackRate = playbackSpeed;
+              el.loop = loopTrackRef.current;
+              el.load();
+              if (curPos > 1) {
+                const seekFn = () => {
+                  try {
+                    if (Number.isFinite(el.duration) && curPos < el.duration - 2) {
+                      el.currentTime = curPos;
+                    }
+                  } catch {
+                    // ignore
+                  }
+                  el.removeEventListener('loadedmetadata', seekFn);
+                };
+                el.addEventListener('loadedmetadata', seekFn);
+              }
+              void el.play().catch(() => {});
+            } else {
+              ytPlayerRef.current?.playVideo?.();
+              void prefetchVideoAudioBackup(cur.title, cur.artist || '').then((u) => {
+                if (u && document.hidden && !userPausedRef.current && !bgHandoffActiveRef.current && audioRef.current) {
+                  bgBackupUrlRef.current = u;
+                  bgHandoffActiveRef.current = true;
+                  directAudioRawUrlRef.current = u;
+                  try {
+                    ytPlayerRef.current?.pauseVideo?.();
+                  } catch {
+                    // ignore
+                  }
+                  const el = audioRef.current;
+                  el.removeAttribute('crossorigin');
+                  el.src = u.startsWith('https://') ? `/api/audio-proxy?url=${encodeURIComponent(u)}` : u;
+                  el.load();
+                  void el.play().catch(() => {});
+                }
+              });
+            }
           }
           if (currentTrackRef.current) {
             setMediaPlayerMenuOpen(true);
@@ -2270,34 +2636,70 @@ export function App() {
     <div className="h-dvh overflow-hidden bg-[#070b18] text-white flex relative">
       <CosmicSpaceBackdrop />
 
-      {/* === CLEAN EDGE-3D OPENING ENTRANCE (Logo 3D Branco + Efeito Especial + Som Legal) === */}
+      {/* === FAVELA OSTENTAÇÃO VIP ENTRY SPLASH (Logo Grande + Som de Favela + Gíria de Cria) === */}
       {showEntrySplash && (
         <div
           onClick={() => dismissEntrySplash(true)}
-          className={`fixed inset-0 z-[120] flex flex-col items-center justify-center bg-[#060916]/96 backdrop-blur-2xl cursor-pointer transition-opacity duration-300 ${
+          className={`fixed inset-0 z-[120] flex flex-col items-center justify-center bg-[#04050a] overflow-hidden cursor-pointer transition-opacity duration-300 ${
             entrySplashExiting ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
         >
-          <div className="edge-entrance-logo flex flex-col items-center gap-4 px-6 text-center">
+          {/* Favela Night Luxury Skyline Backdrop */}
+          <img
+            src="/covers/favela-night-skyline.jpg"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover opacity-35 scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#04050a]/85 via-[#04050a]/65 to-[#04050a]" />
+
+          <div className="relative z-10 edge-entrance-logo flex flex-col items-center gap-4 px-5 text-center max-w-lg w-full">
+            {/* Logo Grande VIP */}
             <LenkyxEdgeLogo size="hero" />
-            <div className="space-y-1">
-              <div className="font-logo text-2xl sm:text-3xl font-black tracking-[0.22em] text-white drop-shadow-[0_0_24px_rgba(34,211,238,0.55)]">
+
+            <div className="space-y-1.5">
+              <div className="font-logo text-4xl sm:text-5xl font-black tracking-[0.22em] lux-gold-text drop-shadow-[0_0_28px_rgba(245,200,76,0.55)]">
                 LENKYX
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500/20 via-pink-500/20 to-emerald-500/20 border border-cyan-400/50 text-[11px] font-black text-cyan-100">
-                <span>🤖</span>
-                <span>Salve, cria! Favela Tech 3D · Brasil 🇧🇷</span>
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-black/80 border border-amber-400/50 text-[11px] font-black text-amber-200 shadow-lg">
+                <span>👑</span>
+                <span>SALVE, CRIA! FAVELA OSTENTAÇÃO · TÁ LIGADO 🇧🇷</span>
+              </div>
+              <p className="text-xs text-slate-200/90 max-w-sm mx-auto">
+                Beat de favela pesadão, motos, naves, baile de verão e loja dos parças num só app.
+              </p>
+            </div>
+
+            {/* 3 Visual Preview Strips: Morro, Motos & Carros, Baile Verão */}
+            <div className="grid grid-cols-3 gap-2 w-full max-w-sm">
+              <div className="relative aspect-[16/11] rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
+                <img src="/covers/favela-night-skyline.jpg" alt="Vista do Morro" className="w-full h-full object-cover" />
+                <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-black text-amber-200">
+                  🏙️ Morro VIP
+                </span>
+              </div>
+              <div className="relative aspect-[16/11] rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
+                <img src="/covers/ostentacao-motos-carros.jpg" alt="Motos e Naves" className="w-full h-full object-cover" />
+                <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-black text-amber-200">
+                  🏍️ Motos & Naves
+                </span>
+              </div>
+              <div className="relative aspect-[16/11] rounded-xl overflow-hidden border border-amber-400/35 shadow-lg">
+                <img src="/covers/baile-verao-vip.jpg" alt="Baile de Verão" className="w-full h-full object-cover" />
+                <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[8px] font-black text-amber-200">
+                  🥂 Baile VIP
+                </span>
               </div>
             </div>
+
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 dismissEntrySplash(true);
               }}
-              className="mt-1 px-5 py-2 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400 text-black text-xs font-black shadow-[0_0_26px_rgba(34,211,238,0.55)] hover:brightness-110 transition active:scale-95"
+              className="mt-1 px-7 py-3 rounded-full lux-btn-gold text-sm font-black shadow-[0_0_32px_rgba(245,200,76,0.5)] hover:brightness-110 transition active:scale-95 flex items-center gap-2"
             >
-              Entrar no Baile · Som 3D ✨
+              <span>🔊 Soltar o Beat & Entrar no Baile</span>
             </button>
           </div>
         </div>
@@ -2589,6 +2991,18 @@ export function App() {
 
           {/* CLEAN YOUTUBE-STYLE RIGHT ICON CLUSTER */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 relative">
+            {!isAppInstalledOnDevice && (
+              <button
+                type="button"
+                onClick={() => void handleOneClickPcDownload()}
+                className="px-2.5 sm:px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-[11px] font-black flex items-center gap-1 shadow-[0_0_16px_rgba(16,185,129,0.45)] hover:brightness-110 transition active:scale-95 shrink-0"
+                title="Baixar App Rápido no seu aparelho"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline sm:inline">Baixar App</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setCreateMenuOpen(true)}
@@ -3006,6 +3420,41 @@ export function App() {
         {/* ACTIVE VIEW CONTAINER */}
         <main id="lenkyx-main-scroll" className={`flex-1 overflow-y-auto overflow-x-hidden overscroll-contain w-full ${moreSheetOpen ? 'hidden' : ''}`}>
           <div className="w-full max-w-[1380px] mx-auto px-2.5 sm:px-5 pt-3">
+            {!isAppInstalledOnDevice && !quickDownloadDismissed && (
+              <div className="mb-3 rounded-2xl bg-gradient-to-r from-amber-500/20 via-black/80 to-emerald-500/20 border border-amber-400/45 p-3 flex flex-wrap items-center justify-between gap-2.5 shadow-lg">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-9 h-9 rounded-xl bg-amber-400/20 border border-amber-400/50 flex items-center justify-center text-lg shrink-0">
+                    📲
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-xs font-black text-amber-200 truncate">
+                      Você ainda não instalou o app no aparelho, cria!
+                    </div>
+                    <div className="text-[11px] text-slate-300 truncate">
+                      Baixe rápido em 1 clique pra ouvir com a tela bloqueada sem travar.
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => void handleOneClickPcDownload()}
+                    className="px-4 py-2 rounded-full lux-btn-gold text-xs font-black flex items-center gap-1.5 shadow-md"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Baixar App Rápido
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickDownloadDismissed(true)}
+                    className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition"
+                    title="Ocultar aviso"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {appUpdateInfo && (
               <div className="mb-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-pink-500/20 border border-cyan-400/50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-lg">
                 <div className="min-w-0">
@@ -3089,6 +3538,7 @@ export function App() {
                     }
                     onOpenGlobalChat={() => setChatModalOpen(true)}
                     onSearchWorld={triggerWorldSearchDirect}
+                    onOpenShop={() => navigateTab('shop')}
                     onToast={showToast}
                   />
                 )}
@@ -3451,6 +3901,8 @@ export function App() {
         playbackSpeed={playbackSpeed}
         loopTrack={loopTrack}
         backgroundMode={backgroundMode}
+        audioEffect={audioEffect}
+        loudMode={loudMode}
         pipOpen={gamingPipOpen}
         sleepMinutesLeft={sleepMinutesLeft}
         onSelectTrack={(t) => void handlePlayTrack(t, 'v1', playQueue.length ? playQueue : tracks)}
@@ -3467,6 +3919,8 @@ export function App() {
         onVolume={handleVolume}
         onToggleMute={handleToggleMute}
         onSetBassBoostLevel={handleSetBassBoostLevel}
+        onSetAudioEffect={handleSetAudioEffect}
+        onToggleLoudMode={handleToggleLoudMode}
         onCycleSpeed={handleCycleSpeed}
         onToggleLoop={handleToggleLoop}
         onToggleBackgroundMode={() => {

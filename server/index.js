@@ -984,12 +984,17 @@ function getSortedLeaderboard(supporters = []) {
 }
 
 const DEFAULT_ARTIST_PLAYS = {
-  lenkyx: { name: 'LENKYX', count: 142, photoUrl: '/covers/icon-512.png', genre: 'Cosmic Phonk' },
-  alok: { name: 'Alok', count: 96, photoUrl: '', genre: 'Eletrônica / Bass' },
-  'ana castela': { name: 'Ana Castela', count: 84, photoUrl: '', genre: 'Sertanejo' },
-  'mc ryan sp': { name: 'MC Ryan SP', count: 78, photoUrl: '', genre: 'Funk Brasil' },
-  matue: { name: 'Matuê', count: 71, photoUrl: '', genre: 'Trap Brasil' },
+  'henrique & juliano': { name: 'Henrique & Juliano', count: 198, photoUrl: '', genre: 'Sertanejo · #1 Brasil' },
+  'gusttavo lima': { name: 'Gusttavo Lima', count: 164, photoUrl: '', genre: 'Sertanejo · Embaixador' },
+  'ana castela': { name: 'Ana Castela', count: 142, photoUrl: '', genre: 'Agronejo / Sertanejo' },
+  'mc ryan sp': { name: 'MC Ryan SP', count: 126, photoUrl: '', genre: 'Funk Brasil' },
+  matue: { name: 'Matuê', count: 118, photoUrl: '', genre: 'Trap Brasil' },
 };
+
+function isExcludedCreatorBrand(name) {
+  const n = String(name || '').trim().toLowerCase();
+  return !n || n.includes('lenkyx');
+}
 
 function needsArtistPhotoRefresh(name, photoUrl) {
   const n = String(name || '').trim().toLowerCase();
@@ -1001,6 +1006,7 @@ function needsArtistPhotoRefresh(name, photoUrl) {
 
 async function enrichTopArtistsWithPhotos(store) {
   const ranked = Object.entries(store.artistPlays || {})
+    .filter(([, art]) => art && !isExcludedCreatorBrand(art.name))
     .sort((a, b) => Number(b[1]?.count || 0) - Number(a[1]?.count || 0))
     .slice(0, 5);
   let dirty = false;
@@ -1095,8 +1101,9 @@ function readLiveStatsStore() {
 }
 
 function buildTop5Rankings(store) {
-  const rankTop5 = (mapObj) =>
+  const rankTop5 = (mapObj, filterFn) =>
     Object.values(mapObj || {})
+      .filter((item) => (!filterFn ? true : filterFn(item)))
       .sort((a, b) => Number(b.count || 0) - Number(a.count || 0))
       .slice(0, 5)
       .map((item, idx) => ({
@@ -1104,8 +1111,8 @@ function buildTop5Rankings(store) {
         rank: idx + 1,
       }));
   return {
-    topArtists: rankTop5(store.artistPlays),
-    topVideos: rankTop5(store.videoPlays),
+    topArtists: rankTop5(store.artistPlays, (item) => !isExcludedCreatorBrand(item?.name)),
+    topVideos: rankTop5(store.videoPlays, (item) => !isExcludedCreatorBrand(item?.artist)),
     topMovies: rankTop5(store.moviePlays),
   };
 }
@@ -1174,16 +1181,14 @@ app.post('/api/rankings/hit', (req, res) => {
 
   if (kind === 'artist') {
     const rawName = String(req.body?.name || '').replace(/ - Topic$/i, '').trim().slice(0, 60);
-    if (rawName) {
+    if (rawName && !isExcludedCreatorBrand(rawName)) {
       const key = rawName.toLowerCase();
       const prev = store.artistPlays[key] || { name: rawName, count: 0 };
       const incomingPhoto = String(req.body?.photoUrl || '').trim();
       const safeIncoming =
         incomingPhoto && !incomingPhoto.includes('album-official.jpg') ? incomingPhoto : '';
       const resolvedPhoto =
-        key === 'lenkyx'
-          ? '/covers/icon-512.png'
-          : safeIncoming || (prev.photoUrl && !String(prev.photoUrl).includes('album-official.jpg') ? prev.photoUrl : '');
+        safeIncoming || (prev.photoUrl && !String(prev.photoUrl).includes('album-official.jpg') ? prev.photoUrl : '');
       store.artistPlays[key] = {
         name: rawName,
         count: Number(prev.count || 0) + 1,
@@ -3956,6 +3961,221 @@ app.post('/api/shop/track-click', (_req, res) => {
   };
   writeDb(db);
   res.json({ ok: true, clicks: nextClicks });
+});
+
+// ==================== AUTOMATIC FAVELA BAILES & ROLÊS LIVE ENGINE ====================
+const BAILES_PATH = path.join(DATA_DIR, 'bailes.json');
+const bailesWebCache = new Map();
+
+function readSavedBailes() {
+  try {
+    if (!fs.existsSync(BAILES_PATH)) return [];
+    const parsed = JSON.parse(fs.readFileSync(BAILES_PATH, 'utf-8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSavedBailes(items) {
+  try {
+    fs.writeFileSync(BAILES_PATH, JSON.stringify(items.slice(0, 120), null, 2), 'utf-8');
+  } catch {
+    // ignore
+  }
+}
+
+function nextWeekendLabel(dayOffset = 0) {
+  const now = new Date();
+  const d = new Date(now);
+  const dow = now.getDay(); // 0=Dom..5=Sex..6=Sab
+  let daysToFri = (5 - dow + 7) % 7;
+  if (dow === 5 || dow === 6) daysToFri = 0;
+  d.setDate(now.getDate() + daysToFri + dayOffset);
+  const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dias[d.getDay()]} · ${dd}/${mm}`;
+}
+
+function getCoreBrazilBailes() {
+  return [
+    {
+      id: 'baile-dz7-sp',
+      title: 'Fluxo da DZ7 & Baile da 17 — Paraisópolis',
+      city: 'São Paulo - SP',
+      neighborhood: 'Paraisópolis (Zona Sul)',
+      address: 'Rua Ernest Renan / Rua Pasquale Gallupi, Paraisópolis - São Paulo, SP',
+      schedule: `${nextWeekendLabel(0)} & ${nextWeekendLabel(1)} · 22h até 06h`,
+      lineup: 'MCs da GR6 & Love Funk · Paredão Automotivo · Bebidas & Narguile liberado',
+      entry: 'Pista Free na Rua · Camarotes no local',
+      badge: '🔥 MAIOR FLUXO DE SP',
+      liveUpdated: true,
+    },
+    {
+      id: 'baile-helipa-sp',
+      title: 'Baile do Helipa — Fluxo da Mina & Rampa',
+      city: 'São Paulo - SP',
+      neighborhood: 'Heliópolis (Zona Sul)',
+      address: 'Av. Almirante Delamare / Estrada das Lágrimas, Heliópolis - São Paulo, SP',
+      schedule: `${nextWeekendLabel(1)} · 22h30 até amanhecer`,
+      lineup: 'DJs do Mandelão 130 BPM · Paredões & Motos · Mansão Maromba no rolê',
+      entry: 'Entrada Franca na Rua',
+      badge: '🔊 MANDELÃO PESADO',
+      liveUpdated: true,
+    },
+    {
+      id: 'baile-penha-rj',
+      title: 'Baile da Gaiola — Vila Cruzeiro & Penha VIP',
+      city: 'Rio de Janeiro - RJ',
+      neighborhood: 'Penha / Vila Cruzeiro (Zona Norte)',
+      address: 'Largo da Penha / Rua Nossa Senhora da Penha, Penha - Rio de Janeiro, RJ',
+      schedule: `${nextWeekendLabel(0)} · 23h até 07h`,
+      lineup: 'DJ Rennan da Penha Style · Funk 150 BPM · Paredão & Camarote Open',
+      entry: 'Pista Free · Área VIP no local',
+      badge: '👑 CLÁSSICO DO RIO',
+      liveUpdated: true,
+    },
+    {
+      id: 'baile-vidigal-rj',
+      title: 'Baile VIP do Vidigal & Mirante do Arvrão (Sunset & Noite)',
+      city: 'Rio de Janeiro - RJ',
+      neighborhood: 'Vidigal (Zona Sul)',
+      address: 'Av. Presidente João Goulart / Mirante do Arvrão, Vidigal - Rio de Janeiro, RJ',
+      schedule: `${nextWeekendLabel(1)} & ${nextWeekendLabel(2)} · 17h às 04h`,
+      lineup: 'Vista panorâmica pro mar + Funk Carioca + Mansão Maromba & Combos',
+      entry: 'Lista VIP / Ingresso a partir de R$ 40',
+      badge: '🌅 VISTA VIP DA LAJE',
+      liveUpdated: true,
+    },
+    {
+      id: 'baile-cg-ms',
+      title: 'Fluxo dos Cria & Baile da Moreninha / Aero Rancho VIP',
+      city: 'Campo Grande - MS',
+      neighborhood: 'Moreninhas / Aero Rancho / Centro Oeste',
+      address: 'Av. Gury Marques / Rua Barreiras, Moreninha II - Campo Grande, MS',
+      schedule: `${nextWeekendLabel(0)} & ${nextWeekendLabel(1)} · 22h às 05h`,
+      lineup: 'Eletrofunk + Mega Funk + Paredão de Carretinha + Encontro de Motos',
+      entry: 'Entrada Liberada / Área VIP Combos',
+      badge: '🏍️ CAMPO GRANDE MS',
+      liveUpdated: true,
+    },
+    {
+      id: 'baile-serra-bh',
+      title: 'Baile da Serra & Aglomerado VIP — BH',
+      city: 'Belo Horizonte - MG',
+      neighborhood: 'Aglomerado da Serra',
+      address: 'Rua Serra Negra / Av. Cardoso, Serra - Belo Horizonte, MG',
+      schedule: `${nextWeekendLabel(1)} · 22h às 05h`,
+      lineup: 'MTG BH Pesado · DJs de Minas + Paredão & Narguile VIP',
+      entry: 'Entrada Free na Pista',
+      badge: '⚡ MTG DE MINAS',
+      liveUpdated: true,
+    },
+  ];
+}
+
+async function fetchLiveBailesFromWeb(cityQuery) {
+  const key = (cityQuery || 'brasil').toLowerCase().trim();
+  const cached = bailesWebCache.get(key);
+  if (cached && Date.now() - cached.ts < 15 * 60 * 1000) return cached.items;
+
+  const items = [];
+  try {
+    const q = cityQuery && cityQuery !== 'all'
+      ? `baile funk festa favela agenda endereco ${cityQuery} 2026`
+      : 'agenda baile funk festas favela fim de semana sao paulo rio de janeiro 2026';
+    const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36',
+      },
+      signal: AbortSignal.timeout(5500),
+    });
+    if (r.ok) {
+      const html = await r.text();
+      const linkRx = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+      let m;
+      while ((m = linkRx.exec(html)) !== null && items.length < 6) {
+        const cleanTitle = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+        const cleanSnippet = m[3].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+        let targetUrl = m[1];
+        try {
+          const u = new URL(targetUrl.startsWith('//') ? `https:${targetUrl}` : targetUrl);
+          if (u.searchParams.get('uddg')) targetUrl = u.searchParams.get('uddg');
+        } catch {
+          // keep raw
+        }
+        if (cleanTitle && cleanSnippet) {
+          items.push({
+            id: `web-baile-${items.length}-${Date.now()}`,
+            title: cleanTitle.slice(0, 90),
+            city: cityQuery && cityQuery !== 'all' ? cityQuery : 'Brasil · Ao Vivo',
+            neighborhood: 'Agenda Online Atualizada',
+            address: cleanSnippet.slice(0, 140),
+            schedule: `${nextWeekendLabel(0)} / Atualizado Agora`,
+            lineup: 'Evento encontrado automaticamente na web · Clique para confirmar endereço e ingressos',
+            entry: 'Consultar divulgação oficial',
+            badge: '🌐 AUTO WEB LIVE',
+            sourceUrl: targetUrl,
+            liveUpdated: true,
+          });
+        }
+      }
+    }
+  } catch {
+    // ignore live web fetch timeout
+  }
+  bailesWebCache.set(key, { ts: Date.now(), items });
+  return items;
+}
+
+app.get('/api/bailes/live', async (req, res) => {
+  const city = String(req.query.city || 'all').trim();
+  const saved = readSavedBailes();
+  const core = getCoreBrazilBailes();
+  const webLive = await fetchLiveBailesFromWeb(city);
+
+  const merged = [...saved, ...core, ...webLive];
+  const filtered =
+    !city || city.toLowerCase() === 'all'
+      ? merged
+      : merged.filter((b) =>
+          `${b.city} ${b.neighborhood} ${b.address} ${b.title}`
+            .toLowerCase()
+            .includes(city.toLowerCase())
+        );
+
+  res.json({
+    ok: true,
+    updatedAt: new Date().toISOString(),
+    total: filtered.length,
+    bailes: filtered,
+  });
+});
+
+app.post('/api/bailes/submit', (req, res) => {
+  const { title, city, neighborhood, address, schedule, lineup, entry, contact } = req.body || {};
+  if (!title || !address || !city) {
+    return res.status(400).json({ error: 'Informe nome do baile, cidade e endereço!' });
+  }
+  const newBaile = {
+    id: `baile-user-${Date.now()}`,
+    title: String(title).trim().slice(0, 100),
+    city: String(city).trim().slice(0, 60),
+    neighborhood: String(neighborhood || 'Comunidade / Quebrada').trim().slice(0, 60),
+    address: String(address).trim().slice(0, 160),
+    schedule: String(schedule || `${nextWeekendLabel(0)} · 22h`).trim().slice(0, 80),
+    lineup: String(lineup || 'Funk · Paredão · Rolê VIP liberado').trim().slice(0, 140),
+    entry: String(entry || 'Entrada Free / Consultar').trim().slice(0, 60),
+    contact: String(contact || '').trim().slice(0, 40),
+    badge: '📢 DIVULGAÇÃO AO VIVO',
+    liveUpdated: true,
+    createdAt: new Date().toISOString(),
+  };
+  const list = readSavedBailes();
+  list.unshift(newBaile);
+  writeSavedBailes(list);
+  res.json({ ok: true, baile: newBaile });
 });
 
 // Serve built frontend with optimized mobile/desktop HTTP caching

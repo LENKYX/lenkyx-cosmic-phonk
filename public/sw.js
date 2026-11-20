@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lenkyx-cosmic-phonk-v69';
+const CACHE_NAME = 'lenkyx-cosmic-phonk-v70';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -14,6 +14,15 @@ const STATIC_ASSETS = [
   '/covers/avatar.jpg',
   '/covers/banner.jpg',
   '/covers/album-official.jpg',
+  '/covers/favela-night-skyline.jpg',
+  '/covers/ostentacao-motos-carros.jpg',
+  '/covers/baile-verao-vip.jpg',
+  '/shop/cria-modelo-kit.jpg',
+  '/shop/mina-modelo-verao.jpg',
+  '/shop/casal-ostentacao-baile.jpg',
+  '/shop/role-narguile-bebidas.jpg',
+  '/shop/estudio-tatuagem-crias.jpg',
+  '/shop/barbearia-cortes-crias.jpg',
 ];
 
 self.addEventListener('install', (event) => {

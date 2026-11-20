@@ -403,12 +403,14 @@ export const WorldExploreView: React.FC<Props> = ({
       </div>
 
       {/* Personalized Discovery Chips (Hidden when viewing a single Artist) */}
-      {!artistProfile && smartPicks.length > 0 && (
+      {!artistProfile && smartPicks.filter((p) => !p.query.toLowerCase().includes('lenkyx') && !p.label.toLowerCase().includes('lenkyx')).length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
           <span className="text-[10px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1 shrink-0 pr-1">
             <Sparkles className="w-3 h-3 text-pink-400" /> Para Você:
           </span>
-          {smartPicks.map((p) => (
+          {smartPicks
+            .filter((p) => !p.query.toLowerCase().includes('lenkyx') && !p.label.toLowerCase().includes('lenkyx'))
+            .map((p) => (
             <button
               key={p.query}
               onClick={() => void runSearch(p.query, `✨ ${p.label}`)}
@@ -538,30 +540,32 @@ export const WorldExploreView: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {topArtists.slice(0, 5).map((art) => {
+            {topArtists
+              .filter((art) => !art.name.trim().toLowerCase().includes('lenkyx'))
+              .slice(0, 5)
+              .map((art, i) => {
+              const displayRank = i + 1;
               const dirMatch = famousArtists.find(
                 (f) => f.name.toLowerCase() === art.name.trim().toLowerCase()
               );
               const bestPhoto =
-                art.name.trim().toLowerCase() === 'lenkyx'
-                  ? '/covers/icon-edge-3d.png'
-                  : (art.photoUrl && !art.photoUrl.includes('album-official.jpg') ? art.photoUrl : '') ||
-                    dirMatch?.photoUrl ||
-                    '';
+                (art.photoUrl && !art.photoUrl.includes('album-official.jpg') ? art.photoUrl : '') ||
+                dirMatch?.photoUrl ||
+                '';
               const medal =
-                art.rank === 1
+                displayRank === 1
                   ? 'from-amber-300 via-amber-400 to-yellow-500 text-black shadow-[0_0_16px_rgba(251,191,36,0.7)]'
-                  : art.rank === 2
+                  : displayRank === 2
                   ? 'from-slate-100 to-slate-400 text-black'
-                  : art.rank === 3
+                  : displayRank === 3
                   ? 'from-amber-500 to-orange-500 text-white'
                   : 'from-cyan-400 to-purple-500 text-white';
               return (
                 <button
                   key={art.name}
-                  onClick={() => void runSearch(art.name, `🏆 #${art.rank} ${art.name}`, false, true)}
+                  onClick={() => void runSearch(art.name, `🏆 #${displayRank} ${art.name}`, false, true)}
                   className={`group relative rounded-3xl overflow-hidden bg-[#0a0619] text-left transition duration-300 hover:-translate-y-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.65)] ${
-                    art.rank === 1
+                    displayRank === 1
                       ? 'border-2 border-amber-400/80 shadow-[0_0_34px_rgba(251,191,36,0.28)]'
                       : 'border border-white/15 hover:border-amber-400/60'
                   }`}
@@ -576,7 +580,7 @@ export const WorldExploreView: React.FC<Props> = ({
                     <span
                       className={`absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-gradient-to-r ${medal} text-[10px] font-black`}
                     >
-                      TOP #{art.rank}
+                      TOP #{displayRank}
                     </span>
                     <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-emerald-400/35 text-[10px] font-mono text-emerald-300 font-bold">
                       {art.count} plays

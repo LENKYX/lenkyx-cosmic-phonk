@@ -22,6 +22,15 @@ export const CosmicSpaceBackdrop: React.FC<{ intense?: boolean; paused?: boolean
         ].join(', '),
       }}
     >
+      {/* Atmospheric Favela Night Skyline & Luxury Cars/Bikes Backdrop */}
+      <img
+        src="/covers/favela-night-skyline.jpg"
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover opacity-[0.14] mix-blend-screen scale-105"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#04050a]/80 via-[#04050a]/75 to-[#04050a]/95" />
+
       {/* Futuristic Cyber-Robot Circuit Grid */}
       <div
         className="absolute inset-0 opacity-[0.11]"

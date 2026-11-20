@@ -33,6 +33,7 @@ import {
   getClientSubscriberId,
   toggleChannelSubscribe,
 } from '../utils/communityApi';
+import { BailesAndEstiloView } from './BailesAndEstiloView';
 import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 
 interface Props {
@@ -63,6 +64,7 @@ interface Props {
   onCommentTrack?: (track: Track) => void;
   onOpenGlobalChat?: () => void;
   onSearchWorld?: (query: string) => void;
+  onOpenShop?: () => void;
   onToast: (msg: string) => void;
 }
 
@@ -99,6 +101,7 @@ export const CatalogView: React.FC<Props> = ({
   onCommentTrack,
   onOpenGlobalChat,
   onSearchWorld,
+  onOpenShop,
   onToast,
 }) => {
   const [selectedAlbum, setSelectedAlbum] = useState<string>('ALL');
@@ -171,23 +174,23 @@ export const CatalogView: React.FC<Props> = ({
 
   return (
     <div className="space-y-4 pb-36 md:pb-28 cosmic-scene">
-      {/* LUXURY VIP COMMAND HEADER BAR */}
+      {/* LUXURY FAVELA VIP COMMAND HEADER BAR */}
       <section className="rounded-3xl cosmic-card-3d px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <LenkyxEdgeLogo size="md" className="shrink-0" />
+          <LenkyxEdgeLogo size="lg" className="shrink-0" />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="font-display text-sm sm:text-base font-black lux-gold-text truncate">
-                LENKYX · Mídia & Som dos Cria
+                Salve, Cria! · Baile, Nave & Ostentação
               </h1>
               <span className="px-2.5 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/40 text-[9px] font-black text-amber-200 tracking-wide">
-                👑 VIP BLACK · FAVELA TECH 🇧🇷
+                👑 DE CRIA · TÁ LIGADO 🇧🇷
               </span>
             </div>
             <div className="text-[11px] text-slate-300 flex items-center gap-2 mt-0.5">
-              <span className="text-amber-200/90 font-semibold">{tracks.length} faixas</span>
+              <span className="text-amber-200/90 font-semibold">{tracks.length} pedradas</span>
               <span className="text-amber-400/50">·</span>
-              <span>{totalPlays.toLocaleString('pt-BR')} plays</span>
+              <span>{totalPlays.toLocaleString('pt-BR')} plays na quebrada</span>
               {offlineCount > 0 && (
                 <>
                   <span className="text-amber-400/50">·</span>
@@ -203,7 +206,7 @@ export const CatalogView: React.FC<Props> = ({
             onClick={() => tracks[0] && onPlayTrack(tracks[0], 'v1')}
             className="px-4 py-2 rounded-full lux-btn-gold font-black text-xs flex items-center gap-1.5"
           >
-            <Play className="w-3.5 h-3.5 fill-black" /> Soltar o Som
+            <Play className="w-3.5 h-3.5 fill-black" /> Soltar o Pancadão
           </button>
           <button
             onClick={onDownloadAllOffline}
@@ -217,7 +220,7 @@ export const CatalogView: React.FC<Props> = ({
             ) : (
               <DownloadCloud className="w-3.5 h-3.5 text-amber-300" />
             )}
-            <span>{offlineCount >= tracks.length && tracks.length > 0 ? 'Salvas' : 'Offline'}</span>
+            <span>{offlineCount >= tracks.length && tracks.length > 0 ? 'Tudo Salvo' : 'Baixar Offline'}</span>
           </button>
           <button
             type="button"
@@ -229,7 +232,7 @@ export const CatalogView: React.FC<Props> = ({
             }`}
           >
             {channelSubscribed ? <BellRing className="w-3.5 h-3.5 text-emerald-300" /> : <Bell className="w-3.5 h-3.5" />}
-            <span>{channelSubscribed ? 'Inscrito' : 'Inscrever-se'} · {channelSubsCount}</span>
+            <span>{channelSubscribed ? 'Fechado' : 'Seguir'} · {channelSubsCount}</span>
           </button>
           {mode === 'creator' && (
             <button
@@ -242,20 +245,95 @@ export const CatalogView: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* LUXURY ARTISTS STRIP */}
+      {/* INTERACTIVE FAVELA OSTENTAÇÃO SHOWCASE (Motos, Carros Nave & Baile VIP na Laje) */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button
+          type="button"
+          onClick={() => onSearchWorld?.('baile de favela mandelao grave pesado')}
+          className="group relative h-36 sm:h-40 rounded-3xl overflow-hidden border border-amber-400/35 text-left shadow-[0_14px_34px_rgba(0,0,0,0.7)] hover:border-amber-300 transition"
+        >
+          <img
+            src="/covers/favela-night-skyline.jpg"
+            alt="Morro Iluminado"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-108 transition duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/15" />
+          <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-amber-400 text-black text-[9px] font-black uppercase tracking-wider">
+            🌃 VISÃO DA QUEBRADA
+          </span>
+          <div className="absolute inset-x-0 bottom-0 p-3">
+            <div className="text-xs sm:text-sm font-black text-white group-hover:text-amber-300 transition">
+              Morro Iluminado & Pancadão
+            </div>
+            <div className="text-[10px] text-amber-100/85">
+              Toca o som de favela pros parça, tá ligado!
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => (onOpenShop ? onOpenShop() : onSearchWorld?.('som automotivo carro moto'))}
+          className="group relative h-36 sm:h-40 rounded-3xl overflow-hidden border border-cyan-400/35 text-left shadow-[0_14px_34px_rgba(0,0,0,0.7)] hover:border-cyan-300 transition"
+        >
+          <img
+            src="/covers/ostentacao-motos-carros.jpg"
+            alt="Motos e Carros Nave"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-108 transition duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/15" />
+          <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-cyan-400 text-black text-[9px] font-black uppercase tracking-wider">
+            🏍️ MOTOS & NAVE VIP
+          </span>
+          <div className="absolute inset-x-0 bottom-0 p-3">
+            <div className="text-xs sm:text-sm font-black text-white group-hover:text-cyan-300 transition">
+              Hornet, S1000RR & BMW na Pista
+            </div>
+            <div className="text-[10px] text-cyan-100/85">
+              Só foguete e nave chave na Loja dos Cria
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onSearchWorld?.('funk verao dj baile piscina brasil')}
+          className="group relative h-36 sm:h-40 rounded-3xl overflow-hidden border border-pink-400/35 text-left shadow-[0_14px_34px_rgba(0,0,0,0.7)] hover:border-pink-300 transition"
+        >
+          <img
+            src="/covers/baile-verao-vip.jpg"
+            alt="Baile VIP na Laje"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-108 transition duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/15" />
+          <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-pink-500 to-amber-400 text-black text-[9px] font-black uppercase tracking-wider">
+            🌴 BAILE VIP NA LAJE
+          </span>
+          <div className="absolute inset-x-0 bottom-0 p-3">
+            <div className="text-xs sm:text-sm font-black text-white group-hover:text-pink-300 transition">
+              Piscina, Biquíni & Sol no Morro
+            </div>
+            <div className="text-[10px] text-pink-100/85">
+              Resenha dos cria no pôr do sol VIP 🥂
+            </div>
+          </div>
+        </button>
+      </section>
+
+      {/* REAL TOP BRASIL ARTISTS STRIP */}
       {onSearchWorld && (
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           {[
-            'LENKYX',
-            'The Weeknd',
             'Henrique & Juliano',
+            'Gusttavo Lima',
+            'Ana Castela',
+            'MC Ryan SP',
+            'Matuê',
+            'Grupo Menos É Mais',
             'Alok',
             'Marília Mendonça',
-            'Gusttavo Lima',
+            'The Weeknd',
             'Bruno Mars',
-            'Ana Castela',
-            'Kordhell',
-            'Dua Lipa',
           ].map((artistName) => (
             <button
               key={artistName}
@@ -802,6 +880,9 @@ export const CatalogView: React.FC<Props> = ({
           </div>
         </div>
       )}
+
+      {/* AGENDA AUTOMÁTICA DE BAILES + CORTES DE CABELO & SALÕES VIP */}
+      <BailesAndEstiloView onToast={onToast} />
     </div>
   );
 };

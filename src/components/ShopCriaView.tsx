@@ -22,11 +22,14 @@ import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 
 type ShopCat =
   | 'all'
+  | 'mansao'
   | 'roupas'
   | 'tenis'
   | 'oculos'
   | 'relogios'
   | 'correntes'
+  | 'perfumes'
+  | 'narguile'
   | 'motos'
   | 'carros'
   | 'eletronicos';
@@ -126,6 +129,34 @@ const CRIA_CATALOG: CriaProduct[] = [
     searchQuery: 'Conjunto Nike Tech Fleece original',
     commissionEst: '8% a 12% comissão',
     accent: 'from-sky-500/25 to-indigo-600/20',
+  },
+  {
+    id: 'shop-minas-biquini-vip',
+    name: 'Kit Biquíni Luxo Corrente 24K + Saída Tule + Óculos Grife',
+    brand: 'Moda Praia VIP',
+    category: 'roupas',
+    priceBrl: 269,
+    priceLabel: 'R$ 269',
+    badge: '👙 LOOK DAS MINAS',
+    emoji: '👙',
+    specs: 'Biquíni preto detalhes dourados · Saída de tela · Brilho na piscina & baile',
+    searchQuery: 'Biquini preto corrente dourada saida praia luxo',
+    commissionEst: '12% a 16% comissão',
+    accent: 'from-pink-500/30 to-amber-500/20',
+  },
+  {
+    id: 'shop-minas-baile-cargo',
+    name: 'Look Baile Feminino Cropped Grife + Calça Cargo Streetwear',
+    brand: 'Streetwear Feminino',
+    category: 'roupas',
+    priceBrl: 329,
+    priceLabel: 'R$ 329',
+    badge: '💃 ESTILO DA QUEBRADA',
+    emoji: '✨',
+    specs: 'Cropped estruturado + calça cargo bolsos laterais · Caimento de modelo',
+    searchQuery: 'Calca cargo feminina streetwear cropped preto',
+    commissionEst: '10% a 15% comissão',
+    accent: 'from-purple-500/30 to-pink-500/20',
   },
   {
     id: 'shop-cyclone-veludo',
@@ -532,7 +563,153 @@ const CRIA_CATALOG: CriaProduct[] = [
     accent: 'from-emerald-500/30 to-slate-600/30',
   },
 
-  // 8. SOM PESADO, TECH & PERFUMES IMPORTADOS
+  // 8. PATROCINADOR OFICIAL: MANSÃO MAROMBA (TOGURO) & BEBIDAS DO ROLÊ
+  {
+    id: 'shop-mansao-maromba-combo',
+    name: 'Combo Oficial Mansão Maromba (Whisky, Vodka & Energético) — Toguro',
+    brand: 'Mansão Maromba · Toguro',
+    category: 'mansao',
+    priceBrl: 149,
+    priceLabel: 'R$ 149 (Combo)',
+    badge: '🏆 PATROCINADOR OFICIAL',
+    emoji: '🥃',
+    specs: 'Bebida oficial do Toguro & Mansão Maromba · Sabores Tiger, Maçã Verde, Melancia e Whisky',
+    searchQuery: 'Bebida Mansao Maromba Toguro combo',
+    commissionEst: '🏆 Destaque Oficial',
+    accent: 'from-amber-400/40 to-yellow-600/25',
+  },
+  {
+    id: 'shop-mansao-maromba-pack',
+    name: 'Pack Mansão Maromba Ice, Gin & Energético Gelado (Fardo Rolê)',
+    brand: 'Mansão Maromba · Toguro',
+    category: 'mansao',
+    priceBrl: 119,
+    priceLabel: 'R$ 119 (Fardo)',
+    badge: '🔥 TOP DO ROLÊ',
+    emoji: '🧊',
+    specs: 'Fardo oficial pronto pra gelar e mandar no baile · Sabor marcante e zero erro',
+    searchQuery: 'Mansao Maromba bebida energetico fardo',
+    commissionEst: '🏆 Patrocinador VIP',
+    accent: 'from-yellow-400/35 to-amber-500/25',
+  },
+  {
+    id: 'shop-mansao-maromba-kit-treino',
+    name: 'Kit Oficial Mansão Maromba: Regata/Camisa + Coqueteleira & Whey',
+    brand: 'Mansão Maromba · Toguro',
+    category: 'mansao',
+    priceBrl: 189,
+    priceLabel: 'R$ 189',
+    badge: '💪 SHAPE DOS CRIA',
+    emoji: '🏋️',
+    specs: 'Estilo Mansão Maromba de verdade · Peita + Suplemento + Shakeira oficial',
+    searchQuery: 'Camiseta Suplemento Mansao Maromba Toguro',
+    commissionEst: '10% a 15% comissão',
+    accent: 'from-amber-500/30 to-emerald-500/20',
+  },
+  {
+    id: 'shop-bebidas-combo-buchanans',
+    name: 'Combo Camarote: Whisky Buchanan’s 12 Anos / Jack Daniel’s + Red Bull',
+    brand: 'Buchanan’s · Jack Daniel’s',
+    category: 'mansao',
+    priceBrl: 259,
+    priceLabel: 'R$ 259',
+    badge: '🥂 CAMAROTE VIP',
+    emoji: '🍾',
+    specs: 'Garrafa 1L lacrada original + Energéticos + Gelo de coco pro rolê de patrão',
+    searchQuery: 'Whisky Buchanans 12 anos Jack Daniels original',
+    commissionEst: '8% a 12% comissão',
+    accent: 'from-amber-500/30 to-stone-600/25',
+  },
+
+  // 9. NARGUILES & ESSÊNCIAS DO ROLÊ
+  {
+    id: 'shop-narguile-triton',
+    name: 'Narguile Completo Triton Zip / Hookah King Gold + Vaso + Mangueira',
+    brand: 'Triton · Hookah King',
+    category: 'narguile',
+    priceBrl: 429,
+    priceLabel: 'R$ 429',
+    badge: '💨 NARGUILE DOS CRIA',
+    emoji: '💨',
+    specs: 'Stem alumínio anodizado ouro/preto · Carbura muito · Kit completo pronto pra sessão',
+    searchQuery: 'Narguile completo Triton Zip Hookah King',
+    commissionEst: '10% a 14% comissão',
+    accent: 'from-amber-400/30 to-cyan-500/20',
+  },
+  {
+    id: 'shop-essencias-narguile',
+    name: 'Pack Essências Narguile Zomo, Ziggy & Nay (Mix Sabores Mais Bravos)',
+    brand: 'Zomo · Ziggy · Nay',
+    category: 'narguile',
+    priceBrl: 129,
+    priceLabel: 'R$ 129 (Box 10un)',
+    badge: '🍓 SABOR DE BAILE',
+    emoji: '🍇',
+    specs: 'Strong Mint, Melancia, Banana Tropical, Cherry & Frutas Vermelhas · Fumaça densa',
+    searchQuery: 'Essencia narguile Ziggy Zomo Nay kit',
+    commissionEst: '10% a 15% comissão',
+    accent: 'from-pink-500/30 to-purple-500/20',
+  },
+  {
+    id: 'shop-carvao-rosh-narguile',
+    name: 'Kit Sessão VIP: Carvão de Coco 1kg + Rosh Phunnel + Pegador + Alumínio',
+    brand: 'Coco Bass · Olla',
+    category: 'narguile',
+    priceBrl: 89,
+    priceLabel: 'R$ 89',
+    badge: '🔥 SESSÃO PRONTA',
+    emoji: '🪔',
+    specs: 'Carvão hexagonal alta duração sem cheiro + Rosh cerâmica + Abafador',
+    searchQuery: 'Carvao coco narguile rosh phunnel kit',
+    commissionEst: '10% a 15% comissão',
+    accent: 'from-orange-500/30 to-amber-500/20',
+  },
+
+  // 10. PERFUMES IMPORTADOS QUE OS CRIAS & MINAS USAM
+  {
+    id: 'shop-perfume-1million',
+    name: 'Perfume 1 Million Parfum & Invictus Victory — Paco Rabanne 100ml',
+    brand: 'Paco Rabanne',
+    category: 'perfumes',
+    priceBrl: 579,
+    priceLabel: 'R$ 579',
+    badge: '🥇 OURO DOS CRIA',
+    emoji: '🍾',
+    specs: 'Eau de Parfum lacrado original · Cheiro de patrão que deixa rastro no baile',
+    searchQuery: 'Perfume 1 Million Paco Rabanne 100ml original',
+    commissionEst: '10% a 15% comissão',
+    accent: 'from-amber-400/35 to-yellow-500/25',
+  },
+  {
+    id: 'shop-perfume-sauvage-bleu',
+    name: 'Perfume Dior Sauvage Elixir & Bleu de Chanel Eau de Parfum 100ml',
+    brand: 'Dior · Chanel',
+    category: 'perfumes',
+    priceBrl: 799,
+    priceLabel: 'R$ 799',
+    badge: '💎 IMPORTADO DE PATRÃO',
+    emoji: '💎',
+    specs: 'Fragrância amadeirada magnética · Fixação extrema de 12h+ · Selo Adipec',
+    searchQuery: 'Perfume Dior Sauvage Eau de Parfum 100ml original',
+    commissionEst: '10% a 14% comissão',
+    accent: 'from-sky-500/30 to-indigo-600/25',
+  },
+  {
+    id: 'shop-perfume-212-jpg',
+    name: 'Perfume 212 VIP Black / Rosé (Carolina Herrera) & Jean Paul Gaultier',
+    brand: 'Carolina Herrera · JPG',
+    category: 'perfumes',
+    priceBrl: 549,
+    priceLabel: 'R$ 549',
+    badge: '🌟 CHAMA ATENÇÃO',
+    emoji: '✨',
+    specs: 'Para os crias (212 Black / Le Male) e pras minas (212 VIP Rosé / Scandal)',
+    searchQuery: 'Perfume 212 VIP Black Carolina Herrera 100ml original',
+    commissionEst: '10% a 15% comissão',
+    accent: 'from-rose-500/30 to-amber-400/20',
+  },
+
+  // 11. SOM PESADO & TECH
   {
     id: 'shop-jbl-boombox',
     name: 'Caixa JBL Boombox 3 & PartyBox 310 / 710 Grave Extremo',
@@ -561,24 +738,13 @@ const CRIA_CATALOG: CriaProduct[] = [
     commissionEst: '5% a 10% comissão',
     accent: 'from-cyan-400/30 to-purple-500/20',
   },
-  {
-    id: 'shop-perfumes',
-    name: 'Perfume Importado 1 Million, Dior Sauvage & 212 VIP Black',
-    brand: 'Paco Rabanne · Dior · CH',
-    category: 'eletronicos',
-    priceBrl: 549,
-    priceLabel: 'R$ 549',
-    badge: '🌟 CHEIROSO NO ROLÊ',
-    emoji: '🍾',
-    specs: 'Eau de Parfum original lacrado · Fixação de 12 horas',
-    searchQuery: 'Perfume 1 Million Dior Sauvage 212 VIP Black original',
-    commissionEst: '10% a 15% comissão',
-    accent: 'from-amber-400/30 to-rose-500/20',
-  },
 ];
 
 const CATEGORIES: { id: ShopCat; label: string; liveQuery: string }[] = [
-  { id: 'all', label: '🔥 Tudo dos Cria', liveQuery: 'Lacoste Oakley Juliet Invicta Brasil' },
+  { id: 'all', label: '🔥 Tudo dos Cria', liveQuery: 'Mansao Maromba Lacoste Juliet 1 Million Narguile' },
+  { id: 'mansao', label: '🏆 Mansão Maromba & Rolê', liveQuery: 'Bebida Mansao Maromba Toguro Whisky Combo' },
+  { id: 'perfumes', label: '🍾 Perfumes Importados', liveQuery: 'Perfume 1 Million Dior Sauvage 212 VIP Black original' },
+  { id: 'narguile', label: '💨 Narguiles & Essências', liveQuery: 'Narguile Triton Zip Essencia Ziggy Zomo' },
   { id: 'roupas', label: '🐊 Roupas & Grife', liveQuery: 'Camisa Polo Corta Vento Lacoste Oakley original' },
   { id: 'tenis', label: '👟 Tênis & Kenner', liveQuery: 'Tenis Nike Air Max Plus TN Mizuno Prophecy Kenner' },
   { id: 'oculos', label: '🕶️ Óculos Juliet', liveQuery: 'Oculos Oakley Juliet Romeo 2 Prada original' },
@@ -586,7 +752,7 @@ const CATEGORIES: { id: ShopCat; label: string; liveQuery: string }[] = [
   { id: 'correntes', label: '🥇 Correntes Ouro', liveQuery: 'Corrente Grumet Ouro 18k Cordao Cravejado Ice' },
   { id: 'motos', label: '🏍️ Motos Grau', liveQuery: 'Honda Hornet BMW S1000RR Yamaha XJ6 a venda' },
   { id: 'carros', label: '🚘 Carros & Naves', liveQuery: 'BMW 320i Golf GTI Porsche 911 a venda' },
-  { id: 'eletronicos', label: '🔊 JBL & Perfumes', liveQuery: 'JBL Boombox 3 iPhone Pro Max 1 Million perfume' },
+  { id: 'eletronicos', label: '🔊 Som JBL & Tech', liveQuery: 'JBL Boombox 3 iPhone 16 Pro Max PS5' },
 ];
 
 interface Props {
@@ -599,6 +765,7 @@ interface Props {
 export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, onToast }) => {
   const [cat, setCat] = useState<ShopCat>('all');
   const [query, setQuery] = useState('');
+  const [onlyDiscounts, setOnlyDiscounts] = useState(false);
   const [cart, setCart] = useState<{ item: CriaProduct; qty: number }[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
 
@@ -662,14 +829,43 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
     return () => window.clearTimeout(t);
   }, [cat, query]);
 
+  const getPromoInfo = (item: CriaProduct): { discountPct: number; originalBrl: number } | null => {
+    if (item.category === 'motos' || item.category === 'carros') return null;
+    const pctMap: Record<string, number> = {
+      'shop-mansao-maromba-combo': 28,
+      'shop-mansao-maromba-pack': 25,
+      'shop-mansao-maromba-kit-treino': 30,
+      'shop-bebidas-combo-buchanans': 20,
+      'shop-perfume-1million': 24,
+      'shop-perfume-sauvage-bleu': 18,
+      'shop-perfume-212-jpg': 27,
+      'shop-narguile-triton': 22,
+      'shop-essencias-narguile': 32,
+      'shop-carvao-rosh-narguile': 35,
+      'shop-lacoste-polo': 25,
+      'shop-lacoste-corta': 20,
+      'shop-oakley-corta': 28,
+      'shop-nike-tech': 22,
+      'shop-minas-biquini-vip': 34,
+      'shop-minas-baile-cargo': 30,
+      'shop-jbl-boombox': 20,
+    };
+    let hash = 0;
+    for (let i = 0; i < item.id.length; i++) hash = (hash * 31 + item.id.charCodeAt(i)) % 100;
+    const discountPct = pctMap[item.id] ?? (hash % 3 === 0 ? 18 : hash % 3 === 1 ? 25 : 30);
+    const originalBrl = Math.round(item.priceBrl / (1 - discountPct / 100));
+    return { discountPct, originalBrl };
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return CRIA_CATALOG.filter((p) => {
       if (cat !== 'all' && p.category !== cat) return false;
+      if (onlyDiscounts && !getPromoInfo(p)) return false;
       if (!q) return true;
       return `${p.name} ${p.brand} ${p.specs} ${p.badge}`.toLowerCase().includes(q);
     });
-  }, [cat, query]);
+  }, [cat, query, onlyDiscounts]);
 
   const totalItems = cart.reduce((acc, c) => acc + c.qty, 0);
   const totalPrice = cart.reduce((acc, c) => acc + c.item.priceBrl * c.qty, 0);
@@ -889,6 +1085,17 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+          <button
+            type="button"
+            onClick={() => setOnlyDiscounts((v) => !v)}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-black whitespace-nowrap shrink-0 border transition ${
+              onlyDiscounts
+                ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-black border-amber-300 shadow-[0_0_16px_rgba(244,63,94,0.45)]'
+                : 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-400/45 text-rose-200'
+            }`}
+          >
+            🏷️ Descontos OFF (-35%)
+          </button>
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
@@ -903,6 +1110,232 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
           ))}
         </div>
       </div>
+
+      {/* BANNER PATROCINADOR OFICIAL: MANSÃO MAROMBA · TOGURO */}
+      <section className="rounded-3xl overflow-hidden relative border border-amber-400/50 bg-gradient-to-r from-[#171103] via-[#090a10] to-[#1a0d05] p-4 sm:p-5 shadow-[0_0_32px_rgba(245,200,76,0.22)]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5 min-w-0">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-black text-[10px] font-black uppercase tracking-[0.18em]">
+              <span>🏆 PATROCINADOR OFICIAL DO APP</span>
+            </div>
+            <h2 className="font-display text-lg sm:text-2xl font-black lux-gold-text">
+              🥃 MANSÃO MAROMBA · TOGURO — COMBOS & BEBIDAS DO ROLÊ
+            </h2>
+            <p className="text-xs text-slate-200/90 max-w-2xl">
+              Destaque oficial pros parças e pras minas: Combo Whisky, Vodka, Gin, Ice & Energético Mansão Maromba com até <span className="text-emerald-300 font-black">30% OFF</span> no rolê!
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setCat('mansao');
+                setQuery('');
+                onToast('🏆 Mostrando produtos oficiais da Mansão Maromba (Toguro)!');
+              }}
+              className="px-4 py-2.5 rounded-full lux-btn-gold text-xs font-black shadow-lg"
+            >
+              🥃 Ver Mansão Maromba
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCat('narguile');
+                setQuery('');
+                onToast('💨 Mostrando Narguiles & Essências do rolê!');
+              }}
+              className="px-4 py-2.5 rounded-full lux-btn-obsidian border-amber-400/40 text-xs font-black text-amber-200"
+            >
+              💨 Narguiles & Essências
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* LOOKBOOK OFICIAL — CRIAS & MINAS PORTANDO OS KITS COMO MODELOS + DESTAQUE ITENS DE LUXO */}
+      <section className="rounded-3xl cosmic-card-3d p-4 sm:p-5 space-y-3.5 border border-amber-400/30">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> LOOKBOOK FAVELA VIP · MODELOS PORTANDO OS KITS
+            </div>
+            <h2 className="font-display text-base sm:text-lg font-black text-white">
+              🔥 Os Crias & As Minas Portando os Kits — Destaque nos Itens de Luxo
+            </h2>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/40 text-[10px] font-black text-amber-200">
+            💎 Peças de Luxo com Desconto OFF
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {[
+            {
+              img: '/shop/cria-modelo-kit.jpg',
+              badge: '👑 MODELO CRIA · LAJE',
+              title: 'Kit Patrão Preto & Ouro 24K',
+              luxuryHighlight: '✨ Usando: Corta-Vento Luxo + Juliet Ouro + Correntão 18K + Invicta (-25% OFF)',
+              tags: [
+                { label: '🧥 Roupas Grife', cat: 'roupas' as ShopCat, q: 'Lacoste' },
+                { label: '🕶️ Juliet', cat: 'oculos' as ShopCat, q: 'Juliet' },
+                { label: '🥇 Corrente 18k', cat: 'correntes' as ShopCat, q: 'Ouro' },
+              ],
+            },
+            {
+              img: '/shop/mina-modelo-verao.jpg',
+              badge: '💎 MODELO MINA · VERÃO VIP',
+              title: 'Kit Piscina, Biquíni & Perfume',
+              luxuryHighlight: '✨ Usando: Biquíni Corrente 24K + Óculos Prada + 212 VIP Rosé (-34% OFF)',
+              tags: [
+                { label: '👙 Kit Mina', cat: 'roupas' as ShopCat, q: 'Biquíni' },
+                { label: '🕶️ Óculos', cat: 'oculos' as ShopCat, q: 'Prada' },
+                { label: '🍾 Perfumes', cat: 'perfumes' as ShopCat, q: '212' },
+              ],
+            },
+            {
+              img: '/shop/casal-ostentacao-baile.jpg',
+              badge: '🏍️ CASAL NO BAILE · NAVE',
+              title: 'Kit Casal Ostentação Noturno',
+              luxuryHighlight: '✨ Usando: Bomber + Cargo + Cordão Ice + Hornet / BMW M4 (-22% OFF)',
+              tags: [
+                { label: '💃 Look Baile', cat: 'roupas' as ShopCat, q: 'Cargo' },
+                { label: '🏍️ Motos Grau', cat: 'motos' as ShopCat, q: '' },
+                { label: '🚘 Naves', cat: 'carros' as ShopCat, q: '' },
+              ],
+            },
+            {
+              img: '/shop/role-narguile-bebidas.jpg',
+              badge: '🥃 ROLÊ VIP · MANSÃO MAROMBA',
+              title: 'Camarote Narguile & Bebidas',
+              luxuryHighlight: '✨ Na Mesa: Combo Mansão Maromba + Triton Zip Ouro + 1 Million (-28% OFF)',
+              tags: [
+                { label: '🏆 Mansão Maromba', cat: 'mansao' as ShopCat, q: '' },
+                { label: '💨 Narguiles', cat: 'narguile' as ShopCat, q: '' },
+                { label: '🍾 1 Million', cat: 'perfumes' as ShopCat, q: 'Million' },
+              ],
+            },
+          ].map((look) => (
+            <div
+              key={look.title}
+              className="group rounded-2xl overflow-hidden bg-[#080a12] border border-amber-400/25 hover:border-amber-300/70 transition flex flex-col justify-between shadow-xl"
+            >
+              <div className="relative aspect-[4/4.2] overflow-hidden bg-black">
+                <img
+                  src={look.img}
+                  alt={look.title}
+                  className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#06070c] via-black/20 to-transparent pointer-events-none" />
+                <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/85 backdrop-blur-md border border-amber-400/50 text-[9px] font-black text-amber-200">
+                  {look.badge}
+                </span>
+                <div className="absolute bottom-2 left-2.5 right-2.5 space-y-1">
+                  <div className="font-display text-sm font-black text-white drop-shadow">
+                    {look.title}
+                  </div>
+                  <div className="px-2 py-1 rounded-lg bg-amber-400/20 border border-amber-300/45 text-[10px] font-bold text-amber-100 leading-snug backdrop-blur-sm">
+                    {look.luxuryHighlight}
+                  </div>
+                </div>
+              </div>
+              <div className="p-2.5 flex flex-wrap gap-1.5 bg-[#090b14] border-t border-white/10">
+                {look.tags.map((tg) => (
+                  <button
+                    key={tg.label}
+                    type="button"
+                    onClick={() => {
+                      setCat(tg.cat);
+                      setQuery(tg.q);
+                      onToast(`💎 Mostrando: ${tg.label}`);
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-amber-400/15 hover:bg-amber-400/30 border border-amber-400/40 text-[10px] font-black text-amber-100 transition active:scale-95"
+                  >
+                    {tg.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ESTÚDIOS DE TATUAGEM VIP DOS CRIAS & PARCEIRAS + MELHORES TATUADORES DO BRASIL */}
+      <section className="rounded-3xl cosmic-card-3d p-4 sm:p-5 space-y-4 border border-amber-400/30">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+          <div className="lg:col-span-5 relative aspect-[16/10] rounded-2xl overflow-hidden border border-amber-400/35 shadow-xl">
+            <img
+              src="/shop/estudio-tatuagem-crias.jpg"
+              alt="Estúdio de Tatuagem VIP dos Crias e Parceiras"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+            <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/85 border border-amber-400/50 text-[9px] font-black text-amber-200">
+              🖋️ ESTÚDIOS VIP · OS MANOS & AS MINAS
+            </span>
+            <div className="absolute bottom-2.5 left-3 right-3 text-xs font-bold text-white">
+              Fechamento de Braço, Realismo, Chicano & Fine Line das Parceiras
+            </div>
+          </div>
+
+          <div className="lg:col-span-7 space-y-3">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">
+                🖋️ GUIA OFICIAL DE TATUAGEM DOS CRIA · BRASIL
+              </div>
+              <h2 className="font-display text-base sm:text-xl font-black text-white">
+                Melhores Estúdios & Tatuadores Mais Bravos (Os Manos & As Minas)
+              </h2>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Indicação dos artistas referência no Brasil em Realismo Preto & Cinza, Chicano, Blackwork e Fine Line feminino. Clique para achar o estúdio ou chamar no mapa!
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {[
+                { name: 'Beicinho · Masters Of Tattoo', city: 'Rio de Janeiro (RJ)', style: 'Realismo Preto & Cinza · +150 prêmios', query: 'Masters Of Tattoo Beicinho Rio de Janeiro' },
+                { name: 'Marcus Gullo Tattoo', city: 'Rio de Janeiro (RJ)', style: 'Realismo Pesado & Fechamento dos Cria', query: 'Marcus Gullo tattoo Rio de Janeiro' },
+                { name: 'Wallace Farias & Murilo Oliveira', city: 'São Paulo (SP)', style: 'Black & Grey · Chicano / Lettering', query: 'Wallace Farias tatuador Sao Paulo' },
+                { name: 'Clari Benatti & Rodrigo Soares', city: 'RJ / SP', style: 'Fine Line, Mandala & Ornamental pras Minas', query: 'Clari Benatti Rodrigo Soares tattoo' },
+              ].map((artist) => (
+                <a
+                  key={artist.name}
+                  href={`https://www.google.com/maps/search/${encodeURIComponent(artist.query)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2.5 rounded-2xl bg-black/60 hover:bg-amber-500/10 border border-amber-400/25 hover:border-amber-300/60 transition flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0">
+                    <div className="text-xs font-black text-amber-200 truncate">{artist.name}</div>
+                    <div className="text-[10px] text-slate-300 truncate">{artist.style} · {artist.city}</div>
+                  </div>
+                  <ExternalLink className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                </a>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <a
+                href="https://www.google.com/maps/search/melhor+estudio+de+tatuagem+perto+de+mim"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-full lux-btn-gold text-xs font-black flex items-center gap-1.5"
+              >
+                📍 Achar Estúdio Perto de Mim
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <a
+                href="https://www.instagram.com/explore/tags/tatuagemrealismo/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-full lux-btn-obsidian text-xs font-bold text-slate-100 flex items-center gap-1.5"
+              >
+                📸 Ver Artes & Referências
+                <ExternalLink className="w-3.5 h-3.5 text-cyan-300" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* LIVE PUBLISHED ITEMS STRIP (Proxied Real Photos + Real Store Links + Affiliate Commission) */}
       <section className="rounded-3xl cosmic-card-3d p-4 space-y-3 border border-amber-400/25">
@@ -981,6 +1414,7 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
           const offerUrl = buildCommissionUrl(item.searchQuery, item.category);
           const photoFailed = Boolean(brokenPhotoIds[item.id]);
           const realPhotoUrl = `/api/shop/photo?q=${encodeURIComponent(item.searchQuery)}`;
+          const promo = getPromoInfo(item);
           return (
             <div
               key={item.id}
@@ -1020,18 +1454,31 @@ export const ShopCriaView: React.FC<Props> = ({ settings, mode, onSaveSettings, 
                     <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-amber-400/40 text-[9px] font-black text-amber-200 tracking-wide truncate">
                       {item.badge}
                     </span>
-                    <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-emerald-400/40 text-[9px] font-black text-emerald-300 shrink-0">
-                      {item.commissionEst}
-                    </span>
+                    {promo ? (
+                      <span className="px-2.5 py-1 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 text-black text-[9px] font-black shrink-0 shadow-md">
+                        🔥 -{promo.discountPct}% OFF
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-emerald-400/40 text-[9px] font-black text-emerald-300 shrink-0">
+                        {item.commissionEst}
+                      </span>
+                    )}
                   </div>
 
                   <div className="absolute bottom-2.5 left-3 right-3 flex items-end justify-between gap-2">
                     <span className="px-2.5 py-0.5 rounded-lg bg-black/75 border border-white/15 text-[10px] font-black uppercase tracking-wider text-white">
                       {item.brand}
                     </span>
-                    <span className="px-3 py-1 rounded-xl bg-black/85 border border-amber-400/50 font-mono text-sm font-black lux-gold-text shadow-lg">
-                      {item.priceLabel}
-                    </span>
+                    <div className="px-3 py-1 rounded-xl bg-black/85 border border-amber-400/50 text-right shadow-lg">
+                      {promo && (
+                        <div className="text-[9px] text-slate-400 line-through font-mono leading-none mb-0.5">
+                          De R$ {promo.originalBrl.toLocaleString('pt-BR')}
+                        </div>
+                      )}
+                      <div className="font-mono text-sm font-black lux-gold-text leading-none">
+                        {item.priceLabel}
+                      </div>
+                    </div>
                   </div>
                 </div>
 

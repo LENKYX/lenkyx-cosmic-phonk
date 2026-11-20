@@ -1,0 +1,53 @@
+{
+  "dateKey": "2026-11-20",
+  "dailyGoalBrl": 50,
+  "dailyCollectedBrl": 0,
+  "dailyContributors": 0,
+  "totalVisits": 124,
+  "totalShares": 18,
+  "recentSupporters": [],
+  "supporters": [],
+  "pendingPixPledges": [],
+  "approvedPixPledges": [],
+  "usedPixE2eIds": [],
+  "artistPlays": {
+    "alok": {
+      "name": "Alok",
+      "count": 96,
+      "photoUrl": "/api/artist-photo?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2Fe%2Fe1%2FAlok_Tomorrowland_Winter_2025.jpg%2F330px-Alok_Tomorrowland_Winter_2025.jpg%3Futm_source%3Dpt.wikipedia.org%26utm_campaign%3Dapi%26utm_content%3Dthumbnail",
+      "genre": "Eletrônica / Bass"
+    },
+    "ana castela": {
+      "name": "Ana Castela",
+      "count": 142,
+      "photoUrl": "/api/artist-photo?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2F5%2F52%2FAna_Castela_-_Ver%25C3%25A3o_Maior_Paran%25C3%25A1_2026_%2528cropped%2529_2.jpg%2F330px-Ana_Castela_-_Ver%25C3%25A3o_Maior_Paran%25C3%25A1_2026_%2528cropped%2529_2.jpg%3Futm_source%3Dpt.wikipedia.org%26utm_campaign%3Dapi%26utm_content%3Dthumbnail",
+      "genre": "Agronejo / Sertanejo"
+    },
+    "mc ryan sp": {
+      "name": "MC Ryan SP",
+      "count": 126,
+      "photoUrl": "/api/artist-photo?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2Fb%2Fb6%2FMC_Ryan_SP.png%2F330px-MC_Ryan_SP.png%3Futm_source%3Dpt.wikipedia.org%26utm_campaign%3Dapi%26utm_content%3Dthumbnail",
+      "genre": "Funk Brasil"
+    },
+    "matue": {
+      "name": "Matuê",
+      "count": 118,
+      "photoUrl": "/api/artist-photo?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2F3%2F3d%2FDoode_Teto_e_Matue_%2528cropped%2529.jpg%2F330px-Doode_Teto_e_Matue_%2528cropped%2529.jpg%3Futm_source%3Dpt.wikipedia.org%26utm_campaign%3Dapi%26utm_content%3Dthumbnail",
+      "genre": "Trap Brasil"
+    },
+    "henrique & juliano": {
+      "name": "Henrique & Juliano",
+      "count": 198,
+      "photoUrl": "/api/artist-photo?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2Fa%2Fa8%2FHenrique_%2526_Juliano_-_Citibank_Hall_%252838306450541%2529.jpg%2F330px-Henrique_%2526_Juliano_-_Citibank_Hall_%252838306450541%2529.jpg%3Futm_source%3Dpt.wikipedia.org%26utm_campaign%3Dapi%26utm_content%3Dthumbnail",
+      "genre": "Sertanejo · #1 Brasil"
+    },
+    "gusttavo lima": {
+      "name": "Gusttavo Lima",
+      "count": 164,
+      "photoUrl": "/api/artist-photo?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2Fb%2Fb1%2FGusttavo_Lima_Extrema_-_MG_GL-71.jpg%2F330px-Gusttavo_Lima_Extrema_-_MG_GL-71.jpg%3Futm_source%3Dpt.wikipedia.org%26utm_campaign%3Dapi%26utm_content%3Dthumbnail",
+      "genre": "Sertanejo · Embaixador"
+    }
+  },
+  "videoPlays": {},
+  "moviePlays": {}
+}
