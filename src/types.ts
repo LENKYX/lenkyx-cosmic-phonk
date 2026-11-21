@@ -78,6 +78,9 @@ export interface AppSettings {
   pixName: string;
   pixCity: string;
   pixMessage: string;
+  vipActive?: boolean;
+  vipPlan?: 'mensal' | 'anual' | null;
+  vipUntil?: string | null;
   publicUrl: string;
   apkDownloadUrl?: string;
   youtubeUrl: string;

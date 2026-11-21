@@ -177,6 +177,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   pixName: 'MORRO GOLD VIP',
   pixCity: 'CAMPO GRANDE',
   pixMessage: '100% gratuito e sem anúncios! Sua doação exclusiva via PIX (PicPay) ajuda na manutenção diária do app.',
+  vipActive: false,
+  vipPlan: null,
+  vipUntil: null,
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
   apkDownloadUrl: '/download/apk',
   youtubeUrl: '',
@@ -832,7 +835,7 @@ export function App() {
 
   // Modals & notifications
   const [pixOpen, setPixOpen] = useState(false);
-  const [pixInitialTab, setPixInitialTab] = useState<'donate' | 'ranking' | 'config'>('donate');
+  const [pixInitialTab, setPixInitialTab] = useState<'vip' | 'donate' | 'ranking' | 'config'>('donate');
   // Painel PRIVADO de comissões do dono (somente Modo Criador)
   const [commissionPanelOpen, setCommissionPanelOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -3618,7 +3621,7 @@ export function App() {
                 type="button"
                 onClick={() => {
                   setMoreSheetOpen(false);
-                  setPixInitialTab('donate');
+                  setPixInitialTab('vip');
                   setPixOpen(true);
                 }}
                 className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
