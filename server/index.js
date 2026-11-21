@@ -4150,6 +4150,33 @@ app.post('/api/shop/sync', async (_req, res) => {
   }
 });
 
+// ===== sacola salva no servidor (por aparelho/login do cliente) =====
+const SHOP_BAG_PATH = path.join(DATA_DIR, 'shop-bag.json');
+
+app.get('/api/shop/bag', (req, res) => {
+  const store = readJsonFileSafe(SHOP_BAG_PATH, { bags: {} });
+  const device = String(req.query.device || 'guest').slice(0, 64);
+  res.json((store.bags && store.bags[device]) || { items: [] });
+});
+
+app.post('/api/shop/bag', (req, res) => {
+  const device = String(req.body?.device || 'guest').slice(0, 64);
+  const items = Array.isArray(req.body?.items)
+    ? req.body.items.slice(0, 100).map((it) => ({
+        id: String(it?.id || '').slice(0, 80),
+        name: String(it?.name || '').slice(0, 160),
+        priceBrl: Number(it?.priceBrl || 0),
+        qty: Math.max(1, Math.min(99, Number(it?.qty || 1))),
+        imageUrl: String(it?.imageUrl || '').slice(0, 600),
+      }))
+    : [];
+  const store = readJsonFileSafe(SHOP_BAG_PATH, { bags: {} });
+  store.bags = store.bags || {};
+  store.bags[device] = { items, updatedAt: new Date().toISOString() };
+  writeJsonFileSafe(SHOP_BAG_PATH, store);
+  res.json({ ok: true, count: items.length });
+});
+
 app.get('/api/shop/orders', (_req, res) => {
   res.json(readJsonFileSafe(SHOP_ORDERS_PATH, { orders: [] }));
 });
