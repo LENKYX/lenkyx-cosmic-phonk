@@ -802,10 +802,15 @@ const worldShortsCache = new Map();
 
 const WORLD_SHORTS_POOLS = {
   all: [
-    'shorts virais brasil hoje humor musica futebol',
-    'melhores reels shorts brasil sertanejo funk comedia',
-    'brasil entretenimento curiosidades memes #shorts',
-    'novidades brasil musica clipes viral #shorts',
+    'shorts virais brasil hoje humor memes',
+    'em alta no youtube brasil agora #shorts',
+    'melhores shorts do youtube brasil hoje',
+    'comedia zueira memes virais brasil #shorts',
+    'musica funk sertanejo hits brasil #shorts',
+    'entretenimento curiosidades novidades brasil #shorts',
+    'videos engracados viral brasil #shorts',
+    'games filmes series anime brasil #shorts',
+    'tendencias youtube brasil esta semana #shorts',
   ],
   viral: [
     'shorts virais brasil hoje humor curiosidades',
@@ -901,7 +906,7 @@ export async function searchWorldShorts(
       .filter(Boolean)
   );
   const pool = WORLD_SHORTS_POOLS[cat] || WORLD_SHORTS_POOLS.all;
-  const pickIdx = forceRefresh ? Math.floor(Math.random() * pool.length) : 0;
+  const pickIdx = Math.floor(Math.random() * pool.length);
 
   const q = customQuery.trim()
     ? isLiveMode

@@ -172,6 +172,7 @@ interface YTPlayerHandle {
   seekTo?: (sec: number, allowSeekAhead?: boolean) => void;
   mute?: () => void;
   unMute?: () => void;
+  getPlayerState?: () => number;
   setPlaybackRate?: (rate: number) => void;
   setPlaybackQuality?: (suggestedQuality: string) => void;
   getCurrentTime?: () => number;
@@ -226,6 +227,7 @@ const YouTubeShortPlayer: React.FC<{
   const hostRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YTPlayerHandle | null>(null);
   const [iframeSize, setIframeSize] = useState<{ w: string; h: string }>({ w: '100%', h: '100%' });
+  const [forceMuted, setForceMuted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [curTime, setCurTime] = useState(0);
   const [durTime, setDurTime] = useState(0);
@@ -239,7 +241,7 @@ const YouTubeShortPlayer: React.FC<{
   const loopRef = useRef(loopOne);
   loopRef.current = loopOne;
   const mutedRef = useRef(muted);
-  mutedRef.current = muted;
+  mutedRef.current = muted || forceMuted;
   const rateRef = useRef(playbackRate);
   rateRef.current = playbackRate;
 
@@ -256,9 +258,8 @@ const YouTubeShortPlayer: React.FC<{
         setIframeSize({ w: `${Math.round(W)}px`, h: `${Math.round(H)}px` });
         return;
       }
-      // Inside a 16:9 YT iframe of height H_yt, the 9:16 vertical video width is H_yt * 9/16.
-      // Force H_yt >= W * 16/9 and >= H so the center video covers W x H with zero black sidebars!
-      const H_yt = Math.max(H, (W * 16) / 9);
+      // Proporcao automatica: tela vertical (celular) = preenche; tela larga (PC/TV) = video inteiro sem corte.
+      const H_yt = W / H <= 1 ? Math.max(H, (W * 16) / 9) : Math.min(H, (W * 16) / 9);
       const W_yt = (H_yt * 16) / 9;
       setIframeSize({ w: `${Math.ceil(W_yt)}px`, h: `${Math.ceil(H_yt)}px` });
     };
@@ -376,12 +377,29 @@ const YouTubeShortPlayer: React.FC<{
     const p = playerRef.current;
     if (!p) return;
     try {
-      if (muted) p.mute?.();
+      if (muted || forceMuted) p.mute?.();
       else p.unMute?.();
     } catch {
       // ignore
     }
-  }, [muted]);
+  }, [muted, forceMuted]);
+
+  // Celular bloqueia autoplay com som: se nao tocar, toca mudo e solta o som no primeiro toque
+  useEffect(() => {
+    const tm = window.setTimeout(() => {
+      const p = playerRef.current;
+      if (!p) return;
+      try {
+        const st = p.getPlayerState?.();
+        if (st !== 1 && st !== 3) {
+          p.mute?.();
+          setForceMuted(true);
+          p.playVideo?.();
+        }
+      } catch { /* ok */ }
+    }, 900);
+    return () => window.clearTimeout(tm);
+  }, []);
 
   useEffect(() => {
     const p = playerRef.current;
@@ -425,6 +443,11 @@ const YouTubeShortPlayer: React.FC<{
     }
     lastTapRef.current = now;
     tapTimerRef.current = window.setTimeout(() => {
+      if (forceMuted) {
+        setForceMuted(false);
+        tapTimerRef.current = null;
+        return;
+      }
       toggleShortPlay();
       tapTimerRef.current = null;
     }, 230);
@@ -505,6 +528,7 @@ const NativeShortVideoPlayer: React.FC<{
   onTap?: () => boolean | void;
 }> = ({ src, poster, muted, loop, playbackRate = 1, onEnded, onDoubleTapLike, onDimensions, onTap }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [forceMuted, setForceMuted] = useState(false);
   const [paused, setPaused] = useState(false);
   const [curTime, setCurTime] = useState(0);
   const [durTime, setDurTime] = useState(0);
@@ -517,6 +541,21 @@ const NativeShortVideoPlayer: React.FC<{
       videoRef.current.playbackRate = playbackRate;
     }
   }, [playbackRate, src]);
+
+  // Celular bloqueia autoplay com som: tenta tocar; se bloquear, toca mudo e solta o som no 1o toque
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const p = v.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        setForceMuted(true);
+        v.muted = true;
+        const p2 = v.play();
+        if (p2 && typeof p2.catch === 'function') p2.catch(() => {});
+      });
+    }
+  }, [src]);
 
   const togglePlay = () => {
     const v = videoRef.current;
@@ -551,6 +590,11 @@ const NativeShortVideoPlayer: React.FC<{
         tapTimerRef.current = null;
         return;
       }
+      if (forceMuted) {
+        setForceMuted(false);
+        tapTimerRef.current = null;
+        return;
+      }
       togglePlay();
       tapTimerRef.current = null;
     }, 230);
@@ -569,7 +613,7 @@ const NativeShortVideoPlayer: React.FC<{
         src={src}
         autoPlay
         playsInline
-        muted={muted}
+        muted={muted || forceMuted}
         loop={loop}
         onLoadedMetadata={(e) => {
           setDurTime(e.currentTarget.duration || 0);
@@ -581,7 +625,7 @@ const NativeShortVideoPlayer: React.FC<{
           if (!durTime && e.currentTarget.duration) setDurTime(e.currentTarget.duration);
         }}
         onEnded={onEnded}
-        className="w-full h-full object-cover bg-black"
+        className="w-full h-full object-cover lg:object-contain [@media(min-aspect-ratio:1/1)]:object-contain bg-black"
       />
       <button
         type="button"
