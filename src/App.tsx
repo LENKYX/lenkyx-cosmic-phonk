@@ -3020,7 +3020,7 @@ export function App() {
 
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'catalog', label: 'Início', icon: <Home className="w-5 h-5" /> },
-    { id: 'reels', label: 'Reels & Memes', icon: <Film className="w-5 h-5" /> },
+    { id: 'reels', label: 'Vibe', icon: <Film className="w-5 h-5" /> },
     { id: 'channels', label: 'Canais & Criadores', icon: <Tv className="w-5 h-5" /> },
     { id: 'explore', label: 'Música & Clipes', icon: <Compass className="w-5 h-5" /> },
     { id: 'shop', label: 'Loja dos Cria VIP', icon: <ShoppingBag className="w-5 h-5" /> },
@@ -3212,7 +3212,7 @@ export function App() {
               type="button"
               onClick={() => setCreateMenuOpen(true)}
               className="hidden sm:flex px-3.5 py-1.5 rounded-full lux-btn-gold text-xs font-black items-center gap-1.5"
-              title="Criar Reel, Live HD ou Música"
+              title="Criar Vibe, Live HD ou Música"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Criar</span>
@@ -3292,7 +3292,7 @@ export function App() {
                       <span className="w-8 h-8 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center shrink-0">🔔</span>
                       <div className="min-w-0">
                         <div className="font-bold text-white truncate">Suas Inscrições ({subscribedChannelsList.length})</div>
-                        <div className="text-[11px] text-slate-300 line-clamp-1">Ver novos Reels dos seus canais</div>
+                        <div className="text-[11px] text-slate-300 line-clamp-1">Ver as novas Vibes dos seus canais</div>
                       </div>
                     </button>
                     <button
@@ -3445,7 +3445,7 @@ export function App() {
             {(
               [
                 { id: 'catalog', label: 'Início' },
-                { id: 'reels', label: 'Reels' },
+                { id: 'reels', label: 'Vibe' },
                 { id: 'channels', label: 'Canais' },
                 { id: 'explore', label: 'Música' },
                 { id: 'sports', label: 'Ao vivo' },
@@ -3823,7 +3823,7 @@ export function App() {
                   <Suspense
                     fallback={
                       <div className="py-16 text-center text-xs text-cyan-300 font-semibold">
-                        Carregando Reels & Memes dos Cria...
+                        Carregando o Vibe dos Cria...
                       </div>
                     }
                   >
@@ -3852,7 +3852,7 @@ export function App() {
                           youtubeVideoId: short.youtube_id,
                           videoUrl: short.video_url,
                         });
-                        showToast('🎬 Reels minimizado! Continua tocando enquanto você navega.');
+                        showToast('🎬 Vibe minimizado! Continua tocando enquanto você navega.');
                       }}
                       onOpenToguroShop={openToguroShop}
                       onToast={showToast}
@@ -4121,10 +4121,10 @@ export function App() {
                 ? 'text-white'
                 : 'text-slate-400 hover:text-white'
             }`}
-            title="Shorts & Reels"
+            title="Vibe"
           >
             <Film className="w-5 h-5" />
-            <span className="text-[10px] font-semibold">Shorts</span>
+            <span className="text-[10px] font-semibold">Vibe</span>
           </button>
 
           <button
@@ -4738,7 +4738,7 @@ export function App() {
         >
           <div className="px-2.5 py-1.5 bg-black/85 border-b border-white/10 flex items-center justify-between gap-2">
             <span className="text-[10px] font-black text-amber-300 truncate">
-              🎬 Reels · {minimizedReel.title}
+              🎬 Vibe · {minimizedReel.title}
             </span>
             <div className="flex items-center gap-1 shrink-0">
               <button
@@ -4750,7 +4750,7 @@ export function App() {
                   navigateTab('reels');
                 }}
                 className="px-2 py-0.5 rounded-md bg-cyan-400/20 hover:bg-cyan-400 hover:text-black text-[10px] font-black text-cyan-200 transition"
-                title="Aumentar Reels"
+                title="Aumentar Vibe"
               >
                 ⤢ Aumentar
               </button>
@@ -4758,7 +4758,7 @@ export function App() {
                 type="button"
                 onClick={() => setMinimizedReel(null)}
                 className="p-1 rounded-md bg-rose-600/80 hover:bg-rose-500 text-white"
-                title="Fechar Reels"
+                title="Fechar Vibe"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -4974,7 +4974,7 @@ export function App() {
                 </span>
                 <div>
                   <h3 className="font-display text-sm font-black text-white">Criar & Transmitir no MORRO GOLD</h3>
-                  <p className="text-[11px] text-cyan-200/80">100% liberado — Reels, Lives, Chats & Músicas IA</p>
+                  <p className="text-[11px] text-cyan-200/80">100% liberado — Vibe, Lives, Chats & Músicas IA</p>
                 </div>
               </div>
               <button
@@ -5018,8 +5018,8 @@ export function App() {
                   <Film className="w-5 h-5" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs font-black text-white">📹 Criar Conteúdo de Reel (Vídeo Curto)</div>
-                  <div className="text-[11px] text-emerald-200/80">Suba ou poste seu Reel no feed global agora</div>
+                  <div className="text-xs font-black text-white">📹 Criar Conteúdo no Vibe (Vídeo Curto)</div>
+                  <div className="text-[11px] text-emerald-200/80">Suba ou poste seu Vibe no feed global agora</div>
                 </div>
               </button>
 

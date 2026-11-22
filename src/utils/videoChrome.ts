@@ -20,7 +20,7 @@ export const ASPECT_PRESETS: {
 }[] = [
   { id: '16/9', label: '16:9 · Widescreen', short: '16:9', ratio: 16 / 9 },
   { id: '4/3', label: '4:3 · Clássico', short: '4:3', ratio: 4 / 3 },
-  { id: '9/16', label: '9:16 · Vertical (Shorts)', short: '9:16', ratio: 9 / 16 },
+  { id: '9/16', label: '9:16 · Vertical (Vibe)', short: '9:16', ratio: 9 / 16 },
 ];
 
 export const ASPECT_CYCLE: AspectMode[] = ['auto', '16/9', '4/3', '9/16'];

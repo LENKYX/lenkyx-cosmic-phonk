@@ -403,7 +403,7 @@ export const CreatorChannelsView: React.FC<Props> = ({
             Canais de Usuários & Criadores MORRO GOLD
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
-            Crie seu próprio Canal com banner, @arroba, vídeos, Shorts, músicas e aba Comunidade — com{' '}
+            Crie seu próprio Canal com banner, @arroba, vídeos, Vibe, músicas e aba Comunidade — com{' '}
             <strong className="text-amber-300">Selo Original da Favela</strong> e proteção contra plágio.
           </p>
         </div>
@@ -523,7 +523,7 @@ export const CreatorChannelsView: React.FC<Props> = ({
               {[
                 { id: 'home', label: 'Início' },
                 { id: 'videos', label: `Vídeos (${(selectedChannel.videos || []).filter((v) => v.kind !== 'short').length})` },
-                { id: 'shorts', label: `Shorts (${(selectedChannel.videos || []).filter((v) => v.kind === 'short').length})` },
+                { id: 'shorts', label: `Vibe (${(selectedChannel.videos || []).filter((v) => v.kind === 'short').length})` },
                 { id: 'community', label: `Comunidade (${(selectedChannel.communityPosts || []).length})` },
                 { id: 'about', label: 'Sobre & Lei da Favela' },
               ].map((t) => (

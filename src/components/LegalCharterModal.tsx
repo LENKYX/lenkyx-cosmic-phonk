@@ -174,7 +174,7 @@ export const LegalCharterModal: React.FC<Props> = ({
                 <p>
                   O <strong>MORRO GOLD</strong> é uma plataforma cultural brasileira{' '}
                   <strong>voltada para a favela, os bailes, a música periférica e os criadores da quebrada</strong>.
-                  Ter barra lateral, canais de criadores, Shorts, playlists e botão de inscrição{' '}
+                  Ter barra lateral, canais de criadores, Vibe, playlists e botão de inscrição{' '}
                   <strong>NÃO constitui plágio</strong>:
                 </p>
                 <ul className="space-y-1.5 pl-1">
@@ -214,7 +214,7 @@ export const LegalCharterModal: React.FC<Props> = ({
                   </li>
                   <li>
                     <strong>Direito de Divulgação na Comunidade:</strong> Ao publicar em seu Canal MORRO GOLD, o criador
-                    autoriza a exibição dentro do app e nos Shorts da plataforma com crédito automático ao seu{' '}
+                    autoriza a exibição dentro do app e no Vibe da plataforma com crédito automático ao seu{' '}
                     <code>@handle</code>.
                   </li>
                   <li>
