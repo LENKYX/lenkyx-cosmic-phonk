@@ -93,7 +93,7 @@ const PLANET_SPECS: PlanetSpec[] = [
   {
     id: 'reels',
     tabId: 'reels',
-    label: 'Reels & Lives',
+    label: 'Vibe & Lives',
     planetName: 'Nova Pulse',
     orbitRadius: 21.5,
     orbitSpeed: 0.11,
@@ -428,7 +428,7 @@ const PERSONAS: Record<PersonaId, PersonaMeta> = {
     emoji: '🔮',
     color: '#fb923c',
     greeting: 'Os anéis do Multiverso estão girando para você. Peça qualquer realidade e eu abro o portal agora mesmo!',
-    quickPrompts: ['Abre um portal surpresa', 'Cinema & Séries', 'Reels & Lives', 'Criar música IA'],
+    quickPrompts: ['Abre um portal surpresa', 'Cinema & Séries', 'Vibe & Lives', 'Criar música IA'],
   },
   solis: {
     id: 'solis',

@@ -670,7 +670,7 @@ export const VideoStudioView: React.FC<Props> = ({
               >
                 <Smartphone className="w-5 h-5 text-pink-400 shrink-0" />
                 <div>
-                  <div className="text-xs font-extrabold">Reels / TikTok</div>
+                  <div className="text-xs font-extrabold">Vibe / TikTok</div>
                   <div className="text-[10px] text-purple-300">Vertical 9:16</div>
                 </div>
               </button>
@@ -745,7 +745,7 @@ export const VideoStudioView: React.FC<Props> = ({
                 <option value={30} className="bg-[#0f0824]">30 seg</option>
                 <option value={60} className="bg-[#0f0824]">60 seg</option>
                 <option value={120} className="bg-[#0f0824]">2 min</option>
-                <option value={180} className="bg-[#0f0824]">3 min (Máx Shorts)</option>
+                <option value={180} className="bg-[#0f0824]">3 min (Máx Vibe)</option>
               </select>
             </div>
             <label className="flex items-center gap-2 py-2 px-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer text-xs text-purple-100">

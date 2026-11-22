@@ -166,6 +166,16 @@ export const ShareModal: React.FC<Props> = ({
     onToast('Links públicos atualizados!');
   };
 
+  const refCode = (() => {
+    try {
+      return (localStorage.getItem('mg_device_id') || 'cria').slice(-6).toUpperCase();
+    } catch {
+      return 'CRIA';
+    }
+  })();
+  const refLink = `${window.location.origin || 'https://morro.gold'}/?ref=${refCode}`;
+  const [refCopied, setRefCopied] = useState(false);
+
   const score = Number(liveStats?.popularityScore || 480);
   const shares = Number(liveStats?.totalShares || 18);
   const visits = Number(liveStats?.totalVisits || 120);
@@ -209,6 +219,37 @@ export const ShareModal: React.FC<Props> = ({
             <button onClick={onClose} className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-purple-200">
               <X className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* CONVIDE E GANHE · indicacao que paga */}
+          <div className="rounded-2xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-black/40 border border-amber-400/40 p-3 space-y-2">
+            <div className="text-[11px] font-black text-amber-200 flex items-center gap-1.5">🎁 CONVIDE E GANHE · INDICAÇÃO QUE PAGA</div>
+            <p className="text-[10px] text-slate-200">
+              Manda seu link pros cria: eles entram direto no MORRO GOLD e cada compra feita pelo seu link gera{' '}
+              <strong>comissão pra você</strong> — tudo na lei.
+            </p>
+            <div className="flex items-center gap-1.5">
+              <div className="flex-1 px-2.5 py-1.5 rounded-xl bg-black/50 border border-white/10 text-[10px] text-amber-100 truncate">
+                {refLink}
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(refLink);
+                  } catch {
+                    /* ignore */
+                  }
+                  setRefCopied(true);
+                  onToast('🎁 Link de indicação copiado!');
+                  window.setTimeout(() => setRefCopied(false), 2500);
+                }}
+                className="px-3 py-1.5 rounded-full lux-btn-gold text-[10px] font-black"
+              >
+                {refCopied ? '✓ Copiado' : 'Copiar link'}
+              </button>
+            </div>
+            <div className="text-[9px] text-slate-400">Seu código: {refCode} · comissões no painel Minhas Comissões.</div>
           </div>
 
           {/* LIVE APP POPULARITY METER */}

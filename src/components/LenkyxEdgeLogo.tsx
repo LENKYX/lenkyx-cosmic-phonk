@@ -10,7 +10,7 @@ const SIZE_MAP: Record<NonNullable<LenkyxEdgeLogoProps['size']>, string> = {
   sm: 'w-11 h-11',
   md: 'w-14 h-14',
   lg: 'w-[72px] h-[72px]',
-  hero: 'w-52 h-52 sm:w-64 sm:h-64',
+  hero: 'w-[min(42vw,26vh)] h-[min(42vw,26vh)]',
 };
 
 export const LenkyxEdgeLogo: React.FC<LenkyxEdgeLogoProps> = ({ size = 'sm', className = '' }) => {

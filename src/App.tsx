@@ -180,6 +180,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   vipActive: false,
   vipPlan: null,
   vipUntil: null,
+  mpAccessToken: '',
+  supabaseUrl: '',
+  supabaseAnonKey: '',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
   apkDownloadUrl: '/download/apk',
   youtubeUrl: '',
@@ -838,6 +841,45 @@ export function App() {
   const [pixInitialTab, setPixInitialTab] = useState<'vip' | 'donate' | 'ranking' | 'config'>('donate');
   // Painel PRIVADO de comissões do dono (somente Modo Criador)
   const [commissionPanelOpen, setCommissionPanelOpen] = useState(false);
+
+  // Retorno do checkout Mercado Pago: confirma o pagamento e ativa o VIP sozinho
+  useEffect(() => {
+    if (!/[?&]vipReturn=1/.test(window.location.search)) return;
+    try {
+      window.history.replaceState({}, '', window.location.pathname);
+    } catch {
+      /* ignore */
+    }
+    let ref = 'guest';
+    try {
+      ref = localStorage.getItem('mg_device_id') || 'guest';
+    } catch {
+      /* ignore */
+    }
+    let tries = 0;
+    const check = async () => {
+      tries++;
+      try {
+        const r = await fetch(`/api/payments/vip-status?ref=${encodeURIComponent(ref)}`);
+        const d = await r.json();
+        if (d?.active) {
+          await handleSaveSettings({
+            vipActive: true,
+            vipPlan: d.plan === 'anual' ? 'anual' : 'mensal',
+            vipUntil: d.until,
+          });
+          showToast('👑 PAGAMENTO CONFIRMADO! Seu VIP MORRO GOLD está ativo!');
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+      if (tries < 8) window.setTimeout(() => void check(), 2500);
+      else showToast('Pagamento em processamento — o VIP ativa sozinho em instantes.');
+    };
+    window.setTimeout(() => void check(), 1500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);

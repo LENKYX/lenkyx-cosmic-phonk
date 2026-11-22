@@ -34,6 +34,7 @@ import {
 import { Track } from '../types';
 import { BassBoostLevel } from './MiniPlayer';
 import { BluetoothConnectModal } from './GlobalVoiceCallModal';
+import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 
 export type AudioEffectId = 'normal' | 'baile3d' | 'studio' | 'grave_pancadao' | 'noite_chill';
 
@@ -214,11 +215,7 @@ export const MediaPlayerMenuModal: React.FC<Props> = ({
         {/* CLEAN MORRO GOLD HEADER */}
         <div className="px-4 py-3 border-b border-amber-400/20 bg-black/50 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <img
-              src="/covers/morro-gold-emblema-grosso.png?v=74"
-              alt="MORRO GOLD"
-              className="w-9 h-9 rounded-xl object-contain shrink-0"
-            />
+            <LenkyxEdgeLogo size="xs" className="shrink-0" />
             <div className="min-w-0">
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300 flex items-center gap-1.5">
                 <Disc3 className={`w-3.5 h-3.5 ${isPlaying ? 'animate-spin' : ''}`} />

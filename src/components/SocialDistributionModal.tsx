@@ -59,10 +59,10 @@ export const SocialDistributionModal: React.FC<Props> = ({
 
   const titleText = track
     ? `🚀 ${track.title} — ${track.artist} | ${settings.brandSubtitle}`
-    : `🌌 ${settings.artistName} — ${settings.brandSubtitle} | Músicas, Filmes, Séries, TV & Reels`;
+    : `🌌 ${settings.artistName} — ${settings.brandSubtitle} | Músicas, Filmes, Séries, TV & Vibe`;
 
   const viralCaption = track
-    ? `🔥 NOVO SOM NO AR! Ouça "${track.title}" de ${track.artist} completo e grátis no App Oficial LENKYX (Celular, PC e Smart TV): ${targetUrl}\n\n📲 Baixe o App: ${baseUrl}/app\n#LENKYX #CosmicPhonk #Phonk #MusicaBrasileira #Viral #Reels #TikTok #Shorts`
+    ? `🔥 NOVO SOM NO AR! Ouça "${track.title}" de ${track.artist} completo e grátis no App Oficial LENKYX (Celular, PC e Smart TV): ${targetUrl}\n\n📲 Baixe o App: ${baseUrl}/app\n#LENKYX #CosmicPhonk #Phonk #MusicaBrasileira #Viral #Vibe #TikTok`
     : `🌌🚀 Chegou o Super App Mundial ${settings.artistName} — ${settings.brandSubtitle}! Músicas Completas Mundiais, 300+ Filmes & Séries HD, TV ao vivo, Vídeos Curtos, Pesquisa Web IA & Galáxia 3D para qualquer celular do mundo!\n\n🎧 Acesse agora: ${baseUrl}\n📲 App Android: ${baseUrl}/app\n📺 Smart TV: ${baseUrl}/tv\n#LENKYX #CosmicPhonk #Streaming #Musica #Cinema #Phonk #Brasil #Global`;
 
   const copyItem = async (text: string, key: string, msg: string) => {
@@ -202,7 +202,7 @@ export const SocialDistributionModal: React.FC<Props> = ({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs font-black text-white flex items-center gap-1.5">
                 <Smartphone className="w-4 h-4 text-emerald-300" />
-                Publicar Direto do Celular (Instagram, TikTok, YouTube, Reels)
+                Publicar Direto do Celular (Instagram, TikTok, YouTube & Vibe)
               </div>
               <button
                 onClick={() => void handleMobileNativeShare()}
@@ -231,7 +231,7 @@ export const SocialDistributionModal: React.FC<Props> = ({
           <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-3.5 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-pink-400" /> Legenda Viral + Hashtags (Instagram / TikTok / Shorts)
+                <Sparkles className="w-3.5 h-3.5 text-pink-400" /> Legenda Viral + Hashtags (Instagram / TikTok / Vibe)
               </span>
               <button
                 onClick={() => void copyItem(viralCaption, 'caption', 'Legenda + hashtags copiadas!')}

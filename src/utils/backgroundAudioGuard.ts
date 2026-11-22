@@ -57,6 +57,24 @@ export function syncBackgroundMediaSession(meta: MediaGuardMeta, handlers: Media
     });
     navigator.mediaSession.playbackState = meta.isPlaying ? 'playing' : 'paused';
 
+    try {
+      const dur = Number((meta as unknown as { duration?: number }).duration || 0);
+      if (dur > 0 && isFinite(dur)) {
+        navigator.mediaSession.setPositionState({
+          duration: dur,
+          position: Math.min(Math.max(0, Number(meta.currentTime || 0)), dur),
+          playbackRate: 1,
+        });
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      navigator.mediaSession.setActionHandler('stop', handlers.onPause ? () => handlers.onPause?.() : null);
+    } catch {
+      // ignore
+    }
+
     navigator.mediaSession.setActionHandler('play', handlers.onPlay ? () => handlers.onPlay?.() : null);
     navigator.mediaSession.setActionHandler('pause', handlers.onPause ? () => handlers.onPause?.() : null);
     navigator.mediaSession.setActionHandler(

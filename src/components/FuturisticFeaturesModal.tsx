@@ -382,8 +382,8 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
     const marca = sponsorBrandName.trim() || 'sua empresa/marca';
     return (
       `Olá, equipe de ${marca}! Tudo bem?\n\n` +
-      `Sou criador do aplicativo brasileiro MORRO GOLD (${officialSiteUrl}) — uma plataforma gratuita e ultra-moderna de Músicas, Vídeos Clipes HD, Shorts de Criadores Brasileiros, Cinema e Futebol Ao Vivo, sem anúncios intrusivos.\n\n` +
-      `Estamos abrindo cotas oficiais de Patrocínio e Parceria Comercial no Brasil (banner no app, destaque nos Shorts & Ranking Top 5 de Criadores e ações exclusivas).\n\n` +
+      `Sou criador do aplicativo brasileiro MORRO GOLD (${officialSiteUrl}) — uma plataforma gratuita e ultra-moderna de Músicas, Vídeos Clipes HD, Vibes de Criadores Brasileiros, Cinema e Futebol Ao Vivo, sem anúncios intrusivos.\n\n` +
+      `Estamos abrindo cotas oficiais de Patrocínio e Parceria Comercial no Brasil (banner no app, destaque no Vibe & Ranking Top 5 de Criadores e ações exclusivas).\n\n` +
       `Gostaria de apresentar os planos de patrocínio para ${marca} crescer junto com o MORRO GOLD. Podemos conversar?\n\n` +
       `Acesse o app ao vivo: ${officialSiteUrl}`
     );
@@ -391,7 +391,7 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
 
   const buildCreatorInviteText = (c: BrCreatorItem) =>
     `Fala, ${c.name}! 🇧🇷🔥 Você já está em destaque no Ranking Top Criadores do MORRO GOLD (${c.badge})! ` +
-    `Estamos reunindo os melhores canais brasileiros de humor, memes e pegadinhas dentro do nosso app gratuito (Músicas, Clipes, Shorts e Lives). ` +
+    `Estamos reunindo os melhores canais brasileiros de humor, memes e pegadinhas dentro do nosso app gratuito (Músicas, Clipes, Vibe e Lives). ` +
     `Venha conhecer e compartilhar seu canal com a galera do Brasil: ${officialSiteUrl}`;
 
   if (!open) return null;
@@ -660,7 +660,7 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
                       `🔥 Meu Top no MORRO GOLD Brasil:\n${
                         topHistory.length
                           ? topHistory.map((h, i) => `${i + 1}. ${h.title} — ${h.artist} (${h.count}x)`).join('\n')
-                          : 'Ouvindo músicas, clipes e Shorts sem anúncios!'
+                          : 'Ouvindo músicas, clipes e Vibe sem anúncios!'
                       }\n\nOuça grátis também: ${officialSiteUrl}`
                     )}`}
                     target="_blank"
@@ -742,6 +742,45 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
           {/* TAB 4: CONVITES PARA YOUTUBERS DO BRASIL & EMPRESÁRIOS PATROCINADORES */}
           {tab === 'partners' && (
             <div className="space-y-4">
+              {/* MÍDIA KIT · TABELA OFICIAL DE PATROCÍNIO */}
+              <div className="rounded-3xl bg-gradient-to-br from-amber-500/15 via-yellow-500/10 to-black border border-amber-400/45 p-4 space-y-3">
+                <div className="text-xs font-black text-amber-200 flex items-center gap-1.5">
+                  👑 MÍDIA KIT MORRO GOLD · SUA MARCA NA REALEZA DA FAVELA VIP
+                </div>
+                <p className="text-[11px] text-slate-200">
+                  Tabela oficial de patrocínio. Sua marca aparece pros cria em todo o Brasil — na loja, no feed e no chat.
+                  Escolhe o plano e manda a proposta na hora!
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {([
+                    { name: '🥉 BRONZE', price: 'R$ 197/mês', perks: ['Banner no topo da Loja', '1 destaque no chat por semana', 'Link com seu WhatsApp'] },
+                    { name: '🥈 PRATA', price: 'R$ 497/mês', perks: ['Tudo do Bronze', 'Vitrine de produtos com fotos', 'Menção no feed & stories', 'Link de afiliado próprio'] },
+                    { name: '🥇 OURO 24K', price: 'R$ 997/mês', perks: ['Tudo do Prata', 'ANÚNCIO oficial fixo do app', 'Campanha em vídeo no feed', 'Espaço no Ranking VIP'] },
+                  ]).map((plan) => (
+                    <div key={plan.name} className="rounded-2xl bg-black/50 border border-amber-400/25 p-3 space-y-1.5 flex flex-col">
+                      <div className="text-[11px] font-black text-amber-300">{plan.name}</div>
+                      <div className="text-base font-black lux-gold-text">{plan.price}</div>
+                      <div className="space-y-1 flex-1">
+                        {plan.perks.map((perk) => (
+                          <div key={perk} className="text-[9.5px] text-slate-200">✓ {perk}</div>
+                        ))}
+                      </div>
+                      <a
+                        href={`https://wa.me/?text=${encodeURIComponent(`Fala, MORRO GOLD! Quero o plano ${plan.name} (${plan.price}) de patrocínio pro meu negócio. Me manda os detalhes!`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 w-full py-1.5 rounded-full bg-emerald-400 text-black text-[10px] font-black text-center block"
+                      >
+                        Quero este plano →
+                      </a>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[9px] text-slate-400">
+                  Valores do mídia kit · pagamento via PIX · contrato e nota mediante acordo · atendimento por WhatsApp.
+                </div>
+              </div>
+
               {/* Business Sponsors Pitch */}
               <div className="rounded-3xl bg-gradient-to-br from-emerald-500/15 via-cyan-500/10 to-amber-500/10 border border-emerald-400/40 p-4 space-y-3">
                 <div className="text-xs font-black text-emerald-300 flex items-center gap-1.5">
@@ -822,12 +861,12 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          onOpenBrCreatorShorts(c.shortsQuery, `${c.name} · Memes & Shorts`);
+                          onOpenBrCreatorShorts(c.shortsQuery, `${c.name} · Memes & Vibe`);
                           onClose();
                         }}
                         className="px-2.5 py-1.5 rounded-xl bg-cyan-400/20 hover:bg-cyan-400 hover:text-black text-cyan-200 text-[10px] font-black"
                       >
-                        ▶ Ver Shorts
+                        ▶ Ver Vibe
                       </button>
                       <a
                         href={c.youtubeUrl}

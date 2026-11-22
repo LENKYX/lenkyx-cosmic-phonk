@@ -196,7 +196,6 @@ export const CatalogView: React.FC<Props> = ({
       {/* LUXURY FAVELA VIP COMMAND HEADER BAR */}
       <section className="rounded-3xl cosmic-card-3d px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <LenkyxEdgeLogo size="lg" className="shrink-0" />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="font-display text-sm sm:text-base font-black lux-gold-text truncate">

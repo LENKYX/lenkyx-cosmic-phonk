@@ -20,7 +20,7 @@ export const ToguroPromoBanner: React.FC<Props> = ({
         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-emerald-400 text-black text-[11px] font-black shadow-[0_0_20px_rgba(250,204,21,0.45)] hover:brightness-110 active:scale-95 transition ${className}`}
       >
         <Crown className="w-3.5 h-3.5 shrink-0" />
-        <span>Mansão Maromba · Produtos do Toguro (-30% OFF)</span>
+        <span>Mansão Maromba · Produtos do Toguro (Preços Reais)</span>
         <ArrowRight className="w-3 h-3 shrink-0" />
       </button>
     );
@@ -45,7 +45,7 @@ export const ToguroPromoBanner: React.FC<Props> = ({
               className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
             />
             <span className="absolute bottom-0.5 right-0.5 px-1 rounded bg-emerald-400 text-[8px] font-black text-black">
-              -30%
+              REAL
             </span>
           </div>
           <div className="min-w-0">
@@ -59,7 +59,7 @@ export const ToguroPromoBanner: React.FC<Props> = ({
               🥃 Whisky, Vodka, Gin, Energético & Kit Treino do Toguro
             </div>
             <div className="text-[10px] sm:text-[11px] text-amber-100/80 truncate">
-              Combos originais pro rolê com até 30% OFF na Loja VIP dos Cria
+              Combos originais com preços reais do Mercado Livre, atualizados automaticamente
             </div>
           </div>
         </div>
@@ -91,7 +91,7 @@ export const ToguroPromoBanner: React.FC<Props> = ({
               className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
             />
             <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-emerald-400 text-[8px] font-black text-black">
-              -30% OFF
+              PREÇO REAL
             </span>
           </div>
           <div className="min-w-0 space-y-1">

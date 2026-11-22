@@ -23,7 +23,7 @@ import { getLocalSupporterId } from '../utils/alienCollection';
 interface PixModalProps {
   open: boolean;
   onClose: () => void;
-  initialTab?: 'donate' | 'ranking' | 'config';
+  initialTab?: 'vip' | 'donate' | 'ranking' | 'config';
   settings: AppSettings;
   mode: AppMode;
   liveStats?: LiveStats;
@@ -46,7 +46,7 @@ export const PixModal: React.FC<PixModalProps> = ({
   onSaveSettings,
   onToast,
 }) => {
-  const [tab, setTab] = useState<'donate' | 'ranking' | 'config'>(initialTab);
+  const [tab, setTab] = useState<'vip' | 'donate' | 'ranking' | 'config'>(initialTab);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(10);
   const [customAmount, setCustomAmount] = useState('');
   const [donorName, setDonorName] = useState(() => {
@@ -131,6 +131,69 @@ export const PixModal: React.FC<PixModalProps> = ({
   }, [customAmount, selectedAmount]);
 
   const effectivePixKey = (settings.pixKey || '41651191808').trim();
+
+  // ===== VIP MORRO GOLD · assinatura via PIX (receita recorrente) =====
+  const [vipPlanSel, setVipPlanSel] = useState<'mensal' | 'anual'>('anual');
+  const [vipQrUrl, setVipQrUrl] = useState('');
+  const [vipCopied, setVipCopied] = useState(false);
+  const [vipPaid, setVipPaid] = useState(false);
+  const [vipEmail, setVipEmail] = useState(() => localStorage.getItem('mg_vip_email') || '');
+  const [vipAutoBusy, setVipAutoBusy] = useState(false);
+  const [mpTokenDraft, setMpTokenDraft] = useState(settings.mpAccessToken || '');
+  const [sbUrlDraft, setSbUrlDraft] = useState(settings.supabaseUrl || '');
+  const [sbKeyDraft, setSbKeyDraft] = useState(settings.supabaseAnonKey || '');
+  const vipAmount = vipPlanSel === 'anual' ? 99.9 : 14.9;
+  const vipPayload = useMemo(() => {
+    return generatePixPayload({
+      key: effectivePixKey,
+      name: settings.pixName || 'MORRO GOLD',
+      city: settings.pixCity || 'CAMPO GRANDE',
+      amount: vipAmount,
+      txid: 'VIP' + sessionTxid,
+      description: 'MORRO GOLD VIP',
+    });
+  }, [effectivePixKey, settings.pixName, settings.pixCity, vipAmount, sessionTxid]);
+
+  useEffect(() => {
+    if (!open || tab !== 'vip' || !vipPayload) {
+      setVipQrUrl('');
+      return;
+    }
+    let cancelled = false;
+    void generatePixQrDataUrl(vipPayload).then((url) => {
+      if (!cancelled) setVipQrUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, tab, vipPayload]);
+
+  // Confere no servidor se a assinatura automática (Mercado Pago) já está ativa
+  useEffect(() => {
+    if (!open) return;
+    let ref = 'guest';
+    try {
+      ref = localStorage.getItem('mg_device_id') || 'guest';
+    } catch {
+      /* ignore */
+    }
+    fetch(`/api/payments/vip-status?ref=${encodeURIComponent(ref)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.active && !settings.vipActive) {
+          void onSaveSettings({
+            vipActive: true,
+            vipPlan: d.plan === 'anual' ? 'anual' : 'mensal',
+            vipUntil: d.until,
+          });
+          onToast('👑 VIP ativo na sua conta!');
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const vipActiveNow = Boolean(settings.vipActive && settings.vipUntil && new Date(settings.vipUntil).getTime() > Date.now());
 
   // Discreet description for the bank PIX receipt ("Apoio Social LENKYX")
   const pixPayload = useMemo(() => {
@@ -362,6 +425,16 @@ export const PixModal: React.FC<PixModalProps> = ({
         {/* Navigation Tabs */}
         <div className="px-4 pt-3 flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           <button
+            onClick={() => setTab('vip')}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-black whitespace-nowrap transition ${
+              tab === 'vip'
+                ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow'
+                : 'bg-white/[0.06] text-slate-200 hover:bg-white/15'
+            }`}
+          >
+            👑 Seja VIP
+          </button>
+          <button
             onClick={() => setTab('donate')}
             className={`px-3 py-1.5 rounded-full text-[11px] font-black whitespace-nowrap transition ${
               tab === 'donate'
@@ -396,6 +469,162 @@ export const PixModal: React.FC<PixModalProps> = ({
         </div>
 
         <div className="p-4 sm:p-5 space-y-4 max-h-[78dvh] overflow-y-auto">
+          {tab === 'vip' && (
+            <div className="space-y-3.5">
+              {vipActiveNow ? (
+                <div className="rounded-2xl bg-gradient-to-r from-amber-400/20 via-yellow-500/10 to-black border border-amber-400/50 p-4 space-y-1.5">
+                  <div className="text-sm font-black lux-gold-text">👑 VOCÊ É DA REALEZA · VIP MORRO GOLD</div>
+                  <div className="text-[11px] text-amber-100">
+                    Plano {settings.vipPlan === 'anual' ? 'Anual' : 'Mensal'} ativo até{' '}
+                    {settings.vipUntil ? new Date(settings.vipUntil).toLocaleDateString('pt-BR') : ''}.
+                  </div>
+                  <div className="text-[10px] text-slate-300">
+                    Zero anúncios · selo dourado · suporte prioritário · sorteios VIP. Valeu por fortalecer o MORRO GOLD! 💛
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-2xl bg-gradient-to-br from-amber-400/20 via-yellow-500/10 to-black border border-amber-400/50 p-3.5 space-y-1.5">
+                    <div className="text-xs font-black text-amber-200">👑 SEJA VIP MORRO GOLD</div>
+                    <p className="text-[11px] text-slate-200">
+                      Entra pra realeza da favela VIP: sem anúncios, selo dourado, suporte prioritário e participação nos
+                      sorteios. Pagamento único no PIX, sem cartão e sem burocracia.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      ['mensal', 'MENSAL', 'R$ 14,90', 'por mês', 'Cancele quando quiser'],
+                      ['anual', 'ANUAL', 'R$ 99,90', 'por ano', 'Economize 44% (R$ 8,32/mês)'],
+                    ] as const).map(([id, name, price, per, note]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setVipPlanSel(id)}
+                        className={`rounded-2xl p-3 text-left border transition ${
+                          vipPlanSel === id
+                            ? 'border-amber-400 bg-amber-400/15 shadow-[0_0_18px_rgba(251,191,36,0.25)]'
+                            : 'border-white/10 bg-white/[0.04]'
+                        }`}
+                      >
+                        <div className="text-[9px] font-black tracking-[0.2em] text-amber-300">{name}</div>
+                        <div className="text-lg font-black lux-gold-text leading-tight">{price}</div>
+                        <div className="text-[9px] text-slate-300">{per}</div>
+                        <div className="text-[9px] text-emerald-300 font-bold mt-1">{note}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="rounded-2xl bg-black/40 border border-white/10 p-3 grid grid-cols-2 gap-1.5 text-[10px] text-slate-100">
+                    {['🚫 Zero anúncios no app', '👑 Selo VIP dourado', '⚡ Acesso antecipado', '🎵 Música offline ilimitada', '🎟️ Sorteios & rankings VIP', '🤝 Suporte prioritário'].map((b) => (
+                      <div key={b}>{b}</div>
+                    ))}
+                  </div>
+
+                  {Boolean(settings.mpAccessToken) && (
+                    <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/40 p-3 space-y-2">
+                      <div className="text-[10px] font-black text-emerald-300">
+                        💳 ASSINATURA AUTOMÁTICA · CARTÃO OU PIX · RENOVA SOZINHO
+                      </div>
+                      <input
+                        value={vipEmail}
+                        onChange={(e) => setVipEmail(e.target.value)}
+                        placeholder="Seu e-mail pra receber o comprovante"
+                        className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-xs text-white placeholder-slate-400"
+                      />
+                      <button
+                        type="button"
+                        disabled={vipAutoBusy || !vipEmail.trim()}
+                        onClick={async () => {
+                          setVipAutoBusy(true);
+                          try {
+                            localStorage.setItem('mg_vip_email', vipEmail.trim());
+                            let ref = 'guest';
+                            try {
+                              ref = localStorage.getItem('mg_device_id') || 'guest';
+                            } catch {
+                              /* ignore */
+                            }
+                            const r = await fetch('/api/payments/preapproval', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ plan: vipPlanSel, amount: vipAmount, email: vipEmail.trim(), ref }),
+                            });
+                            const d = await r.json();
+                            if (d?.init_point) {
+                              window.location.href = d.init_point;
+                              return;
+                            }
+                            onToast('⚠️ Não deu pra abrir a cobrança automática — use o PIX manual abaixo.');
+                          } catch {
+                            onToast('⚠️ Erro ao contactar o Mercado Pago.');
+                          }
+                          setVipAutoBusy(false);
+                        }}
+                        className="w-full py-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-xs font-black disabled:opacity-50"
+                      >
+                        {vipAutoBusy ? 'Abrindo...' : '💳 Assinar agora (renova sozinho)'}
+                      </button>
+                      <div className="text-[8px] text-slate-400">
+                        Processado pelo Mercado Pago · cancele quando quiser · o VIP ativa sozinho após o pagamento.
+                      </div>
+                    </div>
+                  )}
+                  <div className="rounded-2xl bg-white/[0.04] border border-amber-400/30 p-3 space-y-2">
+                    <div className="text-[10px] font-black text-amber-200">
+                      PIX Copia e Cola · {vipPlanSel === 'anual' ? 'R$ 99,90/ano' : 'R$ 14,90/mês'}
+                    </div>
+                    <div className="flex gap-2">
+                      {vipQrUrl ? (
+                        <img src={vipQrUrl} alt="QR PIX VIP" className="w-24 h-24 rounded-xl bg-white p-1" />
+                      ) : (
+                        <div className="w-24 h-24 rounded-xl bg-white/10 animate-pulse" />
+                      )}
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="text-[9px] text-slate-300 break-all line-clamp-3">{vipPayload}</div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(vipPayload);
+                            } catch {
+                              /* ignore */
+                            }
+                            setVipCopied(true);
+                            onToast('📋 Código PIX copiado!');
+                            window.setTimeout(() => setVipCopied(false), 2500);
+                          }}
+                          className="w-full py-2 rounded-full lux-btn-gold text-[11px] font-black"
+                        >
+                          {vipCopied ? '✓ Copiado!' : '📋 Copiar código PIX'}
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void onSaveSettings({
+                          vipActive: true,
+                          vipPlan: vipPlanSel,
+                          vipUntil: new Date(Date.now() + (vipPlanSel === 'anual' ? 365 : 30) * 86400000).toISOString(),
+                        });
+                        onToast('👑 BEM-VINDO À REALEZA! Seu VIP MORRO GOLD está ativo!');
+                        setVipPaid(true);
+                      }}
+                      className="w-full py-2.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-black text-xs font-black"
+                    >
+                      ✅ Já paguei — ativar meu VIP
+                    </button>
+                    {vipPaid && <div className="text-[9px] text-emerald-300">Pagamento registrado! Seu VIP já está valendo. 💛</div>}
+                    <div className="text-[8px] text-slate-400 leading-relaxed">
+                      Após o PIX, toque em ativar — o comprovante fica registrado no app (aba Ranking & Apoio). Renovação pelo
+                      mesmo código quando o plano vencer.
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {tab === 'donate' && (
             <>
               {/* Real-Time Daily PIX Goal Progress Card */}
@@ -715,6 +944,47 @@ export const PixModal: React.FC<PixModalProps> = ({
           {/* CREATOR PIX CONFIG & REAL PAYMENT VERIFICATION QUEUE */}
           {tab === 'config' && mode === 'creator' && (
             <div className="space-y-4">
+              {/* COBRANÇA AUTOMÁTICA + NUVEM */}
+              <div className="rounded-2xl bg-cyan-500/10 border border-cyan-400/35 p-3 space-y-2.5">
+                <div className="text-xs font-black text-cyan-200">
+                  💳 Cobrança Automática (Mercado Pago) · ☁️ Nuvem (Supabase)
+                </div>
+                <p className="text-[10px] text-slate-300">
+                  Cole as credenciais das suas contas. O passo a passo está no arquivo GUIA-CONFIGURACAO-PAGAMENTOS-NUVEM.md.
+                </p>
+                <input
+                  value={mpTokenDraft}
+                  onChange={(e) => setMpTokenDraft(e.target.value)}
+                  placeholder="Mercado Pago · Access Token (APP_USR-...)"
+                  className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-xs text-white placeholder-slate-400"
+                />
+                <input
+                  value={sbUrlDraft}
+                  onChange={(e) => setSbUrlDraft(e.target.value)}
+                  placeholder="Supabase · Project URL (https://xxxx.supabase.co)"
+                  className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-xs text-white placeholder-slate-400"
+                />
+                <input
+                  value={sbKeyDraft}
+                  onChange={(e) => setSbKeyDraft(e.target.value)}
+                  placeholder="Supabase · anon public key"
+                  className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-xs text-white placeholder-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await onSaveSettings({
+                      mpAccessToken: mpTokenDraft.trim(),
+                      supabaseUrl: sbUrlDraft.trim(),
+                      supabaseAnonKey: sbKeyDraft.trim(),
+                    });
+                    onToast('💳☁️ Credenciais salvas! Cobrança automática e nuvem liberadas.');
+                  }}
+                  className="w-full py-2 rounded-full lux-btn-gold text-xs font-black"
+                >
+                  Salvar credenciais
+                </button>
+              </div>
               <div className="rounded-2xl bg-amber-500/10 border border-amber-400/35 p-3 space-y-2.5">
                 <div className="text-xs font-black text-amber-300 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">

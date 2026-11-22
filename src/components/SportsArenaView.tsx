@@ -6,6 +6,7 @@ import {
   Search,
   RefreshCw,
   X,
+  ArrowLeft,
   Maximize2,
   Minimize2,
   SkipBack,
@@ -265,6 +266,26 @@ export const SportsArenaView: React.FC<Props> = ({
           {/* Arena Player Top Bar */}
           <div className="px-3 sm:px-4 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-[#070815] shrink-0">
             <div className="flex items-center gap-2 min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (document.fullscreenElement) {
+                    void document.exitFullscreen().catch(() => {});
+                    setExpandedView(false);
+                    return;
+                  }
+                  if (expandedView) {
+                    setExpandedView(false);
+                    return;
+                  }
+                  setActiveStream(null);
+                }}
+                className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-black flex items-center gap-1 shrink-0"
+                title={expandedView ? 'Voltar ao tamanho normal sem sair do vídeo' : 'Voltar'}
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Voltar</span>
+              </button>
               <span
                 className={`px-2 py-0.5 rounded-full text-[9px] font-black shrink-0 flex items-center gap-1 ${
                   activeStream.isLive ? 'bg-red-600 text-white' : 'bg-emerald-400 text-black'
@@ -360,12 +381,11 @@ export const SportsArenaView: React.FC<Props> = ({
             {activeStream.youtubeVideoId && (
               <iframe
                 key={`${activeStream.id}-${quality}`}
-                src={`https://www.youtube.com/embed/${activeStream.youtubeVideoId}?autoplay=1&rel=0&playsinline=1${
+                src={`https://www.youtube.com/embed/${activeStream.youtubeVideoId}?autoplay=1&rel=0&playsinline=1&fs=0${
                   quality !== 'auto' ? `&vq=${quality}` : ''
                 }&hl=pt-BR`}
                 title={activeStream.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                allowFullScreen
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 className="w-full h-full border-0"
               />
             )}

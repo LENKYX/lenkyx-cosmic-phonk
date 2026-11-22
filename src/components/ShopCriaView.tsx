@@ -17,9 +17,20 @@ import {
   BadgeCheck,
   Settings,
   Radio,
+  Heart,
+  User,
+  MapPin,
+  Lock,
+  Globe,
+  LifeBuoy,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { AppMode, AppSettings } from '../types';
 import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
+import { SHOP_PHOTOS } from '../data/shopPhotos';
+import { cloudGet, cloudGoogleUrl, cloudSessionFromHash, cloudSignIn, cloudSignOut, cloudSignUp, cloudUpsert, getCloudSession, type CloudSession } from '../utils/cloudSync';
 import { registerSale } from '../utils/commissionApi';
 
 export type ShopCat =
@@ -34,7 +45,8 @@ export type ShopCat =
   | 'narguile'
   | 'motos'
   | 'carros'
-  | 'eletronicos';
+  | 'eletronicos'
+  | 'casa';
 
 interface CriaProduct {
   id: string;
@@ -47,8 +59,18 @@ interface CriaProduct {
   emoji: string;
   specs: string;
   searchQuery: string;
+  imageUrl?: string;
+  priceOtherLabel?: string;
+  originalPriceBrl?: number;
+  discountPct?: number;
+  seller?: string;
+  verifiedPrice?: boolean;
   commissionEst: string;
   accent: string;
+  photos?: string[];
+  buyUrl?: string;
+  hot?: boolean;
+  featured?: boolean;
 }
 
 interface LivePublishedItem {
@@ -568,44 +590,82 @@ const CRIA_CATALOG: CriaProduct[] = [
   // 8. PATROCINADOR OFICIAL: MANSÃO MAROMBA (TOGURO) & BEBIDAS DO ROLÊ
   {
     id: 'shop-mansao-maromba-combo',
-    name: 'Combo Oficial Mansão Maromba (Whisky, Vodka & Energético) — Toguro',
+    name: 'Drink Mansão Maromba Vodka Combo 6 Unidades',
     brand: 'Mansão Maromba · Toguro',
     category: 'mansao',
-    priceBrl: 149,
-    priceLabel: 'R$ 149 (Combo)',
+    priceBrl: 169.9,
+    priceLabel: 'R$ 169,90 no Pix',
+    priceOtherLabel: 'ou R$ 179,90 em outros meios',
+    originalPriceBrl: 179.9,
+    discountPct: 5,
+    seller: 'TONELLI SUPERMERCADOS · Loja Oficial',
+    verifiedPrice: true,
+    imageUrl: '/api/shop/img-proxy?url=https%3A%2F%2Fhttp2.mlstatic.com%2FD_Q_NP_2X_894325-MLB107510520635_022026-E--vodka-combo-sabor-energetico-mansao-maromba-unidade-1l.webp',
     badge: '🏆 PATROCINADOR OFICIAL',
     emoji: '🥃',
-    specs: 'Bebida oficial do Toguro & Mansão Maromba · Sabores Tiger, Maçã Verde, Melancia e Whisky',
+    specs: 'Combo com 6 unidades · bebida oficial do Toguro & Mansão Maromba · preço real verificado no Mercado Livre',
     searchQuery: 'Bebida Mansao Maromba Toguro combo',
     commissionEst: '🏆 Destaque Oficial',
     accent: 'from-amber-400/40 to-yellow-600/25',
   },
   {
     id: 'shop-mansao-maromba-pack',
-    name: 'Pack Mansão Maromba Ice, Gin & Energético Gelado (Fardo Rolê)',
+    name: 'Mansão Maromba Whisky + Maçã Verde 1L (Drink Pronto)',
     brand: 'Mansão Maromba · Toguro',
     category: 'mansao',
-    priceBrl: 119,
-    priceLabel: 'R$ 119 (Fardo)',
-    badge: '🔥 TOP DO ROLÊ',
+    priceBrl: 12.79,
+    priceLabel: 'R$ 12,79 no Pix',
+    priceOtherLabel: 'ou R$ 15,99 em outros meios',
+    originalPriceBrl: 25,
+    discountPct: 48,
+    seller: 'FULL · SUPER',
+    verifiedPrice: true,
+    imageUrl: '/api/shop/img-proxy?url=https%3A%2F%2Fdistribuidoraourofino.com.br%2Fwp-content%2Fuploads%2F2025%2F09%2FWhisky-Combo-Maca-Verde-Mansao-Maromba-1L.jpg',
+    badge: '🔥 OFERTA REAL DO DIA',
     emoji: '🧊',
-    specs: 'Fardo oficial pronto pra gelar e mandar no baile · Sabor marcante e zero erro',
-    searchQuery: 'Mansao Maromba bebida energetico fardo',
+    specs: 'Drink pronto Whisky + Maçã Verde 1 litro · preço real do Mercado Livre com frete grátis FULL',
+    searchQuery: 'Mansao Maromba Whisky Maca Verde 1L',
     commissionEst: '🏆 Patrocinador VIP',
     accent: 'from-yellow-400/35 to-amber-500/25',
   },
   {
     id: 'shop-mansao-maromba-kit-treino',
-    name: 'Kit Oficial Mansão Maromba: Regata/Camisa + Coqueteleira & Whey',
+    name: 'Drink Do Job Mansão Maromba Sabor Beijo Na Noite 1L',
     brand: 'Mansão Maromba · Toguro',
     category: 'mansao',
-    priceBrl: 189,
-    priceLabel: 'R$ 189',
-    badge: '💪 SHAPE DOS CRIA',
-    emoji: '🏋️',
-    specs: 'Estilo Mansão Maromba de verdade · Peita + Suplemento + Shakeira oficial',
-    searchQuery: 'Camiseta Suplemento Mansao Maromba Toguro',
-    commissionEst: '10% a 15% comissão',
+    priceBrl: 12.79,
+    priceLabel: 'R$ 12,79 no Pix',
+    priceOtherLabel: 'ou R$ 15,99 em outros meios',
+    originalPriceBrl: 25,
+    discountPct: 48,
+    seller: 'FULL · SUPER',
+    verifiedPrice: true,
+    imageUrl: '/api/shop/img-proxy?url=https%3A%2F%2Fwww.pontocertoconveniencia.com.br%2Fmedia%2Fcatalog%2Fproduct%2Fcache%2F1%2Fimage%2F9df78eab33525d08d6e5fb8d27136e95%2Fm%2Fo%2Fmorango19__1.jpg',
+    badge: '💖 OFERTA IMPERDÍVEL REAL',
+    emoji: '🍹',
+    specs: 'Drink Do Job sabor Beijo Na Noite 1 litro · preço real verificado no Mercado Livre',
+    searchQuery: 'Drink Do Job Mansao Maromba Beijo Na Noite',
+    commissionEst: '🏆 Comissão de afiliado',
+    accent: 'from-pink-500/30 to-amber-500/20',
+  },
+  {
+    id: 'shop-mansao-maromba-kit6',
+    name: 'Kit 6 Unid Mansão Maromba Drink (Combo Fardo)',
+    brand: 'Mansão Maromba · Toguro',
+    category: 'mansao',
+    priceBrl: 183.17,
+    priceLabel: 'R$ 183,17 no Pix',
+    priceOtherLabel: 'ou 6x R$ 32,20 sem juros',
+    originalPriceBrl: 193.17,
+    discountPct: 5,
+    seller: 'Mercado Livre · Frete grátis',
+    verifiedPrice: true,
+    imageUrl: '/api/shop/img-proxy?url=https%3A%2F%2Fhttp2.mlstatic.com%2FD_NQ_NP_647101-MLB79911847509_102024-O.webp',
+    badge: '📦 KIT 6 OFICIAL',
+    emoji: '📦',
+    specs: 'Kit com 6 unidades Mansão Maromba · preço real verificado · parcelável sem juros',
+    searchQuery: 'Kit 6 Unid Maromba Mansao Drink',
+    commissionEst: '🏆 Comissão de afiliado',
     accent: 'from-amber-500/30 to-emerald-500/20',
   },
   {
@@ -735,7 +795,7 @@ const CRIA_CATALOG: CriaProduct[] = [
     priceLabel: 'PS5 R$ 3.790 / iPhone R$ 8.490',
     badge: '📱 TECH DOS CRIA',
     emoji: '📱',
-    specs: 'Câmera cinema pros Reels + PS5 4K pra jogar ouvindo o som do app',
+    specs: 'Câmera cinema pro Vibe + PS5 4K pra jogar ouvindo o som do app',
     searchQuery: 'iPhone 16 Pro Max PlayStation 5 Slim Brasil',
     commissionEst: '5% a 10% comissão',
     accent: 'from-cyan-400/30 to-purple-500/20',
@@ -756,6 +816,220 @@ const CATEGORIES: { id: ShopCat; label: string; liveQuery: string }[] = [
   { id: 'carros', label: '🚘 Carros & Naves', liveQuery: 'BMW 320i Golf GTI Porsche 911 a venda' },
   { id: 'eletronicos', label: '🔊 Som JBL & Tech', liveQuery: 'JBL Boombox 3 iPhone 16 Pro Max PS5' },
 ];
+
+
+export type ShopSection = 'all' | 'destaques' | 'hot' | 'promo' | 'casa' | 'moda' | 'tech' | 'bebidas';
+
+const SHOP_SECTIONS: { id: ShopSection; label: string }[] = [
+  { id: 'all', label: '🛍️ Tudo' },
+  { id: 'destaques', label: '⭐ Destaques' },
+  { id: 'hot', label: '🔥 Mais Vendidos' },
+  { id: 'promo', label: '🏷️ Promoções' },
+  { id: 'casa', label: '🏠 Eletrodomésticos' },
+  { id: 'moda', label: '👕 Moda & Grife' },
+  { id: 'tech', label: '📱 Eletrônicos' },
+  { id: 'bebidas', label: '🥃 Bebidas' },
+];
+
+const SECTION_CATS: Record<ShopSection, ShopCat[] | null> = {
+  all: null,
+  destaques: null,
+  hot: null,
+  promo: null,
+  casa: ['casa'],
+  moda: ['roupas', 'tenis', 'oculos', 'relogios', 'correntes', 'perfumes'],
+  tech: ['eletronicos'],
+  bebidas: ['mansao', 'narguile'],
+};
+
+const CATEGORY_LABEL: Record<string, string> = {
+  roupas: 'Roupas & Grife',
+  tenis: 'Tênis',
+  oculos: 'Óculos',
+  relogios: 'Relógios',
+  correntes: 'Correntes & Ouro',
+  perfumes: 'Perfumes',
+  narguile: 'Narguile',
+  motos: 'Motos',
+  carros: 'Carros',
+  eletronicos: 'Eletrônicos',
+  casa: 'Eletrodomésticos',
+  mansao: 'Bebidas',
+};
+
+const HOT_IDS = new Set([
+  'shop-mansao-maromba-combo',
+  'shop-mansao-maromba-pack',
+  'shop-mansao-maromba-kit-treino',
+  'shop-mansao-maromba-kit6',
+  'shop-lacoste-polo',
+  'shop-juliet',
+  'shop-invicta-bolt',
+  'shop-corrente-grumet',
+  'shop-nike-tn',
+  'shop-jbl-boombox',
+]);
+
+const FEATURED_IDS = new Set([
+  'shop-lacoste-polo',
+  'shop-juliet',
+  'shop-invicta-bolt',
+  'shop-corrente-grumet',
+  'shop-hornet',
+  'shop-porsche',
+  'shop-nike-tn',
+  'shop-iphone-ps5',
+]);
+
+// Produtos revendedores (Shopee) — compra vai direto pra Shopee com o link do vendedor.
+const SHOPEE_CRIA: CriaProduct[] = [
+  {
+    id: 'shop-shopee-tenis',
+    name: 'Tênis Esportivo Premium Branco & Dourado',
+    brand: 'Shopee Grife',
+    category: 'tenis',
+    priceBrl: 0,
+    priceLabel: 'Preço na Shopee',
+    badge: '👟 MODA · REVENDEDOR',
+    emoji: '👟',
+    specs: 'Modelo esportivo premium, leve e confortável · compra com desconto no link do vendedor parceiro · frete grátis conforme a loja.',
+    searchQuery: 'tenis esportivo branco dourado',
+    photos: SHOP_PHOTOS['shop-shopee-tenis'] || [],
+    buyUrl: 'https://shopee.com.br/search?keyword=tenis%20esportivo%20branco%20dourado',
+    hot: true,
+    featured: true,
+    verifiedPrice: false,
+    seller: 'Shopee · vendedor parceiro',
+    commissionEst: '💰 Comissão ativa',
+    accent: 'from-amber-200 to-yellow-400',
+  },
+  {
+    id: 'shop-shopee-oculos',
+    name: 'Óculos de Sol Aviador Dourado Luxo',
+    brand: 'Shopee Grife',
+    category: 'oculos',
+    priceBrl: 0,
+    priceLabel: 'Preço na Shopee',
+    badge: '🕶️ GRIFE · REVENDEDOR',
+    emoji: '🕶️',
+    specs: 'Armação aviador dourada com lentes degradê · inclui estojo rígido · compra com desconto no link do vendedor parceiro.',
+    searchQuery: 'oculos de sol aviador dourado',
+    photos: SHOP_PHOTOS['shop-shopee-oculos'] || [],
+    buyUrl: 'https://shopee.com.br/search?keyword=oculos%20aviador%20dourado',
+    hot: true,
+    featured: true,
+    verifiedPrice: false,
+    seller: 'Shopee · vendedor parceiro',
+    commissionEst: '💰 Comissão ativa',
+    accent: 'from-yellow-300 to-amber-500',
+  },
+  {
+    id: 'shop-shopee-fone',
+    name: 'Fone Bluetooth com Case Carregador',
+    brand: 'Shopee Tech',
+    category: 'eletronicos',
+    priceBrl: 0,
+    priceLabel: 'Preço na Shopee',
+    badge: '🎵 TECH · REVENDEDOR',
+    emoji: '🎧',
+    specs: 'Fone sem fio com estojo carregador · som potente e bateria de longa duração · compra com desconto no link do vendedor parceiro.',
+    searchQuery: 'fone bluetooth case carregador',
+    photos: SHOP_PHOTOS['shop-shopee-fone'] || [],
+    buyUrl: 'https://shopee.com.br/search?keyword=fone%20bluetooth%20case%20carregador',
+    hot: true,
+    featured: true,
+    verifiedPrice: false,
+    seller: 'Shopee · vendedor parceiro',
+    commissionEst: '💰 Comissão ativa',
+    accent: 'from-slate-500 to-slate-700',
+  },
+  {
+    id: 'shop-shopee-smartwatch',
+    name: 'Smartwatch Esportivo AMOLED Preto',
+    brand: 'Shopee Tech',
+    category: 'eletronicos',
+    priceBrl: 0,
+    priceLabel: 'Preço na Shopee',
+    badge: '⌚ TECH · REVENDEDOR',
+    emoji: '⌚',
+    specs: 'Tela AMOLED · monitor cardíaco, esportes e notificações · pulseira confortável · compra com desconto no link do vendedor parceiro.',
+    searchQuery: 'smartwatch esportivo amoled preto',
+    photos: SHOP_PHOTOS['shop-shopee-smartwatch'] || [],
+    buyUrl: 'https://shopee.com.br/search?keyword=smartwatch%20amoled%20preto',
+    hot: true,
+    featured: false,
+    verifiedPrice: false,
+    seller: 'Shopee · vendedor parceiro',
+    commissionEst: '💰 Comissão ativa',
+    accent: 'from-zinc-600 to-zinc-800',
+  },
+  {
+    id: 'shop-shopee-airfryer',
+    name: 'Air Fryer Digital 5L Painel Touch',
+    brand: 'Shopee Casa',
+    category: 'casa',
+    priceBrl: 0,
+    priceLabel: 'Preço na Shopee',
+    badge: '🏠 CASA · REVENDEDOR',
+    emoji: '🍟',
+    specs: 'Fritadeira elétrica sem óleo · painel digital touch · 5 litros pra família · compra com desconto no link do vendedor parceiro.',
+    searchQuery: 'air fryer digital 5l touch',
+    photos: SHOP_PHOTOS['shop-shopee-airfryer'] || [],
+    buyUrl: 'https://shopee.com.br/search?keyword=air%20fryer%20digital%205l',
+    hot: true,
+    featured: false,
+    verifiedPrice: false,
+    seller: 'Shopee · vendedor parceiro',
+    commissionEst: '💰 Comissão ativa',
+    accent: 'from-neutral-700 to-black',
+  },
+  {
+    id: 'shop-shopee-panelas',
+    name: 'Jogo de Panelas Antiaderente Premium',
+    brand: 'Shopee Casa',
+    category: 'casa',
+    priceBrl: 0,
+    priceLabel: 'Preço na Shopee',
+    badge: '🍳 CASA · REVENDEDOR',
+    emoji: '🍳',
+    specs: 'Conjunto antiaderente com tampas de vidro · revestimento de alta durabilidade · compra com desconto no link do vendedor parceiro.',
+    searchQuery: 'jogo de panelas antiaderente',
+    photos: SHOP_PHOTOS['shop-shopee-panelas'] || [],
+    buyUrl: 'https://shopee.com.br/search?keyword=jogo%20de%20panelas%20antiaderente',
+    hot: false,
+    featured: false,
+    verifiedPrice: false,
+    seller: 'Shopee · vendedor parceiro',
+    commissionEst: '💰 Comissão ativa',
+    accent: 'from-stone-600 to-stone-800',
+  },
+];
+
+const HELP_FAQ = [
+  {
+    q: '🛍️ Como funciona a compra?',
+    a: 'Você escolhe o produto, clica em Comprar e finaliza direto na loja parceira (Shopee, Mercado Livre ou Amazon). Quem envia é a loja, com o produto em estoque — tudo na lei.',
+  },
+  {
+    q: '💰 Como recebo desconto?',
+    a: 'Comprando pelo link do vendedor parceiro dentro do app, o desconto do cupom aparece no checkout da loja. Cada compra ainda gera comissão pro app.',
+  },
+  {
+    q: '📦 Qual o prazo de entrega?',
+    a: 'O prazo é o da loja parceira, calculado no checkout pelo seu CEP. Frete grátis quando a loja oferece.',
+  },
+  {
+    q: '🔄 Posso trocar ou devolver?',
+    a: 'Sim — troca e devolução são feitas pela loja parceira dentro do prazo legal (7 dias de arrependimento, Código de Defesa do Consumidor).',
+  },
+  {
+    q: '🤝 Como virar revendedor?',
+    a: 'Ative suas Comissões no botão no topo: cadastre-se grátis nos programas de afiliados e cada link passa a gerar comissão pra você.',
+  },
+];
+
+const INPUT_CLS =
+  'w-full px-3.5 py-2 rounded-2xl bg-black/50 border border-white/10 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-300';
 
 interface Props {
   settings: AppSettings;
@@ -855,46 +1129,121 @@ export const ShopCriaView: React.FC<Props> = ({
     return () => window.clearTimeout(t);
   }, [cat, query]);
 
+  const [liveById, setLiveById] = useState<Record<string, Partial<CriaProduct>>>({});
+  const [syncInfo, setSyncInfo] = useState<{ updatedAt: string; syncStatus: string } | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [tab, setTab] = useState<'loja' | 'conta'>('loja');
+  const [section, setSection] = useState<ShopSection>('all');
+  const [detailItem, setDetailItem] = useState<CriaProduct | null>(null);
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const [favIds, setFavIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('mg_shop_favs') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [profileName, setProfileName] = useState(() => localStorage.getItem('mg_shop_profile_name') || '');
+  const [profilePhone, setProfilePhone] = useState(() => localStorage.getItem('mg_shop_profile_phone') || '');
+  const [addr, setAddr] = useState<{ rua: string; num: string; bairro: string; cidade: string; cep: string }>(() => {
+    try {
+      return { rua: '', num: '', bairro: '', cidade: '', cep: '', ...JSON.parse(localStorage.getItem('mg_shop_addr') || '{}') };
+    } catch {
+      return { rua: '', num: '', bairro: '', cidade: '', cep: '' };
+    }
+  });
+  const [privacy, setPrivacy] = useState<Record<string, boolean>>(() => {
+    try {
+      return { showName: true, promos: true, history: true, ...JSON.parse(localStorage.getItem('mg_shop_privacy') || '{}') };
+    } catch {
+      return { showName: true, promos: true, history: true };
+    }
+  });
+  const [langPref, setLangPref] = useState(() => localStorage.getItem('mg_shop_lang') || 'pt-BR');
+  const [cartReady, setCartReady] = useState(false);
+  const deviceId = useMemo(() => {
+    try {
+      let d = localStorage.getItem('mg_device_id');
+      if (!d) {
+        d = 'dev-' + Math.random().toString(36).slice(2, 12);
+        localStorage.setItem('mg_device_id', d);
+      }
+      return d;
+    } catch {
+      return 'guest';
+    }
+  }, []);
+
   const getPromoInfo = (item: CriaProduct): { discountPct: number; originalBrl: number } | null => {
-    if (item.category === 'motos' || item.category === 'carros') return null;
-    const pctMap: Record<string, number> = {
-      'shop-mansao-maromba-combo': 28,
-      'shop-mansao-maromba-pack': 25,
-      'shop-mansao-maromba-kit-treino': 30,
-      'shop-bebidas-combo-buchanans': 20,
-      'shop-perfume-1million': 24,
-      'shop-perfume-sauvage-bleu': 18,
-      'shop-perfume-212-jpg': 27,
-      'shop-narguile-triton': 22,
-      'shop-essencias-narguile': 32,
-      'shop-carvao-rosh-narguile': 35,
-      'shop-lacoste-polo': 25,
-      'shop-lacoste-corta': 20,
-      'shop-oakley-corta': 28,
-      'shop-nike-tech': 22,
-      'shop-minas-biquini-vip': 34,
-      'shop-minas-baile-cargo': 30,
-      'shop-jbl-boombox': 20,
-    };
-    let hash = 0;
-    for (let i = 0; i < item.id.length; i++) hash = (hash * 31 + item.id.charCodeAt(i)) % 100;
-    const discountPct = pctMap[item.id] ?? (hash % 3 === 0 ? 18 : hash % 3 === 1 ? 25 : 30);
-    const originalBrl = Math.round(item.priceBrl / (1 - discountPct / 100));
-    return { discountPct, originalBrl };
+    // SOMENTE desconto real verificado no site parceiro — nada de porcentagem inventada.
+    if (item.discountPct && item.originalPriceBrl && item.originalPriceBrl > item.priceBrl) {
+      return { discountPct: item.discountPct, originalBrl: item.originalPriceBrl };
+    }
+    return null;
   };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return CRIA_CATALOG.filter((p) => {
-      if (cat !== 'all' && p.category !== cat) return false;
-      if (onlyDiscounts && !getPromoInfo(p)) return false;
+    const mergedCatalog = [...CRIA_CATALOG, ...SHOPEE_CRIA].map((p) => (liveById[p.id] ? { ...p, ...liveById[p.id] } : p));
+    return mergedCatalog.filter((p) => {
+      if (section === 'hot' && !(p.hot || HOT_IDS.has(p.id))) return false;
+      if (section === 'destaques' && !(p.featured || FEATURED_IDS.has(p.id))) return false;
+      if (section === 'promo' && !getPromoInfo(p)) return false;
+      const cats = SECTION_CATS[section];
+      if (cats && !cats.includes(p.category)) return false;
       if (!q) return true;
       return `${p.name} ${p.brand} ${p.specs} ${p.badge}`.toLowerCase().includes(q);
     });
-  }, [cat, query, onlyDiscounts]);
+  }, [section, query, liveById]);
+
+  const favItems = useMemo(
+    () => [...CRIA_CATALOG, ...SHOPEE_CRIA].filter((p) => favIds.includes(p.id)),
+    [favIds],
+  );
+
+  const trendItems = useMemo(
+    () => [...CRIA_CATALOG, ...SHOPEE_CRIA].filter((p) => p.hot || p.featured || HOT_IDS.has(p.id)).slice(0, 3),
+    [],
+  );
 
   const totalItems = cart.reduce((acc, c) => acc + c.qty, 0);
   const totalPrice = cart.reduce((acc, c) => acc + c.item.priceBrl * c.qty, 0);
+
+  // ===== LOJA REAL · preços verificados + sincronização automática com a internet =====
+
+  const loadShopCatalog = async () => {
+    try {
+      const r = await fetch('/api/shop/catalog');
+      const d = await r.json();
+      if (Array.isArray(d?.products)) {
+        const map: Record<string, Partial<CriaProduct>> = {};
+        for (const prod of d.products) if (prod?.id) map[prod.id] = prod;
+        setLiveById(map);
+      }
+      if (d?.updatedAt) setSyncInfo({ updatedAt: d.updatedAt, syncStatus: String(d.syncStatus || '') });
+    } catch {
+      // offline: mantém os preços reais embutidos
+    }
+  };
+
+  useEffect(() => {
+    void loadShopCatalog();
+    const t = window.setInterval(() => void loadShopCatalog(), 15 * 60 * 1000);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const runShopSync = async () => {
+    setSyncing(true);
+    try {
+      await fetch('/api/shop/sync', { method: 'POST' });
+    } catch {
+      // ignore
+    }
+    await loadShopCatalog();
+    setSyncing(false);
+    onToast?.('🌐 Preços sincronizados com a internet!');
+  };
 
   const buildStoreUrl = (searchQuery: string, store: 'ml' | 'shopee' | 'amazon') => {
     if (store === 'amazon') {
@@ -1085,39 +1434,309 @@ export const ShopCriaView: React.FC<Props> = ({
     }
   };
 
-  return (
-    <div className="space-y-5 pb-36 md:pb-28 cosmic-scene">
-      {/* LUXURY VIP BOUTIQUE HEADER */}
-      <section className="rounded-3xl cosmic-card-3d p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <LenkyxEdgeLogo size="md" className="shrink-0" />
-          <div className="min-w-0">
-            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300 flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-amber-400" /> BOUTIQUE VIP BLACK · IMAGENS REAIS DAS MARCAS 🇧🇷
-            </div>
-            <h1 className="font-display text-base sm:text-xl font-black lux-gold-text truncate">
-              👑 Loja dos Cria VIP · Grife, Ouro, Motos & Naves ({CRIA_CATALOG.length} Kits)
-            </h1>
-            <p className="text-[11px] text-slate-300">
-              Lacoste, Oakley Juliet, Invicta, Ouro 18k, Hornet, S1000RR, BMW, Porsche & JBL com fotos reais e comissão ativa!
-            </p>
-          </div>
-        </div>
+  // ===== helpers da loja reformulada =====
+  const itemPhotos = (item: CriaProduct): string[] => {
+    if (item.photos && item.photos.length) return item.photos;
+    if (item.imageUrl) return [item.imageUrl];
+    return [`/api/shop/photo?q=${encodeURIComponent(item.searchQuery)}`];
+  };
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+  const toggleFav = (id: string) => {
+    setFavIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try {
+        localStorage.setItem('mg_shop_favs', JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  const openDetail = (item: CriaProduct) => {
+    setDetailItem(item);
+    setPhotoIdx(0);
+  };
+
+  const buildBuyUrl = (item: CriaProduct): string => {
+    const raw = item.buyUrl || buildCommissionUrl(item.searchQuery, item.category);
+    try {
+      const u = new URL(raw);
+      if (u.hostname.includes('shopee') && settings.affiliateShopeeId) {
+        const cleanShopee = String(settings.affiliateShopeeId).trim().replace(/^an_/i, '');
+        u.searchParams.set('utm_source', `an_${cleanShopee}`);
+        u.searchParams.set('utm_medium', 'affiliates');
+      }
+      return u.toString();
+    } catch {
+      return raw;
+    }
+  };
+
+  const openBuy = (item: CriaProduct) => {
+    const url = buildBuyUrl(item);
+    void fetch('/api/shop/orders', {
+      method: 'POST',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId: item.id,
+        title: item.name,
+        store: item.buyUrl ? 'Shopee' : 'Loja parceira',
+        url,
+      }),
+    }).catch(() => {});
+    void fetch('/api/shop/track-click', { method: 'POST' }).catch(() => {});
+    window.open(url, '_blank', 'noopener');
+    onToast('🚀 Abrindo a loja parceira com seu link de desconto!');
+    setDetailItem(null);
+  };
+
+  const loginProfile = () => {
+    const n = profileName.trim();
+    if (n.length < 2) {
+      onToast('✏️ Escreve seu nome pra entrar, parça!');
+      return;
+    }
+    try {
+      localStorage.setItem('mg_shop_profile_name', n);
+      localStorage.setItem('mg_shop_profile_phone', profilePhone.trim());
+    } catch {
+      /* ignore */
+    }
+    setProfileName(n);
+    onToast(`👤 Bem-vindo, ${n}! Sacola e tendências ativas.`);
+  };
+
+  const logoutProfile = () => {
+    try {
+      localStorage.removeItem('mg_shop_profile_name');
+      localStorage.removeItem('mg_shop_profile_phone');
+    } catch {
+      /* ignore */
+    }
+    setProfileName('');
+    setProfilePhone('');
+    onToast('👋 Você saiu da conta da loja.');
+  };
+
+  const saveAddr = () => {
+    try {
+      localStorage.setItem('mg_shop_addr', JSON.stringify(addr));
+    } catch {
+      /* ignore */
+    }
+    onToast('📍 Endereço salvo!');
+  };
+
+  const togglePrivacy = (key: string) => {
+    setPrivacy((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem('mg_shop_privacy', JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+
+  const applyLangPref = (code: string) => {
+    setLangPref(code);
+    try {
+      localStorage.setItem('mg_shop_lang', code);
+    } catch {
+      /* ignore */
+    }
+    onToast('🌐 Idioma da loja atualizado!');
+  };
+
+  // ===== CONTA NA NUVEM (Supabase) — login leve e dados em qualquer aparelho =====
+  const [cloudUser, setCloudUser] = useState<CloudSession['user'] | null>(() => getCloudSession()?.user || null);
+  const [cloudEmail, setCloudEmail] = useState('');
+  const [cloudPassword, setCloudPassword] = useState('');
+
+  const cloudPush = () => {
+    const sess = getCloudSession();
+    const url = (settings.supabaseUrl || '').trim();
+    const anon = (settings.supabaseAnonKey || '').trim();
+    if (!sess || !url || !anon) return;
+    void cloudUpsert(url, anon, sess.access_token, 'mg_bags', {
+      user_id: sess.user.id,
+      items: cart.map((c) => ({ id: c.item.id, qty: c.qty })),
+    });
+    void cloudUpsert(url, anon, sess.access_token, 'mg_favs', { user_id: sess.user.id, ids: favIds });
+  };
+
+  const cloudPull = async (sess: CloudSession) => {
+    const url = (settings.supabaseUrl || '').trim();
+    const anon = (settings.supabaseAnonKey || '').trim();
+    if (!url || !anon) return;
+    try {
+      const favRow = await cloudGet(url, anon, sess.access_token, 'mg_favs', sess.user.id);
+      const ids = Array.isArray(favRow?.[0]?.ids) ? favRow[0].ids.filter((x: unknown) => typeof x === 'string') : [];
+      if (ids.length) setFavIds((prev) => Array.from(new Set([...prev, ...ids])));
+      const bagRow = await cloudGet(url, anon, sess.access_token, 'mg_bags', sess.user.id);
+      const wanted = new Map<string, number>();
+      for (const it of bagRow?.[0]?.items || []) if (it?.id) wanted.set(String(it.id), Number(it.qty || 1));
+      if (wanted.size) {
+        setCart((prev) => {
+          const merged = new Map<string, { item: CriaProduct; qty: number }>();
+          for (const c of prev) merged.set(c.item.id, c);
+          for (const p of [...CRIA_CATALOG, ...SHOPEE_CRIA]) {
+            if (wanted.has(p.id) && !merged.has(p.id)) merged.set(p.id, { item: p, qty: Math.max(1, wanted.get(p.id) || 1) });
+          }
+          return Array.from(merged.values());
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    const s = cloudSessionFromHash();
+    if (s?.user) {
+      setCloudUser(s.user);
+      onToast('☁️ Conta na nuvem conectada!');
+      void cloudPull(s);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cloudLogin = async (signUp: boolean) => {
+    const url = (settings.supabaseUrl || '').trim();
+    const anon = (settings.supabaseAnonKey || '').trim();
+    const email = cloudEmail.trim();
+    const password = cloudPassword;
+    if (!url || !anon) return;
+    if (!email || password.length < 6) {
+      onToast('✏️ Preencha e-mail e senha (mínimo 6 caracteres).');
+      return;
+    }
+    const res = signUp ? await cloudSignUp(url, anon, email, password) : await cloudSignIn(url, anon, email, password);
+    if (res.error || !res.session) {
+      onToast(`⚠️ ${res.error || 'Falha na conta na nuvem.'}`);
+      return;
+    }
+    setCloudUser(res.session.user);
+    onToast(signUp ? '☁️ Conta na nuvem criada!' : '☁️ Login na nuvem feito!');
+    void cloudPull(res.session);
+    cloudPush();
+  };
+
+  const cloudGoogle = () => {
+    const url = (settings.supabaseUrl || '').trim();
+    const anon = (settings.supabaseAnonKey || '').trim();
+    if (!url || !anon) return;
+    window.location.href = cloudGoogleUrl(url, anon, window.location.origin + '/');
+  };
+
+  const cloudLogout = () => {
+    cloudSignOut();
+    setCloudUser(null);
+    onToast('☁️ Desconectado da nuvem.');
+  };
+
+  // sacola salva no servidor (sobrevive a troca de aparelho com o mesmo login)
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/shop/bag?device=${encodeURIComponent(deviceId)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive || !Array.isArray(d?.items) || d.items.length === 0) return;
+        const wanted = new Map<string, number>();
+        for (const it of d.items) if (it?.id) wanted.set(String(it.id), Number(it.qty || 1));
+        const restored = [...CRIA_CATALOG, ...SHOPEE_CRIA]
+          .filter((p) => wanted.has(p.id))
+          .map((p) => ({ item: p, qty: Math.max(1, wanted.get(p.id) || 1) }));
+        if (restored.length) setCart(restored);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (alive) setCartReady(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [deviceId]);
+
+  useEffect(() => {
+    if (!cartReady) return;
+    const t = window.setTimeout(() => {
+      void fetch('/api/shop/bag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          device: deviceId,
+          items: cart.map((c) => ({
+            id: c.item.id,
+            name: c.item.name,
+            priceBrl: c.item.priceBrl,
+            qty: c.qty,
+            imageUrl: c.item.imageUrl || (c.item.photos && c.item.photos[0]) || '',
+          })),
+        }),
+      }).catch(() => {});
+      cloudPush();
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [cart, cartReady, deviceId]);
+
+  // aba do menu (ex.: "Tênis") abre a classificacao certa da loja
+  useEffect(() => {
+    if (!initialCategory) return;
+    const map: Record<string, ShopSection> = {
+      mansao: 'bebidas',
+      narguile: 'bebidas',
+      roupas: 'moda',
+      tenis: 'moda',
+      oculos: 'moda',
+      relogios: 'moda',
+      correntes: 'moda',
+      perfumes: 'moda',
+      eletronicos: 'tech',
+      casa: 'casa',
+      motos: 'destaques',
+      carros: 'destaques',
+    };
+    setSection(map[initialCategory] || 'all');
+  }, [initialCategory, categoryNonce]);
+
+  return (
+    <div className="space-y-4 pb-36 md:pb-28 cosmic-scene">
+      {/* BARRA PRINCIPAL — abas Loja | Minha Conta + atalhos únicos */}
+      <section className="rounded-2xl cosmic-card-3d p-2.5 flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 bg-black/40 rounded-full p-1 border border-amber-400/25">
+          <button
+            type="button"
+            onClick={() => setTab('loja')}
+            className={`px-4 py-1.5 rounded-full text-xs font-black transition ${tab === 'loja' ? 'lux-btn-gold' : 'text-slate-200 hover:text-white'}`}
+          >
+            🛍️ Loja
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('conta')}
+            className={`px-4 py-1.5 rounded-full text-xs font-black transition ${tab === 'conta' ? 'lux-btn-gold' : 'text-slate-200 hover:text-white'}`}
+          >
+            👤 Minha Conta
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
+          {settings.vipActive && (
+            <span className="px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-600 text-black text-[10px] font-black">
+              👑 VIP {settings.vipPlan === 'anual' ? 'ANUAL' : 'ATIVO'}
+            </span>
+          )}
           <button
             type="button"
             onClick={() => setAffModalOpen(true)}
-            className={`px-3.5 py-2 rounded-full text-xs font-black flex items-center gap-1.5 transition ${
-              hasAnyAffiliate
-                ? 'lux-btn-obsidian border-emerald-400/50 text-emerald-200'
-                : 'lux-btn-obsidian border-amber-400/50 text-amber-200'
-            }`}
+            className={`px-3.5 py-2 rounded-full text-xs font-black flex items-center gap-1.5 transition ${hasAnyAffiliate ? 'lux-btn-obsidian border-emerald-400/50 text-emerald-200' : 'lux-btn-obsidian border-amber-400/50 text-amber-200'}`}
           >
             <DollarSign className="w-4 h-4 text-emerald-300" />
             <span>{hasAnyAffiliate ? `Comissão Ativa (${affiliateClicks})` : 'Ativar Comissões'}</span>
           </button>
-
           <button
             type="button"
             onClick={() => setCartOpen(true)}
@@ -1134,504 +1753,541 @@ export const ShopCriaView: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* Search + Luxury Category Capsules */}
-      <div className="space-y-2.5">
-        <div className="relative">
-          <Search className="w-4 h-4 text-amber-300 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar marca ou nave: Lacoste, Juliet, Romeo 2, Invicta, Ouro 18k, Hornet, BMW, Porsche, JBL..."
-            className="w-full pl-11 pr-4 py-2.5 rounded-full bg-black/60 border border-amber-400/25 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-300 shadow-[inset_0_1px_4px_rgba(0,0,0,0.6)]"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-          <button
-            type="button"
-            onClick={() => setOnlyDiscounts((v) => !v)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-black whitespace-nowrap shrink-0 border transition ${
-              onlyDiscounts
-                ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-black border-amber-300 shadow-[0_0_16px_rgba(244,63,94,0.45)]'
-                : 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-400/45 text-rose-200'
-            }`}
-          >
-            🏷️ Descontos OFF (-35%)
-          </button>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setCat(c.id)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-black whitespace-nowrap shrink-0 ${
-                cat === c.id ? 'lux-btn-gold' : 'lux-btn-obsidian text-slate-200'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* BANNER PATROCINADOR OFICIAL: MANSÃO MAROMBA · TOGURO */}
-      <section className="rounded-3xl overflow-hidden relative border border-amber-400/50 bg-gradient-to-r from-[#171103] via-[#090a10] to-[#1a0d05] p-4 sm:p-5 shadow-[0_0_32px_rgba(245,200,76,0.22)]">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5 min-w-0">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-black text-[10px] font-black uppercase tracking-[0.18em]">
-              <span>🏆 PATROCINADOR OFICIAL DO APP</span>
-            </div>
-            <h2 className="font-display text-lg sm:text-2xl font-black lux-gold-text">
-              🥃 MANSÃO MAROMBA · TOGURO — COMBOS & BEBIDAS DO ROLÊ
-            </h2>
-            <p className="text-xs text-slate-200/90 max-w-2xl">
-              Destaque oficial pros parças e pras minas: Combo Whisky, Vodka, Gin, Ice & Energético Mansão Maromba com até <span className="text-emerald-300 font-black">30% OFF</span> no rolê!
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setCat('mansao');
-                setQuery('');
-                onToast('🏆 Mostrando produtos oficiais da Mansão Maromba (Toguro)!');
-              }}
-              className="px-4 py-2.5 rounded-full lux-btn-gold text-xs font-black shadow-lg"
-            >
-              🥃 Ver Mansão Maromba
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setCat('narguile');
-                setQuery('');
-                onToast('💨 Mostrando Narguiles & Essências do rolê!');
-              }}
-              className="px-4 py-2.5 rounded-full lux-btn-obsidian border-amber-400/40 text-xs font-black text-amber-200"
-            >
-              💨 Narguiles & Essências
-            </button>
-            {onOpenLiveChat && (
-              <button
-                type="button"
-                onClick={() => onOpenLiveChat('loja', '🛍️ Loja dos Cria · Chat Ao Vivo')}
-                className="px-4 py-2.5 rounded-full bg-gradient-to-r from-rose-600 to-pink-500 text-white text-xs font-black flex items-center gap-1.5 shadow"
-              >
-                <Radio className="w-3.5 h-3.5 animate-pulse" /> Chat da Loja Ao Vivo
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* LOOKBOOK OFICIAL — CRIAS & MINAS PORTANDO OS KITS COMO MODELOS + DESTAQUE ITENS DE LUXO */}
-      <section className="rounded-3xl cosmic-card-3d p-4 sm:p-5 space-y-3.5 border border-amber-400/30">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> LOOKBOOK FAVELA VIP · MODELOS PORTANDO OS KITS
-            </div>
-            <h2 className="font-display text-base sm:text-lg font-black text-white">
-              🔥 Os Crias & As Minas Portando os Kits — Destaque nos Itens de Luxo
-            </h2>
-          </div>
-          <span className="px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/40 text-[10px] font-black text-amber-200">
-            💎 Peças de Luxo com Desconto OFF
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {[
-            {
-              img: '/shop/cria-modelo-kit.jpg',
-              badge: '👑 MODELO CRIA · LAJE',
-              title: 'Kit Patrão Preto & Ouro 24K',
-              luxuryHighlight: '✨ Usando: Corta-Vento Luxo + Juliet Ouro + Correntão 18K + Invicta (-25% OFF)',
-              tags: [
-                { label: '🧥 Roupas Grife', cat: 'roupas' as ShopCat, q: 'Lacoste' },
-                { label: '🕶️ Juliet', cat: 'oculos' as ShopCat, q: 'Juliet' },
-                { label: '🥇 Corrente 18k', cat: 'correntes' as ShopCat, q: 'Ouro' },
-              ],
-            },
-            {
-              img: '/shop/mina-modelo-verao.jpg',
-              badge: '💎 MODELO MINA · VERÃO VIP',
-              title: 'Kit Piscina, Biquíni & Perfume',
-              luxuryHighlight: '✨ Usando: Biquíni Corrente 24K + Óculos Prada + 212 VIP Rosé (-34% OFF)',
-              tags: [
-                { label: '👙 Kit Mina', cat: 'roupas' as ShopCat, q: 'Biquíni' },
-                { label: '🕶️ Óculos', cat: 'oculos' as ShopCat, q: 'Prada' },
-                { label: '🍾 Perfumes', cat: 'perfumes' as ShopCat, q: '212' },
-              ],
-            },
-            {
-              img: '/shop/casal-ostentacao-baile.jpg',
-              badge: '🏍️ CASAL NO BAILE · NAVE',
-              title: 'Kit Casal Ostentação Noturno',
-              luxuryHighlight: '✨ Usando: Bomber + Cargo + Cordão Ice + Hornet / BMW M4 (-22% OFF)',
-              tags: [
-                { label: '💃 Look Baile', cat: 'roupas' as ShopCat, q: 'Cargo' },
-                { label: '🏍️ Motos Grau', cat: 'motos' as ShopCat, q: '' },
-                { label: '🚘 Naves', cat: 'carros' as ShopCat, q: '' },
-              ],
-            },
-            {
-              img: '/shop/role-narguile-bebidas.jpg',
-              badge: '🥃 ROLÊ VIP · MANSÃO MAROMBA',
-              title: 'Camarote Narguile & Bebidas',
-              luxuryHighlight: '✨ Na Mesa: Combo Mansão Maromba + Triton Zip Ouro + 1 Million (-28% OFF)',
-              tags: [
-                { label: '🏆 Mansão Maromba', cat: 'mansao' as ShopCat, q: '' },
-                { label: '💨 Narguiles', cat: 'narguile' as ShopCat, q: '' },
-                { label: '🍾 1 Million', cat: 'perfumes' as ShopCat, q: 'Million' },
-              ],
-            },
-          ].map((look) => (
-            <div
-              key={look.title}
-              className="group rounded-2xl overflow-hidden bg-[#080a12] border border-amber-400/25 hover:border-amber-300/70 transition flex flex-col justify-between shadow-xl"
-            >
-              <div className="relative aspect-[4/4.2] overflow-hidden bg-black">
-                <img
-                  src={look.img}
-                  alt={look.title}
-                  className="w-full h-full object-cover object-top group-hover:scale-105 transition duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#06070c] via-black/20 to-transparent pointer-events-none" />
-                <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/85 backdrop-blur-md border border-amber-400/50 text-[9px] font-black text-amber-200">
-                  {look.badge}
-                </span>
-                <div className="absolute bottom-2 left-2.5 right-2.5 space-y-1">
-                  <div className="font-display text-sm font-black text-white drop-shadow">
-                    {look.title}
-                  </div>
-                  <div className="px-2 py-1 rounded-lg bg-amber-400/20 border border-amber-300/45 text-[10px] font-bold text-amber-100 leading-snug backdrop-blur-sm">
-                    {look.luxuryHighlight}
-                  </div>
-                </div>
-              </div>
-              <div className="p-2.5 flex flex-wrap gap-1.5 bg-[#090b14] border-t border-white/10">
-                {look.tags.map((tg) => (
-                  <button
-                    key={tg.label}
-                    type="button"
-                    onClick={() => {
-                      setCat(tg.cat);
-                      setQuery(tg.q);
-                      onToast(`💎 Mostrando: ${tg.label}`);
-                    }}
-                    className="px-2.5 py-1 rounded-full bg-amber-400/15 hover:bg-amber-400/30 border border-amber-400/40 text-[10px] font-black text-amber-100 transition active:scale-95"
-                  >
-                    {tg.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ESTÚDIOS DE TATUAGEM VIP DOS CRIAS & PARCEIRAS + MELHORES TATUADORES DO BRASIL */}
-      <section className="rounded-3xl cosmic-card-3d p-4 sm:p-5 space-y-4 border border-amber-400/30">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-          <div className="lg:col-span-5 relative aspect-[16/10] rounded-2xl overflow-hidden border border-amber-400/35 shadow-xl">
-            <img
-              src="/shop/estudio-tatuagem-crias.jpg"
-              alt="Estúdio de Tatuagem VIP dos Crias e Parceiras"
-              className="w-full h-full object-cover"
+      {tab === 'loja' ? (
+        <>
+          {/* BUSCA */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-amber-300 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar produto, marca ou modelo..."
+              className="w-full pl-11 pr-4 py-2.5 rounded-full bg-black/60 border border-amber-400/25 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-amber-300 shadow-[inset_0_1px_4px_rgba(0,0,0,0.6)]"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-            <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/85 border border-amber-400/50 text-[9px] font-black text-amber-200">
-              🖋️ ESTÚDIOS VIP · OS MANOS & AS MINAS
-            </span>
-            <div className="absolute bottom-2.5 left-3 right-3 text-xs font-bold text-white">
-              Fechamento de Braço, Realismo, Chicano & Fine Line das Parceiras
-            </div>
           </div>
 
-          <div className="lg:col-span-7 space-y-3">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">
-                🖋️ GUIA OFICIAL DE TATUAGEM DOS CRIA · BRASIL
-              </div>
-              <h2 className="font-display text-base sm:text-xl font-black text-white">
-                Melhores Estúdios & Tatuadores Mais Bravos (Os Manos & As Minas)
-              </h2>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Indicação dos artistas referência no Brasil em Realismo Preto & Cinza, Chicano, Blackwork e Fine Line feminino. Clique para achar o estúdio ou chamar no mapa!
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {[
-                { name: 'Beicinho · Masters Of Tattoo', city: 'Rio de Janeiro (RJ)', style: 'Realismo Preto & Cinza · +150 prêmios', query: 'Masters Of Tattoo Beicinho Rio de Janeiro' },
-                { name: 'Marcus Gullo Tattoo', city: 'Rio de Janeiro (RJ)', style: 'Realismo Pesado & Fechamento dos Cria', query: 'Marcus Gullo tattoo Rio de Janeiro' },
-                { name: 'Wallace Farias & Murilo Oliveira', city: 'São Paulo (SP)', style: 'Black & Grey · Chicano / Lettering', query: 'Wallace Farias tatuador Sao Paulo' },
-                { name: 'Clari Benatti & Rodrigo Soares', city: 'RJ / SP', style: 'Fine Line, Mandala & Ornamental pras Minas', query: 'Clari Benatti Rodrigo Soares tattoo' },
-              ].map((artist) => (
-                <a
-                  key={artist.name}
-                  href={`https://www.google.com/maps/search/${encodeURIComponent(artist.query)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2.5 rounded-2xl bg-black/60 hover:bg-amber-500/10 border border-amber-400/25 hover:border-amber-300/60 transition flex items-center justify-between gap-2"
-                >
-                  <div className="min-w-0">
-                    <div className="text-xs font-black text-amber-200 truncate">{artist.name}</div>
-                    <div className="text-[10px] text-slate-300 truncate">{artist.style} · {artist.city}</div>
-                  </div>
-                  <ExternalLink className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                </a>
-              ))}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <a
-                href="https://www.google.com/maps/search/melhor+estudio+de+tatuagem+perto+de+mim"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 rounded-full lux-btn-gold text-xs font-black flex items-center gap-1.5"
+          {/* CLASSIFICAÇÕES — poucas opções, direto ao ponto */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            {SHOP_SECTIONS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSection(s.id)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-black whitespace-nowrap shrink-0 ${section === s.id ? 'lux-btn-gold' : 'lux-btn-obsidian text-slate-200'}`}
               >
-                📍 Achar Estúdio Perto de Mim
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-              <a
-                href="https://www.instagram.com/explore/tags/tatuagemrealismo/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 rounded-full lux-btn-obsidian text-xs font-bold text-slate-100 flex items-center gap-1.5"
-              >
-                📸 Ver Artes & Referências
-                <ExternalLink className="w-3.5 h-3.5 text-cyan-300" />
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* LIVE PUBLISHED ITEMS STRIP (Proxied Real Photos + Real Store Links + Affiliate Commission) */}
-      <section className="rounded-3xl cosmic-card-3d p-4 space-y-3 border border-amber-400/25">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300 flex items-center gap-1.5">
-              <BadgeCheck className="w-3.5 h-3.5 text-emerald-300" /> VITRINE AO VIVO DO BRASIL · FOTOS REAIS E COMISSÃO
-            </div>
-            <h2 className="font-display text-sm sm:text-base font-black text-white">
-              Ofertas Publicadas Agora ({liveItems.length})
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              const activeCatObj = CATEGORIES.find((c) => c.id === cat) || CATEGORIES[0];
-              void fetchLiveOffers(query.trim() || activeCatObj.liveQuery);
-            }}
-            disabled={liveLoading}
-            className="px-3.5 py-1.5 rounded-full lux-btn-obsidian text-xs font-bold text-amber-200 flex items-center gap-1.5"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-amber-300 ${liveLoading ? 'animate-spin' : ''}`} />
-            Atualizar Vitrine
-          </button>
-        </div>
-
-        {liveLoading && liveItems.length === 0 ? (
-          <div className="py-8 flex items-center justify-center gap-2 text-xs text-amber-200">
-            <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
-            <span>Carregando anúncios oficiais do Brasil...</span>
-          </div>
-        ) : liveItems.length === 0 ? (
-          <p className="text-xs text-slate-300">
-            Use os cards abaixo para abrir ofertas oficiais com seu link de comissão!
-          </p>
-        ) : (
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {liveItems.map((it) => (
-              <a
-                key={it.id}
-                href={it.affiliateUrl || it.productUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={trackAndOpenOffer}
-                className="group w-44 sm:w-48 shrink-0 rounded-2xl overflow-hidden bg-[#0a0c14] border border-amber-400/20 hover:border-amber-300/70 transition flex flex-col justify-between shadow-lg"
-              >
-                <div className="relative aspect-square bg-white overflow-hidden">
-                  <img
-                    src={`/api/shop/img-proxy?url=${encodeURIComponent(it.imageUrl)}&q=${encodeURIComponent(it.title)}`}
-                    alt={it.title}
-                    loading="lazy"
-                    className="w-full h-full object-contain p-2 group-hover:scale-105 transition duration-300"
-                  />
-                  <span className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/85 border border-amber-400/35 text-amber-200 text-[9px] font-black">
-                    {it.storeName}
-                  </span>
-                </div>
-                <div className="p-2.5 space-y-2">
-                  <div className="text-[11px] font-bold text-white line-clamp-2 leading-snug">
-                    {it.title}
-                  </div>
-                  <div className="w-full py-1.5 px-2 rounded-full lux-btn-gold text-[10px] font-black flex items-center justify-center gap-1">
-                    <span>Comprar · Comissão</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </div>
-                </div>
-              </a>
+                {s.label}
+              </button>
             ))}
           </div>
-        )}
-      </section>
 
-      {/* Complete Luxury Curated Grid with REAL Brand Photos */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((item) => {
-          const offerUrl = buildCommissionUrl(item.searchQuery, item.category);
-          const photoFailed = Boolean(brokenPhotoIds[item.id]);
-          const realPhotoUrl = `/api/shop/photo?q=${encodeURIComponent(item.searchQuery)}`;
-          const promo = getPromoInfo(item);
-          return (
-            <div
-              key={item.id}
-              className="group rounded-3xl cosmic-card-3d overflow-hidden flex flex-col justify-between"
+          {/* ANÚNCIO · PATROCINADOR OFICIAL (compacto) — VIP nao ve anuncios */}
+          {!settings.vipActive && (
+          <section className="rounded-2xl border border-amber-400/35 bg-gradient-to-r from-[#171103] via-[#0b0a10] to-[#1a0d05] p-2.5 flex items-center gap-2.5">
+            <span className="px-2 py-1 rounded-full bg-amber-400 text-black text-[9px] font-black shrink-0">📢 ANÚNCIO</span>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-black text-amber-200 truncate">
+                🥃 Mansão Maromba · Toguro — Combos & Bebidas do Rolê
+              </div>
+              <div className="text-[10px] text-slate-300 truncate">
+                Patrocinador oficial · Combo Whisky, Vodka, Gin & Energético pro rolê
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSection('bebidas');
+                onToast('🥃 Bebidas do patrocinador oficial na vitrine!');
+              }}
+              className="px-3 py-1.5 rounded-full lux-btn-gold text-[10px] font-black shrink-0"
             >
-              <div>
-                {/* Real Brand/Product Photo Frame */}
-                <div className="relative aspect-[4/3] bg-gradient-to-br from-[#0f1320] to-[#06070c] overflow-hidden border-b border-amber-400/20">
-                  {!photoFailed ? (
-                    <img
-                      src={realPhotoUrl}
-                      alt={`${item.brand} — ${item.name}`}
-                      loading="lazy"
-                      onError={() =>
-                        setBrokenPhotoIds((prev) => ({
-                          ...prev,
-                          [item.id]: true,
-                        }))
-                      }
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                    />
-                  ) : (
-                    <div
-                      className={`w-full h-full bg-gradient-to-br ${item.accent} flex flex-col items-center justify-center gap-1.5 p-4`}
-                    >
-                      <span className="text-5xl select-none drop-shadow-lg">{item.emoji}</span>
-                      <span className="font-logo text-xs font-black tracking-[0.2em] lux-gold-text uppercase">
-                        {item.brand}
-                      </span>
-                    </div>
-                  )}
+              Ver ofertas
+            </button>
+          </section>
+          )}
 
-                  {/* Luxury Dark Gradient Vignette + Brand Badges */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#070910] via-black/15 to-black/35 pointer-events-none" />
+          {/* Sincronização de preços (linha fina) */}
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+            <div className="text-[10px] text-slate-300 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              {syncInfo?.updatedAt ? (
+                <span>Preços sincronizados com a internet · {new Date(syncInfo.updatedAt).toLocaleString('pt-BR')}</span>
+              ) : (
+                <span>Catálogo com preços reais · compra direto na loja parceira</span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={runShopSync}
+              disabled={syncing}
+              className="px-3 py-1.5 rounded-full bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-400/35 text-cyan-200 text-[10px] font-black flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <span className={syncing ? 'inline-block animate-spin' : ''}>🔄</span>
+              {syncing ? 'Sincronizando...' : 'Atualizar preços agora'}
+            </button>
+          </div>
 
-                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2">
-                    <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-amber-400/40 text-[9px] font-black text-amber-200 tracking-wide truncate">
-                      {item.badge}
-                    </span>
-                    {promo ? (
-                      <span className="px-2.5 py-1 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 text-black text-[9px] font-black shrink-0 shadow-md">
-                        🔥 -{promo.discountPct}% OFF
-                      </span>
-                    ) : mode === 'creator' ? (
-                      /* Comissão é informação sensível: só o dono (modo criador) enxerga */
-                      <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-emerald-400/40 text-[9px] font-black text-emerald-300 shrink-0">
-                        {item.commissionEst}
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md border border-amber-400/35 text-[9px] font-black text-amber-200/90 shrink-0">
-                        🤝 PARCERIA OFICIAL
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="absolute bottom-2.5 left-3 right-3 flex items-end justify-between gap-2">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-black/75 border border-white/15 text-[10px] font-black uppercase tracking-wider text-white">
-                      {item.brand}
-                    </span>
-                    <div className="px-3 py-1 rounded-xl bg-black/85 border border-amber-400/50 text-right shadow-lg">
+          {/* GRADE DE PRODUTOS */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {filtered.map((item) => {
+              const promo = getPromoInfo(item);
+              const photos = itemPhotos(item);
+              const fav = favIds.includes(item.id);
+              return (
+                <div key={item.id} className="relative rounded-2xl cosmic-card-3d overflow-hidden flex flex-col">
+                  <button type="button" onClick={() => openDetail(item)} className="text-left">
+                    <div className="relative aspect-square bg-white overflow-hidden">
+                      {photos[0] ? (
+                        <img
+                          src={photos[0]}
+                          alt={item.name}
+                          loading="lazy"
+                          className="w-full h-full object-contain p-2"
+                        />
+                      ) : (
+                        <div className={`w-full h-full bg-gradient-to-br ${item.accent} flex flex-col items-center justify-center gap-1.5`}>
+                          <span className="text-5xl select-none">{item.emoji}</span>
+                          <span className="text-[10px] font-black tracking-[0.18em] lux-gold-text uppercase">{item.brand}</span>
+                        </div>
+                      )}
                       {promo && (
-                        <div className="text-[9px] text-slate-400 line-through font-mono leading-none mb-0.5">
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 text-black text-[9px] font-black shadow-md">
+                          🔥 -{promo.discountPct}% OFF
+                        </span>
+                      )}
+                      {photos.length > 1 && (
+                        <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-full bg-black/70 text-white text-[9px] font-black">
+                          📷 {photos.length}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleFav(item.id)}
+                    aria-label="Favoritar"
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 border border-white/15 flex items-center justify-center"
+                  >
+                    <Heart className={`w-4 h-4 ${fav ? 'text-rose-500 fill-rose-500' : 'text-white/80'}`} />
+                  </button>
+                  <div className="p-2.5 flex flex-col gap-1.5 flex-1">
+                    <h3 className="text-xs font-bold text-white line-clamp-2 leading-snug">{item.name}</h3>
+                    <div>
+                      {promo && (
+                        <div className="text-[9px] text-slate-400 line-through font-mono leading-none">
                           De R$ {promo.originalBrl.toLocaleString('pt-BR')}
                         </div>
                       )}
-                      <div className="font-mono text-sm font-black lux-gold-text leading-none">
-                        {item.priceLabel}
+                      <div className="text-[13px] font-black lux-gold-text font-mono leading-tight">{item.priceLabel}</div>
+                      <div className={`text-[8px] font-black leading-none mt-0.5 ${item.verifiedPrice ? 'text-emerald-300' : 'text-slate-400'}`}>
+                        {item.verifiedPrice ? '✓ PREÇO REAL VERIFICADO' : 'preço na loja parceira'}
                       </div>
+                    </div>
+                    <div className="mt-auto grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => addToCart(item)}
+                        className="py-2 rounded-full lux-btn-obsidian text-[11px] font-bold flex items-center justify-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-amber-300" /> Sacola
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openBuy(item)}
+                        className="py-2 rounded-full lux-btn-gold text-[11px] font-black flex items-center justify-center gap-1"
+                      >
+                        Comprar <ExternalLink className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <div className="p-4 pb-2 space-y-1">
-                  <h3 className="font-display text-sm font-black text-white leading-snug">
-                    {item.name}
-                  </h3>
-                  <p className="text-[11px] text-slate-300/90 leading-relaxed">{item.specs}</p>
-                </div>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className="col-span-full py-10 text-center text-xs text-slate-300">
+                Nada encontrado por aqui, parça! Tenta outra busca ou classificação. 🔍
               </div>
-
-              <div className="p-4 pt-2 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => addToCart(item)}
-                    className="py-2 px-3 rounded-full lux-btn-obsidian text-xs font-bold flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-amber-300" /> Na Sacola
-                  </button>
-                  <a
-                    href={offerUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={trackAndOpenOffer}
-                    className="py-2 px-3 rounded-full lux-btn-gold text-xs font-black flex items-center justify-center gap-1.5"
-                  >
-                    <span>Comprar</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-                {onCommentTarget && (
-                  <button
-                    type="button"
-                    onClick={() => onCommentTarget(`shop:${item.id}`, `🛍️ ${item.name} (${item.brand})`)}
-                    className="w-full py-1.5 px-3 rounded-full bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-400/30 text-cyan-200 text-[11px] font-bold flex items-center justify-center gap-1.5 transition"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" /> Comentários & Avaliações
-                  </button>
+            )}
+          </div>
+        </>
+      ) : (
+        /* ================= MINHA CONTA ================= */
+        <div className="space-y-4">
+          {/* LOGIN DO CLIENTE */}
+          <section className="rounded-2xl cosmic-card-3d p-4 space-y-3">
+            <h2 className="text-sm font-black text-white flex items-center gap-2">
+              <User className="w-4 h-4 text-amber-300" /> Login do Cliente
+            </h2>
+            {profileName.trim().length > 1 ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 text-xs font-black">
+                  ✓ {profileName}
+                </span>
+                {profilePhone.trim() && (
+                  <span className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-200 text-xs">
+                    📱 {profilePhone}
+                  </span>
                 )}
-                {item.category !== 'motos' && item.category !== 'carros' && (
-                  <div className="grid grid-cols-3 gap-1.5 text-[10px]">
-                    <a
-                      href={buildStoreUrl(item.searchQuery, 'ml')}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={trackAndOpenOffer}
-                      className="py-1.5 rounded-full bg-amber-400/10 hover:bg-amber-400/25 border border-amber-400/30 text-amber-200 font-bold text-center transition"
-                    >
-                      Mercado Livre
-                    </a>
-                    <a
-                      href={buildStoreUrl(item.searchQuery, 'shopee')}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={trackAndOpenOffer}
-                      className="py-1.5 rounded-full bg-orange-500/10 hover:bg-orange-500/25 border border-orange-400/30 text-orange-200 font-bold text-center transition"
-                    >
-                      Shopee
-                    </a>
-                    <a
-                      href={buildStoreUrl(item.searchQuery, 'amazon')}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={trackAndOpenOffer}
-                      className="py-1.5 rounded-full bg-cyan-400/10 hover:bg-cyan-400/25 border border-cyan-400/30 text-cyan-200 font-bold text-center transition"
-                    >
-                      Amazon
-                    </a>
+                <button type="button" onClick={logoutProfile} className="px-3 py-1.5 rounded-full bg-white/10 text-slate-200 text-xs font-bold">
+                  Sair
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="Seu nome"
+                  className={INPUT_CLS}
+                />
+                <input
+                  value={profilePhone}
+                  onChange={(e) => setProfilePhone(e.target.value)}
+                  placeholder="WhatsApp (com DDD)"
+                  className={INPUT_CLS}
+                />
+                <button type="button" onClick={loginProfile} className="py-2 rounded-full lux-btn-gold text-xs font-black">
+                  Entrar
+                </button>
+              </div>
+            )}
+            <p className="text-[10px] text-slate-400">
+              Seu login guarda a sacola no servidor e ativa as tendências da loja pra você.
+            </p>
+            {Boolean(settings.supabaseUrl && settings.supabaseAnonKey) && (
+              <div className="rounded-2xl bg-cyan-500/10 border border-cyan-400/35 p-3 space-y-2">
+                <div className="text-[11px] font-black text-cyan-200">☁️ Conta na nuvem — leve seu login pra qualquer aparelho</div>
+                {cloudUser ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 text-xs font-black">
+                      ☁️ {cloudUser.email || cloudUser.id.slice(0, 8)}
+                    </span>
+                    <button type="button" onClick={cloudLogout} className="px-3 py-1.5 rounded-full bg-white/10 text-slate-200 text-xs font-bold">
+                      Desconectar
+                    </button>
                   </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input value={cloudEmail} onChange={(e) => setCloudEmail(e.target.value)} placeholder="E-mail" className={INPUT_CLS} />
+                      <input type="password" value={cloudPassword} onChange={(e) => setCloudPassword(e.target.value)} placeholder="Senha (mín. 6)" className={INPUT_CLS} />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => void cloudLogin(false)} className="px-4 py-2 rounded-full lux-btn-gold text-xs font-black">
+                        Entrar
+                      </button>
+                      <button type="button" onClick={() => void cloudLogin(true)} className="px-4 py-2 rounded-full lux-btn-obsidian text-xs font-bold">
+                        Criar conta
+                      </button>
+                      <button type="button" onClick={cloudGoogle} className="px-4 py-2 rounded-full bg-white text-black text-xs font-black">
+                        🔵 Entrar com Google
+                      </button>
+                    </div>
+                  </>
                 )}
+              </div>
+            )}
+          </section>
+
+          {/* CHAT & TENDÊNCIAS */}
+          <section className="rounded-2xl cosmic-card-3d p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-black text-white flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-amber-300" /> Chat & Tendências
+              </h2>
+              {onOpenLiveChat && (
+                <button
+                  type="button"
+                  onClick={() => onOpenLiveChat('loja', '🛍️ Loja dos Cria · Chat Ao Vivo')}
+                  className="px-3.5 py-2 rounded-full bg-gradient-to-r from-rose-600 to-pink-500 text-white text-xs font-black flex items-center gap-1.5"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> Abrir Chat da Loja
+                </button>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">🔥 Tendências mandadas pra você</div>
+              {trendItems.map((it) => {
+                const tPhoto = itemPhotos(it)[0] || it.imageUrl || '';
+                return (
+                  <button
+                    key={it.id}
+                    type="button"
+                    onClick={() => {
+                      setTab('loja');
+                      openDetail(it);
+                    }}
+                    className="w-full flex items-center gap-2.5 p-2 rounded-2xl bg-black/40 border border-white/10 hover:border-amber-300/50 text-left"
+                  >
+                    {tPhoto ? (
+                      <img src={tPhoto} alt="" className="w-11 h-11 rounded-xl object-contain bg-white/90" />
+                    ) : (
+                      <span className="w-11 h-11 rounded-xl bg-white/90 flex items-center justify-center text-xl">{it.emoji}</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-bold text-white truncate">{it.name}</div>
+                      <div className="text-[10px] text-amber-200 font-black">{it.priceLabel}</div>
+                    </div>
+                    <span className="text-[10px] font-black text-amber-300 shrink-0">Ver →</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* FAVORITOS */}
+          <section className="rounded-2xl cosmic-card-3d p-4 space-y-3">
+            <h2 className="text-sm font-black text-white flex items-center gap-2">
+              <Heart className="w-4 h-4 text-rose-400" /> Favoritos ({favItems.length})
+            </h2>
+            {favItems.length === 0 ? (
+              <p className="text-xs text-slate-300">Toque no ❤️ dos produtos pra salvar aqui — fica guardado pra depois.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                {favItems.map((it) => {
+                  const fPhoto = itemPhotos(it)[0] || it.imageUrl || '';
+                  return (
+                    <button
+                      key={it.id}
+                      type="button"
+                      onClick={() => {
+                        setTab('loja');
+                        openDetail(it);
+                      }}
+                      className="rounded-2xl bg-black/40 border border-white/10 p-2 text-left hover:border-rose-400/50"
+                    >
+                      {fPhoto ? (
+                        <img src={fPhoto} alt="" className="w-full aspect-square rounded-xl object-contain bg-white/90 mb-1.5" />
+                      ) : (
+                        <div className="w-full aspect-square rounded-xl bg-white/90 mb-1.5 flex items-center justify-center text-3xl">{it.emoji}</div>
+                      )}
+                      <div className="text-[10px] font-bold text-white line-clamp-2">{it.name}</div>
+                      <div className="text-[10px] text-amber-200 font-black">{it.priceLabel}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* ENDEREÇO */}
+          <section className="rounded-2xl cosmic-card-3d p-4 space-y-3">
+            <h2 className="text-sm font-black text-white flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-amber-300" /> Endereço de Entrega
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <input value={addr.rua} onChange={(e) => setAddr({ ...addr, rua: e.target.value })} placeholder="Rua" className={`${INPUT_CLS} col-span-2`} />
+              <input value={addr.num} onChange={(e) => setAddr({ ...addr, num: e.target.value })} placeholder="Número" className={INPUT_CLS} />
+              <input value={addr.bairro} onChange={(e) => setAddr({ ...addr, bairro: e.target.value })} placeholder="Bairro" className={INPUT_CLS} />
+              <input value={addr.cidade} onChange={(e) => setAddr({ ...addr, cidade: e.target.value })} placeholder="Cidade" className={INPUT_CLS} />
+              <input value={addr.cep} onChange={(e) => setAddr({ ...addr, cep: e.target.value })} placeholder="CEP" className={INPUT_CLS} />
+            </div>
+            <button type="button" onClick={saveAddr} className="px-4 py-2 rounded-full lux-btn-gold text-xs font-black">
+              Salvar endereço
+            </button>
+          </section>
+
+          {/* DADOS PESSOAIS & PRIVACIDADE */}
+          <section className="rounded-2xl cosmic-card-3d p-4 space-y-2.5">
+            <h2 className="text-sm font-black text-white flex items-center gap-2">
+              <Lock className="w-4 h-4 text-amber-300" /> Privacidade & Dados Pessoais
+            </h2>
+            {([
+              ['showName', 'Exibir meu nome no chat da loja'],
+              ['promos', 'Receber promoções e tendências'],
+              ['history', 'Salvar meu histórico de compras'],
+            ] as [string, string][]).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => togglePrivacy(key)}
+                className="w-full flex items-center justify-between gap-3 p-2.5 rounded-2xl bg-black/40 border border-white/10"
+              >
+                <span className="text-xs text-slate-200 text-left">{label}</span>
+                <span className={`w-10 h-6 rounded-full p-0.5 transition shrink-0 ${privacy[key] ? 'bg-emerald-500' : 'bg-white/15'}`}>
+                  <span className={`block w-5 h-5 rounded-full bg-white transition-transform ${privacy[key] ? 'translate-x-4' : ''}`} />
+                </span>
+              </button>
+            ))}
+          </section>
+
+          {/* IDIOMA */}
+          <section className="rounded-2xl cosmic-card-3d p-4 space-y-2.5">
+            <h2 className="text-sm font-black text-white flex items-center gap-2">
+              <Globe className="w-4 h-4 text-amber-300" /> Idioma da Loja
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {([
+                ['pt-BR', '🇧🇷 Português'],
+                ['en', '🇺🇸 English'],
+                ['es', '🇪🇸 Español'],
+              ] as [string, string][]).map(([code, label]) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => applyLangPref(code)}
+                  className={`px-4 py-2 rounded-full text-xs font-black ${langPref === code ? 'lux-btn-gold' : 'lux-btn-obsidian text-slate-200'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* CENTRAL DE AJUDA */}
+          <section className="rounded-2xl cosmic-card-3d p-4 space-y-2">
+            <h2 className="text-sm font-black text-white flex items-center gap-2">
+              <LifeBuoy className="w-4 h-4 text-amber-300" /> Central de Ajuda
+            </h2>
+            {HELP_FAQ.map((f) => (
+              <details key={f.q} className="rounded-2xl bg-black/40 border border-white/10 p-3">
+                <summary className="text-xs font-bold text-white cursor-pointer list-none flex items-center justify-between gap-2">
+                  {f.q}
+                  <ChevronDown className="w-4 h-4 text-amber-300 shrink-0" />
+                </summary>
+                <p className="text-[11px] text-slate-300 mt-2 leading-relaxed">{f.a}</p>
+              </details>
+            ))}
+          </section>
+        </div>
+      )}
+
+      {/* DETALHES DO PRODUTO — fotos em galeria + detalhes em grade */}
+      {detailItem &&
+        (() => {
+          const photos = itemPhotos(detailItem);
+          const promo = getPromoInfo(detailItem);
+          const idx = Math.min(photoIdx, Math.max(0, photos.length - 1));
+          return (
+            <div
+              className="fixed inset-0 z-[9998] bg-black/85 backdrop-blur-md flex items-center justify-center p-3"
+              onClick={() => setDetailItem(null)}
+            >
+              <div
+                className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl bg-[#0c0718] border border-amber-400/45 shadow-[0_0_70px_rgba(251,191,36,0.25)]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between gap-3 sticky top-0 bg-[#0c0718] z-10">
+                  <h3 className="text-sm font-black text-white truncate">Detalhes do produto</h3>
+                  <button type="button" onClick={() => setDetailItem(null)} className="p-1.5 rounded-full bg-white/10 text-white">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-4 space-y-3.5">
+                  <div className="relative rounded-2xl overflow-hidden bg-white">
+                    {photos.length > 0 ? (
+                      <img src={photos[idx]} alt={detailItem.name} className="w-full aspect-[4/3] object-contain" />
+                    ) : (
+                      <div className={`w-full aspect-[4/3] bg-gradient-to-br ${detailItem.accent} flex items-center justify-center`}>
+                        <span className="text-7xl">{detailItem.emoji}</span>
+                      </div>
+                    )}
+                    {photos.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setPhotoIdx((i) => (i - 1 + photos.length) % photos.length)}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPhotoIdx((i) => (i + 1) % photos.length)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-black">
+                          {idx + 1}/{photos.length}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {photos.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                      {photos.map((p, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setPhotoIdx(i)}
+                          className={`w-14 h-14 shrink-0 rounded-xl overflow-hidden border-2 ${i === idx ? 'border-amber-400' : 'border-white/15'}`}
+                        >
+                          <img src={p} alt="" className="w-full h-full object-contain bg-white" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="text-sm font-black text-white leading-snug">{detailItem.name}</h4>
+                    <div className="text-xs text-slate-300">
+                      {detailItem.brand} · {detailItem.seller || 'Loja parceira'}
+                    </div>
+                    <div className="mt-1.5 flex items-end gap-2">
+                      {promo && (
+                        <div className="text-xs text-slate-400 line-through font-mono">
+                          De R$ {promo.originalBrl.toLocaleString('pt-BR')}
+                        </div>
+                      )}
+                      <div className="text-lg font-black lux-gold-text font-mono">{detailItem.priceLabel}</div>
+                      {promo && (
+                        <div className="px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 text-black text-[9px] font-black">
+                          -{promo.discountPct}% OFF
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* grade de detalhes */}
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    {([
+                      ['Marca', detailItem.brand],
+                      ['Categoria', CATEGORY_LABEL[detailItem.category] || detailItem.category],
+                      ['Preço', detailItem.priceLabel],
+                      ['Verificado', detailItem.verifiedPrice ? '✓ preço real verificado' : 'conferir na loja'],
+                      ['Envio', 'Loja parceira envia o produto'],
+                      ['Retirada', 'Frete ou retirada no checkout'],
+                    ] as [string, string][]).map(([k, v]) => (
+                      <div key={k} className="rounded-2xl bg-black/40 border border-white/10 p-2.5">
+                        <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">{k}</div>
+                        <div className="text-slate-100 font-bold mt-0.5">{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">{detailItem.specs}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => addToCart(detailItem)}
+                      className="py-2.5 rounded-full lux-btn-obsidian text-xs font-bold flex items-center justify-center gap-1.5"
+                    >
+                      <Plus className="w-4 h-4 text-amber-300" /> Por na Sacola
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openBuy(detailItem)}
+                      className="py-2.5 rounded-full lux-btn-gold text-xs font-black flex items-center justify-center gap-1.5"
+                    >
+                      🚀 Comprar <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-slate-400 leading-relaxed">
+                    Compra segura direto na loja parceira (Shopee, Mercado Livre ou Amazon) com o link do vendedor. O estoque e o envio
+                    são da loja — tudo na lei.
+                  </p>
+                  {onCommentTarget && (
+                    <button
+                      type="button"
+                      onClick={() => onCommentTarget(`shop:${detailItem.id}`, `🛍️ ${detailItem.name} (${detailItem.brand})`)}
+                      className="w-full py-2 rounded-full bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-400/30 text-cyan-200 text-xs font-bold flex items-center justify-center gap-1.5"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" /> Comentários & Avaliações
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
-        })}
-      </div>
+        })()}
 
       {/* Affiliate Commission Setup Modal */}
       {affModalOpen && (
@@ -1969,6 +2625,7 @@ export const ShopCriaView: React.FC<Props> = ({
           </div>
         </div>
       )}
+
     </div>
   );
 };

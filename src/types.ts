@@ -81,6 +81,9 @@ export interface AppSettings {
   vipActive?: boolean;
   vipPlan?: 'mensal' | 'anual' | null;
   vipUntil?: string | null;
+  mpAccessToken?: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
   publicUrl: string;
   apkDownloadUrl?: string;
   youtubeUrl: string;

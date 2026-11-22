@@ -1395,7 +1395,7 @@ export const StudioCreateView: React.FC<Props> = ({
                   Dica de Ouro para proteger sua conta na DistroKid com 1.000 músicas (10/dia):
                 </div>
                 <p>
-                  <strong>1. No seu App MORRO GOLD e no YouTube:</strong> você pode soltar <strong>10 faixas por dia</strong> sem medo (ou 1 vídeo longo "Full Mix 10 faixas" + 3 Shorts por dia). Aqui a casa é 100% sua!
+                  <strong>1. No seu App MORRO GOLD e no YouTube:</strong> você pode soltar <strong>10 faixas por dia</strong> sem medo (ou 1 vídeo longo "Full Mix 10 faixas" + 3 Vibes por dia). Aqui a casa é 100% sua!
                 </p>
                 <p>
                   <strong>2. Na DistroKid / Spotify / Apple Music:</strong> subir 10 singles de IA todo santo dia costuma disparar filtros anti-spam das plataformas e pode bloquear a conta. A estratégia mais inteligente é agrupar em <strong>Álbuns de 10 a 20 faixas</strong> (1 álbum por semana) ou subir lá apenas as <strong>faixas campeãs que bombarem primeiro no seu App, WhatsApp e YouTube</strong> — sempre geradas com plano pago do Suno para ter direito comercial.
