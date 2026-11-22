@@ -4150,6 +4150,115 @@ app.post('/api/shop/sync', async (_req, res) => {
   }
 });
 
+// ===== PAGAMENTOS AUTOMATICOS · MERCADO PAGO (assinaturas VIP recorrentes) =====
+const SUBS_PATH = path.join(DATA_DIR, 'subscriptions.json');
+
+function mpToken() {
+  try {
+    return String((readDb().settings || {}).mpAccessToken || process.env.MP_ACCESS_TOKEN || '').trim();
+  } catch {
+    return String(process.env.MP_ACCESS_TOKEN || '').trim();
+  }
+}
+
+function activateSubscription(ref, plan, externalId) {
+  const store = readJsonFileSafe(SUBS_PATH, { subs: {} });
+  store.subs = store.subs || {};
+  const days = plan === 'anual' ? 365 : 30;
+  const prev = store.subs[ref];
+  const base =
+    prev && prev.until && new Date(prev.until).getTime() > Date.now()
+      ? new Date(prev.until).getTime()
+      : Date.now();
+  store.subs[ref] = {
+    active: true,
+    plan: plan || 'mensal',
+    until: new Date(base + days * 86400000).toISOString(),
+    externalId: externalId || '',
+    updatedAt: new Date().toISOString(),
+  };
+  writeJsonFileSafe(SUBS_PATH, store);
+  return store.subs[ref];
+}
+
+app.post('/api/payments/preapproval', async (req, res) => {
+  const token = mpToken();
+  if (!token) {
+    return res
+      .status(400)
+      .json({ error: 'gateway-off', message: 'Mercado Pago ainda não configurado — use o PIX manual.' });
+  }
+  const plan = String(req.body?.plan === 'anual' ? 'anual' : 'mensal');
+  const amount = Number(req.body?.amount || (plan === 'anual' ? 99.9 : 14.9));
+  const email = String(req.body?.email || '').trim();
+  const ref = String(req.body?.ref || '').slice(0, 64) || 'guest';
+  let base = 'https://morro.gold';
+  try {
+    base = String((readDb().settings || {}).publicUrl || '').replace(/\/$/, '') || base;
+  } catch {
+    /* ignore */
+  }
+  try {
+    const r = await fetch('https://api.mercadopago.com/preapproval', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(12000),
+      body: JSON.stringify({
+        reason: `MORRO GOLD VIP ${plan === 'anual' ? 'Anual' : 'Mensal'}`,
+        external_reference: ref,
+        notification_url: `${base}/api/payments/webhook`,
+        back_url: `${base}/?vipReturn=1`,
+        payer_email: email || undefined,
+        auto_recurring: {
+          frequency: plan === 'anual' ? 12 : 1,
+          frequency_type: 'months',
+          transaction_amount: amount,
+          currency_id: 'BRL',
+        },
+        status: 'pending',
+      }),
+    });
+    const d = await r.json();
+    if (!d?.init_point) {
+      return res.status(502).json({ error: 'Falha ao criar assinatura', detail: d });
+    }
+    res.json({ init_point: d.init_point, id: d.id });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.post('/api/payments/webhook', async (req, res) => {
+  try {
+    const token = mpToken();
+    const topic = String(req.query?.type || req.body?.type || '').toLowerCase();
+    const id = String(req.query?.id || req.body?.data?.id || req.body?.id || '').trim();
+    if (!token || !id) return res.sendStatus(200);
+    if (topic.includes('preapproval') || topic.includes('subscription')) {
+      const r = await fetch(`https://api.mercadopago.com/preapproval/${encodeURIComponent(id)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(10000),
+      });
+      const d = await r.json();
+      if (d && (d.status === 'authorized' || d.status === 'active')) {
+        const isAnual = String(d.reason || '').toLowerCase().includes('anual');
+        activateSubscription(String(d.external_reference || 'guest'), isAnual ? 'anual' : 'mensal', id);
+      }
+    }
+    res.sendStatus(200);
+  } catch {
+    res.sendStatus(200);
+  }
+});
+
+app.get('/api/payments/vip-status', (req, res) => {
+  const ref = String(req.query?.ref || '').slice(0, 64) || 'guest';
+  const store = readJsonFileSafe(SUBS_PATH, { subs: {} });
+  const sub = (store.subs && store.subs[ref]) || null;
+  const active = Boolean(sub && sub.active && new Date(sub.until).getTime() > Date.now());
+  res.json({ active, plan: sub?.plan || null, until: sub?.until || null });
+});
+
 // ===== sacola salva no servidor (por aparelho/login do cliente) =====
 const SHOP_BAG_PATH = path.join(DATA_DIR, 'shop-bag.json');
 
