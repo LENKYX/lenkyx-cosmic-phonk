@@ -354,6 +354,30 @@ app.get('/api/fans/lookup', async (req, res) => {
   }
 });
 
+// LGPD: exclusão definitiva da conta do fã (perfil + sacola + favoritos na nuvem)
+app.post('/api/fan/delete-account', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim();
+    const uid = String(req.body?.uid || '').trim();
+    if (!email && !uid) return res.status(400).json({ error: 'Informe e-mail ou ID' });
+    const base = String(process.env.SUPABASE_URL || '').trim().replace(/\/$/, '');
+    const key = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+    if (base && key) {
+      const h = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+      const eq = encodeURIComponent;
+      const fanFilter = `or=(id.eq.${eq(uid || email)},id.eq.${eq(email)},email.eq.${eq(email)})`;
+      await fetch(`${base}/rest/v1/lenkyx_fans?${fanFilter}`, { method: 'DELETE', headers: h }).catch(() => {});
+      if (uid) {
+        await fetch(`${base}/rest/v1/mg_bags?user_id=eq.${eq(uid)}`, { method: 'DELETE', headers: h }).catch(() => {});
+        await fetch(`${base}/rest/v1/mg_favs?user_id=eq.${eq(uid)}`, { method: 'DELETE', headers: h }).catch(() => {});
+      }
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Erro ao excluir conta' });
+  }
+});
+
 function getEffectiveSettings(db) {
   const s = { ...(db?.settings || {}) };
   if (!s.affiliateMlTool) {

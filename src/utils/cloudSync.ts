@@ -161,3 +161,20 @@ export async function cloudUpsert(
     /* ignore */
   }
 }
+
+// LGPD: o próprio usuário apaga a conta dele no Supabase Auth.
+export async function cloudDeleteSelf(url: string, anon: string, s: CloudSession): Promise<{ error?: string }> {
+  try {
+    const r = await fetch(`${url.replace(/\/$/, '')}/auth/v1/user`, {
+      method: 'DELETE',
+      headers: headersFor(anon, s.access_token),
+    });
+    if (!r.ok && r.status !== 204 && r.status !== 200) {
+      const j = await r.json().catch(() => ({}));
+      return { error: j?.msg || j?.error_description || `Falha ao excluir (${r.status})` };
+    }
+    return {};
+  } catch {
+    return { error: 'Sem conexão com a nuvem.' };
+  }
+}

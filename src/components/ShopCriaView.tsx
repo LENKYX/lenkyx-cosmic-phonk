@@ -30,7 +30,8 @@ import {
 import { AppMode, AppSettings } from '../types';
 import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
 import { SHOP_PHOTOS } from '../data/shopPhotos';
-import { cloudGet, cloudGoogleUrl, cloudSessionFromHash, cloudSignIn, cloudSignOut, cloudSignUp, cloudUpsert, getCloudSession, type CloudSession } from '../utils/cloudSync';
+import { cloudDeleteSelf, cloudGet, cloudGoogleUrl, cloudSessionFromHash, cloudSignIn, cloudSignOut, cloudSignUp, cloudUpsert, getCloudSession, type CloudSession } from '../utils/cloudSync';
+import { deleteDeviceAccount, getPrimaryDeviceAccount } from '../utils/fanAuth';
 import { registerSale } from '../utils/commissionApi';
 
 export type ShopCat =
@@ -1638,6 +1639,40 @@ export const ShopCriaView: React.FC<Props> = ({
     onToast('☁️ Desconectado da nuvem.');
   };
 
+  // LGPD: exclusão permanente da conta (nuvem + aparelho + dados)
+  const deleteMyAccount = async () => {
+    const sess = getCloudSession();
+    const email = (cloudUser?.email || sess?.user?.email || getPrimaryDeviceAccount()?.email || '').trim();
+    const uid = (cloudUser?.id || sess?.user?.id || '').trim();
+    if (!email && !uid) {
+      onToast('Nenhuma conta conectada.');
+      return;
+    }
+    const typed = window.prompt(
+      '⚠️ EXCLUSÃO PERMANENTE\n\nSua conta e todos os seus dados (sacola, favoritos, playlists) serão apagados para sempre.\n\nPara confirmar, digite: EXCLUIR',
+    );
+    if ((typed || '').trim().toUpperCase() !== 'EXCLUIR') {
+      onToast('Exclusão cancelada.');
+      return;
+    }
+    try {
+      await fetch('/api/fan/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, uid }),
+      });
+      const url = (settings.supabaseUrl || '').trim();
+      const anon = (settings.supabaseAnonKey || '').trim();
+      if (sess && url && anon) await cloudDeleteSelf(url, anon, sess);
+      if (email) deleteDeviceAccount(email);
+      cloudSignOut();
+      setCloudUser(null);
+      onToast('🗑️ Conta excluída em definitivo. Até logo! 💛');
+    } catch {
+      onToast('⚠️ Não foi possível concluir agora. Tente novamente.');
+    }
+  };
+
   // sacola salva no servidor (sobrevive a troca de aparelho com o mesmo login)
   useEffect(() => {
     let alive = true;
@@ -1964,6 +1999,9 @@ export const ShopCriaView: React.FC<Props> = ({
                     </span>
                     <button type="button" onClick={cloudLogout} className="px-3 py-1.5 rounded-full bg-white/10 text-slate-200 text-xs font-bold">
                       Desconectar
+                    </button>
+                    <button type="button" onClick={() => void deleteMyAccount()} className="px-3 py-1.5 rounded-full bg-red-500/15 text-red-300 text-xs font-bold border border-red-500/30">
+                      🗑️ Excluir conta
                     </button>
                   </div>
                 ) : (

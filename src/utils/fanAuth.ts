@@ -285,3 +285,22 @@ export async function verifyFanPasswordRecovery(
 
   return { ok: false, error: cloud?.error || 'Código de recuperação inválido ou expirado.' };
 }
+
+// LGPD: remove a conta local do aparelho (por e-mail ou id).
+export function deleteDeviceAccount(emailOrId: string): void {
+  const target = (emailOrId || '').trim().toLowerCase();
+  if (!target) return;
+  const rest = loadDeviceAccounts().filter(
+    (a) => (a.email || '').trim().toLowerCase() !== target && (a.id || '').trim().toLowerCase() !== target,
+  );
+  try {
+    localStorage.setItem(DEVICE_ACCOUNTS_KEY, JSON.stringify(rest));
+  } catch {
+    // ignore
+  }
+  try {
+    window.AndroidBridge?.saveDeviceAccount?.(rest[0] ? JSON.stringify(rest[0]) : '');
+  } catch {
+    // ignore
+  }
+}
