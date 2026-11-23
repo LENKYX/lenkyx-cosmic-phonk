@@ -403,10 +403,12 @@ function getEffectiveSettings(db) {
 }
 
 // === PUBLIC API ROUTES ===
+const BOOT_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 app.get('/api/state', (req, res) => {
   const db = readDb();
   res.json({
     ...db,
+    bootId: BOOT_ID,
     settings: getEffectiveSettings(db),
     auth: auth.getStatus(req),
   });

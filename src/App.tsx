@@ -881,6 +881,37 @@ export function App() {
     };
   }, []);
 
+  // Vigia de versão: servidor atualizou? Recarrega sozinho e MATA o cache velho!
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const r = await fetch('/api/state', { cache: 'no-store' });
+        const d = await r.json();
+        const bootId = String(d?.bootId || '');
+        if (!bootId) return;
+        const seen = localStorage.getItem('mg_boot_id') || '';
+        if (seen && seen !== bootId) {
+          localStorage.setItem('mg_boot_id', bootId);
+          showToast('🟢 Atualização nova do MORRO GOLD! Recarregando...');
+          window.setTimeout(() => window.location.reload(), 700);
+          return;
+        }
+        localStorage.setItem('mg_boot_id', bootId);
+      } catch {
+        /* ignore */
+      }
+    };
+    void check();
+    const onWake = () => void check();
+    window.addEventListener('focus', onWake);
+    document.addEventListener('visibilitychange', onWake);
+    return () => {
+      window.removeEventListener('focus', onWake);
+      document.removeEventListener('visibilitychange', onWake);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Retorno do checkout Mercado Pago: confirma o pagamento e ativa o VIP sozinho
   useEffect(() => {
     if (!/[?&]vipReturn=1/.test(window.location.search)) return;

@@ -2041,17 +2041,8 @@ export const ShopCriaView: React.FC<Props> = ({
           <section className="rounded-2xl cosmic-card-3d p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-black text-white flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-amber-300" /> Chat & Tendências
+                <MessageCircle className="w-4 h-4 text-amber-300" /> Tendências da Loja
               </h2>
-              {onOpenLiveChat && (
-                <button
-                  type="button"
-                  onClick={() => onOpenLiveChat('loja', '🛍️ Loja dos Cria · Chat Ao Vivo')}
-                  className="px-3.5 py-2 rounded-full bg-gradient-to-r from-rose-600 to-pink-500 text-white text-xs font-black flex items-center gap-1.5"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" /> Abrir Chat da Loja
-                </button>
-              )}
             </div>
             <div className="space-y-1.5">
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">🔥 Tendências mandadas pra você</div>

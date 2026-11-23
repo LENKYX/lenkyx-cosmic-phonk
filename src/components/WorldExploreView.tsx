@@ -433,15 +433,6 @@ export const WorldExploreView: React.FC<Props> = ({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {onOpenLiveChat && (
-            <button
-              type="button"
-              onClick={() => onOpenLiveChat('baile-funk', '👑 Baile & Funk · Chat Ao Vivo')}
-              className="px-3.5 py-2 rounded-full bg-gradient-to-r from-rose-600 to-pink-500 hover:brightness-110 text-white text-xs font-black flex items-center gap-1.5 shadow transition"
-            >
-              <Radio className="w-3.5 h-3.5 animate-pulse" /> Chat Ao Vivo
-            </button>
-          )}
           {clipTracks[0] && onWatchClip && (
             <button
               type="button"
@@ -1509,26 +1500,6 @@ export const WorldExploreView: React.FC<Props> = ({
                 <span>Canal completo no MORRO GOLD — tudo que o artista já lançou de músicas e clipes</span>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={() => void handleToggleArtistSubscribe(artistProfile.name)}
-              className={`mt-5 w-full py-2.5 rounded-full text-xs font-black flex items-center justify-center gap-1.5 transition ${
-                subscribedChannels.has(normalizeChannelKey(artistProfile.name))
-                  ? 'bg-white/15 border border-white/25 text-white'
-                  : 'bg-white text-black hover:bg-purple-100'
-              }`}
-            >
-              {subscribedChannels.has(normalizeChannelKey(artistProfile.name)) ? (
-                <>
-                  <BellRing className="w-3.5 h-3.5 text-emerald-300" /> Inscrito
-                </>
-              ) : (
-                <>
-                  <Bell className="w-3.5 h-3.5" /> Inscrever-se no canal
-                </>
-              )}
-            </button>
           </div>
         </div>
       )}

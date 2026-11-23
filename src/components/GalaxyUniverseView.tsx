@@ -2556,16 +2556,6 @@ export const GalaxyUniverseView: React.FC<Props> = ({
               type="button"
               onClick={() => {
                 setHubDrawerOpen(false);
-                onOpenLang();
-              }}
-              className="py-2 px-2 rounded-xl bg-white/10 border border-white/15 text-white flex items-center justify-center gap-1"
-            >
-              <Globe2 className="w-3.5 h-3.5 text-cyan-300" /> Idioma
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setHubDrawerOpen(false);
                 onOpenUpdates();
               }}
               className="py-2 px-2 rounded-xl bg-white/10 border border-white/15 text-white flex items-center justify-center gap-1"
