@@ -955,3 +955,33 @@ html.mg-tv [class*="z-\[88\]"],
 html.mg-tv [class*="z-\[92\]"] {
   display: none !important;
 }
+
+/* ===== ✨ EFEITOS MORRO GOLD (toque, transições, brilho) ===== */
+@keyframes mg-view-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.cosmic-card-3d,
+.glass-panel,
+.cosmic-modal {
+  animation: mg-view-in 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+@keyframes mg-tap-glow {
+  0% { box-shadow: 0 0 0 0 rgba(245, 200, 76, 0.55); }
+  100% { box-shadow: 0 0 0 16px rgba(245, 200, 76, 0); }
+}
+button:active {
+  transform: scale(0.955);
+  transition: transform 0.1s ease;
+}
+.lux-btn-gold:active,
+.lux-btn-obsidian:active {
+  animation: mg-tap-glow 0.45s ease-out;
+}
+button {
+  transition: transform 0.14s ease, filter 0.2s ease, box-shadow 0.22s ease, background-color 0.22s ease, border-color 0.22s ease;
+}
+button:hover {
+  filter: brightness(1.07);
+}

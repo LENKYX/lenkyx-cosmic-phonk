@@ -290,7 +290,7 @@ const YouTubeShortPlayer: React.FC<{
 
       if (!window.YT?.Player) {
         const iframe = document.createElement('iframe');
-        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&fs=0&rel=0&modestbranding=1&iv_load_policy=3&cc_load_policy=0&vq=hd1080&enablejsapi=1`;
+        iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&playsinline=1&fs=0&rel=0&modestbranding=1&iv_load_policy=3&cc_load_policy=0&controls=0&disablekb=1&vq=hd1080&enablejsapi=1`;
         iframe.allow = 'autoplay; encrypted-media';
         iframe.allowFullscreen = true;
         iframe.className = 'w-full h-full border-0 bg-black';
@@ -324,6 +324,17 @@ const YouTubeShortPlayer: React.FC<{
             } catch {
               // ignore
             }
+            // Celular bloqueia autoplay com som: se não começar, toca mudo (nunca trava!)
+            window.setTimeout(() => {
+              try {
+                if ((ev.target.getPlayerState?.() ?? -1) !== 1) {
+                  ev.target.mute?.();
+                  ev.target.playVideo?.();
+                }
+              } catch {
+                // ignore
+              }
+            }, 1100);
           },
           onStateChange: (ev) => {
             if (ev.data === 1) setPaused(false);
@@ -345,6 +356,7 @@ const YouTubeShortPlayer: React.FC<{
       playerRef.current = player;
     });
 
+    let endedFired = false;
     const progTimer = window.setInterval(() => {
       const p = playerRef.current;
       if (!p) return;
@@ -354,6 +366,11 @@ const YouTubeShortPlayer: React.FC<{
         if (d > 0) {
           setDurTime(d);
           setCurTime(c);
+          // Vigia de fim: Shorts do YouTube reiniciam sozinhos — garante o auto-avanço!
+          if (!endedFired && !loopRef.current && c >= d - 0.45) {
+            endedFired = true;
+            onEndedRef.current();
+          }
         }
       } catch {
         // ignore
@@ -478,6 +495,11 @@ const YouTubeShortPlayer: React.FC<{
         {paused && (
           <span className="w-16 h-16 rounded-full bg-black/75 border border-white/25 text-white flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.75)]">
             <Play className="w-7 h-7 fill-white ml-0.5" />
+          </span>
+        )}
+        {(muted || forceMuted) && !paused && (
+          <span className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-black/55 border border-amber-300/40 text-amber-200 text-[11px] font-black backdrop-blur-sm pointer-events-none">
+            🔊 Toque pra ligar o som
           </span>
         )}
         {heartBurst && (
@@ -636,6 +658,11 @@ const NativeShortVideoPlayer: React.FC<{
         {paused && (
           <span className="w-16 h-16 rounded-full bg-black/75 border border-white/25 text-white flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.75)]">
             <Play className="w-7 h-7 fill-white ml-0.5" />
+          </span>
+        )}
+        {(muted || forceMuted) && !paused && (
+          <span className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-black/55 border border-amber-300/40 text-amber-200 text-[11px] font-black backdrop-blur-sm pointer-events-none">
+            🔊 Toque pra ligar o som
           </span>
         )}
         {heartBurst && (
