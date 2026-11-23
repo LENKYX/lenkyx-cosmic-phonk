@@ -14,6 +14,7 @@ interface Props {
 
 export const UploadTrackModal: React.FC<Props> = ({ open, onClose, editingTrack, onSaved, onDeleted, onToast }) => {
   const [title, setTitle] = useState('');
+  const [vipOnly, setVipOnly] = useState(false);
   const [emoji, setEmoji] = useState('🚀');
   const [album, setAlbum] = useState('Cosmic Phonk Vol. 1 (Parte 2)');
   const [bpm, setBpm] = useState(132);
@@ -30,6 +31,7 @@ export const UploadTrackModal: React.FC<Props> = ({ open, onClose, editingTrack,
   useEffect(() => {
     if (editingTrack) {
       setTitle(editingTrack.title);
+      setVipOnly(Boolean(editingTrack.vipOnly));
       setEmoji(editingTrack.emoji || '🎵');
       setAlbum(editingTrack.album);
       setBpm(editingTrack.bpm);
@@ -72,6 +74,7 @@ export const UploadTrackModal: React.FC<Props> = ({ open, onClose, editingTrack,
     try {
       const fd = new FormData();
       fd.append('title', title.trim());
+      fd.append('vipOnly', vipOnly ? '1' : '0');
       fd.append('emoji', emoji.trim() || '🎵');
       fd.append('album', album.trim() || 'MORRO GOLD Singles');
       fd.append('bpm', String(bpm));
@@ -162,6 +165,10 @@ export const UploadTrackModal: React.FC<Props> = ({ open, onClose, editingTrack,
 
           {/* Audio V1 + Audio V2 + Cover pickers */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label className="flex items-center gap-2 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-3.5 py-2.5 cursor-pointer">
+              <input type="checkbox" checked={vipOnly} onChange={(e) => setVipOnly(e.target.checked)} className="accent-amber-400" />
+              <span className="text-xs font-black text-amber-200">🔒 Lançamento Só VIP (exclusivo da realeza)</span>
+            </label>
             <label className="cursor-pointer rounded-2xl border-2 border-dashed border-pink-500/40 hover:border-pink-400 bg-pink-500/5 p-3.5 flex flex-col items-center justify-center text-center gap-1.5 transition">
               <Music className="w-6 h-6 text-pink-400" />
               <div className="text-xs font-bold text-white truncate max-w-full">

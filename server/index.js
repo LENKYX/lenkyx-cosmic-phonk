@@ -445,6 +445,7 @@ app.post(
     const coverFile = files.cover?.[0];
 
     const title = (req.body.title || 'Nova Faixa Cósmica').trim();
+    const vipOnly = String(req.body.vipOnly || '') === '1';
     const slug =
       title
         .toLowerCase()
@@ -468,6 +469,7 @@ app.post(
     const newTrack = {
       id: slug,
       number: nextNum,
+      vipOnly,
       title,
       emoji: req.body.emoji || '🎵',
       artist: req.body.artist || db.settings.artistName || 'LENKYX',
@@ -4185,8 +4187,23 @@ function mpToken() {
   }
 }
 
+const SUPPORTERS_PATH = path.join(DATA_DIR, 'vip-supporters.json');
+
 function activateSubscription(ref, plan, externalId) {
   const store = readJsonFileSafe(SUBS_PATH, { subs: {} });
+  // Mural dos Apoiadores: registra quem entrou pra realeza
+  try {
+    const mural = readJsonFileSafe(SUPPORTERS_PATH, { supporters: [] });
+    mural.supporters = mural.supporters || [];
+    const name = String(ref || '').split('@')[0].slice(0, 24);
+    if (name && !mural.supporters.some((s) => s.ref === String(ref))) {
+      mural.supporters.unshift({ ref: String(ref), name, since: new Date().toISOString() });
+      mural.supporters = mural.supporters.slice(0, 100);
+      writeJsonFileSafe(SUPPORTERS_PATH, mural);
+    }
+  } catch {
+    /* ignore */
+  }
   store.subs = store.subs || {};
   const days = plan === 'anual' ? 365 : 30;
   const prev = store.subs[ref];
@@ -4273,6 +4290,12 @@ app.post('/api/payments/webhook', async (req, res) => {
   } catch {
     res.sendStatus(200);
   }
+});
+
+// Mural dos Apoiadores (realeza VIP)
+app.get('/api/payments/supporters', (_req, res) => {
+  const mural = readJsonFileSafe(SUPPORTERS_PATH, { supporters: [] });
+  res.json({ supporters: mural.supporters || [] });
 });
 
 app.get('/api/payments/vip-status', (req, res) => {

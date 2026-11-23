@@ -3820,7 +3820,15 @@ export function App() {
                     offlineTrackIds={offlineTrackIds}
                     downloadingIds={downloadingIds}
                     downloadingAll={downloadingAll}
-                    onPlayTrack={(t, ver) => void handlePlayTrack(t, ver, visibleTracks)}
+                    onPlayTrack={(t, ver) => {
+                      if (t.vipOnly && !settings.vipActive) {
+                        showToast('🔒 Essa é música exclusiva da realeza VIP! Assine e ouça primeiro.');
+                        setPixInitialTab('vip');
+                        setPixOpen(true);
+                        return;
+                      }
+                      void handlePlayTrack(t, ver, visibleTracks);
+                    }}
                     onLikeTrack={(t) => void handleLikeTrack(t)}
                     onShareTrack={(t) => {
                       setShareTrack(t);
@@ -3879,7 +3887,15 @@ export function App() {
                       initialShortsQuery={shortsTriggerQuery}
                       initialShortsNonce={shortsTriggerNonce}
                       onSubscriptionsChanged={setSubscribedChannelsList}
-                      onPlayTrack={(t) => void handlePlayTrack(t, 'v1', [t])}
+                      onPlayTrack={(t) => {
+                        if (t.vipOnly && !settings.vipActive) {
+                          showToast('🔒 Essa é música exclusiva da realeza VIP! Assine e ouça primeiro.');
+                          setPixInitialTab('vip');
+                          setPixOpen(true);
+                          return;
+                        }
+                        void handlePlayTrack(t, 'v1', [t]);
+                      }}
                       onPauseCatalogPlayer={pauseCatalogPlayer}
                       onOpenUserAuth={() => setChatModalOpen(true)}
                       onOpenPartners={() => openFuturisticFeature('partners')}
@@ -3922,7 +3938,15 @@ export function App() {
                     currentTrack={currentTrack}
                     isPlaying={isPlaying}
                     playlists={playlists}
-                    onPlayTrack={(t, queue) => void handlePlayTrack(t, 'v1', queue)}
+                    onPlayTrack={(t, queue) => {
+                      if (t.vipOnly && !settings.vipActive) {
+                        showToast('🔒 Essa é música exclusiva da realeza VIP! Assine e ouça primeiro.');
+                        setPixInitialTab('vip');
+                        setPixOpen(true);
+                        return;
+                      }
+                      void handlePlayTrack(t, 'v1', queue);
+                    }}
                     onWatchClip={openClipWithIntro}
                     onAddToPlaylist={addTrackToPlaylist}
                     onOpenToguroShop={openToguroShop}
@@ -3939,7 +3963,15 @@ export function App() {
                     userTracks={userTracks}
                     currentTrack={currentTrack}
                     isPlaying={isPlaying}
-                    onPlayTrack={(t, queue) => void handlePlayTrack(t, 'v1', queue)}
+                    onPlayTrack={(t, queue) => {
+                      if (t.vipOnly && !settings.vipActive) {
+                        showToast('🔒 Essa é música exclusiva da realeza VIP! Assine e ouça primeiro.');
+                        setPixInitialTab('vip');
+                        setPixOpen(true);
+                        return;
+                      }
+                      void handlePlayTrack(t, 'v1', queue);
+                    }}
                     onCreatePlaylist={handleCreatePlaylist}
                     onDeletePlaylist={handleDeletePlaylist}
                     onRemoveFromPlaylist={handleRemoveFromPlaylist}

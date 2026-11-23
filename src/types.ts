@@ -15,6 +15,7 @@ export interface Track {
   emoji: string;
   artist: string;
   album: string;
+  vipOnly?: boolean;
   bpm: number;
   key: string;
   coverUrl: string;

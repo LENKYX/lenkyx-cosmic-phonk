@@ -140,6 +140,13 @@ export const PixModal: React.FC<PixModalProps> = ({
   const [vipEmail, setVipEmail] = useState(() => localStorage.getItem('mg_vip_email') || '');
   const [vipAutoBusy, setVipAutoBusy] = useState(false);
   const [mpTokenDraft, setMpTokenDraft] = useState(settings.mpAccessToken || '');
+  const [mural, setMural] = useState<Array<{ ref: string; name: string; since: string }>>([]);
+  useEffect(() => {
+    fetch('/api/payments/supporters')
+      .then((r) => r.json())
+      .then((d) => setMural(Array.isArray(d?.supporters) ? d.supporters : []))
+      .catch(() => {});
+  }, []);
   const [sbUrlDraft, setSbUrlDraft] = useState(settings.supabaseUrl || '');
   const [sbKeyDraft, setSbKeyDraft] = useState(settings.supabaseAnonKey || '');
   const vipAmount = vipPlanSel === 'anual' ? 99.9 : 14.9;
@@ -516,7 +523,17 @@ export const PixModal: React.FC<PixModalProps> = ({
                   </div>
 
                   <div className="rounded-2xl bg-black/40 border border-white/10 p-3 grid grid-cols-2 gap-1.5 text-[10px] text-slate-100">
-                    {['🚫 Zero anúncios no app', '👑 Selo VIP dourado', '⚡ Acesso antecipado', '🎵 Música offline ilimitada', '🎟️ Sorteios & rankings VIP', '🤝 Suporte prioritário'].map((b) => (
+                    {mural.length > 0 && (
+                      <div className="rounded-2xl border border-amber-400/30 bg-black/40 p-3">
+                        <div className="text-[10px] font-black text-amber-300 mb-1.5">🏆 MURAL DOS APOIADORES · A REALEZA DO MORRO GOLD</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {mural.slice(0, 24).map((m) => (
+                            <span key={m.ref || m.name} className="px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-200 text-[9px] font-bold">👑 {m.name}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {['🚫 Zero anúncios pra sempre', '👑 Selo VIP dourado', '🎵 Música exclusiva VIP', '⚡ Acesso antecipado', '🏆 Ranking VIP & Mural dos Apoiadores', '🎁 Sorteios do Morro Gold'].map((b) => (
                       <div key={b}>{b}</div>
                     ))}
                   </div>

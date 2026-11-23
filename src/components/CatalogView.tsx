@@ -605,6 +605,9 @@ export const CatalogView: React.FC<Props> = ({
                     )}
                   </span>
 
+                  {track.vipOnly && !settings.vipActive && (
+                    <span className="px-1.5 py-0.5 rounded-md bg-amber-400 text-black text-[9px] font-black shrink-0">🔒 VIP</span>
+                  )}
                   <button
                     onClick={() => onPlayTrack(track, 'v1')}
                     className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 bg-black border border-white/15"
@@ -837,6 +840,9 @@ export const CatalogView: React.FC<Props> = ({
                       <span className="px-2 py-0.5 rounded-md bg-emerald-400 text-black text-[9px] font-black">
                         OFFLINE
                       </span>
+                    )}
+                    {track.vipOnly && !settings.vipActive && (
+                      <span className="px-2 py-0.5 rounded-md bg-amber-400 text-black text-[9px] font-black">🔒 SÓ VIP</span>
                     )}
                   </div>
 
