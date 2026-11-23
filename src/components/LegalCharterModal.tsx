@@ -119,9 +119,11 @@ export const LegalCharterModal: React.FC<Props> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-rose-600 text-white text-xs font-black flex items-center gap-1 shrink-0 transition"
+            title="Fechar"
+            aria-label="Fechar"
+            className="p-1.5 rounded-full bg-white/10 hover:bg-rose-600 text-white shrink-0 transition"
           >
-            <X className="w-4 h-4" /> Fechar
+            <X className="w-4 h-4" />
           </button>
         </div>
 

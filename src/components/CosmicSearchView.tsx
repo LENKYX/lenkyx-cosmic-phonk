@@ -417,8 +417,14 @@ export const CosmicSearchView: React.FC<Props> = ({
               <div className="absolute left-0 right-0 top-full mt-1.5 z-40 rounded-2xl bg-[#090616]/98 backdrop-blur-2xl border border-white/15 shadow-2xl overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/[0.07] text-[10px] font-bold text-slate-400">
                   <span>Sugestões</span>
-                  <button type="button" onClick={() => setShowSuggest(false)} className="text-cyan-300">
-                    Fechar
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggest(false)}
+                    className="text-cyan-300 text-[11px] leading-none px-1"
+                    title="Fechar sugestões"
+                    aria-label="Fechar sugestões"
+                  >
+                    ✕
                   </button>
                 </div>
                 {suggestions.slice(0, 5).map((s) => (

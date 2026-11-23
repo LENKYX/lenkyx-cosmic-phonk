@@ -2635,7 +2635,7 @@ export const ShopCriaView: React.FC<Props> = ({
                     ) : (
                       <ShoppingBag className="w-4 h-4" />
                     )}
-                    Finalizar Compra (R$ {totalPrice.toLocaleString('pt-BR')})
+                    Comprar Tudo (R$ {totalPrice.toLocaleString('pt-BR')})
                   </button>
 
                   <a
