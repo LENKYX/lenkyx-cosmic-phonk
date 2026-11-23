@@ -8,7 +8,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: ADMIN_PASSWORD
-        value: lenkyx2026
+        sync: false
       - key: AUTH_SECRET
         generateValue: true
       - key: SUPABASE_URL

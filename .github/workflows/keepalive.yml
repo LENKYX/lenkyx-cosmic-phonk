@@ -1,0 +1,13 @@
+name: Manter app online
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acordar o app
+        run: curl -s -o /dev/null -w "%{http_code}" https://lenkyx-cosmic-phonk.onrender.com/api/health || true
