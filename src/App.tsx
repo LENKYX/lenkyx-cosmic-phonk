@@ -511,7 +511,7 @@ export function App() {
   // MORRO GOLD 24K — Modo Claro / Modo Escuro (persistido) com botão na barra de menus
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
     try {
-      return localStorage.getItem('morro_gold_theme_v1') === 'light' ? 'light' : 'dark';
+      return localStorage.getItem('morro_gold_theme_v1') === 'dark' ? 'dark' : 'light';
     } catch {
       return 'dark';
     }
@@ -3477,19 +3477,6 @@ export function App() {
                 <div className="mg-on-video absolute right-0 top-11 z-50 w-64 rounded-2xl bg-[#1c1c22]/98 backdrop-blur-2xl border border-white/15 shadow-2xl p-1.5 text-xs font-semibold text-white">
                   <button
                     type="button"
-                    onClick={() => {
-                      setTopOverflowOpen(false);
-                      setLangModalOpen(true);
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center justify-between"
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <span>{getLanguageMeta(userLang).flag}</span>
-                      <span>Idioma ({getLanguageMeta(userLang).nativeName})</span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={async () => {
                       setTopOverflowOpen(false);
                       setBackgroundMode(true);
@@ -3573,18 +3560,6 @@ export function App() {
                 </button>
               );
             })}
-            <button
-              type="button"
-              onClick={() => setMoreSheetOpen((v) => !v)}
-              className={`py-2.5 text-[13px] font-semibold whitespace-nowrap border-b-2 transition shrink-0 flex items-center gap-1 ${
-                moreSheetOpen
-                  ? 'border-amber-400 text-white'
-                  : 'border-transparent text-slate-300/85 hover:text-white'
-              }`}
-              title="Mais seções"
-            >
-              <MoreVertical className="w-4 h-4 text-amber-300" /> Mais
-            </button>
             <button
               type="button"
               onClick={() => setCatRowOpen((v) => !v)}

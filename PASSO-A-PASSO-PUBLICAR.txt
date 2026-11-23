@@ -1,24 +1,27 @@
-MORRO GOLD v107 - NADA DE IA + ABRE DIRETO NA VIBE!
-===================================================
+MORRO GOLD v108 - APP CLARO + TUDO NUM LUGAR SO!
+=================================================
 
-O QUE MUDOU (o que voce mandou tirar!):
-- 🚫 ROBOS DE IA FORA: secao "Artistas de Musica IA do Suno"
-  REMOVIDA da pagina de Musica (nada de IA no app!)
-- 🔊 SEM botao "Toque pra ligar o som" (som tenta ser automatico!)
-- 🏠 → ← : o botao casa virou VOLTAR! E o botao VOLTAR DO
-  CELULAR agora funciona pra voltar entre as telas!
-- 📱 O APP ABRE DIRETO NA VIBE! (depois a pessoa vai pro Inicio)
-- 🚫 MENU "+" (CRIAR) REMOVIDO: sem Criar Canal, sem Live,
-  sem Studio IA, sem criar conteudo! So consumo!
-- 🗂️ Setores em janelas + Radio do Morro + sem patrocinadores!
+☀️ APP MAIS CLARO!
+- O app ABRE NO MODO CLARO (fundo creme, texto escuro!)
+- O sol/lua no topo alterna quando quiser
+- Videos continuam pretos (bonitos!)
+
+🗂️ TUDO NUM LUGAR SO (menu tres pontinhos): Minha Conta,
+Notificacoes, Minhas Comissoes (privado), Atualizar, Permissoes
+
+🚫 REMOVIDO (o que voce mandou!):
+- Banner do Toguro (propaganda) FORA!
+- Barra "Minhas Musicas Organizadas" duplicada FORA!
+- Menu "Mais" (Filmes, Jogos, Podcasts, Ouvir Junto...) FORA!
+- Botao "Idioma" FORA (sempre portugues do Brasil!)
 
 ⚠️ COMO PUBLICAR PELO NAVEGADOR (github.com):
 ================================================
 1. Extraia este zip (vira pasta com "src" dentro)
 2. github.com/LENKYX/lenkyx-cosmic-phonk
 3. "Add file" > "Upload files"
-4. ARRASTE A PASTA "src" INTEIRA pra tela! (nao os arquivos soltos!)
+4. ARRASTE A PASTA "src" INTEIRA pra tela! (nao arquivos soltos!)
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: v107 nada de ia abre na vibe
+5. Mensagem: v108 app claro tudo organizado
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.

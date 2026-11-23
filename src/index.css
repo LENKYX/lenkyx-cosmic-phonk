@@ -985,3 +985,40 @@ button {
 button:hover {
   filter: brightness(1.07);
 }
+
+/* ===== ☀️ MODO CLARO DE VERDADE (bem mais claro pra enxergar!) ===== */
+html[data-theme='light'] [class*="bg-["]:not(.bg-black):not(.bg-black *):not([class*="bg-gradient"]) {
+  background-color: #f7efdc !important;
+}
+html[data-theme='light'] .cosmic-card-3d,
+html[data-theme='light'] .glass-panel {
+  background: rgba(255, 252, 243, 0.94) !important;
+  border-color: rgba(150, 110, 30, 0.3) !important;
+}
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-white"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-slate-1"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-slate-2"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-slate-3"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-slate-4"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-amber-1"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-amber-2"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-cyan-2"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-cyan-3"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-emerald-1"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-emerald-2"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-emerald-3"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-rose-2"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-rose-3"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-purple-1"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-purple-2"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-purple-3"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-sky-2"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-sky-3"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-pink-2"],
+html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lux-btn-gold):not(.lux-btn-gold *) [class*="text-pink-3"] {
+  color: #2c2109 !important;
+}
+/* Vídeo/players pretos continuam pretos e legíveis */
+html[data-theme='light'] .bg-black {
+  background-color: #000 !important;
+}
