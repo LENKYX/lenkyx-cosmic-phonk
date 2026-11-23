@@ -69,6 +69,7 @@ interface Props {
   onCommentTarget?: (id: string, title: string, youtubeId?: string) => void;
   onOpenGlobalChat?: () => void;
   onOpenLiveChat?: (roomId: string, roomTitle: string) => void;
+  onNavigateTab?: (id: string) => void;
   onSearchWorld?: (query: string) => void;
   onOpenShop?: () => void;
   onOpenToguroShop?: () => void;
@@ -110,7 +111,7 @@ export const CatalogView: React.FC<Props> = ({
   onSetLyricsTrack,
   onCommentTrack,
   onCommentTarget,
-  onOpenGlobalChat,
+  onNavigateTab,
   onOpenLiveChat,
   onSearchWorld,
   onOpenShop,
@@ -249,6 +250,44 @@ export const CatalogView: React.FC<Props> = ({
               <Plus className="w-3.5 h-3.5" /> Nova
             </button>
           )}
+        </div>
+      </section>
+
+      {/* 🗂️ SEUS SETORES — cada um abre sua janela */}
+      <section className="rounded-3xl cosmic-card-3d p-4">
+        <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-300 mb-3">🗂️ Seus Setores · cada um abre sua janela</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          {([
+            { id: 'catalog', icon: '🏠', label: 'Início', desc: 'Página principal' },
+            { id: 'reels', icon: '📺', label: 'Vibe', desc: 'Vídeos curtos' },
+            { id: 'radio', icon: '📻', label: 'Rádio do Morro', desc: '24h sem parar' },
+            { id: 'explore', icon: '🎵', label: 'Música', desc: 'Catálogo & letras' },
+            { id: 'shop', icon: '🛍️', label: 'Loja dos Cria', desc: 'Indicações' },
+            { id: 'utils', icon: '🛠️', label: 'Utilidades', desc: 'Emergência & igrejas' },
+          ]).map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onNavigateTab?.(s.id)}
+              className="group rounded-2xl border border-white/12 bg-white/[0.05] hover:border-amber-400/45 hover:bg-amber-400/10 text-left overflow-hidden transition active:scale-95"
+            >
+              {/* barra da janelinha */}
+              <div className="flex items-center gap-1 px-2.5 py-1.5 border-b border-white/10 bg-white/[0.04]">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400/80" />
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-300/80" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80" />
+                <span className="text-[8.5px] text-slate-300 ml-1 font-bold">janela</span>
+              </div>
+              <div className="p-2.5 flex items-center gap-2">
+                <span className="text-lg">{s.icon}</span>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-black text-white truncate">{s.label}</div>
+                  <div className="text-[9px] text-slate-300 truncate">{s.desc}</div>
+                </div>
+                <span className="ml-auto text-amber-300 text-xs group-hover:translate-x-0.5 transition">→</span>
+              </div>
+            </button>
+          ))}
         </div>
       </section>
 

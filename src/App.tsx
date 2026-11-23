@@ -883,39 +883,6 @@ export function App() {
     };
   }, []);
 
-  // Vigia de versão: servidor atualizou? Recarrega sozinho e MATA o cache velho!
-  useEffect(() => {
-    const check = async () => {
-      // NUNCA mexe na música: só avisa, nunca recarrega sozinho!
-      if (document.visibilityState !== 'visible') return;
-      try {
-        const r = await fetch('/api/state', { cache: 'no-store' });
-        const d = await r.json();
-        const bootId = String(d?.bootId || '');
-        if (!bootId) return;
-        const seen = localStorage.getItem('mg_boot_id') || '';
-        if (seen && seen !== bootId) {
-          localStorage.setItem('mg_boot_id', bootId);
-          showToast('🟢 Atualização nova do MORRO GOLD! Fecha e abre o app depois.');
-          return;
-        }
-        localStorage.setItem('mg_boot_id', bootId);
-      } catch {
-        /* ignore */
-      }
-    };
-    void check();
-    const onWake = () => {
-      if (document.visibilityState === 'visible') void check();
-    };
-    window.addEventListener('focus', onWake);
-    document.addEventListener('visibilitychange', onWake);
-    return () => {
-      window.removeEventListener('focus', onWake);
-      document.removeEventListener('visibilitychange', onWake);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Tela de bloqueio mostra a música CERTA (nome, artista e capa)
   useEffect(() => {
@@ -3390,16 +3357,6 @@ export function App() {
               <span>Criar</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => openLiveChat('global', '🔥 Geral do Morro · Chat Ao Vivo')}
-              className="relative px-2.5 sm:px-3 py-1.5 rounded-full bg-gradient-to-r from-rose-600/90 via-pink-500/90 to-amber-500/90 hover:brightness-110 text-white text-[11px] font-black flex items-center gap-1.5 shadow-[0_0_16px_rgba(244,63,94,0.45)] transition"
-              title="Chat Ao Vivo em Tempo Real (Estilo Instagram Live)"
-            >
-              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Chat Ao Vivo</span>
-            </button>
 
             <div className="relative">
               <button
@@ -3939,7 +3896,7 @@ export function App() {
                       openCommentTarget(`track:${t.id}`, `${t.title} — ${t.artist}`, t.youtubeVideoId)
                     }
                     onCommentTarget={openCommentTarget}
-                    onOpenGlobalChat={() => openLiveChat('global', '🔥 Geral do Morro · Chat Ao Vivo')}
+                    onNavigateTab={(id) => navigateTab(id as TabId)}
                     onOpenLiveChat={openLiveChat}
                     onSearchWorld={triggerWorldSearchDirect}
                     onOpenShop={() => navigateTab('shop')}
