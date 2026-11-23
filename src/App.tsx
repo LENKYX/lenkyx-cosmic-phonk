@@ -885,6 +885,8 @@ export function App() {
   // Vigia de versão: servidor atualizou? Recarrega sozinho e MATA o cache velho!
   useEffect(() => {
     const check = async () => {
+      // NUNCA mexe na música: só avisa, nunca recarrega sozinho!
+      if (document.visibilityState !== 'visible') return;
       try {
         const r = await fetch('/api/state', { cache: 'no-store' });
         const d = await r.json();
@@ -893,8 +895,7 @@ export function App() {
         const seen = localStorage.getItem('mg_boot_id') || '';
         if (seen && seen !== bootId) {
           localStorage.setItem('mg_boot_id', bootId);
-          showToast('🟢 Atualização nova do MORRO GOLD! Recarregando...');
-          window.setTimeout(() => window.location.reload(), 700);
+          showToast('🟢 Atualização nova do MORRO GOLD! Fecha e abre o app depois.');
           return;
         }
         localStorage.setItem('mg_boot_id', bootId);
@@ -903,7 +904,9 @@ export function App() {
       }
     };
     void check();
-    const onWake = () => void check();
+    const onWake = () => {
+      if (document.visibilityState === 'visible') void check();
+    };
     window.addEventListener('focus', onWake);
     document.addEventListener('visibilitychange', onWake);
     return () => {
@@ -912,6 +915,22 @@ export function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Tela de bloqueio mostra a música CERTA (nome, artista e capa)
+  useEffect(() => {
+    try {
+      const t = currentTrack as { title?: string; artist?: string; coverUrl?: string } | null;
+      if (!t || typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: t.title || 'MORRO GOLD',
+        artist: t.artist || 'Morro Gold',
+        album: 'MORRO GOLD',
+        artwork: t.coverUrl ? [{ src: t.coverUrl, sizes: '512x512', type: 'image/jpeg' }] : [],
+      });
+    } catch {
+      // ignore
+    }
+  }, [currentTrack]);
 
   // Retorno do checkout Mercado Pago: confirma o pagamento e ativa o VIP sozinho
   useEffect(() => {
@@ -1457,32 +1476,61 @@ export function App() {
             void audio.play().catch(() => {});
             return;
           }
-          if (reason === 'error' && autoSkipCountRef.current < 1) {
-            const list = playQueueRef.current.length ? playQueueRef.current : [];
-            if (list.length > 1 && handlePlayTrackRef.current) {
-              const idx = list.findIndex((t) => t.id === cur.id);
-              const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
-              if (next && next.id !== cur.id) {
-                autoSkipCountRef.current += 1;
-                showToast('Fonte indisponível — pulando para a próxima...');
-                void handlePlayTrackRef.current(next, 'v1', list);
+          if (reason === 'error' && autoSkipCountRef.current < 2) {
+            // NUNCA pula de música sozinho! Tenta TOCAR A MESMA de novo.
+            autoSkipCountRef.current += 1;
+            showToast('🔄 Reconectando à mesma música...');
+            const at = audio.currentTime;
+            window.setTimeout(() => {
+              try {
+                audio.load();
+                audio.addEventListener(
+                  'loadedmetadata',
+                  () => {
+                    try {
+                      audio.currentTime = at;
+                    } catch {
+                      // ignore
+                    }
+                    void audio.play().catch(() => {});
+                  },
+                  { once: true }
+                );
+              } catch {
+                // ignore
               }
-            }
+            }, 2500);
+          } else if (reason === 'error') {
+            showToast('⏸️ Toque para continuar a mesma música');
           }
         });
         return;
       }
-      if (reason === 'error' && cur && autoSkipCountRef.current < 1) {
-        const list = playQueueRef.current;
-        if (list.length > 1 && handlePlayTrackRef.current) {
-          const idx = list.findIndex((t) => t.id === cur.id);
-          const next = list[(idx >= 0 ? idx + 1 : 0) % list.length];
-          if (next && next.id !== cur.id) {
-            autoSkipCountRef.current += 1;
-            showToast('Áudio instável — avançando para a próxima...');
-            void handlePlayTrackRef.current(next, 'v1', list);
+      if (reason === 'error' && cur && autoSkipCountRef.current < 2) {
+        autoSkipCountRef.current += 1;
+        showToast('🔄 Reconectando à mesma música...');
+        const at = audio.currentTime;
+        window.setTimeout(() => {
+          try {
+            audio.load();
+            audio.addEventListener(
+              'loadedmetadata',
+              () => {
+                try {
+                  audio.currentTime = at;
+                } catch {
+                  // ignore
+                }
+                void audio.play().catch(() => {});
+              },
+              { once: true }
+            );
+          } catch {
+            // ignore
           }
-        }
+        }, 2500);
+      } else if (reason === 'error') {
+        showToast('⏸️ Toque para continuar a mesma música');
       }
     };
 
