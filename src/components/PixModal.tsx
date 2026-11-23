@@ -137,6 +137,9 @@ export const PixModal: React.FC<PixModalProps> = ({
   const [vipQrUrl, setVipQrUrl] = useState('');
   const [vipCopied, setVipCopied] = useState(false);
   const [vipPaid, setVipPaid] = useState(false);
+  const [vipProofOpen, setVipProofOpen] = useState(false);
+  const [vipE2e, setVipE2e] = useState('');
+  const [vipReceiptDataUrl, setVipReceiptDataUrl] = useState('');
   const [vipEmail, setVipEmail] = useState(() => localStorage.getItem('mg_vip_email') || '');
   const [vipAutoBusy, setVipAutoBusy] = useState(false);
   const [mpTokenDraft, setMpTokenDraft] = useState(settings.mpAccessToken || '');
@@ -177,29 +180,7 @@ export const PixModal: React.FC<PixModalProps> = ({
   }, [open, tab, vipPayload]);
 
   // Confere no servidor se a assinatura automática (Mercado Pago) já está ativa
-  useEffect(() => {
-    if (!open) return;
-    let ref = 'guest';
-    try {
-      ref = localStorage.getItem('mg_device_id') || 'guest';
-    } catch {
-      /* ignore */
-    }
-    fetch(`/api/payments/vip-status?ref=${encodeURIComponent(ref)}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.active && !settings.vipActive) {
-          void onSaveSettings({
-            vipActive: true,
-            vipPlan: d.plan === 'anual' ? 'anual' : 'mensal',
-            vipUntil: d.until,
-          });
-          onToast('👑 VIP ativo na sua conta!');
-        }
-      })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  // O sincronismo do VIP (por aparelho, com pagamento conferido) roda no App — nunca nas config globais.
 
   const vipActiveNow = Boolean(settings.vipActive && settings.vipUntil && new Date(settings.vipUntil).getTime() > Date.now());
 
@@ -370,6 +351,46 @@ export const PixModal: React.FC<PixModalProps> = ({
       onToast(String(e instanceof Error ? e.message : e));
     } finally {
       setVerifyingId(null);
+    }
+  };
+
+  const handleVipReceiptFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => setVipReceiptDataUrl(String(rd.result || ''));
+    rd.readAsDataURL(f);
+  };
+
+  const handleVipPledgeSend = async () => {
+    try {
+      let ref = 'guest';
+      try {
+        ref = localStorage.getItem('mg_device_id') || 'guest';
+      } catch {
+        /* ignore */
+      }
+      const body: Record<string, unknown> = {
+        kind: 'vip',
+        plan: vipPlanSel,
+        amount: vipPlanSel === 'anual' ? 99.9 : 14.9,
+        donorName: 'VIP MORRO GOLD',
+        supporterId: ref,
+      };
+      if (vipE2e.trim()) body.e2eId = vipE2e.trim();
+      if (vipReceiptDataUrl) body.receiptDataUrl = vipReceiptDataUrl;
+      const r = await fetch('/api/live-stats/pix-pledge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || 'Erro ao enviar o comprovante');
+      onToast('📨 Comprovante enviado! Assim que o PIX for confirmado, seu VIP ativa. 💛');
+      setVipPaid(true);
+      setVipProofOpen(false);
+    } catch (e) {
+      onToast(String(e instanceof Error ? e.message : e));
     }
   };
 
@@ -620,22 +641,42 @@ export const PixModal: React.FC<PixModalProps> = ({
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        void onSaveSettings({
-                          vipActive: true,
-                          vipPlan: vipPlanSel,
-                          vipUntil: new Date(Date.now() + (vipPlanSel === 'anual' ? 365 : 30) * 86400000).toISOString(),
-                        });
-                        onToast('👑 BEM-VINDO À REALEZA! Seu VIP MORRO GOLD está ativo!');
-                        setVipPaid(true);
-                      }}
+                      onClick={() => setVipProofOpen((v) => !v)}
                       className="w-full py-2.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-black text-xs font-black"
                     >
-                      ✅ Já paguei — ativar meu VIP
+                      ✅ Já paguei — enviar comprovante
                     </button>
-                    {vipPaid && <div className="text-[9px] text-emerald-300">Pagamento registrado! Seu VIP já está valendo. 💛</div>}
+                    {vipProofOpen && (
+                      <div className="space-y-1.5">
+                        <input
+                          value={vipE2e}
+                          onChange={(e) => setVipE2e(e.target.value)}
+                          placeholder="ID da transação PIX (código E... do comprovante)"
+                          className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-xs text-white placeholder-slate-400"
+                        />
+                        <div className="text-[8px] text-slate-400">ou anexe a foto do comprovante PIX:</div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleVipReceiptFile}
+                          className="w-full text-[9px] text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:bg-amber-400/80 file:text-black file:text-[9px] file:font-black"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void handleVipPledgeSend()}
+                          className="w-full py-2 rounded-full lux-btn-gold text-[11px] font-black"
+                        >
+                          📨 Enviar comprovante para confirmação
+                        </button>
+                      </div>
+                    )}
+                    {vipPaid && (
+                      <div className="text-[9px] text-emerald-300">
+                        Comprovante enviado! Assim que o PIX for conferido, seu VIP ativa automaticamente. 💛
+                      </div>
+                    )}
                     <div className="text-[8px] text-slate-400 leading-relaxed">
-                      Após o PIX, toque em ativar — o comprovante fica registrado no app (aba Ranking & Apoio). Renovação pelo
+                      Após o PIX, envie o comprovante — o pagamento é conferido e seu VIP ativa sozinho. Renovação pelo
                       mesmo código quando o plano vencer.
                     </div>
                   </div>

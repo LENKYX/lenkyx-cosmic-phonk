@@ -380,6 +380,10 @@ app.post('/api/fan/delete-account', async (req, res) => {
 
 function getEffectiveSettings(db) {
   const s = { ...(db?.settings || {}) };
+  // VIP é POR ASSINANTE (assinatura/pagamento conferido) — NUNCA nas configurações globais!
+  delete s.vipActive;
+  delete s.vipPlan;
+  delete s.vipUntil;
   if (!s.affiliateMlTool) {
     s.affiliateMlTool = String(process.env.AFFILIATE_ML_TOOL || '61298625').trim();
   }
@@ -573,12 +577,17 @@ app.delete('/api/tracks/:id', auth.requireCreator, (req, res) => {
 
 app.put('/api/settings', auth.requireCreator, (req, res) => {
   const db = readDb();
+  const patch = { ...(req.body || {}) };
+  // VIP é por assinante — não entra nas configurações globais (segurança de pagamento)
+  delete patch.vipActive;
+  delete patch.vipPlan;
+  delete patch.vipUntil;
   db.settings = {
     ...db.settings,
-    ...req.body,
+    ...patch,
   };
   writeDb(db);
-  res.json(db.settings);
+  res.json(getEffectiveSettings(db));
 });
 
 // Live 1-Click Sync with Suno Playlist (@lenkyx)
@@ -1336,6 +1345,8 @@ app.post('/api/live-stats/pix-pledge', (req, res) => {
   const rawE2eId = String(req.body?.e2eId || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   const txid = String(req.body?.txid || 'LENKYXSOCIAL').trim().slice(0, 25);
   const receiptDataUrl = String(req.body?.receiptDataUrl || '').trim();
+  const kind = String(req.body?.kind || 'mascot') === 'vip' ? 'vip' : 'mascot';
+  const plan = String(req.body?.plan || '').toLowerCase() === 'anual' ? 'anual' : 'mensal';
 
   if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
     return res.status(400).json({ error: 'Informe um valor válido entre R$ 1 e R$ 10.000.' });
@@ -1369,6 +1380,8 @@ app.post('/api/live-stats/pix-pledge', (req, res) => {
     ownedMascots: existingOwned.slice(0, 1000),
     e2eId: hasValidE2e ? rawE2eId : '',
     txid,
+    kind,
+    plan,
     receiptDataUrl: hasReceiptImg ? receiptDataUrl : '',
     status: 'pending',
     createdAt: new Date().toISOString(),
@@ -1430,6 +1443,19 @@ app.post('/api/live-stats/pix-verify', auth.requireCreator, (req, res) => {
       ...computePopularityMeta(store, onlineCount),
       leaderboard: getSortedLeaderboard(store.supporters),
     });
+  }
+
+  // VIP: o PIX conferido ativa a assinatura do apoiador (por aparelho/referência)
+  if (pledge.kind === 'vip') {
+    try {
+      activateSubscription(
+        String(pledge.supporterId || 'guest'),
+        pledge.plan === 'anual' ? 'anual' : 'mensal',
+        String(pledge.id || '')
+      );
+    } catch {
+      /* ignore */
+    }
   }
 
   // Approved: PIX confirmed in PicPay! Now unlock mascot & credit ranking/goal

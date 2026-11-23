@@ -844,6 +844,42 @@ export function App() {
   // Painel PRIVADO de comissões do dono (somente Modo Criador)
   const [commissionPanelOpen, setCommissionPanelOpen] = useState(false);
 
+  // VIP por assinante: sincroniza com o servidor (pagamento conferido) — local apenas!
+  useEffect(() => {
+    let alive = true;
+    const syncVip = async () => {
+      let ref = 'guest';
+      try {
+        ref = localStorage.getItem('mg_device_id') || 'guest';
+      } catch {
+        /* ignore */
+      }
+      try {
+        const r = await fetch(`/api/payments/vip-status?ref=${encodeURIComponent(ref)}`);
+        const d = await r.json();
+        if (!alive) return;
+        const active = Boolean(d?.active && d.until && new Date(d.until).getTime() > Date.now());
+        setSettings((prev) => ({
+          ...prev,
+          vipActive: active,
+          vipPlan: active ? (d.plan === 'anual' ? 'anual' : 'mensal') : prev.vipPlan,
+          vipUntil: active ? d.until : prev.vipUntil,
+        }));
+      } catch {
+        /* ignore */
+      }
+    };
+    void syncVip();
+    const onWake = () => void syncVip();
+    window.addEventListener('focus', onWake);
+    document.addEventListener('visibilitychange', onWake);
+    return () => {
+      alive = false;
+      window.removeEventListener('focus', onWake);
+      document.removeEventListener('visibilitychange', onWake);
+    };
+  }, []);
+
   // Retorno do checkout Mercado Pago: confirma o pagamento e ativa o VIP sozinho
   useEffect(() => {
     if (!/[?&]vipReturn=1/.test(window.location.search)) return;
@@ -865,11 +901,13 @@ export function App() {
         const r = await fetch(`/api/payments/vip-status?ref=${encodeURIComponent(ref)}`);
         const d = await r.json();
         if (d?.active) {
-          await handleSaveSettings({
+          // VIP é por assinante: ativa SÓ neste aparelho (nunca nas configurações globais)
+          setSettings((prev) => ({
+            ...prev,
             vipActive: true,
             vipPlan: d.plan === 'anual' ? 'anual' : 'mensal',
             vipUntil: d.until,
-          });
+          }));
           showToast('👑 PAGAMENTO CONFIRMADO! Seu VIP MORRO GOLD está ativo!');
           return;
         }
