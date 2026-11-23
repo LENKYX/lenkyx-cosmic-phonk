@@ -1,26 +1,33 @@
-MORRO GOLD - ATUALIZACAO COMPLETA (TUDO QUE VOCE PEDIU!)
+MORRO GOLD v111 - TEMA 24k + SOM DE VERDADE + SO ZUEIRA!
 ==========================================================
 
-📦 ESTE ZIP TEM O "src" INTEIRO! E so arrastar e publicar!
+👑 TEMA 24k MORRO GOLD DINAMICO!
+- Acabou o branco! App escuro com OURO 24k brilhando!
+- Cards com borda dourada + brilho que corre (dinamico!)
+- Fundo obsidiana com auréolas de ouro e roxo
 
-🔊 SOM SAI JUNTO COM O VIDEO (na hora que comeca!)
-🎬 VIBE: nome dourado em cima-direita + setinha pequena embaixo-direita
-🖼️ Bordas dos videos = fundo estilo MORRO (roxo/ouro, sem preto!)
-👑 Logo realista MORRO GOLD com nome no rodape do app
-✨ Atualizacao AUTOMATICA com RAIOS SOLARES DE OURO 24K na borda!
-📱 Abas na vertical do lado DIREITO + cards tipo Shopee/ML
-☀️ App fixo no MODO CLARO
+🔊 SOM DE VERDADE (celular E PC):
+- O som sai AUTOMATICO junto com o video!
+- O navegador so bloqueia em caso extremo (e no 1º toque libera!)
 
-🚫 TUDO REMOVIDO: Toguro/Mansao Maromba, claro/escuro (botao),
-login, jogos, TODOS os chats, botao de atualizacao, barrinha verde
+⏭️ VIDEO RODA ATE O FIM e passa SOZINHO pro proximo!
+
+😂 SO ZUEIRA E MEMES (o que o Morro Gold gosta!):
+- Feed = memes, pegadinhas, humor, virais engraçados!
+
+🎬 TELA DA VIBE LIMPA:
+- LOGO MORRO GOLD no topo direito + setinha do lado!
+- O resto tudo removido (só o video e voce!)
+
+📦 "src" INTEIRO (88+ arquivos) = ATUALIZACAO COMPLETA!
 
 ⚠️ COMO PUBLICAR PELO NAVEGADOR (github.com):
 ================================================
 1. Extraia este zip (vira pasta com "src" dentro)
 2. github.com/LENKYX/lenkyx-cosmic-phonk
 3. "Add file" > "Upload files"
-4. ARRASTE A PASTA "src" INTEIRA pra tela! (esta COMPLETA!)
+4. ARRASTE A PASTA "src" INTEIRA pra tela!
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: atualizacao completa tudo que pedi
+5. Mensagem: v111 tema 24k som de verdade so zueira
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.

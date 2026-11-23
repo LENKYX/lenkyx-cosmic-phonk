@@ -511,7 +511,7 @@ export function App() {
   // MORRO GOLD 24K — Modo Claro / Modo Escuro (persistido) com botão na barra de menus
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
     try {
-      return 'light';
+      return 'dark';
     } catch {
       return 'dark';
     }

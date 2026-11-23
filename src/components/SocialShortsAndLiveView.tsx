@@ -120,18 +120,11 @@ type SubTab = 'shorts' | 'live' | 'studio';
 type LiveEffectId = 'studio_hd' | 'cosmic_aurora' | 'cyber_glitch' | 'jbl_pulse' | 'galaxy_portal';
 
 const SHORT_CATEGORIES: { id: string; label: string }[] = [
-  { id: 'all', label: '🇧🇷 Tudo dos Cria' },
-  { id: 'memes', label: '😂 Memes da Quebrada' },
+  { id: 'all', label: '😂 Zueira & Memes dos Cria' },
+  { id: 'memes', label: '🤣 Memes da Quebrada' },
   { id: 'pegadinhas', label: '🎭 Pegadinhas BR' },
-  { id: 'creators', label: '🏆 YouTubers Top BR' },
-  { id: 'viral', label: '🔥 Virais Brasil' },
-  { id: 'humor', label: '🤣 Humor & Stand-up' },
-  { id: 'music', label: '🎵 Som & Clipes' },
-  { id: 'football', label: '⚽ Futebol dos Cria' },
-  { id: 'cinema', label: '🎬 Cinema & Animes' },
-  { id: 'tech', label: '🏍️ Motos & Carros' },
-  { id: 'live', label: '🔴 Ao Vivo Agora' },
-  { id: 'community', label: '📱 Da Galera' },
+  { id: 'humor', label: '😜 Humor & Zoação' },
+  { id: 'viral', label: '🔥 Virais Engraçados' },
 ];
 
 const LIVE_EFFECTS: { id: LiveEffectId; label: string; desc: string }[] = [
@@ -322,20 +315,30 @@ const YouTubeShortPlayer: React.FC<{
             } catch {
               // ignore
             }
-            // Celular bloqueia autoplay com som: se não começar, toca mudo (nunca trava!)
+            // SOM AUTOMATICO: so muta se o navegador BLOQUEOU mesmo (nunca quando ta carregando!)
             window.setTimeout(() => {
               try {
-                if ((ev.target.getPlayerState?.() ?? -1) !== 1) {
+                const st = ev.target.getPlayerState?.() ?? -1;
+                if (st === 1 || st === 3) {
+                  // ta tocando/carregando = o som sai junto com o video!
+                  if (!mutedRef.current) ev.target.unMute?.();
+                } else {
                   ev.target.mute?.();
+                  setForceMuted(true);
                   ev.target.playVideo?.();
                 }
               } catch {
                 // ignore
               }
-            }, 1100);
+            }, 2600);
           },
           onStateChange: (ev) => {
-            if (ev.data === 1) setPaused(false);
+            if (ev.data === 1) {
+              setPaused(false);
+              try {
+                if (!mutedRef.current) ev.target.unMute?.();
+              } catch { /* ok */ }
+            }
             else if (ev.data === 2) setPaused(true);
             else if (ev.data === 0) {
               if (loopRef.current) {
@@ -406,10 +409,12 @@ const YouTubeShortPlayer: React.FC<{
       if (!p) return;
       try {
         const st = p.getPlayerState?.();
-        if (st !== 1 && st !== 3) {
+        if (st === -1 || st === 5) {
           p.mute?.();
           setForceMuted(true);
           p.playVideo?.();
+        } else if (st === 1 || st === 3) {
+          if (!mutedRef.current) p.unMute?.();
         }
       } catch { /* ok */ }
     }, 900);
@@ -796,7 +801,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   // === YOUTUBE SHORTS STYLE INDIVIDUAL VERTICAL REELS STATE ===
   const [shorts, setShorts] = useState<CommunityShortItem[]>([]);
   const [shortCategory, setShortCategory] = useState('all');
-  const [shortSearch, setShortSearch] = useState('');
+  const [shortSearch, setShortSearch] = useState('memes zueira engraçado videos');
   const [shortsMenuOpen, setShortsMenuOpen] = useState(false);
   const [shortsMoreOpen, setShortsMoreOpen] = useState(false);
   const [shortsSearchBarOpen, setShortsSearchBarOpen] = useState(false);
@@ -1022,7 +1027,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
   useEffect(() => {
     const shouldAutoPlay = initialAction !== 'create_reel' && initialAction !== 'go_live';
-    void loadShorts('all', '', false, shouldAutoPlay);
+    void loadShorts('all', 'memes zueira engraçado videos', false, shouldAutoPlay);
     void fetchActiveLives().then(setLives);
     void fetchWorldShorts('live', '', [], false, subscriberId, localCountryCode).then(setYtLives);
     fetch('/api/community/br-creators')
@@ -1819,183 +1824,31 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
               )}
 
               {/* Clean YouTube Bottom Sheet for ⋮ Options */}
-              {shortsMoreOpen && (
-                <div
-                  onClick={() => setShortsMoreOpen(false)}
-                  className="absolute inset-0 z-50 bg-black/70 flex items-end justify-center"
-                >
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full rounded-t-2xl bg-[#212121] border-t border-white/15 p-4 space-y-2 text-white"
-                  >
-                    <div className="w-10 h-1 rounded-full bg-white/30 mx-auto mb-2" />
-                    <div className="text-xs font-bold text-white/60 px-2 pb-1 flex items-center justify-between">
-                      <span>Opções do Short ({activeIndex + 1}/{visibleShorts.length})</span>
-                      <button
-                        type="button"
-                        onClick={() => setShortsMoreOpen(false)}
-                        className="text-white/80 hover:text-white"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
-                      <button
-                        type="button"
-                        onClick={() => setShortsMuted((m) => !m)}
-                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
-                      >
-                        {shortsMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
-                        <span>{shortsMuted ? 'Ativar som' : 'Silenciar'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShortsRate((r) => (r === 1 ? 1.5 : r === 1.5 ? 2 : 1))}
-                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
-                      >
-                        <Zap className="w-4 h-4 text-cyan-300" />
-                        <span>Velocidade: {shortsRate}x</span>
-                      </button>
-                      {onMinimizeReel && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShortsMoreOpen(false);
-                            onMinimizeReel(activeShort);
-                            setExclusiveShortsOpen(false);
-                          }}
-                          className="px-3 py-2.5 rounded-xl bg-amber-400 text-black font-black flex items-center gap-2"
-                        >
-                          <Minimize2 className="w-4 h-4" />
-                          <span>Minimizar na Tela</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShortsMoreOpen(false);
-                          setExclusiveShortsOpen(false);
-                          setSubTab('live');
-                        }}
-                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
-                      >
-                        <Radio className="w-4 h-4 text-rose-400" />
-                        <span>Ao Vivo HD</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShortsMoreOpen(false);
-                          setExclusiveShortsOpen(false);
-                          setTopCreatorsDrawerOpen(true);
-                        }}
-                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
-                      >
-                        <Crown className="w-4 h-4 text-amber-300" />
-                        <span>Top 5 Youtubers</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShortsMoreOpen(false);
-                          setExclusiveShortsOpen(false);
-                          setPublishOpen(true);
-                        }}
-                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
-                      >
-                        <Upload className="w-4 h-4 text-emerald-400" />
-                        <span>Publicar Short</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLoopCurrentShort((v) => !v)}
-                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
-                      >
-                        <Repeat className={`w-4 h-4 ${loopCurrentShort ? 'text-cyan-300' : ''}`} />
-                        <span>{loopCurrentShort ? 'Repetir: Ligado' : 'Repetir vídeo'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAutoAdvanceShorts((v) => !v)}
-                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
-                      >
-                        <SkipForward className={`w-4 h-4 ${autoAdvanceShorts ? 'text-emerald-400' : ''}`} />
-                        <span>{autoAdvanceShorts ? 'Auto Próximo: Sim' : 'Auto Próximo: Não'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setReelsExpanded((v) => !v)}
-                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
-                      >
-                        {reelsExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                        <span>{reelsExpanded ? 'Tela Padrão' : 'Expandir Tela'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShortsFilterSubscribed((v) => !v);
-                          setShortsMoreOpen(false);
-                        }}
-                        className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 flex items-center gap-2"
-                      >
-                        <Bell className={`w-4 h-4 ${shortsFilterSubscribed ? 'text-red-400' : ''}`} />
-                        <span>{shortsFilterSubscribed ? 'Ver Todos' : 'Só Inscrições'}</span>
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          scrollToShort(activeIndex - 1);
-                          setShortsMoreOpen(false);
-                        }}
-                        disabled={activeIndex <= 0}
-                        className="flex-1 py-2.5 rounded-xl bg-white/10 disabled:opacity-35 text-xs font-bold flex items-center justify-center gap-1"
-                      >
-                        <ChevronUp className="w-4 h-4" /> Anterior
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          scrollToShort(activeIndex + 1);
-                          setShortsMoreOpen(false);
-                        }}
-                        disabled={activeIndex >= visibleShorts.length - 1}
-                        className="flex-1 py-2.5 rounded-xl bg-white/10 disabled:opacity-35 text-xs font-bold flex items-center justify-center gap-1"
-                      >
-                        <ChevronDown className="w-4 h-4" /> Próximo
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
 
           </div>
 
 
-          {/* VIBE — nome dourado 3D no topo direito do vídeo */}
-          <div className="absolute top-4 right-4 z-50 select-none pointer-events-none">
-            <span className="text-[26px] font-black tracking-[0.22em] bg-gradient-to-b from-amber-100 via-yellow-400 to-amber-600 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(255,190,50,0.6)]">VIBE</span>
+          {/* LOGO MORRO GOLD + setinha — juntas no topo direito */}
+          <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
+            <img src="/covers/morro-gold-emblema-grosso.png" alt="MORRO GOLD" className="w-10 h-10 rounded-full object-cover border border-amber-300/60 shadow-[0_4px_18px_rgba(255,190,50,0.6)]" />
+            <button
+              type="button"
+              onClick={() => {
+                setExclusiveShortsOpen(false);
+                try {
+                  window.history.back();
+                } catch {
+                  // ignore
+                }
+              }}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-[2px] flex items-center justify-center text-white/85 active:scale-90 transition"
+              title="Voltar"
+            >
+              <span className="text-[14px] leading-none select-none">←</span>
+            </button>
           </div>
-
-          {/* Setinha de voltar pequena — canto inferior direito */}
-          <button
-            type="button"
-            onClick={() => {
-              setExclusiveShortsOpen(false);
-              try {
-                window.history.back();
-              } catch {
-                // ignore
-              }
-            }}
-            className="absolute bottom-4 right-4 z-50 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-[2px] flex items-center justify-center text-white/85 active:scale-90 transition"
-            title="Voltar"
-          >
-            <span className="text-[14px] leading-none select-none">←</span>
-          </button>
         </div>
       );
     }

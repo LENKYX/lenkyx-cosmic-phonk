@@ -1069,3 +1069,39 @@ nav.mg24k-taskbar span { font-size: 7px !important; letter-spacing: 0.02em; opac
     repeating-linear-gradient(115deg, rgba(255,205,80,0.05) 0 2px, rgba(255,205,80,0) 2px 26px),
     linear-gradient(180deg, #16092b 0%, #0b0417 55%, #07030f 100%);
 }
+
+
+/* ===== 👑 TEMA 24k MORRO GOLD · DINÂMICO ===== */
+.h-dvh {
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255, 190, 60, 0.14), transparent 55%),
+    radial-gradient(110% 70% at 92% 112%, rgba(140, 80, 220, 0.16), transparent 60%),
+    radial-gradient(80% 50% at 8% 90%, rgba(255, 170, 30, 0.10), transparent 60%),
+    #07030f !important;
+}
+.cosmic-card-3d, .glass-panel {
+  border: 1px solid rgba(255, 196, 60, 0.38) !important;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55), 0 0 26px rgba(255, 180, 40, 0.14),
+    inset 0 1px 0 rgba(255, 220, 120, 0.20) !important;
+}
+.cosmic-card-3d { position: relative; overflow: hidden; }
+.cosmic-card-3d::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(120deg, transparent 32%, rgba(255, 215, 90, 0.17) 48%, transparent 64%);
+  background-size: 240% 240%;
+  animation: mg-gold-sweep 7s linear infinite;
+}
+@keyframes mg-gold-sweep { 0% { background-position: 130% 0; } 100% { background-position: -130% 0; } }
+.mg24k-bar {
+  background: linear-gradient(180deg, rgba(26, 16, 6, 0.92), rgba(14, 8, 3, 0.92)) !important;
+  border-bottom: 1px solid rgba(255, 196, 60, 0.35) !important;
+}
+.mg24k-taskbar {
+  background: linear-gradient(90deg, rgba(20, 12, 4, 0.96), rgba(30, 18, 6, 0.96)) !important;
+  border-left: 1px solid rgba(255, 196, 60, 0.40) !important;
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.55), -2px 0 18px rgba(255, 180, 40, 0.12) !important;
+}
