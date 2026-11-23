@@ -497,11 +497,6 @@ const YouTubeShortPlayer: React.FC<{
             <Play className="w-7 h-7 fill-white ml-0.5" />
           </span>
         )}
-        {(muted || forceMuted) && !paused && (
-          <span className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-black/55 border border-amber-300/40 text-amber-200 text-[11px] font-black backdrop-blur-sm pointer-events-none">
-            🔊 Toque pra ligar o som
-          </span>
-        )}
         {/* Mascara MG: cobre o visual do YouTube sem atrapalhar o video */}
         <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
@@ -665,11 +660,6 @@ const NativeShortVideoPlayer: React.FC<{
         {paused && (
           <span className="w-16 h-16 rounded-full bg-black/75 border border-white/25 text-white flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.75)]">
             <Play className="w-7 h-7 fill-white ml-0.5" />
-          </span>
-        )}
-        {(muted || forceMuted) && !paused && (
-          <span className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-black/55 border border-amber-300/40 text-amber-200 text-[11px] font-black backdrop-blur-sm pointer-events-none">
-            🔊 Toque pra ligar o som
           </span>
         )}
         {/* Mascara MG: cobre o visual do YouTube sem atrapalhar o video */}
@@ -2010,17 +2000,21 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
           </div>
 
 
-          {/* Casinha transparente — unico botao da tela */}
+          {/* Botão voltar transparente — o botão do celular também volta! */}
           <button
             type="button"
             onClick={() => {
               setExclusiveShortsOpen(false);
-              onGoHome?.();
+              try {
+                window.history.back();
+              } catch {
+                // ignore
+              }
             }}
             className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-[2px] flex items-center justify-center text-white/85 active:scale-90 transition"
-            title="Início"
+            title="Voltar"
           >
-            <span className="text-[22px] leading-none select-none">🏠</span>
+            <span className="text-[22px] leading-none select-none">←</span>
           </button>
         </div>
       );

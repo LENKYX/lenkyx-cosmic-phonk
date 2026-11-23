@@ -358,7 +358,7 @@ export function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabId>('catalog');
+  const [activeTab, setActiveTab] = useState<TabId>('reels');
   const [tabHistory, setTabHistory] = useState<TabId[]>([]);
 
   // Real-time online listeners & Daily PIX Goal
@@ -628,6 +628,11 @@ export function App() {
 
   const navigateTab = useCallback((next: TabId) => {
     setMoreSheetOpen(false);
+    try {
+      window.history.pushState({ mgTab: next }, '');
+    } catch {
+      // ignore
+    }
     setActiveTab((prev) => {
       if (prev === next) return prev;
       setTabHistory((h) => [...h.slice(-15), prev]);
@@ -883,6 +888,16 @@ export function App() {
     };
   }, []);
 
+
+  // Botão VOLTAR do celular = volta pro setor anterior (janelas!)
+  useEffect(() => {
+    const onPop = () => {
+      const st = window.history.state as { mgTab?: TabId } | null;
+      if (st?.mgTab) setActiveTab(st.mgTab);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // Tela de bloqueio mostra a música CERTA (nome, artista e capa)
   useEffect(() => {
@@ -3347,17 +3362,6 @@ export function App() {
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 relative">
             
 
-            <button
-              type="button"
-              onClick={() => setCreateMenuOpen(true)}
-              className="hidden sm:flex px-3.5 py-1.5 rounded-full lux-btn-gold text-xs font-black items-center gap-1.5"
-              title="Criar Vibe, Live HD ou Música"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Criar</span>
-            </button>
-
-
             <div className="relative">
               <button
                 type="button"
@@ -4238,17 +4242,6 @@ export function App() {
           >
             <Film className="w-5 h-5" />
             <span className="text-[10px] font-semibold">Vibe</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setCreateMenuOpen(true)}
-            className="flex items-center justify-center transition"
-            title="Criar"
-          >
-            <span className="w-10 h-10 rounded-full border border-amber-200/70 bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 flex items-center justify-center text-black shadow-[0_4px_14px_rgba(245,200,76,0.45)] active:scale-90 transition">
-              <Plus className="w-5 h-5" />
-            </span>
           </button>
 
           <button

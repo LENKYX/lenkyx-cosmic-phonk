@@ -887,7 +887,7 @@ export const WorldExploreView: React.FC<Props> = ({
       )}
 
       {/* === SUNO AI ARTISTS & TRACKS HUB (Hidden when viewing a single Artist) === */}
-      {!artistProfile && sunoArtists.length > 0 && (
+      {false && !artistProfile && sunoArtists.length > 0 && (
         <CosmicScrollRow
           title={
             <>

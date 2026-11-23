@@ -1,26 +1,24 @@
-MORRO GOLD v106 - SETORES EM JANELAS + LIMPEZA GERAL!
-=====================================================
+MORRO GOLD v107 - NADA DE IA + ABRE DIRETO NA VIBE!
+===================================================
 
-NOVIDADES:
-- 🗂️ SEUS SETORES: grade alinhada na esquerda da pagina inicial!
-  Cada setor e uma JANELINHA (com barra de titulo!) que abre a
-  sua janela: Inicio, Vibe, Radio, Musica, Loja, Utilidades!
-- 🚫 "Chat Ao Vivo" do topo REMOVIDO (de vez!)
-- 🧹 Memoria liberada: removi o vigia de atualizacao que ficava
-  checando o servidor toda hora (o app fica mais leve e SILENCIOSO!)
-- 📻 Radio do Morro incluso (disco girando + equalizador!)
-- 🚫 FORA PATROCINADORES (mídia kit e propostas removidos!)
+O QUE MUDOU (o que voce mandou tirar!):
+- 🚫 ROBOS DE IA FORA: secao "Artistas de Musica IA do Suno"
+  REMOVIDA da pagina de Musica (nada de IA no app!)
+- 🔊 SEM botao "Toque pra ligar o som" (som tenta ser automatico!)
+- 🏠 → ← : o botao casa virou VOLTAR! E o botao VOLTAR DO
+  CELULAR agora funciona pra voltar entre as telas!
+- 📱 O APP ABRE DIRETO NA VIBE! (depois a pessoa vai pro Inicio)
+- 🚫 MENU "+" (CRIAR) REMOVIDO: sem Criar Canal, sem Live,
+  sem Studio IA, sem criar conteudo! So consumo!
+- 🗂️ Setores em janelas + Radio do Morro + sem patrocinadores!
 
 ⚠️ COMO PUBLICAR PELO NAVEGADOR (github.com):
 ================================================
 1. Extraia este zip (vira pasta com "src" dentro)
-2. Abra: https://github.com/LENKYX/lenkyx-cosmic-phonk
+2. github.com/LENKYX/lenkyx-cosmic-phonk
 3. "Add file" > "Upload files"
-4. ARRASTE A PASTA "src" INTEIRA pra tela!
-   (o GitHub coloca cada arquivo na pasta certa!)
+4. ARRASTE A PASTA "src" INTEIRA pra tela! (nao os arquivos soltos!)
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: v106 setores em janelas
+5. Mensagem: v107 nada de ia abre na vibe
 6. "Commit directly to the main branch" > "Commit changes"
-PRONTO! Site atualiza sozinho em ~2 minutos.
-
-Celular (1 vez so): cadeado icone > Limpar e resetar.
+Celular (1 vez): cadeado icone > Limpar e resetar.
