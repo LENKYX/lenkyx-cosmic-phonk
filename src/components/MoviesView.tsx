@@ -30,7 +30,6 @@ import {
   Radio,
   Crop,
 } from 'lucide-react';
-import { ToguroPromoBanner } from './ToguroPromoBanner';
 import { triggerDirectFileDownload } from '../utils/offlineCache';
 import { MovieItem, SeriesEpisodeItem, SeriesSeasonInfo } from '../types';
 import {
@@ -60,9 +59,7 @@ interface Props {
   onOpenPix?: () => void;
   onEmergencyStop?: () => void;
   onMinimizeMovie?: (movie: MovieItem) => void;
-  onOpenToguroShop?: () => void;
   onCommentTarget?: (id: string, title: string, youtubeId?: string) => void;
-  onOpenLiveChat?: (roomId: string, roomTitle: string) => void;
   initialMovie?: MovieItem | null;
   onConsumeInitialMovie?: () => void;
 }
@@ -202,9 +199,7 @@ export const MoviesView: React.FC<Props> = ({
   onOpenPix,
   onEmergencyStop,
   onMinimizeMovie,
-  onOpenToguroShop,
   onCommentTarget,
-  onOpenLiveChat,
   initialMovie = null,
   onConsumeInitialMovie,
 }) => {
@@ -738,17 +733,6 @@ export const MoviesView: React.FC<Props> = ({
                   <span className="hidden sm:inline">Comentar</span>
                 </button>
               )}
-              {onOpenLiveChat && (
-                <button
-                  type="button"
-                  onClick={() => onOpenLiveChat('filmes', '🍿 Chat do Cinema Ao Vivo')}
-                  className="mg24k-btn mg24k-btn-danger"
-                  title="Chat do Cinema ao vivo"
-                >
-                  <Radio className="w-3.5 h-3.5 animate-pulse" />
-                  <span className="hidden sm:inline">Chat Ao Vivo</span>
-                </button>
-              )}
               {onMinimizeMovie && (
                 <button
                   type="button"
@@ -1071,16 +1055,6 @@ export const MoviesView: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {onOpenLiveChat && (
-            <button
-              type="button"
-              onClick={() => onOpenLiveChat('filmes', '🍿 Chat do Cinema Ao Vivo')}
-              className="px-3 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-pink-500 hover:brightness-110 text-white text-[11px] font-black flex items-center gap-1.5 shadow transition"
-            >
-              <Radio className="w-3.5 h-3.5 animate-pulse" />
-              <span>Chat do Cinema Ao Vivo</span>
-            </button>
-          )}
           <button
             onClick={() => setGlobalTvGrid((v) => !v)}
             className={`px-3 py-2 rounded-xl border text-[11px] font-black flex items-center gap-1.5 transition ${
@@ -1303,9 +1277,6 @@ export const MoviesView: React.FC<Props> = ({
         </section>
       )}
 
-      {onOpenToguroShop && (
-        <ToguroPromoBanner variant="strip" onOpenToguroShop={onOpenToguroShop} />
-      )}
 
       {/* === NETFLIX CATEGORY FILTER PILLS === */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>

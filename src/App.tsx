@@ -93,7 +93,7 @@ import { GamingMusicModeModal } from './components/GamingMusicModeModal';
 import { WorldLanguageModal } from './components/WorldLanguageModal';
 import { AudioEffectId, MediaPlayerMenuModal } from './components/MediaPlayerMenuModal';
 import { AudioVisualizerModal } from './components/AudioVisualizerModal';
-import { CommunityChatModal, TargetCommentsModal } from './components/CommunityChatModal';
+import { TargetCommentsModal } from './components/CommunityChatModal';
 import { fetchChannelSubscriptions, getClientSubscriberId } from './utils/communityApi';
 import { recordRankingHit } from './utils/rankingsApi';
 import { claimMediaFocus, registerMediaStopper, stopAllMedia } from './utils/mediaCoordinator';
@@ -511,7 +511,7 @@ export function App() {
   // MORRO GOLD 24K — Modo Claro / Modo Escuro (persistido) com botão na barra de menus
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
     try {
-      return localStorage.getItem('morro_gold_theme_v1') === 'dark' ? 'dark' : 'light';
+      return 'light';
     } catch {
       return 'dark';
     }
@@ -718,10 +718,6 @@ export function App() {
     title: string;
     youtubeId?: string;
   } | null>(null);
-  const openLiveChat = useCallback((roomId = 'global', roomTitle?: string) => {
-    setChatRoom({ id: roomId, title: roomTitle });
-    setChatModalOpen(true);
-  }, []);
   const openCommentTarget = useCallback((id: string, title: string, youtubeId?: string) => {
     setCommentTarget({ id, title, youtubeId });
   }, []);
@@ -2157,12 +2153,6 @@ export function App() {
     });
   }, [showToast]);
 
-  const openToguroShop = useCallback(() => {
-    setShopInitialCategory('mansao');
-    setShopCategoryNonce((n) => n + 1);
-    navigateTab('shop');
-    showToast('🥃 Mansão Maromba · Produtos Oficiais do Toguro com -30% OFF!');
-  }, [navigateTab, showToast]);
 
   const handleDeleteOrHideTrack = useCallback(
     (trackId: string) => {
@@ -3210,15 +3200,16 @@ export function App() {
   }, [settings.publicUrl]);
 
   return (
-    <div className="h-dvh overflow-hidden bg-[#070b18] text-white flex relative">
+    <div className="h-dvh overflow-hidden bg-[#070b18] text-white flex relative pr-[58px]">
       <CosmicSpaceBackdrop />
 
       {updPct !== null && (
-        <div className="fixed top-0 left-0 right-0 z-[999] h-[3px] pointer-events-none">
-          <div
-            className="h-full bg-gradient-to-r from-emerald-400 via-green-400 to-lime-300 shadow-[0_0_16px_rgba(16,185,129,0.85)] transition-[width] duration-150 ease-out"
-            style={{ width: updPct + '%' }}
-          />
+        <div className="pointer-events-none fixed inset-0 z-[999]">
+          <div className="mg-gold-sunrays" style={{ opacity: 0.4 + (updPct / 100) * 0.6 }} />
+          <div className="mg-gold-border-3d" />
+          <div className="fixed top-2 left-1/2 -translate-x-1/2 rounded-full px-5 py-1.5 text-[11px] font-black text-[#2a1d05] bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 shadow-[0_10px_30px_rgba(245,200,76,0.6)] border border-amber-100/70">
+            ✨ Atualização automática 24k · {Math.round(updPct)}%
+          </div>
         </div>
       )}
 
@@ -3438,15 +3429,6 @@ export function App() {
               <Search className="w-5 h-5" />
             </button>
 
-            <button
-              type="button"
-              onClick={() => setThemeMode((m) => (m === 'dark' ? 'light' : 'dark'))}
-              className="mg24k-btn !w-9 !h-9 !min-w-[36px] !p-0 rounded-full"
-              title={themeMode === 'dark' ? 'Ativar Modo Claro' : 'Ativar Modo Escuro'}
-              aria-label={themeMode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
-            >
-              {themeMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
 
             <button
               type="button"
@@ -3489,17 +3471,6 @@ export function App() {
                   >
                     <Zap className="w-4 h-4 text-emerald-300" />
                     <span>Tela Apagada & Permissões</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTopOverflowOpen(false);
-                      runSiteUpdate();
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
-                  >
-                    <RefreshCw className={`w-4 h-4 text-emerald-300 ${updatingApp ? 'animate-spin' : ''}`} />
-                    <span>Atualizar MORRO GOLD</span>
                   </button>
                   
                   
@@ -3596,7 +3567,6 @@ export function App() {
                     run: () => triggerWorldSearchDirect('pagode 2026 menos e mais'),
                   },
                   { id: 'filmes', label: 'Filmes & Animes', run: () => navigateTab('movies') },
-                  { id: 'jogos', label: 'Jogos', run: () => navigateTab('arcade') },
                 ] as { id: string; label: string; run: () => void }[]
               ).map((chip) => {
                 const selected = activeYtChip === chip.id;
@@ -3637,14 +3607,6 @@ export function App() {
                 <span>Filmes & Séries</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => navigateTab('arcade')}
-                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
-              >
-                <Gamepad2 className="w-5 h-5 text-white shrink-0" />
-                <span>Jogos & Arcade</span>
-              </button>
 
               <button
                 type="button"
@@ -3876,10 +3838,8 @@ export function App() {
                     }
                     onCommentTarget={openCommentTarget}
                     onNavigateTab={(id) => navigateTab(id as TabId)}
-                    onOpenLiveChat={openLiveChat}
                     onSearchWorld={triggerWorldSearchDirect}
                     onOpenShop={() => navigateTab('shop')}
-                    onOpenToguroShop={openToguroShop}
                     onDeleteTrack={handleDeleteOrHideTrack}
                     onUpdateTrackCover={handleUpdateTrackCover}
                     onUpdateAlbumCover={handleUpdateAlbumCover}
@@ -3923,7 +3883,6 @@ export function App() {
                         });
                         showToast('🎬 Vibe minimizado! Continua tocando enquanto você navega.');
                       }}
-                      onOpenToguroShop={openToguroShop}
                       onToast={showToast}
                     />
                   </Suspense>
@@ -3938,7 +3897,6 @@ export function App() {
                       categoryNonce={shopCategoryNonce}
                       onSaveSettings={handleSaveSettings}
                       onCommentTarget={openCommentTarget}
-                      onOpenLiveChat={openLiveChat}
                       onToast={showToast}
                     />
                   </Suspense>
@@ -3973,9 +3931,7 @@ export function App() {
                     }}
                     onWatchClip={openClipWithIntro}
                     onAddToPlaylist={addTrackToPlaylist}
-                    onOpenToguroShop={openToguroShop}
                     onCommentTarget={openCommentTarget}
-                    onOpenLiveChat={openLiveChat}
                   />
                 )}
 
@@ -4024,9 +3980,7 @@ export function App() {
                         setMinimizedMovie(movie);
                         showToast('🍿 Filme minimizado! Continua tocando enquanto você navega.');
                       }}
-                      onOpenToguroShop={openToguroShop}
                       onCommentTarget={openCommentTarget}
-                      onOpenLiveChat={openLiveChat}
                       initialMovie={pendingMovie}
                       onConsumeInitialMovie={() => setPendingMovie(null)}
                     />
@@ -4079,7 +4033,6 @@ export function App() {
 
                   {activeTab === 'channels' && (
                     <CreatorChannelsView
-                      onOpenLiveChat={(roomId, roomTitle) => openLiveChat(roomId, roomTitle)}
                       onCommentTarget={(targetId, title, ytId) => openCommentTarget(targetId, title, ytId)}
                       onOpenLegalModal={(t = 'charter', title = '') => {
                         setCharterTab(t);
@@ -4176,16 +4129,23 @@ export function App() {
           onCommentTrack={(t) =>
             openCommentTarget(`track:${t.id}`, `${t.title} — ${t.artist}`, t.youtubeVideoId)
           }
-          onOpenLiveChat={() => openLiveChat('global', '🔥 Geral do Morro · Chat Ao Vivo')}
           onCloseMenu={() => setMusicMenuOpen(false)}
         />
+      )}
+
+      {/* LOGO REALISTA MORRO GOLD — rodapé do app */}
+      {!watchingMovie && activeTab !== 'reels' && (
+        <div className="pointer-events-none fixed bottom-2 left-[calc(50%-29px)] -translate-x-1/2 z-30 flex flex-col items-center gap-1">
+          <img src="/covers/morro-gold-emblema-grosso.png" alt="" className="w-10 h-10 rounded-full object-cover shadow-[0_6px_22px_rgba(255,190,50,0.5)] border border-amber-300/45" />
+          <div className="text-[13px] font-black tracking-[0.3em] bg-gradient-to-b from-amber-100 via-yellow-400 to-amber-600 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(255,190,50,0.55)]">MORRO GOLD</div>
+        </div>
       )}
 
       {/* CLEAN YOUTUBE-STYLE 5-SLOT MOBILE BOTTOM DOCK (Início, Shorts, Criar, Inscrições, Você) */}
       {!watchingMovie && (
         <nav
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-          className="md:hidden fixed bottom-0 left-0 right-0 z-40 min-h-[56px] mg24k-taskbar grid grid-cols-5 px-1.5"
+          style={{ paddingRight: 'env(safe-area-inset-right, 0px)' }}
+          className="fixed right-0 top-0 bottom-0 z-40 w-[58px] mg24k-taskbar flex flex-col items-center justify-center gap-1 px-1 overflow-y-auto no-scrollbar"
         >
           <button
             type="button"
@@ -5139,18 +5099,6 @@ export function App() {
           </div>
         </div>
       )}
-
-      <CommunityChatModal
-        open={chatModalOpen}
-        onClose={() => setChatModalOpen(false)}
-        user={null}
-        roomId={chatRoom.id}
-        roomTitle={chatRoom.title}
-        onOpenAuth={() => {
-          setChatModalOpen(false);
-          showToast('💬 Chat liberado para todos! Digite sua mensagem abaixo.');
-        }}
-      />
 
       <TargetCommentsModal
         open={Boolean(commentTarget)}

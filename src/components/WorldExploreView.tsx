@@ -64,7 +64,6 @@ import {
 import { getSmartDiscoveryQueries, recordPlayTaste, recordSearchTaste } from '../utils/tasteProfile';
 import { recordSmartInteraction } from '../utils/smartEngine';
 import { CosmicScrollRow } from './CosmicScrollRow';
-import { ToguroPromoBanner } from './ToguroPromoBanner';
 
 interface Props {
   initialQuery?: string;
@@ -75,9 +74,7 @@ interface Props {
   onPlayTrack: (track: Track, queue: Track[], queueLabel?: string) => void;
   onWatchClip?: (track: Track, queue: Track[]) => void;
   onAddToPlaylist: (playlistId: string, track: Track) => void;
-  onOpenToguroShop?: () => void;
   onCommentTarget?: (id: string, title: string, youtubeId?: string) => void;
-  onOpenLiveChat?: (roomId: string, roomTitle: string) => void;
 }
 
 const GENRE_CHIPS = [
@@ -190,9 +187,7 @@ export const WorldExploreView: React.FC<Props> = ({
   onPlayTrack,
   onWatchClip,
   onAddToPlaylist,
-  onOpenToguroShop,
   onCommentTarget,
-  onOpenLiveChat,
 }) => {
   const [results, setResults] = useState<Track[]>([]);
   const [newReleases, setNewReleases] = useState<Track[]>([]);
@@ -445,9 +440,6 @@ export const WorldExploreView: React.FC<Props> = ({
         </div>
       </section>
 
-      {onOpenToguroShop && (
-        <ToguroPromoBanner variant="strip" onOpenToguroShop={onOpenToguroShop} />
-      )}
 
       {/* === MODERN GENRE CHIPS + QUICK MIX CONTROLS === */}
       <div className="flex items-center justify-between gap-2 flex-wrap">

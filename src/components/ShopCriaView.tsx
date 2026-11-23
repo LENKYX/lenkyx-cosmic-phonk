@@ -590,86 +590,6 @@ const CRIA_CATALOG: CriaProduct[] = [
 
   // 8. PATROCINADOR OFICIAL: MANSÃO MAROMBA (TOGURO) & BEBIDAS DO ROLÊ
   {
-    id: 'shop-mansao-maromba-combo',
-    name: 'Drink Mansão Maromba Vodka Combo 6 Unidades',
-    brand: 'Mansão Maromba · Toguro',
-    category: 'mansao',
-    priceBrl: 169.9,
-    priceLabel: 'R$ 169,90 no Pix',
-    priceOtherLabel: 'ou R$ 179,90 em outros meios',
-    originalPriceBrl: 179.9,
-    discountPct: 5,
-    seller: 'TONELLI SUPERMERCADOS · Loja Oficial',
-    verifiedPrice: true,
-    imageUrl: '/api/shop/img-proxy?url=https%3A%2F%2Fhttp2.mlstatic.com%2FD_Q_NP_2X_894325-MLB107510520635_022026-E--vodka-combo-sabor-energetico-mansao-maromba-unidade-1l.webp',
-    badge: '🏆 PATROCINADOR OFICIAL',
-    emoji: '🥃',
-    specs: 'Combo com 6 unidades · bebida oficial do Toguro & Mansão Maromba · preço real verificado no Mercado Livre',
-    searchQuery: 'Bebida Mansao Maromba Toguro combo',
-    commissionEst: '🏆 Destaque Oficial',
-    accent: 'from-amber-400/40 to-yellow-600/25',
-  },
-  {
-    id: 'shop-mansao-maromba-pack',
-    name: 'Mansão Maromba Whisky + Maçã Verde 1L (Drink Pronto)',
-    brand: 'Mansão Maromba · Toguro',
-    category: 'mansao',
-    priceBrl: 12.79,
-    priceLabel: 'R$ 12,79 no Pix',
-    priceOtherLabel: 'ou R$ 15,99 em outros meios',
-    originalPriceBrl: 25,
-    discountPct: 48,
-    seller: 'FULL · SUPER',
-    verifiedPrice: true,
-    imageUrl: '/api/shop/img-proxy?url=https%3A%2F%2Fdistribuidoraourofino.com.br%2Fwp-content%2Fuploads%2F2025%2F09%2FWhisky-Combo-Maca-Verde-Mansao-Maromba-1L.jpg',
-    badge: '🔥 OFERTA REAL DO DIA',
-    emoji: '🧊',
-    specs: 'Drink pronto Whisky + Maçã Verde 1 litro · preço real do Mercado Livre com frete grátis FULL',
-    searchQuery: 'Mansao Maromba Whisky Maca Verde 1L',
-    commissionEst: '🏆 Destaque da Loja',
-    accent: 'from-yellow-400/35 to-amber-500/25',
-  },
-  {
-    id: 'shop-mansao-maromba-kit-treino',
-    name: 'Drink Do Job Mansão Maromba Sabor Beijo Na Noite 1L',
-    brand: 'Mansão Maromba · Toguro',
-    category: 'mansao',
-    priceBrl: 12.79,
-    priceLabel: 'R$ 12,79 no Pix',
-    priceOtherLabel: 'ou R$ 15,99 em outros meios',
-    originalPriceBrl: 25,
-    discountPct: 48,
-    seller: 'FULL · SUPER',
-    verifiedPrice: true,
-    imageUrl: '/api/shop/img-proxy?url=https%3A%2F%2Fwww.pontocertoconveniencia.com.br%2Fmedia%2Fcatalog%2Fproduct%2Fcache%2F1%2Fimage%2F9df78eab33525d08d6e5fb8d27136e95%2Fm%2Fo%2Fmorango19__1.jpg',
-    badge: '💖 OFERTA IMPERDÍVEL REAL',
-    emoji: '🍹',
-    specs: 'Drink Do Job sabor Beijo Na Noite 1 litro · preço real verificado no Mercado Livre',
-    searchQuery: 'Drink Do Job Mansao Maromba Beijo Na Noite',
-    commissionEst: '🏆 Comissão de afiliado',
-    accent: 'from-pink-500/30 to-amber-500/20',
-  },
-  {
-    id: 'shop-mansao-maromba-kit6',
-    name: 'Kit 6 Unid Mansão Maromba Drink (Combo Fardo)',
-    brand: 'Mansão Maromba · Toguro',
-    category: 'mansao',
-    priceBrl: 183.17,
-    priceLabel: 'R$ 183,17 no Pix',
-    priceOtherLabel: 'ou 6x R$ 32,20 sem juros',
-    originalPriceBrl: 193.17,
-    discountPct: 5,
-    seller: 'Mercado Livre · Frete grátis',
-    verifiedPrice: true,
-    imageUrl: '/api/shop/img-proxy?url=https%3A%2F%2Fhttp2.mlstatic.com%2FD_NQ_NP_647101-MLB79911847509_102024-O.webp',
-    badge: '📦 KIT 6 OFICIAL',
-    emoji: '📦',
-    specs: 'Kit com 6 unidades Mansão Maromba · preço real verificado · parcelável sem juros',
-    searchQuery: 'Kit 6 Unid Maromba Mansao Drink',
-    commissionEst: '🏆 Comissão de afiliado',
-    accent: 'from-amber-500/30 to-emerald-500/20',
-  },
-  {
     id: 'shop-bebidas-combo-buchanans',
     name: 'Combo Camarote: Whisky Buchanan’s 12 Anos / Jack Daniel’s + Red Bull',
     brand: 'Buchanan’s · Jack Daniel’s',
@@ -804,8 +724,7 @@ const CRIA_CATALOG: CriaProduct[] = [
 ];
 
 const CATEGORIES: { id: ShopCat; label: string; liveQuery: string }[] = [
-  { id: 'all', label: '🔥 Tudo dos Cria', liveQuery: 'Mansao Maromba Lacoste Juliet 1 Million Narguile' },
-  { id: 'mansao', label: '🏆 Mansão Maromba & Rolê', liveQuery: 'Bebida Mansao Maromba Toguro Whisky Combo' },
+  { id: 'all', label: '🔥 Tudo dos Cria', liveQuery: 'Lacoste Juliet 1 Million Narguile' },
   { id: 'perfumes', label: '🍾 Perfumes Importados', liveQuery: 'Perfume 1 Million Dior Sauvage 212 VIP Black original' },
   { id: 'narguile', label: '💨 Narguiles & Essências', liveQuery: 'Narguile Triton Zip Essencia Ziggy Zomo' },
   { id: 'roupas', label: '🐊 Roupas & Grife', liveQuery: 'Camisa Polo Corta Vento Lacoste Oakley original' },
@@ -1839,7 +1758,6 @@ export const ShopCriaView: React.FC<Props> = ({
             <span className="px-2 py-1 rounded-full bg-amber-400 text-black text-[9px] font-black shrink-0">📢 ANÚNCIO</span>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-black text-amber-200 truncate">
-                🥃 Mansão Maromba · Toguro — Combos & Bebidas do Rolê
               </div>
               <div className="text-[10px] text-slate-300 truncate">
                 Indicação oficial · Combo Whisky, Vodka, Gin & Energético pro rolê
@@ -1880,7 +1798,7 @@ export const ShopCriaView: React.FC<Props> = ({
           </div>
 
           {/* GRADE DE PRODUTOS */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
             {filtered.map((item) => {
               const promo = getPromoInfo(item);
               const photos = itemPhotos(item);
@@ -1958,84 +1876,6 @@ export const ShopCriaView: React.FC<Props> = ({
       ) : (
         /* ================= MINHA CONTA ================= */
         <div className="space-y-4">
-          {/* LOGIN DO CLIENTE */}
-          <section className="rounded-2xl cosmic-card-3d p-4 space-y-3">
-            <h2 className="text-sm font-black text-white flex items-center gap-2">
-              <User className="w-4 h-4 text-amber-300" /> Login do Cliente
-            </h2>
-            {profileName.trim().length > 1 ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 text-xs font-black">
-                  ✓ {profileName}
-                </span>
-                {profilePhone.trim() && (
-                  <span className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-200 text-xs">
-                    📱 {profilePhone}
-                  </span>
-                )}
-                <button type="button" onClick={logoutProfile} className="px-3 py-1.5 rounded-full bg-white/10 text-slate-200 text-xs font-bold">
-                  Sair
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
-                  placeholder="Seu nome"
-                  className={INPUT_CLS}
-                />
-                <input
-                  value={profilePhone}
-                  onChange={(e) => setProfilePhone(e.target.value)}
-                  placeholder="WhatsApp (com DDD)"
-                  className={INPUT_CLS}
-                />
-                <button type="button" onClick={loginProfile} className="py-2 rounded-full lux-btn-gold text-xs font-black">
-                  Entrar
-                </button>
-              </div>
-            )}
-            <p className="text-[10px] text-slate-400">
-              Seu login guarda a sacola no servidor e ativa as tendências da loja pra você.
-            </p>
-            {Boolean(settings.supabaseUrl && settings.supabaseAnonKey) && (
-              <div className="rounded-2xl bg-cyan-500/10 border border-cyan-400/35 p-3 space-y-2">
-                <div className="text-[11px] font-black text-cyan-200">☁️ Conta na nuvem — leve seu login pra qualquer aparelho</div>
-                {cloudUser ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 text-xs font-black">
-                      ☁️ {cloudUser.email || cloudUser.id.slice(0, 8)}
-                    </span>
-                    <button type="button" onClick={cloudLogout} className="px-3 py-1.5 rounded-full bg-white/10 text-slate-200 text-xs font-bold">
-                      Desconectar
-                    </button>
-                    <button type="button" onClick={() => void deleteMyAccount()} className="px-3 py-1.5 rounded-full bg-red-500/15 text-red-300 text-xs font-bold border border-red-500/30">
-                      🗑️ Excluir conta
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input value={cloudEmail} onChange={(e) => setCloudEmail(e.target.value)} placeholder="E-mail" className={INPUT_CLS} />
-                      <input type="password" value={cloudPassword} onChange={(e) => setCloudPassword(e.target.value)} placeholder="Senha (mín. 6)" className={INPUT_CLS} />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={() => void cloudLogin(false)} className="px-4 py-2 rounded-full lux-btn-gold text-xs font-black">
-                        Entrar
-                      </button>
-                      <button type="button" onClick={() => void cloudLogin(true)} className="px-4 py-2 rounded-full lux-btn-obsidian text-xs font-bold">
-                        Criar conta
-                      </button>
-                      <button type="button" onClick={cloudGoogle} className="px-4 py-2 rounded-full bg-white text-black text-xs font-black">
-                        🔵 Entrar com Google
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </section>
 
           {/* CHAT & TENDÊNCIAS */}
           <section className="rounded-2xl cosmic-card-3d p-4 space-y-3">

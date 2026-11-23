@@ -81,7 +81,6 @@ import {
 import { TargetCommentsModal } from './CommunityChatModal';
 import { LiveSpaceCreatures, SpaceCreatureSpecies } from './LiveSpaceCreatures';
 import { CosmicScrollRow } from './CosmicScrollRow';
-import { ToguroPromoBanner } from './ToguroPromoBanner';
 import { claimMediaFocus, registerMediaStopper } from '../utils/mediaCoordinator';
 import { useVideoAspect, useAutoHideChrome } from '../utils/videoChrome';
 import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
@@ -106,7 +105,6 @@ interface Props {
   onOpenPartners?: () => void;
   onMinimizeReel?: (short: CommunityShortItem) => void;
   onGoHome?: () => void;
-  onOpenToguroShop?: () => void;
   onOpenTvCast?: (media: {
     title: string;
     artist?: string;
@@ -428,6 +426,26 @@ const YouTubeShortPlayer: React.FC<{
     }
   }, [playbackRate]);
 
+  // SOM SAI JUNTO COM O VIDEO: libera o som no primeiro toque (e mantem!)
+  useEffect(() => {
+    const unlock = () => {
+      const p = playerRef.current;
+      if (!p) return;
+      try {
+        p.unMute?.();
+        setForceMuted(false);
+        setMuted(false);
+        p.playVideo?.();
+      } catch { /* ok */ }
+    };
+    document.addEventListener('pointerdown', unlock, { once: true });
+    document.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      document.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
   const toggleShortPlay = () => {
     const p = playerRef.current;
     if (!p) return;
@@ -473,7 +491,7 @@ const YouTubeShortPlayer: React.FC<{
   const pct = durTime > 0 ? Math.min(100, (curTime / durTime) * 100) : 0;
 
   return (
-    <div ref={stageBoxRef} className="relative w-full h-full bg-black overflow-hidden">
+    <div ref={stageBoxRef} className="relative w-full h-full mg-vibe-backdrop overflow-hidden">
       <div
         ref={hostRef}
         style={{
@@ -492,11 +510,6 @@ const YouTubeShortPlayer: React.FC<{
         aria-label={paused ? 'Continuar Reel' : 'Pausar Reel'}
         className="absolute inset-0 z-10 flex items-center justify-center bg-transparent transition"
       >
-        {paused && (
-          <span className="w-16 h-16 rounded-full bg-black/75 border border-white/25 text-white flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.75)]">
-            <Play className="w-7 h-7 fill-white ml-0.5" />
-          </span>
-        )}
         {/* Mascara MG: cobre o visual do YouTube sem atrapalhar o video */}
         <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
@@ -504,15 +517,6 @@ const YouTubeShortPlayer: React.FC<{
           <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-200 via-yellow-500 to-amber-700 text-black text-[10px] font-black flex items-center justify-center">{'♛'}</span>
           <span className="text-[10px] font-black text-amber-200/95 drop-shadow">MORRO GOLD</span>
         </div>
-        {heartBurst && (
-          <span
-            key={heartBurst.key}
-            style={{ left: heartBurst.x - 32, top: heartBurst.y - 32 }}
-            className="absolute pointer-events-none w-16 h-16 flex items-center justify-center animate-ping"
-          >
-            <Heart className="w-14 h-14 fill-pink-500 text-pink-400 drop-shadow-[0_0_24px_rgba(236,72,153,0.9)]" />
-          </span>
-        )}
       </button>
 
       {/* YouTube Shorts Thin Bottom Progress Bar */}
@@ -631,7 +635,7 @@ const NativeShortVideoPlayer: React.FC<{
   };
 
   return (
-    <div className="relative w-full h-full bg-black">
+    <div className="relative w-full h-full mg-vibe-backdrop">
       <video
         ref={videoRef}
         src={src}
@@ -649,7 +653,7 @@ const NativeShortVideoPlayer: React.FC<{
           if (!durTime && e.currentTarget.duration) setDurTime(e.currentTarget.duration);
         }}
         onEnded={onEnded}
-        className="w-full h-full object-cover lg:object-contain [@media(min-aspect-ratio:1/1)]:object-contain bg-black"
+        className="w-full h-full object-cover lg:object-contain [@media(min-aspect-ratio:1/1)]:object-contain mg-vibe-backdrop"
       />
       <button
         type="button"
@@ -657,11 +661,6 @@ const NativeShortVideoPlayer: React.FC<{
         aria-label={paused ? 'Continuar Reel' : 'Pausar Reel'}
         className="absolute inset-0 z-10 flex items-center justify-center bg-transparent transition"
       >
-        {paused && (
-          <span className="w-16 h-16 rounded-full bg-black/75 border border-white/25 text-white flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.75)]">
-            <Play className="w-7 h-7 fill-white ml-0.5" />
-          </span>
-        )}
         {/* Mascara MG: cobre o visual do YouTube sem atrapalhar o video */}
         <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
@@ -669,15 +668,6 @@ const NativeShortVideoPlayer: React.FC<{
           <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-200 via-yellow-500 to-amber-700 text-black text-[10px] font-black flex items-center justify-center">{'♛'}</span>
           <span className="text-[10px] font-black text-amber-200/95 drop-shadow">MORRO GOLD</span>
         </div>
-        {heartBurst && (
-          <span
-            key={heartBurst.key}
-            style={{ left: heartBurst.x - 32, top: heartBurst.y - 32 }}
-            className="absolute pointer-events-none w-16 h-16 flex items-center justify-center animate-ping"
-          >
-            <Heart className="w-14 h-14 fill-pink-500 text-pink-400 drop-shadow-[0_0_24px_rgba(236,72,153,0.9)]" />
-          </span>
-        )}
       </button>
 
       <div
@@ -760,7 +750,6 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   onOpenPartners,
   onMinimizeReel,
   onGoHome,
-  onOpenToguroShop,
   onOpenTvCast,
   onToast,
 }) => {
@@ -1953,20 +1942,6 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                         <span>{shortsFilterSubscribed ? 'Ver Todos' : 'Só Inscrições'}</span>
                       </button>
                     </div>
-                    {onOpenToguroShop && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShortsMoreOpen(false);
-                          setExclusiveShortsOpen(false);
-                          onOpenToguroShop();
-                        }}
-                        className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-400 to-emerald-400 text-black font-black text-xs flex items-center justify-center gap-1.5"
-                      >
-                        <Crown className="w-4 h-4" />
-                        <span>🥃 Produtos do Toguro · Mansão Maromba (-30% OFF)</span>
-                      </button>
-                    )}
                     <div className="flex items-center gap-2 pt-1">
                       <button
                         type="button"
@@ -2000,7 +1975,12 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
           </div>
 
 
-          {/* Botão voltar transparente — o botão do celular também volta! */}
+          {/* VIBE — nome dourado 3D no topo direito do vídeo */}
+          <div className="absolute top-4 right-4 z-50 select-none pointer-events-none">
+            <span className="text-[26px] font-black tracking-[0.22em] bg-gradient-to-b from-amber-100 via-yellow-400 to-amber-600 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(255,190,50,0.6)]">VIBE</span>
+          </div>
+
+          {/* Setinha de voltar pequena — canto inferior direito */}
           <button
             type="button"
             onClick={() => {
@@ -2011,10 +1991,10 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 // ignore
               }
             }}
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-[2px] flex items-center justify-center text-white/85 active:scale-90 transition"
+            className="absolute bottom-4 right-4 z-50 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-[2px] flex items-center justify-center text-white/85 active:scale-90 transition"
             title="Voltar"
           >
-            <span className="text-[22px] leading-none select-none">←</span>
+            <span className="text-[14px] leading-none select-none">←</span>
           </button>
         </div>
       );
@@ -2023,9 +2003,6 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     return (
       <div className="space-y-3">
         {/* PROPAGANDA TOGURO DISCRETA + OPCIONAL */}
-        {onOpenToguroShop && (
-          <ToguroPromoBanner variant="strip" onOpenToguroShop={onOpenToguroShop} />
-        )}
 
         {/* TOP 5 YOUTUBERS BR — ONLY SHOWN WHEN OPENED VIA ⋮ MENU */}
         {topCreatorsDrawerOpen && brTop5.length > 0 && (

@@ -1022,3 +1022,50 @@ html[data-theme='light'] :not(.bg-black *):not([class*="bg-gradient"] *):not(.lu
 html[data-theme='light'] .bg-black {
   background-color: #000 !important;
 }
+
+/* ✨ ATUALIZAÇÃO AUTOMÁTICA · OURO 24K · RAIOS SOLARES 3D REALISTA */
+.mg-gold-sunrays {
+  position: absolute;
+  inset: -22%;
+  background: conic-gradient(from 0deg,
+    rgba(255,215,80,0) 0deg, rgba(255,215,80,0.55) 12deg, rgba(255,215,80,0) 24deg,
+    rgba(255,240,170,0) 42deg, rgba(255,240,170,0.6) 54deg, rgba(255,240,170,0) 66deg,
+    rgba(255,215,80,0) 88deg, rgba(255,215,80,0.5) 100deg, rgba(255,215,80,0) 112deg,
+    rgba(255,240,170,0) 132deg, rgba(255,240,170,0.55) 144deg, rgba(255,240,170,0) 156deg,
+    rgba(255,215,80,0) 178deg, rgba(255,215,80,0.5) 190deg, rgba(255,215,80,0) 202deg,
+    rgba(255,240,170,0) 222deg, rgba(255,240,170,0.55) 234deg, rgba(255,240,170,0) 246deg,
+    rgba(255,215,80,0) 268deg, rgba(255,215,80,0.5) 280deg, rgba(255,215,80,0) 292deg,
+    rgba(255,240,170,0) 312deg, rgba(255,240,170,0.55) 324deg, rgba(255,240,170,0) 336deg,
+    rgba(255,215,80,0) 360deg);
+  animation: mg-rays-spin 9s linear infinite, mg-rays-pulse 1.6s ease-in-out infinite alternate;
+  filter: blur(2px) drop-shadow(0 0 26px rgba(255,200,60,0.85));
+}
+.mg-gold-border-3d {
+  position: absolute;
+  inset: 8px;
+  border-radius: 18px;
+  border: 3px solid transparent;
+  background:
+    linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0)) padding-box,
+    linear-gradient(120deg, #fff3c4, #f6c324 25%, #8a5f10 50%, #f6c324 75%, #fff3c4) border-box;
+  box-shadow: 0 0 34px rgba(255,196,40,0.75), 0 0 90px rgba(255,170,20,0.5),
+    inset 0 0 32px rgba(255,205,60,0.35), inset 0 2px 12px rgba(255,240,180,0.55);
+  animation: mg-gold-shine 2.2s ease-in-out infinite alternate;
+}
+@keyframes mg-rays-spin { to { transform: rotate(360deg); } }
+@keyframes mg-rays-pulse { from { opacity: 0.55; } to { opacity: 0.95; } }
+@keyframes mg-gold-shine { from { filter: brightness(1); } to { filter: brightness(1.28) saturate(1.12); } }
+/* NAVE VERTICAL: esconde rótulos, deixa só ícones dourados */
+nav.mg24k-taskbar span { font-size: 7px !important; letter-spacing: 0.02em; opacity: 0.85; }
+/* CARDS TIPO SHOPEE/MERCADO LIVRE: imagens menores e compactas */
+.grid img { max-height: 120px; width: 100%; object-fit: cover; }
+
+
+/* 🏠 FUNDO ESTILO MORRO — bordas dos vídeos da Vibe (sem preto!) */
+.mg-vibe-backdrop {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(245,190,60,0.22), rgba(245,190,60,0) 55%),
+    radial-gradient(130% 100% at 50% 110%, rgba(120,60,200,0.28), rgba(120,60,200,0) 60%),
+    repeating-linear-gradient(115deg, rgba(255,205,80,0.05) 0 2px, rgba(255,205,80,0) 2px 26px),
+    linear-gradient(180deg, #16092b 0%, #0b0417 55%, #07030f 100%);
+}

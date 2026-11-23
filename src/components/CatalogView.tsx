@@ -38,7 +38,6 @@ import {
 } from '../utils/communityApi';
 import { BailesAndEstiloView } from './BailesAndEstiloView';
 import { LenkyxEdgeLogo } from './LenkyxEdgeLogo';
-import { ToguroPromoBanner } from './ToguroPromoBanner';
 
 interface Props {
   tracks: Track[];
@@ -68,11 +67,9 @@ interface Props {
   onCommentTrack?: (track: Track) => void;
   onCommentTarget?: (id: string, title: string, youtubeId?: string) => void;
   onOpenGlobalChat?: () => void;
-  onOpenLiveChat?: (roomId: string, roomTitle: string) => void;
   onNavigateTab?: (id: string) => void;
   onSearchWorld?: (query: string) => void;
   onOpenShop?: () => void;
-  onOpenToguroShop?: () => void;
   onDeleteTrack?: (trackId: string) => void;
   onUpdateTrackCover?: (trackId: string, coverUrl: string) => void;
   onUpdateAlbumCover?: (coverUrl: string) => void;
@@ -112,10 +109,8 @@ export const CatalogView: React.FC<Props> = ({
   onCommentTrack,
   onCommentTarget,
   onNavigateTab,
-  onOpenLiveChat,
   onSearchWorld,
   onOpenShop,
-  onOpenToguroShop,
   onDeleteTrack,
   onUpdateTrackCover,
   onUpdateAlbumCover,
@@ -210,12 +205,6 @@ export const CatalogView: React.FC<Props> = ({
               <span className="text-amber-200/90 font-semibold">{tracks.length} pedradas</span>
               <span className="text-amber-400/50">·</span>
               <span>{totalPlays.toLocaleString('pt-BR')} plays na quebrada</span>
-              {offlineCount > 0 && (
-                <>
-                  <span className="text-amber-400/50">·</span>
-                  <span className="text-emerald-300 font-bold">{offlineCount} offline</span>
-                </>
-              )}
             </div>
           </div>
         </div>
@@ -242,14 +231,6 @@ export const CatalogView: React.FC<Props> = ({
             <span>{offlineCount >= tracks.length && tracks.length > 0 ? 'Tudo Salvo' : 'Baixar Offline'}</span>
           </button>
 
-          {mode === 'creator' && (
-            <button
-              onClick={onAddTrack}
-              className="px-3.5 py-2 rounded-full lux-btn-gold font-black text-xs flex items-center gap-1"
-            >
-              <Plus className="w-3.5 h-3.5" /> Nova
-            </button>
-          )}
         </div>
       </section>
 
@@ -368,86 +349,14 @@ export const CatalogView: React.FC<Props> = ({
 
 
       {/* REAL TOP BRASIL ARTISTS STRIP */}
-      {onSearchWorld && (
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-          {[
-            'Henrique & Juliano',
-            'Gusttavo Lima',
-            'Ana Castela',
-            'MC Ryan SP',
-            'Matuê',
-            'Grupo Menos É Mais',
-            'Alok',
-            'Marília Mendonça',
-            'The Weeknd',
-            'Bruno Mars',
-          ].map((artistName) => (
-            <button
-              key={artistName}
-              type="button"
-              onClick={() => onSearchWorld(artistName)}
-              className="px-3.5 py-1.5 rounded-full lux-btn-obsidian hover:border-amber-300 text-xs font-extrabold text-amber-100 whitespace-nowrap shrink-0 flex items-center gap-1.5"
-            >
-              <span>{artistName}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
 
       {/* LYRICS MODAL */}
-      {lyricsTrack && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3">
-          <div className="w-full max-w-xl rounded-3xl cosmic-card-3d neon-border overflow-hidden max-h-[85vh] flex flex-col">
-            <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <img src={lyricsTrack.coverUrl} alt={lyricsTrack.title} className="w-11 h-11 rounded-xl object-cover" />
-                <div className="min-w-0">
-                  <h3 className="font-display text-sm font-extrabold text-white truncate">
-                    {lyricsTrack.emoji} {lyricsTrack.title}
-                  </h3>
-                  <p className="text-[11px] text-purple-300">
-                    {lyricsTrack.album} · {lyricsTrack.bpm} BPM
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => onSetLyricsTrack(null)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-4 overflow-y-auto space-y-3">
-              {lyricsTrack.sunoPrompt && mode === 'creator' && (
-                <div className="rounded-xl bg-purple-950/60 border border-purple-500/30 p-3 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">Prompt Master</span>
-                    <button
-                      onClick={() => handleCopyPrompt(lyricsTrack.sunoPrompt)}
-                      className="px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-200 text-[11px] font-bold flex items-center gap-1"
-                    >
-                      {copiedPrompt ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      Copiar
-                    </button>
-                  </div>
-                  <p className="text-xs text-purple-100/90 leading-relaxed">{lyricsTrack.sunoPrompt}</p>
-                </div>
-              )}
-
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-pink-300 mb-1.5">Letra Oficial</div>
-                <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-purple-50/95 leading-relaxed bg-black/40 rounded-xl p-3.5 border border-white/10">
-                  {lyricsTrack.lyrics || 'Letra não cadastrada para esta faixa.'}
-                </pre>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* AGENDA AUTOMÁTICA DE BAILES + CORTES DE CABELO & SALÕES VIP */}
       <BailesAndEstiloView
         onToast={onToast}
         onCommentTarget={onCommentTarget}
-        onOpenLiveChat={onOpenLiveChat}
       />
     </div>
   );

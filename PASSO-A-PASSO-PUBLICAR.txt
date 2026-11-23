@@ -1,19 +1,31 @@
-MORRO GOLD v108 - APP CLARO + TUDO NUM LUGAR SO!
-=================================================
+MORRO GOLD v110 - SOM NA HORA + VIBE TOP + OURO 24k
+=====================================================
 
-☀️ APP MAIS CLARO!
-- O app ABRE NO MODO CLARO (fundo creme, texto escuro!)
-- O sol/lua no topo alterna quando quiser
-- Videos continuam pretos (bonitos!)
+🔊 SOM SAI JUNTO COM O VIDEO!
+- O video comeca = o som vem junto!
+- Nao saiu? No PRIMEIRO TOQUE na tela o som abre na hora!
 
-🗂️ TUDO NUM LUGAR SO (menu tres pontinhos): Minha Conta,
-Notificacoes, Minhas Comissoes (privado), Atualizar, Permissoes
+🎬 VIBE NOVA (estilo apps famosos!):
+- "VIBE" dourado 3D no topo direito do video
+- Setinha de voltar pequena no baixo direito
+- Fundo do video = estilo MORRO (roxo/ouro com brilho!)
+  nada de fundo preto!
 
-🚫 REMOVIDO (o que voce mandou!):
-- Banner do Toguro (propaganda) FORA!
-- Barra "Minhas Musicas Organizadas" duplicada FORA!
-- Menu "Mais" (Filmes, Jogos, Podcasts, Ouvir Junto...) FORA!
-- Botao "Idioma" FORA (sempre portugues do Brasil!)
+✨ ATUALIZACAO AUTOMATICA 24k:
+- Sem botao! Atualiza SOZINHO quando tem novidade
+- Na hora de atualizar: RAIOS SOLARES DE OURO 24K
+  brilhando na borda do app (3D, realista!)
+
+🗂️ TUDO ORGANIZADO: menu tres pontinhos = Minha Conta,
+Notificacoes, Comissoes, Permissoes
+
+🚫 REMOVIDO: Toguro/Mansao Maromba, botao claro/escuro
+(app fixo CLARO!), login, jogos, TODOS os chats,
+botao de atualizacao, barrinha verde
+
+📱 LAYOUT NOVO: abas na vertical do lado DIREITO!
+Cards menores tipo Shopee/Mercado Livre!
+Logo realista MORRO GOLD no rodape do app!
 
 ⚠️ COMO PUBLICAR PELO NAVEGADOR (github.com):
 ================================================
@@ -22,6 +34,6 @@ Notificacoes, Minhas Comissoes (privado), Atualizar, Permissoes
 3. "Add file" > "Upload files"
 4. ARRASTE A PASTA "src" INTEIRA pra tela! (nao arquivos soltos!)
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: v108 app claro tudo organizado
+5. Mensagem: v110 som na hora vibe top ouro 24k
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.
