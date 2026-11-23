@@ -1,0 +1,21 @@
+MORRO GOLD - PUBLICAR AGORA (rapido e sem dor de cabeca!)
+=========================================================
+
+Este zip tem SO o que voce precisa (10 arquivos). Sem dist!
+(O servidor monta o dist sozinho quando voce da Push!)
+
+PASSO A PASSO (5 minutinhos):
+1. Abra o GitHub Desktop (repositorio lenkyx-cosmic-phonk)
+2. Clique em "Show in Explorer" (abrir a pasta do repositorio)
+3. COPIE as pastas/arquivos deste zip POR CIMA da pasta do repositorio
+   (escolha SUBSTITUIR quando perguntar)
+   - a pasta "public" substitui a pasta "public"
+   - a pasta "server" substitui a pasta "server"
+   - a pasta "src" substitui a pasta "src"
+4. Volte no GitHub Desktop. Se aparecer "dist" na lista: DESMARQUE!
+5. Mensagem do commit: v103 atualizacao completa
+   Depois clique em Commit e depois em Push (origem: main)
+PRONTO! O site atualiza sozinho em ~2 minutos.
+
+NO CELULAR (uma vez so): abre o site > toca no cadeado icone >
+"Limpar e resetar" > reabre o site. Atualizado!
