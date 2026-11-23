@@ -4142,8 +4142,8 @@ export function App() {
       {/* CLEAN YOUTUBE-STYLE 5-SLOT MOBILE BOTTOM DOCK (Início, Shorts, Criar, Inscrições, Você) */}
       {!watchingMovie && (
         <nav
-          style={{ paddingRight: 'env(safe-area-inset-right, 0px)' }}
-          className="fixed right-0 top-0 bottom-0 z-40 w-[58px] mg24k-taskbar flex flex-col items-center justify-center gap-1 px-1 overflow-y-auto no-scrollbar"
+          style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)', marginRight: 'env(safe-area-inset-right, 0px)' }}
+          className="fixed right-2.5 bottom-3 z-40 w-[60px] mg24k-taskbar flex flex-col items-center gap-1.5 px-1.5 py-2.5 rounded-[26px] overflow-y-auto no-scrollbar"
         >
           <button
             type="button"

@@ -1,19 +1,19 @@
-MORRO GOLD v113 - MENU ⋮ TRANSPARENTE + LUPINHA 24k
-=====================================================
+MORRO GOLD v114 - MENU PADRAO CELULAR 24k (NO POLEGAR!)
+========================================================
 
-⋮ MENU DE CATEGORIAS (nos 3 pontinhos da Vibe!):
-- Zueira & Memes, Memes da Quebrada, Pegadinhas BR,
-  Humor & Zoacao, Virais Engracados
-- O menu e TRANSPARENTE (vidro fosco dourado!)
-- FECHA SOZINHO assim que voce escolhe a categoria!
+📱 ESTILO PADRAO PRA CELULAR:
+- O menu agora e uma PILULA DOURADA FLUTUANTE!
+- Posicionado embaixo-direita = ALCANCE DO POLEGAR!
+- Facil de mexer com uma mao so!
 
-🔍 LUPINHA 24k MORRO GOLD:
-- Botao redondo dourado com brilho!
-- Toque = abre o campo de busca (dourado, transparente)
-- Busca memes e videos de zueira!
+👑 ESTILO 24k MORRO GOLD:
+- Pilula com borda dourada, brilho que corre (dinamico!)
+- Botoes GRANDES (46px) faceis de tocar
+- Toque = feedback dourado (aperta e brilha!)
+- Respeita a area segura do celular (sem cobrir o sistema)
 
-🔄 SEM botao de atualizacao: o app SEMPRE busca os
-videos mais engracados da internet sozinho!
+(revenda: tema 24k, som automatico, so zueira e memes,
+ menu ⋮ transparente, lupinha 24k, logo+seta, tudo organizado)
 
 📦 "src" INTEIRO = ATUALIZACAO COMPLETA!
 
@@ -24,6 +24,6 @@ videos mais engracados da internet sozinho!
 3. "Add file" > "Upload files"
 4. ARRASTE A PASTA "src" INTEIRA pra tela!
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: v113 menu transparente lupinha 24k
+5. Mensagem: v114 menu padrao celular 24k polegar
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.
