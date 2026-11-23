@@ -111,6 +111,7 @@ import {
 import type { ShopCat as ShopCategory } from './components/ShopCriaView';
 const ShopCriaView = React.lazy(() => import('./components/ShopCriaView').then((m) => ({ default: m.ShopCriaView })));
 const CommunityUtilsView = React.lazy(() => import('./components/CommunityUtilsView'));
+const MorroRadioView = React.lazy(() => import('./components/MorroRadioView'));
 import { copyTextReliable, isAndroidApk } from './utils/androidBridge';
 import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
@@ -3196,6 +3197,7 @@ export function App() {
     { id: 'explore', label: 'Música & Clipes', icon: <Compass className="w-5 h-5" /> },
     { id: 'shop', label: 'Loja dos Cria', icon: <ShoppingBag className="w-5 h-5" /> },
     { id: 'utils', label: 'Utilidades', icon: <span className="text-lg leading-none">🛠️</span> },
+    { id: 'radio', label: 'Rádio do Morro', icon: <span className="text-lg leading-none">📻</span> },
     { id: 'offline', label: 'Som Offline', icon: <Car className="w-5 h-5" /> },
   ];
 
@@ -3588,6 +3590,7 @@ export function App() {
               [
                 { id: 'catalog', label: 'Início' },
                 { id: 'reels', label: 'Vibe' },
+                { id: 'radio', label: '📻 Rádio' },
                 { id: 'explore', label: 'Música' },
                 { id: 'shop', label: 'Loja' },
                 { id: 'utils', label: 'Utilidades' },
@@ -3599,10 +3602,10 @@ export function App() {
                   key={tab.id}
                   type="button"
                   onClick={() => navigateTab(tab.id)}
-                  className={`py-2.5 text-[13px] font-semibold whitespace-nowrap border-b-2 transition shrink-0 ${
+                  className={`py-2.5 text-[13px] whitespace-nowrap border-b-2 transition-all duration-300 shrink-0 active:scale-95 ${
                     active
-                      ? 'border-amber-400 text-white'
-                      : 'border-transparent text-slate-300/85 hover:text-white'
+                      ? 'border-amber-400 text-white font-black drop-shadow-[0_0_14px_rgba(245,200,76,0.55)]'
+                      : 'border-transparent text-slate-300/85 hover:text-white font-semibold'
                   }`}
                 >
                   {tab.label}
@@ -4023,6 +4026,17 @@ export function App() {
                 {activeTab === 'utils' && (
                   <Suspense fallback={<div className="p-10 text-center text-amber-300 text-sm font-black">🛠️ Carregando Utilidades...</div>}>
                     <CommunityUtilsView onOpenPix={(o) => setOpenPixOrigin(o || 'utilidades')} />
+                  </Suspense>
+                )}
+
+                {activeTab === 'radio' && (
+                  <Suspense fallback={<div className="p-10 text-center text-amber-300 text-sm font-black">📻 Sintonizando o Rádio do Morro...</div>}>
+                    <MorroRadioView
+                      tracks={tracks}
+                      currentTrack={currentTrack}
+                      isPlaying={isPlaying}
+                      onPlayTrack={(t, q) => void handlePlayTrack(t, 'v1', q)}
+                    />
                   </Suspense>
                 )}
 
