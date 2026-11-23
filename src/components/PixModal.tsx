@@ -140,6 +140,7 @@ export const PixModal: React.FC<PixModalProps> = ({
   const [vipEmail, setVipEmail] = useState(() => localStorage.getItem('mg_vip_email') || '');
   const [vipAutoBusy, setVipAutoBusy] = useState(false);
   const [mpTokenDraft, setMpTokenDraft] = useState(settings.mpAccessToken || '');
+  const [sentryDraft, setSentryDraft] = useState(settings.sentryDsn || '');
   const [mural, setMural] = useState<Array<{ ref: string; name: string; since: string }>>([]);
   useEffect(() => {
     fetch('/api/payments/supporters')
@@ -987,6 +988,12 @@ export const PixModal: React.FC<PixModalProps> = ({
                   placeholder="Supabase · anon public key"
                   className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-xs text-white placeholder-slate-400"
                 />
+                <input
+                  value={sentryDraft}
+                  onChange={(e) => setSentryDraft(e.target.value)}
+                  placeholder="Sentry · DSN (monitor de erros, opcional)"
+                  className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-xs text-white placeholder-slate-400"
+                />
                 <button
                   type="button"
                   onClick={async () => {
@@ -994,8 +1001,9 @@ export const PixModal: React.FC<PixModalProps> = ({
                       mpAccessToken: mpTokenDraft.trim(),
                       supabaseUrl: sbUrlDraft.trim(),
                       supabaseAnonKey: sbKeyDraft.trim(),
+                      sentryDsn: sentryDraft.trim(),
                     });
-                    onToast('💳☁️ Credenciais salvas! Cobrança automática e nuvem liberadas.');
+                    onToast('💳☁️ Credenciais salvas! Cobrança, nuvem e monitor de erros liberados.');
                   }}
                   className="w-full py-2 rounded-full lux-btn-gold text-xs font-black"
                 >

@@ -4187,6 +4187,33 @@ function mpToken() {
   }
 }
 
+// Sentry (monitor de erros do servidor) — ativa quando SENTRY_DSN existir no Render
+function captureServerError(err, extra) {
+  try {
+    const dsn = String(process.env.SENTRY_DSN || '').trim();
+    if (!dsn || !err) return;
+    const m = dsn.match(/^https:\/\/([^@]+)@([^/]+)\/(\d+)$/);
+    if (!m) return;
+    const [, key, host, projectId] = m;
+    const event = {
+      message: String(err && err.message ? err.message : err).slice(0, 400),
+      level: 'error',
+      platform: 'node',
+      timestamp: Date.now() / 1000,
+      extra: extra || {},
+    };
+    const auth = `Sentry sentry_version=7, sentry_key=${key}, sentry_client=lenkyx-server/1.0`;
+    void fetch(`https://${host}/api/${projectId}/store/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Sentry-Auth': auth },
+      body: JSON.stringify(event),
+      signal: AbortSignal.timeout(5000),
+    }).catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
+
 const SUPPORTERS_PATH = path.join(DATA_DIR, 'vip-supporters.json');
 
 function activateSubscription(ref, plan, externalId) {
@@ -4287,7 +4314,8 @@ app.post('/api/payments/webhook', async (req, res) => {
       }
     }
     res.sendStatus(200);
-  } catch {
+  } catch (err) {
+    captureServerError(err, { where: 'payments-webhook' });
     res.sendStatus(200);
   }
 });

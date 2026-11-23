@@ -151,6 +151,7 @@ import { PixModal } from './components/PixModal';
 import { CommissionPanel } from './components/CommissionPanel';
 import { ShareModal } from './components/ShareModal';
 import { UploadTrackModal } from './components/UploadTrackModal';
+import { initSentry } from './utils/sentry';
 import { CreatorModal } from './components/CreatorModal';
 import { authFetch, setAuthToken } from './utils/api';
 import {
@@ -181,6 +182,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   vipPlan: null,
   vipUntil: null,
   mpAccessToken: '',
+  sentryDsn: '',
   supabaseUrl: '',
   supabaseAnonKey: '',
   publicUrl: 'https://lenkyx-cosmic-phonk.onrender.com',
@@ -880,6 +882,15 @@ export function App() {
     window.setTimeout(() => void check(), 1500);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Sentry: monitor de erros ativa quando o DSN existe (config do criador)
+  useEffect(() => {
+    try {
+      if (settings.sentryDsn) initSentry(settings.sentryDsn);
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.sentryDsn]);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTrack, setShareTrack] = useState<Track | null>(null);
   const [clipTheaterOpen, setClipTheaterOpen] = useState(false);

@@ -83,6 +83,7 @@ export interface AppSettings {
   vipPlan?: 'mensal' | 'anual' | null;
   vipUntil?: string | null;
   mpAccessToken?: string;
+  sentryDsn?: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
   publicUrl: string;
