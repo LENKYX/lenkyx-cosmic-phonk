@@ -3112,11 +3112,8 @@ export function App() {
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'catalog', label: 'Início', icon: <Home className="w-5 h-5" /> },
     { id: 'reels', label: 'Vibe', icon: <Film className="w-5 h-5" /> },
-    { id: 'channels', label: 'Canais & Criadores', icon: <Tv className="w-5 h-5" /> },
     { id: 'explore', label: 'Música & Clipes', icon: <Compass className="w-5 h-5" /> },
-    { id: 'shop', label: 'Loja dos Cria VIP', icon: <ShoppingBag className="w-5 h-5" /> },
-    { id: 'movies', label: 'Filmes & Séries', icon: <Clapperboard className="w-5 h-5" /> },
-    { id: 'sports', label: 'Futebol & Ao Vivo', icon: <Trophy className="w-5 h-5" /> },
+    { id: 'shop', label: 'Loja dos Cria', icon: <ShoppingBag className="w-5 h-5" /> },
     { id: 'offline', label: 'Som Offline', icon: <Car className="w-5 h-5" /> },
   ];
 
@@ -3337,7 +3334,7 @@ export function App() {
                     onClick={() => setNotificationsOpen(false)}
                     className="fixed inset-0 z-40"
                   />
-                  <div className="mg-on-video absolute right-0 top-11 z-50 w-72 sm:w-80 rounded-2xl bg-[#161622]/98 backdrop-blur-2xl border border-white/15 shadow-2xl p-2.5 space-y-1.5 text-xs">
+                  <div className="absolute right-0 top-11 z-50 w-72 sm:w-80 max-w-[calc(100vw-16px)] rounded-2xl bg-[#161622]/98 backdrop-blur-2xl border border-white/15 shadow-2xl p-2.5 space-y-1.5 text-xs">
                     <div className="px-2 py-1 flex items-center justify-between border-b border-white/10 pb-2">
                       <span className="font-black text-white">Notificações</span>
                       <span className="text-[10px] font-bold text-amber-300">MORRO GOLD</span>
@@ -3356,36 +3353,8 @@ export function App() {
                         <div className="text-[11px] text-slate-300 line-clamp-1">MC Ryan SP, Menos É Mais, Matuê & mais!</div>
                       </div>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNotificationsOpen(false);
-                        openLiveChat('global', '🔥 Geral do Morro · Chat Ao Vivo');
-                      }}
-                      className="w-full p-2 rounded-xl hover:bg-white/10 text-left flex items-start gap-2.5 transition"
-                    >
-                      <span className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-300 flex items-center justify-center shrink-0">💬</span>
-                      <div className="min-w-0">
-                        <div className="font-bold text-white truncate">Chat Ao Vivo Estilo Instagram</div>
-                        <div className="text-[11px] text-slate-300 line-clamp-1">7 salas abertas em tempo real agora!</div>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNotificationsOpen(false);
-                        setShortsTriggerQuery('__subscribed__');
-                        setShortsTriggerNonce((n) => n + 1);
-                        navigateTab('reels');
-                      }}
-                      className="w-full p-2 rounded-xl hover:bg-white/10 text-left flex items-start gap-2.5 transition"
-                    >
-                      <span className="w-8 h-8 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center shrink-0">🔔</span>
-                      <div className="min-w-0">
-                        <div className="font-bold text-white truncate">Suas Inscrições ({subscribedChannelsList.length})</div>
-                        <div className="text-[11px] text-slate-300 line-clamp-1">Ver as novas Vibes dos seus canais</div>
-                      </div>
-                    </button>
+
+
                     <button
                       type="button"
                       onClick={() => {
@@ -3397,8 +3366,8 @@ export function App() {
                     >
                       <span className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">👑</span>
                       <div className="min-w-0">
-                        <div className="font-bold text-white truncate">Ranking VIP & Apoio PIX</div>
-                        <div className="text-[11px] text-slate-300 line-clamp-1">Confira os top apoiadores do MORRO GOLD</div>
+                        <div className="font-bold text-white truncate">Apoio PIX · Doadores</div>
+                        <div className="text-[11px] text-slate-300 line-clamp-1">Confira os top doadores do MORRO GOLD</div>
                       </div>
                     </button>
                   </div>
@@ -3537,10 +3506,8 @@ export function App() {
               [
                 { id: 'catalog', label: 'Início' },
                 { id: 'reels', label: 'Vibe' },
-                { id: 'channels', label: 'Canais' },
                 { id: 'explore', label: 'Música' },
-                { id: 'sports', label: 'Ao vivo' },
-                { id: 'shop', label: 'Loja VIP' },
+                { id: 'shop', label: 'Loja' },
               ] as { id: TabId; label: string }[]
             ).map((tab) => {
               const active = !moreSheetOpen && activeTab === tab.id;
@@ -3870,12 +3837,6 @@ export function App() {
                     downloadingIds={downloadingIds}
                     downloadingAll={downloadingAll}
                     onPlayTrack={(t, ver) => {
-                      if (t.vipOnly && !settings.vipActive) {
-                        showToast('🔒 Essa é música exclusiva da realeza VIP! Assine e ouça primeiro.');
-                        setPixInitialTab('vip');
-                        setPixOpen(true);
-                        return;
-                      }
                       void handlePlayTrack(t, ver, visibleTracks);
                     }}
                     onLikeTrack={(t) => void handleLikeTrack(t)}
@@ -3937,12 +3898,6 @@ export function App() {
                       initialShortsNonce={shortsTriggerNonce}
                       onSubscriptionsChanged={setSubscribedChannelsList}
                       onPlayTrack={(t) => {
-                        if (t.vipOnly && !settings.vipActive) {
-                          showToast('🔒 Essa é música exclusiva da realeza VIP! Assine e ouça primeiro.');
-                          setPixInitialTab('vip');
-                          setPixOpen(true);
-                          return;
-                        }
                         void handlePlayTrack(t, 'v1', [t]);
                       }}
                       onPauseCatalogPlayer={pauseCatalogPlayer}
@@ -3988,12 +3943,6 @@ export function App() {
                     isPlaying={isPlaying}
                     playlists={playlists}
                     onPlayTrack={(t, queue) => {
-                      if (t.vipOnly && !settings.vipActive) {
-                        showToast('🔒 Essa é música exclusiva da realeza VIP! Assine e ouça primeiro.');
-                        setPixInitialTab('vip');
-                        setPixOpen(true);
-                        return;
-                      }
                       void handlePlayTrack(t, 'v1', queue);
                     }}
                     onWatchClip={openClipWithIntro}
@@ -4013,12 +3962,6 @@ export function App() {
                     currentTrack={currentTrack}
                     isPlaying={isPlaying}
                     onPlayTrack={(t, queue) => {
-                      if (t.vipOnly && !settings.vipActive) {
-                        showToast('🔒 Essa é música exclusiva da realeza VIP! Assine e ouça primeiro.');
-                        setPixInitialTab('vip');
-                        setPixOpen(true);
-                        return;
-                      }
                       void handlePlayTrack(t, 'v1', queue);
                     }}
                     onCreatePlaylist={handleCreatePlaylist}
@@ -4263,20 +4206,14 @@ export function App() {
 
           <button
             type="button"
-            onClick={() => {
-              setShortsTriggerQuery('__subscribed__');
-              setShortsTriggerNonce((n) => n + 1);
-              navigateTab('reels');
-            }}
+            onClick={() => navigateTab('explore')}
             className={`flex flex-col items-center justify-center gap-0.5 py-1.5 transition ${
-              !moreSheetOpen && activeTab === 'reels' && shortsTriggerQuery === '__subscribed__'
-                ? 'text-amber-300'
-                : 'text-slate-400 hover:text-white'
+              !moreSheetOpen && activeTab === 'explore' ? 'text-amber-300' : 'text-slate-400 hover:text-white'
             }`}
-            title="Inscrições"
+            title="Música"
           >
-            <Bell className="w-5 h-5" />
-            <span className="text-[10px] font-semibold">Inscrições</span>
+            <Compass className="w-5 h-5" />
+            <span className="text-[10px] font-semibold">Música</span>
           </button>
 
           <button
@@ -5165,22 +5102,7 @@ export function App() {
                 </div>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setCreateMenuOpen(false);
-                  setChatModalOpen(true);
-                }}
-                className="w-full p-3.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-cyan-400/30 flex items-center gap-3 text-left transition"
-              >
-                <span className="w-10 h-10 rounded-xl bg-cyan-400 text-black flex items-center justify-center shrink-0">
-                  <MessageCircle className="w-5 h-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-black text-white">💬 Chat Espacial & Comentários</div>
-                  <div className="text-[11px] text-cyan-200/80">Converse livremente com fãs e criadores ao vivo</div>
-                </div>
-              </button>
+
 
               <button
                 type="button"

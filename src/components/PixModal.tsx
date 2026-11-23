@@ -436,10 +436,10 @@ export const PixModal: React.FC<PixModalProps> = ({
             </div>
             <div>
               <h2 className="font-display text-sm sm:text-base font-black text-white">
-                PIX Solidário · LENKYX Sem Anúncios
+                Doações · Igrejas das Comunidades
               </h2>
               <p className="text-[11px] text-emerald-300 font-bold">
-                Exclusivamente PIX (PicPay) · Apoio Solidário Brasil & Plataforma Gratuita
+                PIX Solidário (PicPay) · Ajude as igrejas das comunidades 🙏
               </p>
             </div>
           </div>
@@ -453,16 +453,6 @@ export const PixModal: React.FC<PixModalProps> = ({
 
         {/* Navigation Tabs */}
         <div className="px-4 pt-3 flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-          <button
-            onClick={() => setTab('vip')}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-black whitespace-nowrap transition ${
-              tab === 'vip'
-                ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow'
-                : 'bg-white/[0.06] text-slate-200 hover:bg-white/15'
-            }`}
-          >
-            👑 Seja VIP
-          </button>
           <button
             onClick={() => setTab('donate')}
             className={`px-3 py-1.5 rounded-full text-[11px] font-black whitespace-nowrap transition ${

@@ -215,6 +215,7 @@ export const WorldExploreView: React.FC<Props> = ({
   const [bioExpanded, setBioExpanded] = useState(false);
   const [downloadingRowId, setDownloadingRowId] = useState<string | null>(null);
   const [downloadRowPct, setDownloadRowPct] = useState<number>(0);
+  const [lyricTrack, setLyricTrack] = useState<Track | null>(null);
   const resultsListRef = React.useRef<HTMLDivElement | null>(null);
 
   const handleDownloadWorldRow = async (t: Track) => {
@@ -1233,30 +1234,6 @@ export const WorldExploreView: React.FC<Props> = ({
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleToggleArtistSubscribe(t.artist);
-                  }}
-                  aria-label={subscribedChannels.has(normalizeChannelKey(t.artist)) ? `Cancelar inscrição em ${t.artist}` : `Inscrever-se em ${t.artist}`}
-                  title={subscribedChannels.has(normalizeChannelKey(t.artist)) ? `Inscrito em ${t.artist}` : `Inscrever-se no artista ${t.artist}`}
-                  className={`shrink-0 h-8 px-2 rounded-lg border flex items-center gap-1 transition ${
-                    subscribedChannels.has(normalizeChannelKey(t.artist))
-                      ? 'bg-emerald-500/15 border-emerald-400/30 text-emerald-200 hover:bg-rose-500/20'
-                      : 'bg-rose-500/15 border-rose-400/30 text-rose-200 hover:bg-rose-500/30'
-                  }`}
-                >
-                  {subscribedChannels.has(normalizeChannelKey(t.artist)) ? (
-                    <BellRing className="w-3.5 h-3.5" />
-                  ) : (
-                    <Bell className="w-3.5 h-3.5" />
-                  )}
-                  <span className="hidden md:inline text-[9px] font-black">
-                    {subscribedChannels.has(normalizeChannelKey(t.artist)) ? 'Inscrito' : 'Inscrever'}
-                  </span>
-                </button>
-
                 <img
                   src={t.coverUrl || '/covers/album-official.jpg'}
                   alt={t.title}
@@ -1327,17 +1304,46 @@ export const WorldExploreView: React.FC<Props> = ({
                     </button>
                   )}
 
-                  {onCommentTarget && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onCommentTarget(`track:${t.id}`, `${t.title} — ${t.artist}`, t.youtubeVideoId)
-                      }
-                      className="p-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-200"
-                      title="Comentar nesta música"
+                  <button
+                    type="button"
+                    onClick={() => setLyricTrack(lyricTrack?.id === t.id ? null : t)}
+                    className={`px-2 py-1.5 rounded-lg border text-[10px] font-extrabold flex items-center gap-1 transition ${
+                      lyricTrack?.id === t.id
+                        ? 'bg-amber-400/25 border-amber-300/50 text-amber-200'
+                        : 'bg-amber-500/15 hover:bg-amber-500/30 border-amber-400/30 text-amber-200'
+                    }`}
+                    title="Ver a Letra"
+                  >
+                    🎵 <span className="hidden sm:inline">Letra</span>
+                  </button>
+
+                  {lyricTrack?.id === t.id && (
+                    <div
+                      className="fixed inset-0 z-[70] bg-[#07030f]/97 backdrop-blur-xl flex items-center justify-center p-4"
+                      onClick={() => setLyricTrack(null)}
                     >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                    </button>
+                      <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-3xl border border-amber-400/40 bg-gradient-to-b from-[#170d2e] to-[#0a0518] p-5 shadow-2xl">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="min-w-0">
+                            <div className="text-xs font-black text-amber-300">🎵 LETRA · MORRO GOLD</div>
+                            <div className="text-sm font-black text-white truncate">{lyricTrack.title}</div>
+                            <div className="text-[11px] text-slate-300 truncate">{lyricTrack.artist}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setLyricTrack(null)}
+                            className="p-2 rounded-full bg-white/10 hover:bg-rose-500/30 text-white shrink-0"
+                            title="Fechar"
+                            aria-label="Fechar letra"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="whitespace-pre-wrap text-center text-lg sm:text-2xl leading-relaxed font-black text-white/95">
+                          {lyricTrack.lyrics || 'Letra em breve... 🎤'}
+                        </div>
+                      </div>
+                    </div>
                   )}
 
                   <button
