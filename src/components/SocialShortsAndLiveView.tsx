@@ -502,6 +502,13 @@ const YouTubeShortPlayer: React.FC<{
             🔊 Toque pra ligar o som
           </span>
         )}
+        {/* Mascara MG: cobre o visual do YouTube sem atrapalhar o video */}
+        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 pointer-events-none">
+          <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-200 via-yellow-500 to-amber-700 text-black text-[10px] font-black flex items-center justify-center">{'♛'}</span>
+          <span className="text-[10px] font-black text-amber-200/95 drop-shadow">MORRO GOLD</span>
+        </div>
         {heartBurst && (
           <span
             key={heartBurst.key}
@@ -665,6 +672,13 @@ const NativeShortVideoPlayer: React.FC<{
             🔊 Toque pra ligar o som
           </span>
         )}
+        {/* Mascara MG: cobre o visual do YouTube sem atrapalhar o video */}
+        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 pointer-events-none">
+          <span className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-200 via-yellow-500 to-amber-700 text-black text-[10px] font-black flex items-center justify-center">{'♛'}</span>
+          <span className="text-[10px] font-black text-amber-200/95 drop-shadow">MORRO GOLD</span>
+        </div>
         {heartBurst && (
           <span
             key={heartBurst.key}

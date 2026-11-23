@@ -110,6 +110,7 @@ import {
 } from './types';
 import type { ShopCat as ShopCategory } from './components/ShopCriaView';
 const ShopCriaView = React.lazy(() => import('./components/ShopCriaView').then((m) => ({ default: m.ShopCriaView })));
+const CommunityUtilsView = React.lazy(() => import('./components/CommunityUtilsView'));
 import { copyTextReliable, isAndroidApk } from './utils/androidBridge';
 import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
@@ -3146,6 +3147,7 @@ export function App() {
     { id: 'reels', label: 'Vibe', icon: <Film className="w-5 h-5" /> },
     { id: 'explore', label: 'Música & Clipes', icon: <Compass className="w-5 h-5" /> },
     { id: 'shop', label: 'Loja dos Cria', icon: <ShoppingBag className="w-5 h-5" /> },
+    { id: 'utils', label: 'Utilidades', icon: <span className="text-lg leading-none">🛠️</span> },
     { id: 'offline', label: 'Som Offline', icon: <Car className="w-5 h-5" /> },
   ];
 
@@ -3540,6 +3542,7 @@ export function App() {
                 { id: 'reels', label: 'Vibe' },
                 { id: 'explore', label: 'Música' },
                 { id: 'shop', label: 'Loja' },
+                { id: 'utils', label: 'Utilidades' },
               ] as { id: TabId; label: string }[]
             ).map((tab) => {
               const active = !moreSheetOpen && activeTab === tab.id;
@@ -3966,6 +3969,12 @@ export function App() {
                       onOpenLiveChat={openLiveChat}
                       onToast={showToast}
                     />
+                  </Suspense>
+                )}
+
+                {activeTab === 'utils' && (
+                  <Suspense fallback={<div className="p-10 text-center text-amber-300 text-sm font-black">🛠️ Carregando Utilidades...</div>}>
+                    <CommunityUtilsView onOpenPix={(o) => setOpenPixOrigin(o || 'utilidades')} />
                   </Suspense>
                 )}
 

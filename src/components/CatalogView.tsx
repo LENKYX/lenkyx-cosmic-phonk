@@ -240,32 +240,7 @@ export const CatalogView: React.FC<Props> = ({
             )}
             <span>{offlineCount >= tracks.length && tracks.length > 0 ? 'Tudo Salvo' : 'Baixar Offline'}</span>
           </button>
-          {(onOpenLiveChat || onOpenGlobalChat) && (
-            <button
-              type="button"
-              onClick={() =>
-                onOpenLiveChat
-                  ? onOpenLiveChat('global', '🔥 Geral do Morro · Chat Ao Vivo')
-                  : onOpenGlobalChat?.()
-              }
-              className="px-3.5 py-2 rounded-full bg-gradient-to-r from-rose-600 via-pink-500 to-amber-500 text-white font-black text-xs flex items-center gap-1.5 shadow-[0_6px_20px_rgba(244,63,94,0.35)] hover:brightness-110"
-            >
-              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-              <span>Chat Ao Vivo</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => void handleToggleMainChannelSubscribe()}
-            className={`px-3.5 py-2 rounded-full font-black text-xs flex items-center gap-1.5 transition ${
-              channelSubscribed
-                ? 'lux-btn-obsidian text-emerald-200 border-emerald-400/40'
-                : 'bg-gradient-to-r from-rose-600 via-pink-600 to-amber-500 text-white shadow-[0_6px_20px_rgba(244,63,94,0.35)] hover:brightness-110'
-            }`}
-          >
-            {channelSubscribed ? <BellRing className="w-3.5 h-3.5 text-emerald-300" /> : <Bell className="w-3.5 h-3.5" />}
-            <span>{channelSubscribed ? 'Fechado' : 'Seguir'} · {channelSubsCount}</span>
-          </button>
+
           {mode === 'creator' && (
             <button
               onClick={onAddTrack}
