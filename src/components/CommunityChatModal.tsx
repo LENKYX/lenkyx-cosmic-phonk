@@ -36,7 +36,7 @@ export const LIVE_CHAT_ROOMS = [
   { id: 'baile-funk', label: '👑 Baile & Funk', desc: 'Fluxos, MCs & pancadões 2026' },
   { id: 'rap-quebrada', label: '🎤 Rap & Trap', desc: 'Voz da favela e lançamentos' },
   { id: 'pagode', label: '🥁 Pagode & Churrasco', desc: 'Roda de samba da quebrada' },
-  { id: 'loja', label: '🛍️ Loja dos Cria', desc: 'Kits, perfumes, narguile & Toguro' },
+  { id: 'loja', label: '🛍️ Loja dos Cria', desc: 'Kits, perfumes & narguile' },
   { id: 'filmes', label: '🍿 Cinema & TV', desc: 'Comentando filmes e séries ao vivo' },
   { id: 'bailes', label: '💃 Bailes & Rolês', desc: 'Agenda, cortes e barbearias' },
 ];

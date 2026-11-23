@@ -165,7 +165,7 @@ const NetflixScrollableRow: React.FC<{
 
       {!collapsed &&
         (expandedGrid ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {children}
           </div>
         ) : (
@@ -1191,7 +1191,7 @@ export const MoviesView: React.FC<Props> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
             {(topMovies.length >= 5
               ? topMovies.slice(0, 5)
               : [
@@ -1383,7 +1383,7 @@ export const MoviesView: React.FC<Props> = ({
               Nenhum título encontrado para esse filtro.
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {filteredSearchResults.map((m, idx) => renderPosterCard(m, idx, filteredSearchResults, true))}
             </div>
           )}

@@ -716,7 +716,7 @@ export const WorldExploreView: React.FC<Props> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {topArtists
               .filter((art) => !art.name.trim().toLowerCase().includes('lenkyx'))
               .slice(0, 5)
@@ -786,7 +786,7 @@ export const WorldExploreView: React.FC<Props> = ({
                 <Film className="w-3.5 h-3.5 text-pink-400" />
                 <span>Top 1 ao 5 · Melhores Clipes & Vídeos Recomendados</span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+              <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
                 {(topVideos.length > 0
                   ? topVideos.slice(0, 5).map((v) => ({
                       id: v.id,
