@@ -1,13 +1,19 @@
-MORRO GOLD v112 - SO O EMBLEMA + SETA DOURADA + SEMPRE NOVO!
-==============================================================
+MORRO GOLD v113 - MENU ⋮ TRANSPARENTE + LUPINHA 24k
+=====================================================
 
-👑 SÓ O EMBLEMA DA LOGO (sem o nome escrito) em todo o app!
-↩️ SETINHA DE VOLTAR ESTILO MORRO GOLD (dourada 24k brilhante!)
-⏭️ VIDEOS: SEMPRE passam sozinhos pro proximo (sem parar!)
-🔄 FEED SE ATUALIZA SOZINHO (videos novos sempre!)
+⋮ MENU DE CATEGORIAS (nos 3 pontinhos da Vibe!):
+- Zueira & Memes, Memes da Quebrada, Pegadinhas BR,
+  Humor & Zoacao, Virais Engracados
+- O menu e TRANSPARENTE (vidro fosco dourado!)
+- FECHA SOZINHO assim que voce escolhe a categoria!
 
-(revenda o que ja tem no v111: tema 24k, som automatico,
- so zueira e memes, logo+seta na vibe, tudo organizado)
+🔍 LUPINHA 24k MORRO GOLD:
+- Botao redondo dourado com brilho!
+- Toque = abre o campo de busca (dourado, transparente)
+- Busca memes e videos de zueira!
+
+🔄 SEM botao de atualizacao: o app SEMPRE busca os
+videos mais engracados da internet sozinho!
 
 📦 "src" INTEIRO = ATUALIZACAO COMPLETA!
 
@@ -18,6 +24,6 @@ MORRO GOLD v112 - SO O EMBLEMA + SETA DOURADA + SEMPRE NOVO!
 3. "Add file" > "Upload files"
 4. ARRASTE A PASTA "src" INTEIRA pra tela!
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: v112 so emblema seta dourada sempre novo
+5. Mensagem: v113 menu transparente lupinha 24k
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.

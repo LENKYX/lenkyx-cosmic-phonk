@@ -802,6 +802,8 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
   const [shorts, setShorts] = useState<CommunityShortItem[]>([]);
   const [shortCategory, setShortCategory] = useState('all');
   const [shortSearch, setShortSearch] = useState('memes zueira engraçado videos');
+  const [catMenuOpen, setCatMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [shortsMenuOpen, setShortsMenuOpen] = useState(false);
   const [shortsMoreOpen, setShortsMoreOpen] = useState(false);
   const [shortsSearchBarOpen, setShortsSearchBarOpen] = useState(false);
@@ -2055,49 +2057,74 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 <Bell className="w-3.5 h-3.5" /> Inscrições ({subscribedChannels.size})
               </button>
             </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-1">
-              {SHORT_CATEGORIES.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => {
-                    setShortCategory(c.id);
-                    void loadShorts(c.id, shortSearch, false, true);
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-[11px] font-extrabold whitespace-nowrap transition ${
-                    shortCategory === c.id
-                      ? 'lux-btn-gold'
-                      : 'lux-btn-obsidian text-purple-100'
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
+            <div className="relative flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCatMenuOpen((v) => !v)}
+                className="px-3 py-1.5 rounded-full text-[11px] font-extrabold whitespace-nowrap transition lux-btn-gold flex items-center gap-1.5"
+                title="Categorias de vídeos"
+              >
+                <span className="text-[13px] leading-none">⋮</span>
+                {SHORT_CATEGORIES.find((x) => x.id === shortCategory)?.label || 'Categorias'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchOpen((v) => !v)}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-600 text-[#2a1d05] shadow-[0_4px_16px_rgba(255,190,50,0.55)] border border-amber-100/70 active:scale-90"
+                title="Pesquisar vídeos"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+              {catMenuOpen && (
+                <div className="absolute top-full left-0 mt-2 z-50 min-w-[215px] rounded-2xl border border-amber-300/35 bg-black/25 backdrop-blur-xl shadow-[0_18px_50px_rgba(0,0,0,0.55)] p-1.5 space-y-1">
+                  {SHORT_CATEGORIES.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => {
+                        setShortCategory(c.id);
+                        void loadShorts(c.id, shortSearch, false, true);
+                        setCatMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap transition ${
+                        shortCategory === c.id
+                          ? 'bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-600 text-[#2a1d05]'
+                          : 'text-amber-100 hover:bg-white/10'
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
+            {searchOpen && (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 void loadShorts(shortCategory, shortSearch, true, true);
+                setSearchOpen(false);
               }}
               className="flex items-center gap-2"
             >
               <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 text-cyan-300 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-3.5 h-3.5 text-amber-300 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={shortSearch}
                   onChange={(e) => setShortSearch(e.target.value)}
-                  placeholder="Buscar Reels ou Lives (ex: mc oruan, funk, humor)..."
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/45 border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  placeholder="Buscar memes e vídeos de zueira..."
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/30 border border-amber-300/40 text-xs text-amber-50 focus:outline-none focus:border-amber-300"
                 />
               </div>
               <button
                 type="submit"
-                className="px-3.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-black text-white"
+                className="px-3.5 py-1.5 rounded-xl lux-btn-gold text-xs font-black"
               >
                 {shortsLoading ? 'Buscando...' : 'Buscar'}
               </button>
             </form>
+            )}
           </div>
         )}
 
