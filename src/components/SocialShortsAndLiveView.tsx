@@ -2046,15 +2046,6 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                 </h3>
               </div>
               <div className="flex items-center gap-1.5">
-                {onOpenPartners && (
-                  <button
-                    type="button"
-                    onClick={onOpenPartners}
-                    className="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 text-black text-[11px] font-black flex items-center gap-1 shadow shrink-0"
-                  >
-                    <Share2 className="w-3 h-3" /> Patrocínio
-                  </button>
-                )}
                 <button
                   type="button"
                   onClick={() => setTopCreatorsDrawerOpen(false)}

@@ -626,7 +626,7 @@ const CRIA_CATALOG: CriaProduct[] = [
     emoji: '🧊',
     specs: 'Drink pronto Whisky + Maçã Verde 1 litro · preço real do Mercado Livre com frete grátis FULL',
     searchQuery: 'Mansao Maromba Whisky Maca Verde 1L',
-    commissionEst: '🏆 Patrocinador VIP',
+    commissionEst: '🏆 Destaque da Loja',
     accent: 'from-yellow-400/35 to-amber-500/25',
   },
   {
@@ -1842,14 +1842,14 @@ export const ShopCriaView: React.FC<Props> = ({
                 🥃 Mansão Maromba · Toguro — Combos & Bebidas do Rolê
               </div>
               <div className="text-[10px] text-slate-300 truncate">
-                Patrocinador oficial · Combo Whisky, Vodka, Gin & Energético pro rolê
+                Indicação oficial · Combo Whisky, Vodka, Gin & Energético pro rolê
               </div>
             </div>
             <button
               type="button"
               onClick={() => {
                 setSection('bebidas');
-                onToast('🥃 Bebidas do patrocinador oficial na vitrine!');
+                onToast('🥃 Bebidas indicadas na vitrine!');
               }}
               className="px-3 py-1.5 rounded-full lux-btn-gold text-[10px] font-black shrink-0"
             >

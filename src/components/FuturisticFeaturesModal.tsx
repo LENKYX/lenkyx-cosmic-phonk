@@ -144,8 +144,6 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
 
   // 4) PARTNERS / YOUTUBERS / EMPRESÁRIOS
   const [brCreators, setBrCreators] = useState<BrCreatorItem[]>([]);
-  const [sponsorBrandName, setSponsorBrandName] = useState('');
-  const [sponsorEmail, setSponsorEmail] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -378,16 +376,6 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
       .slice(0, 4);
   }, [historyList]);
 
-  const sponsorPitchText = useMemo(() => {
-    const marca = sponsorBrandName.trim() || 'sua empresa/marca';
-    return (
-      `Olá, equipe de ${marca}! Tudo bem?\n\n` +
-      `Sou criador do aplicativo brasileiro MORRO GOLD (${officialSiteUrl}) — uma plataforma gratuita e ultra-moderna de Músicas, Vídeos Clipes HD, Vibes de Criadores Brasileiros, Cinema e Futebol Ao Vivo, sem anúncios intrusivos.\n\n` +
-      `Estamos abrindo cotas oficiais de Patrocínio e Parceria Comercial no Brasil (banner no app, destaque no Vibe & Ranking Top 5 de Criadores e ações exclusivas).\n\n` +
-      `Gostaria de apresentar os planos de patrocínio para ${marca} crescer junto com o MORRO GOLD. Podemos conversar?\n\n` +
-      `Acesse o app ao vivo: ${officialSiteUrl}`
-    );
-  }, [sponsorBrandName, officialSiteUrl]);
 
   const buildCreatorInviteText = (c: BrCreatorItem) =>
     `Fala, ${c.name}! 🇧🇷🔥 Você já está em destaque no Ranking Top Criadores do MORRO GOLD (${c.badge})! ` +
@@ -428,7 +416,6 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
               { id: 'shazam', label: '🎙️ Identificar Som' },
               { id: 'jam', label: '🎧 Ouvir Junto' },
               { id: 'wrapped', label: '📊 Seu Top Brasil' },
-              { id: 'partners', label: '🤝 Criadores & Patrocínio' },
             ] as { id: FuturisticTab; label: string }[]
           ).map((t) => (
             <button
@@ -740,159 +727,6 @@ export const FuturisticFeaturesModal: React.FC<Props> = ({
           )}
 
           {/* TAB 4: CONVITES PARA YOUTUBERS DO BRASIL & EMPRESÁRIOS PATROCINADORES */}
-          {tab === 'partners' && (
-            <div className="space-y-4">
-              {/* MÍDIA KIT · TABELA OFICIAL DE PATROCÍNIO */}
-              <div className="rounded-3xl bg-gradient-to-br from-amber-500/15 via-yellow-500/10 to-black border border-amber-400/45 p-4 space-y-3">
-                <div className="text-xs font-black text-amber-200 flex items-center gap-1.5">
-                  👑 MÍDIA KIT MORRO GOLD · SUA MARCA NA REALEZA DA FAVELA VIP
-                </div>
-                <p className="text-[11px] text-slate-200">
-                  Tabela oficial de patrocínio. Sua marca aparece pros cria em todo o Brasil — na loja, no feed e no chat.
-                  Escolhe o plano e manda a proposta na hora!
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {([
-                    { name: '🥉 BRONZE', price: 'R$ 197/mês', perks: ['Banner no topo da Loja', '1 destaque no chat por semana', 'Link com seu WhatsApp'] },
-                    { name: '🥈 PRATA', price: 'R$ 497/mês', perks: ['Tudo do Bronze', 'Vitrine de produtos com fotos', 'Menção no feed & stories', 'Link de afiliado próprio'] },
-                    { name: '🥇 OURO 24K', price: 'R$ 997/mês', perks: ['Tudo do Prata', 'ANÚNCIO oficial fixo do app', 'Campanha em vídeo no feed', 'Espaço no Ranking VIP'] },
-                  ]).map((plan) => (
-                    <div key={plan.name} className="rounded-2xl bg-black/50 border border-amber-400/25 p-3 space-y-1.5 flex flex-col">
-                      <div className="text-[11px] font-black text-amber-300">{plan.name}</div>
-                      <div className="text-base font-black lux-gold-text">{plan.price}</div>
-                      <div className="space-y-1 flex-1">
-                        {plan.perks.map((perk) => (
-                          <div key={perk} className="text-[9.5px] text-slate-200">✓ {perk}</div>
-                        ))}
-                      </div>
-                      <a
-                        href={`https://wa.me/?text=${encodeURIComponent(`Fala, MORRO GOLD! Quero o plano ${plan.name} (${plan.price}) de patrocínio pro meu negócio. Me manda os detalhes!`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 w-full py-1.5 rounded-full bg-emerald-400 text-black text-[10px] font-black text-center block"
-                      >
-                        Quero este plano →
-                      </a>
-                    </div>
-                  ))}
-                </div>
-                <div className="text-[9px] text-slate-400">
-                  Valores do mídia kit · pagamento via PIX · contrato e nota mediante acordo · atendimento por WhatsApp.
-                </div>
-              </div>
-
-              {/* Business Sponsors Pitch */}
-              <div className="rounded-3xl bg-gradient-to-br from-emerald-500/15 via-cyan-500/10 to-amber-500/10 border border-emerald-400/40 p-4 space-y-3">
-                <div className="text-xs font-black text-emerald-300 flex items-center gap-1.5">
-                  <Handshake className="w-4 h-4" /> CONVITES PARA EMPRESÁRIOS PATROCINAREM O MORRO GOLD
-                </div>
-                <p className="text-[11px] text-slate-200">
-                  Gere e envie na hora uma proposta comercial profissional pelo seu <strong>Gmail</strong> ou{' '}
-                  <strong>WhatsApp</strong> para marcas e empresários apoiarem o aplicativo no Brasil!
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={sponsorBrandName}
-                    onChange={(e) => setSponsorBrandName(e.target.value)}
-                    placeholder="Nome da Empresa / Empresário"
-                    className="px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-xs text-white"
-                  />
-                  <input
-                    type="email"
-                    value={sponsorEmail}
-                    onChange={(e) => setSponsorEmail(e.target.value)}
-                    placeholder="E-mail do Empresário (opcional)"
-                    className="px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-xs text-white"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    href={`mailto:${encodeURIComponent(sponsorEmail.trim())}?subject=${encodeURIComponent(
-                      `Proposta de Patrocínio Oficial · App MORRO GOLD Brasil`
-                    )}&body=${encodeURIComponent(sponsorPitchText)}`}
-                    className="px-3.5 py-2 rounded-xl bg-cyan-400 text-black text-xs font-black flex items-center gap-1.5"
-                  >
-                    <Mail className="w-3.5 h-3.5" /> Enviar via Gmail / E-mail
-                  </a>
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(sponsorPitchText)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3.5 py-2 rounded-xl bg-emerald-400 text-black text-xs font-black flex items-center gap-1.5"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" /> Enviar no WhatsApp
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void copyTextReliable(sponsorPitchText).then((ok) => {
-                        if (ok) onToast('Proposta de Patrocínio copiada!');
-                      });
-                    }}
-                    className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5"
-                  >
-                    <Copy className="w-3.5 h-3.5" /> Copiar Proposta
-                  </button>
-                </div>
-              </div>
-
-              {/* Brazilian YouTubers Invites */}
-              <div className="space-y-2">
-                <div className="text-xs font-black text-amber-300 flex items-center gap-1.5">
-                  <Trophy className="w-4 h-4" /> CONVIDAR CANAIS DO YOUTUBE BRASIL (MEMES & PEGADINHAS)
-                </div>
-                {brCreators.map((c, idx) => (
-                  <div
-                    key={c.id}
-                    className="rounded-2xl bg-white/[0.04] border border-cyan-400/20 p-3 flex flex-wrap items-center justify-between gap-2"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-xs font-black text-white flex items-center gap-1.5">
-                        <span className="text-amber-300">#{idx + 1}</span>
-                        <span className="truncate">{c.name}</span>
-                        <span className="text-[10px] text-cyan-300 font-mono">{c.handle}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-300">
-                        {c.category} · {c.subscribersText}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onOpenBrCreatorShorts(c.shortsQuery, `${c.name} · Memes & Vibe`);
-                          onClose();
-                        }}
-                        className="px-2.5 py-1.5 rounded-xl bg-cyan-400/20 hover:bg-cyan-400 hover:text-black text-cyan-200 text-[10px] font-black"
-                      >
-                        ▶ Ver Vibe
-                      </button>
-                      <a
-                        href={c.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/35 text-red-200 text-[10px] font-bold flex items-center gap-1"
-                      >
-                        Canal <ExternalLink className="w-3 h-3" />
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void copyTextReliable(buildCreatorInviteText(c)).then((ok) => {
-                            if (ok) onToast(`Convite oficial para ${c.name} copiado!`);
-                          });
-                        }}
-                        className="px-2.5 py-1.5 rounded-xl bg-emerald-400 text-black text-[10px] font-black flex items-center gap-1"
-                      >
-                        <CheckCircle2 className="w-3 h-3" /> Copiar Convite
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

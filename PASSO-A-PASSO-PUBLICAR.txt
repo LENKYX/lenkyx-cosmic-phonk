@@ -1,16 +1,27 @@
-MORRO GOLD v104 - RADIO DO MORRO + MENUS COM GLOW!
-==================================================
+MORRO GOLD v105 - FORA OS PATROCINADORES! + RADIO DO MORRO
+==========================================================
 
 NOVIDADES:
-- 📻 RADIO DO MORRO: pagina nova 24h sem parar! Disco girando,
-  equalizador dourado, "Tocando agora" e fila "Em seguida"!
-  (menu: Inicio | Vibe | RADIO | Musica | Loja | Utilidades)
-- ✨ Abas com GLOW dourado (a ativa brilha!)
-- 🎨 Botoes afundam ao tocar (feito antes, confere!)
+- 🚫 TUDO de patrocínio REMOVIDO (mídia kit R$197/497/997,
+  propostas, botao "Patrocinio & Criadores", aba inteira!)
+- 🏷️ Banners agora falam "INDICACAO" (sua comissao de afiliado
+  continua igualzinha!)
+- 📻 RADIO DO MORRO: disco girando + equalizador dourado 24h!
 
-PUBLICAR (3 arquivos, 2 minutinhos):
-1. GitHub Desktop > Show in Explorer (abre a pasta do repo)
-2. Copie as pastas "public" e "src" deste zip POR CIMA (substituir)
-3. GitHub Desktop: se aparecer "dist", DESMARQUE!
-   Mensagem: v104 radio do morro > Commit > Push
-PRONTO! Celular: cadeado icone > Limpar e resetar (1 vez)
+⚠️ COMO PUBLICAR PELO NAVEGADOR (github.com) - ATENCAO!
+=========================================================
+Os arquivos precisam ficar nas pastas CERTAS! Faca assim:
+
+1. Baixe e EXTRAIA este zip (vai virar uma pasta com
+   as pastas "src" e "public" dentro)
+2. Abra: https://github.com/LENKYX/lenkyx-cosmic-phonk
+3. Clique em "Add file" > "Upload files"
+4. ARRASTE AS PASTAS "src" e "public" INTEIRAS pra tela!
+   (o GitHub sozinho coloca cada arquivo na pasta certa!)
+   NAO suba o PASSO-A-PASSO.txt!
+5. Mensagem do commit: v105 fora patrocinadores + radio
+6. Escolha "Commit directly to the main branch"
+7. Clique em "Commit changes"
+PRONTO! O site atualiza sozinho em ~2 minutos.
+
+Celular (1 vez so): cadeado icone > Limpar e resetar.

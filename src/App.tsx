@@ -3800,20 +3800,6 @@ export function App() {
 
               
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMoreSheetOpen(false);
-                  openFuturisticFeature('partners');
-                }}
-                className="w-full py-3.5 px-2 rounded-xl hover:bg-white/[0.06] flex items-center gap-5 text-[15px] font-medium text-white transition"
-              >
-                <span className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 text-black flex items-center justify-center shrink-0">
-                  <Handshake className="w-3.5 h-3.5" />
-                </span>
-                <span>Patrocínio & Criadores</span>
-              </button>
-
               <div className="my-3 border-t border-white/10" />
 
               <div className="flex flex-wrap items-center gap-2 pt-1 pb-20">
@@ -3988,7 +3974,6 @@ export function App() {
                       }}
                       onPauseCatalogPlayer={pauseCatalogPlayer}
                       onOpenUserAuth={() => setChatModalOpen(true)}
-                      onOpenPartners={() => openFuturisticFeature('partners')}
                       onMinimizeReel={(short) => {
                         setMinimizedMovie(null);
                         setClipMinimized(false);

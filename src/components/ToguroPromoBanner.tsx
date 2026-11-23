@@ -96,7 +96,7 @@ export const ToguroPromoBanner: React.FC<Props> = ({
           </div>
           <div className="min-w-0 space-y-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400 text-black text-[10px] font-black uppercase tracking-wider">
-              <Crown className="w-3 h-3" /> Patrocinador Oficial · Mansão Maromba (Toguro)
+              <Crown className="w-3 h-3" /> Indicação da Loja · Mansão Maromba (Toguro)
             </div>
             <h3 className="font-display text-sm sm:text-lg font-black text-white flex items-center gap-1.5">
               <span>🥃 Bebidas, Combos & Suplementos do Toguro</span>
