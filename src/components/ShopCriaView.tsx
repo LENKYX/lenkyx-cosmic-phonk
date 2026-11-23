@@ -1759,22 +1759,49 @@ export const ShopCriaView: React.FC<Props> = ({
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2 ml-auto">
-          {settings.vipActive && (
-            <span className="px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-600 text-black text-[10px] font-black">
-              👑 VIP {settings.vipPlan === 'anual' ? 'ANUAL' : 'ATIVO'}
-            </span>
+          {mode === 'creator' && (
+            <button
+              type="button"
+              onClick={() => setAffModalOpen(true)}
+              className={`px-3.5 py-2 rounded-full text-xs font-black flex items-center gap-1.5 transition ${hasAnyAffiliate ? 'lux-btn-obsidian border-emerald-400/50 text-emerald-200' : 'lux-btn-obsidian border-amber-400/50 text-amber-200'}`}
+            >
+              <DollarSign className="w-4 h-4 text-emerald-300" />
+              <span>{hasAnyAffiliate ? `Comissão Ativa (${affiliateClicks})` : 'Ativar Comissões'}</span>
+            </button>
           )}
-          <button
-            type="button"
-            onClick={() => setAffModalOpen(true)}
-            className={`px-3.5 py-2 rounded-full text-xs font-black flex items-center gap-1.5 transition ${hasAnyAffiliate ? 'lux-btn-obsidian border-emerald-400/50 text-emerald-200' : 'lux-btn-obsidian border-amber-400/50 text-amber-200'}`}
-          >
-            <DollarSign className="w-4 h-4 text-emerald-300" />
-            <span>{hasAnyAffiliate ? `Comissão Ativa (${affiliateClicks})` : 'Ativar Comissões'}</span>
-          </button>
           <div className="hidden">
             <span>Sacola ({totalItems})</span>
           </div>
+        </div>
+      </section>
+
+      {/* INDICAÇÕES PERTO DE VOCÊ */}
+      <section className="rounded-3xl border border-emerald-400/35 bg-emerald-500/10 p-4 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <span className="w-8 h-8 rounded-full bg-emerald-400 text-black flex items-center justify-center text-sm">📍</span>
+          <div>
+            <div className="text-xs font-black text-emerald-200">PERTO DE VOCÊ · IR COMPRAR</div>
+            <div className="text-[10px] text-slate-300">Indicações de conveniência perto da sua casa — a compra é na loja!</div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            ['🏪 Conveniência', 'conveniência'],
+            ['🛒 Mercado', 'mercado'],
+            ['💊 Farmácia', 'farmácia'],
+            ['🛍️ Shopping', 'shopping'],
+            ['🐾 Pet Shop', 'pet shop'],
+          ].map(([label, q]) => (
+            <a
+              key={q}
+              href={`https://www.google.com/maps/search/${encodeURIComponent(`${q} perto de mim`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-emerald-400/25 border border-emerald-400/40 text-[11px] font-black text-emerald-100 flex items-center gap-1.5 transition"
+            >
+              {label} <ExternalLink className="w-3 h-3" />
+            </a>
+          ))}
         </div>
       </section>
 
@@ -2304,14 +2331,14 @@ export const ShopCriaView: React.FC<Props> = ({
         })()}
 
       {/* Affiliate Commission Setup Modal */}
-      {affModalOpen && (
+      {affModalOpen && mode === 'creator' && (
         <div
           onClick={() => setAffModalOpen(false)}
           className="fixed inset-0 z-[95] bg-black/82 backdrop-blur-md flex items-center justify-center p-4"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl glass-panel border border-cyan-400/45 p-5 sm:p-6 space-y-4"
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl glass-panel bg-[#141026] border border-cyan-400/45 p-5 sm:p-6 space-y-4"
           >
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">

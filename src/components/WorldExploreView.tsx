@@ -216,6 +216,19 @@ export const WorldExploreView: React.FC<Props> = ({
   const [downloadingRowId, setDownloadingRowId] = useState<string | null>(null);
   const [downloadRowPct, setDownloadRowPct] = useState<number>(0);
   const [lyricTrack, setLyricTrack] = useState<Track | null>(null);
+  const [lyricAuto, setLyricAuto] = useState(true);
+  const lyricScrollRef = React.useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!lyricTrack || !lyricAuto) return;
+    const id = window.setInterval(() => {
+      const node = lyricScrollRef.current;
+      if (!node) return;
+      const atEnd = node.scrollTop + node.clientHeight >= node.scrollHeight - 10;
+      if (atEnd) node.scrollTo({ top: 0, behavior: 'smooth' });
+      else node.scrollBy({ top: 80, behavior: 'smooth' });
+    }, 2300);
+    return () => window.clearInterval(id);
+  }, [lyricTrack, lyricAuto]);
   const resultsListRef = React.useRef<HTMLDivElement | null>(null);
 
   const handleDownloadWorldRow = async (t: Track) => {
@@ -630,32 +643,6 @@ export const WorldExploreView: React.FC<Props> = ({
                     <Film className="w-3.5 h-3.5" /> Assistir Clipes ({clipTracks.length})
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => void handleToggleArtistSubscribe(artistProfile.name)}
-                  className={`px-4 py-2.5 rounded-full text-xs font-black flex items-center gap-1.5 transition ${
-                    subscribedChannels.has(normalizeChannelKey(artistProfile.name))
-                      ? 'bg-white/15 border border-white/25 text-white hover:bg-white/25'
-                      : 'bg-white text-black hover:bg-purple-100 shadow'
-                  }`}
-                >
-                  {subscribedChannels.has(normalizeChannelKey(artistProfile.name)) ? (
-                    <>
-                      <BellRing className="w-3.5 h-3.5 text-emerald-300" />
-                      <span>Inscrito</span>
-                    </>
-                  ) : (
-                    <>
-                      <Bell className="w-3.5 h-3.5" />
-                      <span>Inscrever-se</span>
-                    </>
-                  )}
-                  {(channelCounts[normalizeChannelKey(artistProfile.name)] || 0) > 0 && (
-                    <span className="opacity-85">
-                      · {(channelCounts[normalizeChannelKey(artistProfile.name)] || 0).toLocaleString('pt-BR')}
-                    </span>
-                  )}
-                </button>
                 {onCommentTarget && (
                   <button
                     type="button"
@@ -1318,31 +1305,52 @@ export const WorldExploreView: React.FC<Props> = ({
                   </button>
 
                   {lyricTrack?.id === t.id && (
-                    <div
-                      className="fixed inset-0 z-[70] bg-[#07030f]/97 backdrop-blur-xl flex items-center justify-center p-4"
-                      onClick={() => setLyricTrack(null)}
-                    >
-                      <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-3xl border border-amber-400/40 bg-gradient-to-b from-[#170d2e] to-[#0a0518] p-5 shadow-2xl">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="min-w-0">
-                            <div className="text-xs font-black text-amber-300">🎵 LETRA · MORRO GOLD</div>
-                            <div className="text-sm font-black text-white truncate">{lyricTrack.title}</div>
-                            <div className="text-[11px] text-slate-300 truncate">{lyricTrack.artist}</div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setLyricTrack(null)}
-                            className="p-2 rounded-full bg-white/10 hover:bg-rose-500/30 text-white shrink-0"
-                            title="Fechar"
-                            aria-label="Fechar letra"
-                          >
-                            ✕
-                          </button>
+                    <div className="fixed inset-0 z-[70] bg-gradient-to-b from-[#14082e] via-[#0a0518] to-[#1b0d38] flex flex-col">
+                      <div className="flex items-center justify-between px-4 py-3 shrink-0">
+                        <div className="min-w-0">
+                          <div className="text-xs font-black text-amber-300">🎵 LETRA · MORRO GOLD</div>
+                          <div className="text-sm font-black text-white truncate">{lyricTrack.title}</div>
+                          <div className="text-[11px] text-slate-300 truncate">{lyricTrack.artist}</div>
                         </div>
-                        <div className="whitespace-pre-wrap text-center text-lg sm:text-2xl leading-relaxed font-black text-white/95">
-                          {lyricTrack.lyrics || 'Letra em breve... 🎤'}
+                        <button
+                          type="button"
+                          onClick={() => setLyricTrack(null)}
+                          className="p-2 rounded-full bg-white/10 hover:bg-rose-500/30 text-white shrink-0"
+                          title="Fechar"
+                          aria-label="Fechar letra"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div ref={lyricScrollRef} className="flex-1 overflow-y-auto px-6 pb-20 pt-4">
+                        <div className="space-y-4 text-center">
+                          {(lyricTrack.lyrics || 'Letra em breve... 🎤').split('\n').map((ln, i) => {
+                            const clean = ln.trim();
+                            const isMark = clean === '---' || /^#/.test(clean) || /^\[.*\]$/.test(clean);
+                            return clean === '' ? (
+                              <div key={i} className="h-2" />
+                            ) : (
+                              <div
+                                key={i}
+                                className={
+                                  isMark
+                                    ? 'text-amber-300/85 text-base sm:text-xl font-black'
+                                    : 'text-white/95 text-xl sm:text-3xl leading-snug font-black drop-shadow-[0_2px_14px_rgba(255,200,60,0.18)]'
+                                }
+                              >
+                                {clean === '---' ? '✦ ✦ ✦' : ln}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setLyricAuto((v) => !v)}
+                        className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-amber-400 text-black text-[11px] font-black shadow-lg"
+                      >
+                        {lyricAuto ? '⏸ Pausar rolagem' : '▶️ Continuar rolagem'}
+                      </button>
                     </div>
                   )}
 

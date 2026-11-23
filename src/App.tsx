@@ -108,7 +108,8 @@ import {
   Track,
   UserPlaylist,
 } from './types';
-import { ShopCat as ShopCategory, ShopCriaView } from './components/ShopCriaView';
+import type { ShopCat as ShopCategory } from './components/ShopCriaView';
+const ShopCriaView = React.lazy(() => import('./components/ShopCriaView').then((m) => ({ default: m.ShopCriaView })));
 import { copyTextReliable, isAndroidApk } from './utils/androidBridge';
 import { CatalogView } from './components/CatalogView';
 import { WorldExploreView } from './components/WorldExploreView';
@@ -3923,16 +3924,18 @@ export function App() {
                 )}
 
                 {activeTab === 'shop' && (
-                  <ShopCriaView
-                    settings={settings}
-                    mode={mode}
-                    initialCategory={shopInitialCategory}
-                    categoryNonce={shopCategoryNonce}
-                    onSaveSettings={handleSaveSettings}
-                    onCommentTarget={openCommentTarget}
-                    onOpenLiveChat={openLiveChat}
-                    onToast={showToast}
-                  />
+                  <Suspense fallback={<div className="p-10 text-center text-amber-300 text-sm font-black">🛍️ Carregando Loja dos Cria...</div>}>
+                    <ShopCriaView
+                      settings={settings}
+                      mode={mode}
+                      initialCategory={shopInitialCategory}
+                      categoryNonce={shopCategoryNonce}
+                      onSaveSettings={handleSaveSettings}
+                      onCommentTarget={openCommentTarget}
+                      onOpenLiveChat={openLiveChat}
+                      onToast={showToast}
+                    />
+                  </Suspense>
                 )}
 
                 {activeTab === 'explore' && (
