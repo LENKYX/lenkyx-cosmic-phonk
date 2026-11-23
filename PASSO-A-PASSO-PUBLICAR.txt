@@ -1,25 +1,15 @@
-MORRO GOLD v111 - TEMA 24k + SOM DE VERDADE + SO ZUEIRA!
-==========================================================
+MORRO GOLD v112 - SO O EMBLEMA + SETA DOURADA + SEMPRE NOVO!
+==============================================================
 
-👑 TEMA 24k MORRO GOLD DINAMICO!
-- Acabou o branco! App escuro com OURO 24k brilhando!
-- Cards com borda dourada + brilho que corre (dinamico!)
-- Fundo obsidiana com auréolas de ouro e roxo
+👑 SÓ O EMBLEMA DA LOGO (sem o nome escrito) em todo o app!
+↩️ SETINHA DE VOLTAR ESTILO MORRO GOLD (dourada 24k brilhante!)
+⏭️ VIDEOS: SEMPRE passam sozinhos pro proximo (sem parar!)
+🔄 FEED SE ATUALIZA SOZINHO (videos novos sempre!)
 
-🔊 SOM DE VERDADE (celular E PC):
-- O som sai AUTOMATICO junto com o video!
-- O navegador so bloqueia em caso extremo (e no 1º toque libera!)
+(revenda o que ja tem no v111: tema 24k, som automatico,
+ so zueira e memes, logo+seta na vibe, tudo organizado)
 
-⏭️ VIDEO RODA ATE O FIM e passa SOZINHO pro proximo!
-
-😂 SO ZUEIRA E MEMES (o que o Morro Gold gosta!):
-- Feed = memes, pegadinhas, humor, virais engraçados!
-
-🎬 TELA DA VIBE LIMPA:
-- LOGO MORRO GOLD no topo direito + setinha do lado!
-- O resto tudo removido (só o video e voce!)
-
-📦 "src" INTEIRO (88+ arquivos) = ATUALIZACAO COMPLETA!
+📦 "src" INTEIRO = ATUALIZACAO COMPLETA!
 
 ⚠️ COMO PUBLICAR PELO NAVEGADOR (github.com):
 ================================================
@@ -28,6 +18,6 @@ MORRO GOLD v111 - TEMA 24k + SOM DE VERDADE + SO ZUEIRA!
 3. "Add file" > "Upload files"
 4. ARRASTE A PASTA "src" INTEIRA pra tela!
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: v111 tema 24k som de verdade so zueira
+5. Mensagem: v112 so emblema seta dourada sempre novo
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.

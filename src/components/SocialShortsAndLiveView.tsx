@@ -1289,6 +1289,17 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
     return () => cancelAnimationFrame(raf);
   }, [isHostingLive]);
 
+  // VIDEOS SEMPRE ATUALIZANDO SOZINHOS (feed novo sem parar o video!)
+  useEffect(() => {
+    const iv = window.setInterval(() => {
+      if (document.hidden) return;
+      try {
+        void loadShorts(shortCategory, shortSearch, false, false);
+      } catch { /* ok */ }
+    }, 12 * 60 * 1000);
+    return () => window.clearInterval(iv);
+  }, [shortCategory, shortSearch]);
+
   const scrollToShort = (nextIdx: number) => {
     if (shorts.length === 0) return;
     markReelSeen(shorts[activeIndex]);
@@ -1326,7 +1337,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
 
   const handleShortEnded = () => {
     markReelSeen(shorts[activeIndex]);
-    if (!autoAdvanceShorts || loopCurrentShort || shorts.length <= 1) return;
+    if (shorts.length <= 1) return; // SEMPRE passa pro proximo sozinho!
     const next = activeIndex + 1 < shorts.length ? activeIndex + 1 : 0;
     setActiveIndex(next);
   };
@@ -1843,7 +1854,7 @@ export const SocialShortsAndLiveView: React.FC<Props> = ({
                   // ignore
                 }
               }}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-[2px] flex items-center justify-center text-white/85 active:scale-90 transition"
+              className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-600 text-[#2a1d05] shadow-[0_4px_16px_rgba(255,190,50,0.6)] border border-amber-100/70"
               title="Voltar"
             >
               <span className="text-[14px] leading-none select-none">←</span>

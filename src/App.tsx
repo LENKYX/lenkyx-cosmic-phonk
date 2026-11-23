@@ -3373,7 +3373,6 @@ export function App() {
                   <div className="absolute right-0 top-11 z-50 w-72 sm:w-80 max-w-[calc(100vw-16px)] rounded-2xl bg-[#161622]/98 backdrop-blur-2xl border border-white/15 shadow-2xl p-2.5 space-y-1.5 text-xs">
                     <div className="px-2 py-1 flex items-center justify-between border-b border-white/10 pb-2">
                       <span className="font-black text-white">Notificações</span>
-                      <span className="text-[10px] font-bold text-amber-300">MORRO GOLD</span>
                     </div>
                     <button
                       type="button"
@@ -4137,7 +4136,6 @@ export function App() {
       {!watchingMovie && activeTab !== 'reels' && (
         <div className="pointer-events-none fixed bottom-2 left-[calc(50%-29px)] -translate-x-1/2 z-30 flex flex-col items-center gap-1">
           <img src="/covers/morro-gold-emblema-grosso.png" alt="" className="w-10 h-10 rounded-full object-cover shadow-[0_6px_22px_rgba(255,190,50,0.5)] border border-amber-300/45" />
-          <div className="text-[13px] font-black tracking-[0.3em] bg-gradient-to-b from-amber-100 via-yellow-400 to-amber-600 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(255,190,50,0.55)]">MORRO GOLD</div>
         </div>
       )}
 
