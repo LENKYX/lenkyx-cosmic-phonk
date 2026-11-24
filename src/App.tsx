@@ -126,6 +126,7 @@ import {
   recordPlayHistoryItem,
 } from './components/FuturisticFeaturesModal';
 import { LyricsKaraokeModal } from './components/LyricsKaraokeModal';
+import HomeMsnView from './components/HomeMsnView';
 const MoviesView = React.lazy(() => import('./components/MoviesView').then((m) => ({ default: m.MoviesView })));
 const SportsArenaView = React.lazy(() =>
   import('./components/SportsArenaView').then((m) => ({ default: m.SportsArenaView }))
@@ -3791,56 +3792,9 @@ export function App() {
             ) : (
               <>
                 {activeTab === 'catalog' && (
-                  <CatalogView
-                    tracks={globalSearch.trim() ? visibleTracks : rankTracksBySmartTaste(visibleTracks)}
-                    settings={settings}
-                    mode={mode}
-                    searchQuery={globalSearch}
-                    playlists={playlists}
-                    currentTrack={currentTrack}
-                    activeVersion={activeVersion}
-                    isPlaying={isPlaying}
-                    offlineTrackIds={offlineTrackIds}
-                    downloadingIds={downloadingIds}
-                    downloadingAll={downloadingAll}
-                    onPlayTrack={(t, ver) => {
-                      void handlePlayTrack(t, ver, visibleTracks);
-                    }}
-                    onLikeTrack={(t) => void handleLikeTrack(t)}
-                    onShareTrack={(t) => {
-                      setShareTrack(t);
-                      setShareOpen(true);
-                try { const voz = new Audio('/audio/compartilha-crias.mp3'); void voz.play().catch(() => {}); } catch { /* ok */ }
-                    }}
-                    onOpenPix={() => {
-                      setPixInitialTab('donate');
-                      setPixOpen(true);
-                    }}
-                    onInstallApp={() => void handleInstantInstall()}
-                    onAddToPlaylist={addTrackToPlaylist}
-                    onToggleOffline={(t) => void handleToggleOffline(t)}
-                    onDownloadAllOffline={() => void handleDownloadAllOffline()}
-                    onEditTrack={(t) => {
-                      setEditingTrack(t);
-                      setUploadModalOpen(true);
-                    }}
-                    onAddTrack={() => {
-                      setEditingTrack(null);
-                      setUploadModalOpen(true);
-                    }}
-                    lyricsTrack={null}
-                    onSetLyricsTrack={setLyricsTrack}
-                    onCommentTrack={(t) =>
-                      openCommentTarget(`track:${t.id}`, `${t.title} — ${t.artist}`, t.youtubeVideoId)
-                    }
-                    onCommentTarget={openCommentTarget}
+                  <HomeMsnView
+                    tracks={visibleTracks}
                     onNavigateTab={(id) => navigateTab(id as TabId)}
-                    onSearchWorld={triggerWorldSearchDirect}
-                    onOpenShop={() => navigateTab('shop')}
-                    onDeleteTrack={handleDeleteOrHideTrack}
-                    onUpdateTrackCover={handleUpdateTrackCover}
-                    onUpdateAlbumCover={handleUpdateAlbumCover}
-                    onToast={showToast}
                   />
                 )}
 
