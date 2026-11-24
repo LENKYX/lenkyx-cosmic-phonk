@@ -399,7 +399,12 @@ function getEffectiveSettings(db) {
   if (!s.whatsappStoreNumber) {
     s.whatsappStoreNumber = String(process.env.WHATSAPP_STORE_NUMBER || '5567996785099').trim();
   }
-  return s;
+  const out = s;
+  // SEGURANÇA: Access Token do MP NUNCA vai pro navegador (documento de execução!)
+  const safe = { ...out };
+  delete safe.mpAccessToken;
+  safe.hasMpToken = Boolean(out.mpAccessToken);
+  return safe;
 }
 
 // === PUBLIC API ROUTES ===
