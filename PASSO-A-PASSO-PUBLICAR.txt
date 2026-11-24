@@ -1,19 +1,21 @@
-MORRO GOLD v114 - MENU PADRAO CELULAR 24k (NO POLEGAR!)
-========================================================
+MORRO GOLD v115 - RADIO DO MORRO COMPLETA (TUDO DENTRO!)
+=========================================================
 
-📱 ESTILO PADRAO PRA CELULAR:
-- O menu agora e uma PILULA DOURADA FLUTUANTE!
-- Posicionado embaixo-direita = ALCANCE DO POLEGAR!
-- Facil de mexer com uma mao so!
-
-👑 ESTILO 24k MORRO GOLD:
-- Pilula com borda dourada, brilho que corre (dinamico!)
-- Botoes GRANDES (46px) faceis de tocar
-- Toque = feedback dourado (aperta e brilha!)
-- Respeita a area segura do celular (sem cobrir o sistema)
-
-(revenda: tema 24k, som automatico, so zueira e memes,
- menu ⋮ transparente, lupinha 24k, logo+seta, tudo organizado)
+📻 TUDO DENTRO DA RADIO DO MORRO:
+1. 🔥 Hits da favela (as musicas que o pessoal curte!)
+2. 🔄 As musicas ATUALIZAM SOZINHAS (a cada 7 min!)
+3. 🔍 Lupinha 24k pra procurar musicas e artistas
+4. ⋮ Menu 3 pontinhos (TRANSPARENTE, fecha sozinho!):
+   - ⬇️ Baixar musica atual (arquivo .mp3 de verdade!)
+   - 📋 Criar playlist (com os artistas que mais gostam!)
+   - 🎧 Minhas playlists (tocar/baixar/excluir)
+   - 🔄 Atualizar agora
+5. ⬇️ Baixar PLAYLIST inteira (arquivo .m3u!)
+6. 🎬 Videoclipes em TELA CHEIA (busca o clipe oficial!)
+7. ← Setinha dourada do LADO DIREITO EM CIMA do clipe!
+8. ✨ TODOS os botoes estilo 24k MORRO GOLD
+9. 🎛️ MEDIA PLAYER DENTRO DA RADIO (anterior/tocar/proxima)
+   — os players soltos pelo app FORAM REMOVIDOS!
 
 📦 "src" INTEIRO = ATUALIZACAO COMPLETA!
 
@@ -24,6 +26,6 @@ MORRO GOLD v114 - MENU PADRAO CELULAR 24k (NO POLEGAR!)
 3. "Add file" > "Upload files"
 4. ARRASTE A PASTA "src" INTEIRA pra tela!
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: v114 menu padrao celular 24k polegar
+5. Mensagem: v115 radio do morro completa
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.

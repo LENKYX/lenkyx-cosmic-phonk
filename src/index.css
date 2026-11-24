@@ -1133,3 +1133,7 @@ nav.mg24k-taskbar button {
 nav.mg24k-taskbar button:hover { background: rgba(255, 200, 80, 0.14); }
 nav.mg24k-taskbar button:active { transform: scale(0.92); background: rgba(255, 200, 80, 0.22); }
 nav.mg24k-taskbar button:focus-visible { outline: 2px solid rgba(255, 210, 90, 0.8); }
+
+
+/* 🎛️ MEDIA PLAYER MORA DENTRO DA RÁDIO — nada solto pelo app! */
+[class*="z-[88]"][class*="cursor-move"] { display: none !important; }
