@@ -1,21 +1,18 @@
-MORRO GOLD v117 - INICIO NO FORMATO MSN (MICROSOFT) 24k!
-==========================================================
+MORRO GOLD - ETAPA 1 DO DOCUMENTO DE EXECUCAO
+==============================================
 
-🏠 O INICIO AGORA E NO FORMATO DO MSN DA MICROSOFT!
-(com o estilo 24k MORRO GOLD!)
+✅ ETAPA 1 CONCLUIDA (o documento mandava):
+1. BACKUP COMPLETO feito ANTES de qualquer alteracao!
+   (205 arquivos - guardado no Drive e Dropbox!)
+2. ANALISE COMPLETA do app existente (ver relatorio!)
+3. LOGO ORIGINAL preservada EXATAMENTE como e!
+   - So ajustei TAMANHO e POSICAO (regra cumprida!)
+   - Agora a logo original aparece em DESTAQUE
+     no topo da tela inicial (celular e PC!)
+   - Desenho, cores e identidade = INTACTOS!
 
-✨ O QUE VEIO DO MSN PRA CA:
-- 🔍 Barra "Pesquisar na Web" no topo (estilo MSN!)
-- 🌤️ CLIMA REAL DE CAMPO GRANDE (ao vivo!)
-- 📑 Abas: Descobrir · Noticias · Esportes · Vibe ·
-  Musica · Clima · Compras
-- 📰 Feed de CARDS (destaques, musica em alta, noticias!)
-- 📺 MEUS CANAIS = feed personalizado (escolhe os topicos!)
-- ✨ APARENCIA DO FEED (pagina completa / parcial / cabecalhos!)
-- 🧩 LAUNCHER DE APPS (grade estilo Microsoft 365!)
-- 💰 Card da Rádio + Destaques da quebrada
-
-👑 TUDO NO ESTILO 24k MORRO GOLD (dourado, brilhante, 3D!)
+⚠️ As proximas etapas (menu, loja, doacoes...) seguem
+o documento e vao ser liberadas apos suas respostas!
 
 📦 "src" INTEIRO = ATUALIZACAO COMPLETA!
 
@@ -26,6 +23,6 @@ MORRO GOLD v117 - INICIO NO FORMATO MSN (MICROSOFT) 24k!
 3. "Add file" > "Upload files"
 4. ARRASTE A PASTA "src" INTEIRA pra tela!
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: v117 inicio formato MSN 24k
+5. Mensagem: etapa 1 backup analise logo original
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.

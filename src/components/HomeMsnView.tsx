@@ -197,6 +197,17 @@ export default function HomeMsnView({ onNavigateTab, tracks = [] }: Props) {
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(255,190,60,0.12),transparent_55%),radial-gradient(110%_70%_at_90%_110%,rgba(140,80,220,0.14),transparent_60%),linear-gradient(180deg,#0d0616,#09040f_55%,#07030f)]" />
 
       <div className="max-w-5xl mx-auto px-3 sm:px-5 pt-4 space-y-3.5">
+        {/* LOGO ORIGINAL MORRO GOLD — topo da tela inicial (desenho intacto!) */}
+        <div className="flex justify-center pt-1 pb-0.5">
+          <img
+            src="/covers/morro-gold-emblema-grosso.png"
+            alt="MORRO GOLD"
+            className="w-[clamp(66px,22vw,112px)] h-[clamp(66px,22vw,112px)] object-contain select-none"
+            style={{ filter: 'drop-shadow(0 10px 26px rgba(255,190,50,0.45))' }}
+            draggable={false}
+          />
+        </div>
+
         {/* TOPO: busca web estilo MSN + launcher + canais */}
         <div className="flex items-center gap-2">
           <form onSubmit={onWebSearch} className="relative flex-1">
