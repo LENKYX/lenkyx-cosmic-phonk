@@ -127,6 +127,7 @@ import {
 } from './components/FuturisticFeaturesModal';
 import { LyricsKaraokeModal } from './components/LyricsKaraokeModal';
 import HomeMsnView from './components/HomeMsnView';
+import PrivacyTermsModal from './components/PrivacyTermsModal';
 const MoviesView = React.lazy(() => import('./components/MoviesView').then((m) => ({ default: m.MoviesView })));
 const SportsArenaView = React.lazy(() =>
   import('./components/SportsArenaView').then((m) => ({ default: m.SportsArenaView }))
@@ -625,6 +626,7 @@ export function App() {
   const nextBackupTrackIdRef = useRef<string>('');
   const [visualizerOpen, setVisualizerOpen] = useState(false);
   const [updatingApp, setUpdatingApp] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ label: string; pct: number; mb: number } | null>(null);
 
   const navigateTab = useCallback((next: TabId) => {
@@ -3471,6 +3473,17 @@ export function App() {
                     <Zap className="w-4 h-4 text-emerald-300" />
                     <span>Tela Apagada & Permissões</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTopOverflowOpen(false);
+                      setPrivacyOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
+                  >
+                    <span className="text-amber-300">🛡️</span>
+                    <span>Privacidade & Termos</span>
+                  </button>
                   
                   
                   
@@ -5048,6 +5061,8 @@ export function App() {
         youtubeId={commentTarget?.youtubeId || ''}
         user={null}
       />
+
+      <PrivacyTermsModal open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
 
       <LyricsKaraokeModal
         track={lyricsTrack}

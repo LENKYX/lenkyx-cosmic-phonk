@@ -1277,7 +1277,8 @@ export const ShopCriaView: React.FC<Props> = ({
     }
   };
 
-  const buildOrderWhatsappUrl = () => {    const lines = cart.map((c) => `• ${c.qty}x ${c.item.name} (${c.item.priceLabel})`);
+  const buildOrderWhatsappUrl = () => {    const lines = cart.map((c) =>
+            <div className="text-[10px] text-amber-200/85 font-bold">🛒 Compra segura: você é direcionado ao site do PARCEIRO (Mercado Livre, Shopee ou Amazon) para concluir — sem custo extra!</div> `• ${c.qty}x ${c.item.name} (${c.item.priceLabel})`);
     const msg =
       `Salve! Montei minha lista de compras na Loja dos Cria do MORRO GOLD 🔥:\n\n` +
       `${lines.join('\n')}\n\nTotal estimado: R$ ${totalPrice.toLocaleString('pt-BR')}`;

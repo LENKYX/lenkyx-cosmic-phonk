@@ -383,6 +383,10 @@ export const CosmicHubView: React.FC<Props> = ({
 
   return (
     <div className="space-y-5 pb-28">
+      {/* 💛 TRANSPARÊNCIA DAS DOAÇÕES (documento de execução!) */}
+      <div className="rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-[11px] text-amber-100 leading-relaxed">
+        <strong className="text-amber-300">💛 Transparência:</strong> todo valor vai <strong>direto ao PIX do beneficiário</strong> (igreja/campanha) — o app <strong>não cobra taxa</strong>. Peça e guarde seu <strong>comprovante</strong>! Campanhas passam por <strong>moderação</strong> antes de aparecer. Dúvidas? Fale com o organizador pelo WhatsApp oficial.
+      </div>
       {/* Hero Banner */}
       <div className="rounded-3xl bg-gradient-to-br from-[#190935]/95 via-[#0f172a]/95 to-[#2b0c2b]/95 border border-pink-400/35 p-5 sm:p-6 shadow-[0_0_50px_rgba(236,72,153,0.18)]">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

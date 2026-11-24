@@ -1,18 +1,20 @@
-MORRO GOLD - ETAPA 1 DO DOCUMENTO DE EXECUCAO
+MORRO GOLD - ETAPA 2 DO DOCUMENTO DE EXECUCAO
 ==============================================
 
-✅ ETAPA 1 CONCLUIDA (o documento mandava):
-1. BACKUP COMPLETO feito ANTES de qualquer alteracao!
-   (205 arquivos - guardado no Drive e Dropbox!)
-2. ANALISE COMPLETA do app existente (ver relatorio!)
-3. LOGO ORIGINAL preservada EXATAMENTE como e!
-   - So ajustei TAMANHO e POSICAO (regra cumprida!)
-   - Agora a logo original aparece em DESTAQUE
-     no topo da tela inicial (celular e PC!)
-   - Desenho, cores e identidade = INTACTOS!
+✅ ETAPA 2 CONCLUIDA:
+1. 🛡️ PRIVACIDADE & TERMOS (LGPD em linguagem simples!)
+   - Novo item no menu tres pontinhos!
+   - O que coletamos, seus direitos, compras, doacoes...
+2. 🛒 LOJA: aviso CLARO de parceiro externo!
+   - "Voce e direcionado ao site do PARCEIRO para concluir"
+3. 💛 DOACOES: TRANSPARENCIA total!
+   - Vai direto ao PIX do beneficiario (sem taxa!)
+   - Peca comprovante! Campanhas passam por moderacao!
 
-⚠️ As proximas etapas (menu, loja, doacoes...) seguem
-o documento e vao ser liberadas apos suas respostas!
+👑 LOGO ORIGINAL: preservada e em destaque no topo!
+🛡️ BACKUP COMPLETO guardado antes de tudo!
+
+(revenda: tudo do documento Etapa 1 + MSN + radio + vibe!)
 
 📦 "src" INTEIRO = ATUALIZACAO COMPLETA!
 
@@ -23,6 +25,6 @@ o documento e vao ser liberadas apos suas respostas!
 3. "Add file" > "Upload files"
 4. ARRASTE A PASTA "src" INTEIRA pra tela!
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: etapa 1 backup analise logo original
+5. Mensagem: etapa 2 privacidade loja doacoes
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.
