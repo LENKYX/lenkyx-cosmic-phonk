@@ -7,6 +7,7 @@ import {
   Crown,
   Music4,
   Search,
+  Mic,
   MoreVertical,
   Download,
   ListPlus,
@@ -36,6 +37,7 @@ interface Props {
   currentTrack: RadioTrack | null;
   isPlaying: boolean;
   onPlayTrack: (t: RadioTrack, queue: RadioTrack[]) => void;
+  onOpenLyrics?: (t: RadioTrack) => void;
 }
 
 type Playlist = { id: string; name: string; tracks: RadioTrack[] };
@@ -59,7 +61,7 @@ function savePlaylists(list: Playlist[]) {
   }
 }
 
-export default function MorroRadioView({ tracks, currentTrack, isPlaying, onPlayTrack }: Props) {
+export default function MorroRadioView({ tracks, currentTrack, isPlaying, onPlayTrack, onOpenLyrics }: Props) {
   const queue = tracks.length ? tracks : [];
   const currentIndex = currentTrack ? queue.findIndex((t) => t.id === currentTrack.id) : -1;
   const nextTrack = queue.length ? queue[(currentIndex + 1 + queue.length) % queue.length] : null;
@@ -73,6 +75,42 @@ export default function MorroRadioView({ tracks, currentTrack, isPlaying, onPlay
   const [clip, setClip] = useState<{ yt: string; title: string } | null>(null);
   const [clipLoading, setClipLoading] = useState('');
   const [refreshTick, setRefreshTick] = useState(0);
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<any>(null);
+
+  // 🎤 BUSCA POR VOZ (pt-BR!)
+  const handleVoz = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      window.alert('Seu navegador não tem busca por voz! Tenta no Chrome 🎤');
+      return;
+    }
+    if (listening) {
+      try { recRef.current?.stop(); } catch { /* ok */ }
+      setListening(false);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = 'pt-BR';
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.onresult = (e: any) => {
+      const txt = e?.results?.[0]?.[0]?.transcript || '';
+      if (txt) {
+        setSearch(txt);
+        setSearchOpen(true);
+      }
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recRef.current = rec;
+    try {
+      rec.start();
+      setListening(true);
+    } catch {
+      setListening(false);
+    }
+  };
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   // 🔄 ATUALIZAÇÃO AUTOMÁTICA: os hits se renovam sozinhos!
@@ -220,6 +258,14 @@ export default function MorroRadioView({ tracks, currentTrack, isPlaying, onPlay
               title="Pesquisar músicas"
             >
               <Search className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleVoz}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-600 text-[#2a1d05] shadow-[0_4px_16px_rgba(255,190,50,0.55)] border border-amber-100/70 active:scale-90 ${listening ? 'animate-pulse ring-2 ring-amber-300' : ''}`}
+              title="Buscar por voz"
+            >
+              <Mic className="w-4 h-4" />
             </button>
             <button
               type="button"
@@ -461,6 +507,61 @@ export default function MorroRadioView({ tracks, currentTrack, isPlaying, onPlay
                 Nada por aqui, parça! Tenta outra busca 🔍
               </div>
             )}
+          </div>
+        </section>
+
+        {/* 🎵 CATÁLOGO COMPLETO — ORGANIZADO A-Z (toda a função de música aqui!) */}
+        <section className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-300">🎵 Minhas músicas · organizadas</div>
+            <div className="text-[9px] text-amber-200/70 font-bold uppercase tracking-[0.14em]">🔄 atualiza sozinho</div>
+          </div>
+          <div className="space-y-2 max-h-[420px] overflow-y-auto no-scrollbar">
+            {[...filtered].sort((a, b) => a.title.localeCompare(b.title)).map((t2) => (
+              <div
+                key={t2.id}
+                className="flex items-center gap-2 rounded-2xl px-3 py-2.5 hover:bg-amber-400/12 border border-transparent hover:border-amber-400/25 transition"
+              >
+                <button
+                  type="button"
+                  onClick={() => onPlayTrack(t2, filtered)}
+                  className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                >
+                  <img src={t2.coverUrl || '/covers/album-official.jpg'} alt="" className="w-10 h-10 rounded-xl object-cover border border-white/15" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-black text-white truncate">{t2.title}</div>
+                    <div className="text-[10px] text-slate-300 truncate">{t2.artist || 'MORRO GOLD'}</div>
+                  </div>
+                  <Play className="w-4 h-4 text-amber-300 shrink-0" />
+                </button>
+                {onOpenLyrics && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenLyrics(t2)}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-amber-400/25 text-amber-100 flex items-center justify-center active:scale-90 shrink-0"
+                    title="Ver a letra"
+                  >
+                    <span className="text-[11px] leading-none">📜</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void abrirClipe(t2)}
+                  className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-600 text-[#2a1d05] flex items-center justify-center active:scale-90 shrink-0"
+                  title="Clipe em tela cheia"
+                >
+                  {clipLoading === t2.id ? <Sparkles className="w-3.5 h-3.5 animate-spin" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBaixar(t2)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-amber-400/25 text-amber-100 flex items-center justify-center active:scale-90 shrink-0"
+                  title="Baixar"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
           </div>
         </section>
 

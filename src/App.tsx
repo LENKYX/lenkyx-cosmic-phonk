@@ -3166,7 +3166,6 @@ export function App() {
   const sidebarMain: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'catalog', label: 'Início', icon: <Home className="w-5 h-5" /> },
     { id: 'reels', label: 'Vibe', icon: <Film className="w-5 h-5" /> },
-    { id: 'explore', label: 'Música & Clipes', icon: <Compass className="w-5 h-5" /> },
     { id: 'shop', label: 'Loja dos Cria', icon: <ShoppingBag className="w-5 h-5" /> },
     { id: 'utils', label: 'Utilidades', icon: <span className="text-lg leading-none">🛠️</span> },
     { id: 'radio', label: 'Rádio do Morro', icon: <span className="text-lg leading-none">📻</span> },
@@ -3509,7 +3508,6 @@ export function App() {
                 { id: 'catalog', label: 'Início' },
                 { id: 'reels', label: 'Vibe' },
                 { id: 'radio', label: '📻 Rádio' },
-                { id: 'explore', label: 'Música' },
                 { id: 'shop', label: 'Loja' },
                 { id: 'utils', label: 'Utilidades' },
               ] as { id: TabId; label: string }[]
@@ -3914,6 +3912,7 @@ export function App() {
                       currentTrack={currentTrack}
                       isPlaying={isPlaying}
                       onPlayTrack={(t, q) => void handlePlayTrack(t, 'v1', q)}
+                      onOpenLyrics={(t) => setLyricsTrack(t as any)}
                     />
                   </Suspense>
                 )}
@@ -4177,17 +4176,6 @@ export function App() {
             <span className="text-[10px] font-semibold">Vibe</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => navigateTab('explore')}
-            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 transition ${
-              !moreSheetOpen && activeTab === 'explore' ? 'text-amber-300' : 'text-slate-400 hover:text-white'
-            }`}
-            title="Música"
-          >
-            <Compass className="w-5 h-5" />
-            <span className="text-[10px] font-semibold">Música</span>
-          </button>
 
           <button
             type="button"

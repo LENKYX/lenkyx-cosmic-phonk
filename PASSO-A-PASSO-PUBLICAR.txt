@@ -1,21 +1,17 @@
-MORRO GOLD v115 - RADIO DO MORRO COMPLETA (TUDO DENTRO!)
+MORRO GOLD v116 - MUSICA TUDO NA RADIO + BUSCA POR VOZ!
 =========================================================
 
-📻 TUDO DENTRO DA RADIO DO MORRO:
-1. 🔥 Hits da favela (as musicas que o pessoal curte!)
-2. 🔄 As musicas ATUALIZAM SOZINHAS (a cada 7 min!)
-3. 🔍 Lupinha 24k pra procurar musicas e artistas
-4. ⋮ Menu 3 pontinhos (TRANSPARENTE, fecha sozinho!):
-   - ⬇️ Baixar musica atual (arquivo .mp3 de verdade!)
-   - 📋 Criar playlist (com os artistas que mais gostam!)
-   - 🎧 Minhas playlists (tocar/baixar/excluir)
-   - 🔄 Atualizar agora
-5. ⬇️ Baixar PLAYLIST inteira (arquivo .m3u!)
-6. 🎬 Videoclipes em TELA CHEIA (busca o clipe oficial!)
-7. ← Setinha dourada do LADO DIREITO EM CIMA do clipe!
-8. ✨ TODOS os botoes estilo 24k MORRO GOLD
-9. 🎛️ MEDIA PLAYER DENTRO DA RADIO (anterior/tocar/proxima)
-   — os players soltos pelo app FORAM REMOVIDOS!
+📻 A FUNÇÃO DE MUSICA INTEIRA AGORA E NA RÁDIO DO MORRO!
+- O botao "Musica" saiu do menu = TUDO mora na Radio!
+- 🎵 Catálogo COMPLETO organizado A-Z (com letra, clipe e download!)
+- 🔥 Hits da favela (atualiza sozinho!)
+- 🎧 Playlists + ⬇️ downloads + 🎬 clipes em tela cheia
+
+🎤 BUSCA POR VOZ (NOVO!):
+- Botao de microfone dourado 24k ao lado da lupinha!
+- Fala o nome da musica/artista = ele busca pra voce!
+
+✨ Tudo organizado e atualizado sozinho (24k Morro Gold!)
 
 📦 "src" INTEIRO = ATUALIZACAO COMPLETA!
 
@@ -26,6 +22,6 @@ MORRO GOLD v115 - RADIO DO MORRO COMPLETA (TUDO DENTRO!)
 3. "Add file" > "Upload files"
 4. ARRASTE A PASTA "src" INTEIRA pra tela!
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: v115 radio do morro completa
+5. Mensagem: v116 musica na radio + busca por voz
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.
