@@ -1,19 +1,19 @@
-MORRO GOLD - ETAPA 3 DO DOCUMENTO DE EXECUCAO
+MORRO GOLD - ETAPA 4 DO DOCUMENTO DE EXECUCAO
 ==============================================
 
-✅ ETAPA 3 CONCLUIDA: MOBILE-FIRST PROFISSIONAL!
-1. 📱 CELULAR (320/360/390px): cards se ajustam sozinhos,
-   nada apertado, ZERO rolagem lateral!
-2. 💻 TABLET (768px): grades com mais colunas!
-3. 🖥️ NOTEBOOK (1024/1440px): tudo centralizado e bonito!
-4. 🎯 ACESSIBILIDADE:
-   - Foco dourado visivel no teclado!
-   - Respeita "movimento reduzido" do aparelho!
-   - Botoes com area de toque confortavel!
-   - Imagens e videos sem distorcao!
+✅ ETAPA 4 CONCLUIDA: PAINEL DO VENDEDOR (estrutura real!)
+👥 Novo item no menu tres pontinhos!
 
-(revenda: Etapa 1 backup+logo, Etapa 2 privacidade+loja+
- doacoes, MSN 24k, radio completa, vibe, tema 24k!)
+📊 STATUS DAS INTEGRACOES (sem inventar nada!):
+- Mercado Pago: aguardando SUA Access Token (eu preparo!)
+- ML/Shopee/Amazon: links de afiliado ATIVOS!
+- Marketplace/split: aguardando aprovacao do MP
+
+📝 PRE-CADASTRO DO VENDEDOR (real, salvo no aparelho!)
+📦 Meus produtos (abre com o checkout)
+💰 Comissoes (aparece quando o MP ativar)
+
+(revenda: Etapas 1-3 + MSN 24k + radio completa + vibe!)
 
 📦 "src" INTEIRO = ATUALIZACAO COMPLETA!
 
@@ -24,6 +24,6 @@ MORRO GOLD - ETAPA 3 DO DOCUMENTO DE EXECUCAO
 3. "Add file" > "Upload files"
 4. ARRASTE A PASTA "src" INTEIRA pra tela!
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: etapa 3 mobile-first profissional
+5. Mensagem: etapa 4 painel do vendedor
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.
