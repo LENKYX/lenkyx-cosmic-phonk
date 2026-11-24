@@ -101,6 +101,17 @@ export default function SellerPanelModal({ open, onClose }: Props) {
           />
         </div>
 
+        {/* 🔗 COMO LIGAR AGORA (passo a passo real!) */}
+        <div className="rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-3.5 space-y-2">
+          <div className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-200">🔗 Como LIGAR agora (1 minuto cada!)</div>
+          <div className="text-[11px] text-emerald-50 leading-relaxed space-y-1.5">
+            <p><strong>💳 Mercado Pago:</strong> painel do Mercado Pago → Seu Negócio → <strong>Credenciais</strong> → copie a <strong>Access Token (produção)</strong> → cole no app em <strong>Configurações → PIX/Pagamentos</strong> (ou no Render em MP_ACCESS_TOKEN). Pronto: doações e assinaturas passam a confirmar sozinhas!</p>
+            <p><strong>🛒 Amazon:</strong> cadastre-se em <strong>amazon.com.br/associates</strong> → copie seu código de afiliado (<strong>tag xxx-21</strong>) → na Loja, botão <strong>Ativar Comissões</strong> → cole seu link da Amazon!</p>
+            <p><strong>🛍️ Shopee:</strong> entre em <strong>afiliados.shopee.com.br</strong> → copie seu código de afiliado → na Loja, <strong>Ativar Comissões</strong> → cole seu link da Shopee!</p>
+            <p><strong>📦 Mercado Livre:</strong> <strong>mercadolivre.com.br/l/afiliados-home</strong> → gere seu link → cole em Ativar Comissões!</p>
+          </div>
+        </div>
+
         {/* PRÉ-CADASTRO REAL (salvo no aparelho!) */}
         <div className="rounded-2xl border border-amber-300/25 bg-white/[0.05] p-3.5 space-y-2.5">
           <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-300">📝 Meu pré-cadastro de vendedor</div>

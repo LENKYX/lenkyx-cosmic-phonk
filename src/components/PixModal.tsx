@@ -142,7 +142,7 @@ export const PixModal: React.FC<PixModalProps> = ({
   const [vipReceiptDataUrl, setVipReceiptDataUrl] = useState('');
   const [vipEmail, setVipEmail] = useState(() => localStorage.getItem('mg_vip_email') || '');
   const [vipAutoBusy, setVipAutoBusy] = useState(false);
-  const [mpTokenDraft, setMpTokenDraft] = useState(settings.mpAccessToken || '');
+  const [mpTokenDraft, setMpTokenDraft] = useState('');
   const [sentryDraft, setSentryDraft] = useState(settings.sentryDsn || '');
   const [mural, setMural] = useState<Array<{ ref: string; name: string; since: string }>>([]);
   useEffect(() => {
@@ -550,7 +550,7 @@ export const PixModal: React.FC<PixModalProps> = ({
                     ))}
                   </div>
 
-                  {Boolean(settings.mpAccessToken) && (
+                  {Boolean(settings.hasMpToken) && (
                     <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/40 p-3 space-y-2">
                       <div className="text-[10px] font-black text-emerald-300">
                         💳 ASSINATURA AUTOMÁTICA · CARTÃO OU PIX · RENOVA SOZINHO
