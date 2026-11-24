@@ -1,19 +1,19 @@
-MORRO GOLD - ETAPA 4 DO DOCUMENTO DE EXECUCAO
+MORRO GOLD - ETAPA 5 DO DOCUMENTO DE EXECUCAO
 ==============================================
 
-✅ ETAPA 4 CONCLUIDA: PAINEL DO VENDEDOR (estrutura real!)
-👥 Novo item no menu tres pontinhos!
+✅ ETAPA 5 CONCLUIDA: SUPORTE & DENUNCIA!
+🆘 Novo item no menu tres pontinhos!
 
-📊 STATUS DAS INTEGRACOES (sem inventar nada!):
-- Mercado Pago: aguardando SUA Access Token (eu preparo!)
-- ML/Shopee/Amazon: links de afiliado ATIVOS!
-- Marketplace/split: aguardando aprovacao do MP
+- 😤 Reclamacao · 🚨 Denuncia de conteudo · 💛 Doacao
+  🛒 Compra · 🛡️ Privacidade/LGPD · 📌 Outro
+- 📄 PROTOCOLO REAL gerado (MG-XXXXXX)!
+- 📲 Envia por WhatsApp (mensagem pronta!)
+- 📋 Copia o relato · historico salvo no aparelho!
+- 🚨 MODERACAO: conteudo denunciado pode ser removido!
 
-📝 PRE-CADASTRO DO VENDEDOR (real, salvo no aparelho!)
-📦 Meus produtos (abre com o checkout)
-💰 Comissoes (aparece quando o MP ativar)
-
-(revenda: Etapas 1-3 + MSN 24k + radio completa + vibe!)
+📋 DOCUMENTO DE EXECUCAO: ESCOPO IMPLEMENTADO!
+(1 backup+logo · 2 privacidade+loja+doacoes ·
+ 3 mobile-first · 4 painel vendedor · 5 suporte!)
 
 📦 "src" INTEIRO = ATUALIZACAO COMPLETA!
 
@@ -24,6 +24,6 @@ MORRO GOLD - ETAPA 4 DO DOCUMENTO DE EXECUCAO
 3. "Add file" > "Upload files"
 4. ARRASTE A PASTA "src" INTEIRA pra tela!
    NAO suba o PASSO-A-PASSO.txt!
-5. Mensagem: etapa 4 painel do vendedor
+5. Mensagem: etapa 5 suporte e denuncia
 6. "Commit directly to the main branch" > "Commit changes"
 Celular (1 vez): cadeado icone > Limpar e resetar.

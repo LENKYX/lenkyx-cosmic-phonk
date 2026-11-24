@@ -129,6 +129,7 @@ import { LyricsKaraokeModal } from './components/LyricsKaraokeModal';
 import HomeMsnView from './components/HomeMsnView';
 import PrivacyTermsModal from './components/PrivacyTermsModal';
 import SellerPanelModal from './components/SellerPanelModal';
+import SupportReportModal from './components/SupportReportModal';
 const MoviesView = React.lazy(() => import('./components/MoviesView').then((m) => ({ default: m.MoviesView })));
 const SportsArenaView = React.lazy(() =>
   import('./components/SportsArenaView').then((m) => ({ default: m.SportsArenaView }))
@@ -629,6 +630,7 @@ export function App() {
   const [updatingApp, setUpdatingApp] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [sellerOpen, setSellerOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ label: string; pct: number; mb: number } | null>(null);
 
   const navigateTab = useCallback((next: TabId) => {
@@ -3497,6 +3499,17 @@ export function App() {
                     <span className="text-amber-300">👥</span>
                     <span>Painel do Vendedor</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTopOverflowOpen(false);
+                      setSupportOpen(true);
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-2.5"
+                  >
+                    <span className="text-amber-300">🆘</span>
+                    <span>Suporte & Denúncia</span>
+                  </button>
                   
                   
                   
@@ -5077,6 +5090,7 @@ export function App() {
 
       <PrivacyTermsModal open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
       <SellerPanelModal open={sellerOpen} onClose={() => setSellerOpen(false)} />
+      <SupportReportModal open={supportOpen} onClose={() => setSupportOpen(false)} />
 
       <LyricsKaraokeModal
         track={lyricsTrack}
